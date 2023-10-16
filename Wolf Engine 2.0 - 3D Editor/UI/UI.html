@@ -1,0 +1,319 @@
+<html>
+  <head>
+	<link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+	<div class="fullscreen" id="fullScreenBlur" style="display: none"></div>
+	<button onclick="openModelAdd()">Add model</button>
+	<button onclick="selectFileAndLoadScene()">Load</button>
+	<button onclick="openSaveSceneWindow()">Save</button>
+	<div id="sceneName" style="display: inline-block;">Unknown scene</div>
+	<div class="frameRate" id="frameRate">FPS: 60</div>
+	<div class="cameraPosition" id="cameraPosition">Camera position:</div>
+	<div class="logs" id="logs"></div>
+
+	<div id="addModelWindow" class="modalWindow" style="display: none">
+		<table style="width: 100%;">
+			<tr>
+				<td>Type</td>
+				<td>
+					<select id="modelTypeSelect" onchange="modelTypeSelectChanged()">
+						<option value="staticMesh">Static mesh</option>
+						<option value="building">Building</option>
+					</select>
+				</td>
+			</tr>
+			<tr id="addModelPathTR">
+				<td>Path</td>
+				<td id="addModelPath"><button onclick="pickFileAndSetValue('addModelPath', 'open', 'obj')">Select file</button></td>
+			</tr>
+			<tr id="addModelMaterialPathTR">
+				<td>Material path</td>
+				<td id="addModelMaterialPath"><button onclick="pickFileAndSetValue('addModelMaterialPath', 'open', 'folder')">Select file</button></td>
+			</tr>
+			<tr id="addBuildingPathTR" style="display: none;">
+				<td>Building path</td>
+				<td id="addBuildingPath"><button onclick="pickFileAndSetValue('addBuildingPath', 'save', 'building')">Create</button><button onclick="pickFileAndSetValue('addBuildingPath', 'open', 'building')">Open</button></td>
+			</tr>
+		</table>
+		<button onclick="finishAddModel()">Add model</button>
+	</div>
+
+	<div id="saveSceneWindow" class="modalWindow" style="display: none">
+		<table style="width: 100%;">
+			<tr>
+				<td>File</td>
+				<td id="saveSceneFile"><button onclick="pickFileAndSetValue('saveSceneFile', 'save', 'save')">Select file</button></td>
+			</tr>
+			<tr>
+				<td>Scene name</td>
+				<td id="saveSceneName"><input type="text" id="saveSceneNameInput"/></td>
+			</tr>
+		</table>
+		<button onclick="finishSaveScene()">Save scene</button>
+	</div>
+
+	<div id="selectFileWindow" class="modalWindow" style="display: none;">
+		<div id="selectFile">Path: <button id="selectFileButton" onclick="pickFileAndSetValue('selectFile', 'open', 'undefined')">Select file</button></div>
+		<button id="selectFileFinishButton" onclick="finishFileSelection()">Button placeholder</button>
+	</div>
+
+	<div id="infoTabs">
+		<button class="tabLink tabSelected" id="tabLinkModel" onclick="selectTabInfo('tabLinkModel', 'modelInfos')" >Model</button>
+  		<button class="tabLink" id="tabLinkBuilding"onclick="selectTabInfo('tabLinkBuilding', 'buildingInfos')" style="display: none;">Building</button>
+	</div>
+
+	<div id="modelInfos" class="info">
+		No model selected
+	</div>
+
+	<div id="buildingInfos" class="info" style="display: none;">
+		Building info placeholder
+	</div>
+
+	<div id="modelList"></div>
+
+    <script src="./slider.js"></script>
+    <script src="./select.js"></script>
+	<script type="text/javascript">
+	function updateFrameRate() {
+		document.getElementById('frameRate').innerHTML = getFrameRate();
+
+		setTimeout(()=> {
+			updateFrameRate();
+		}, 1000);
+	}
+	
+	window.addEventListener('DOMContentLoaded', (event) => {
+		setTimeout(()=> {
+			updateFrameRate();
+
+			let renderHeight = parseInt(getRenderHeight());
+			let infosHeight = renderHeight - 50;
+
+			document.getElementById('modelInfos').style.height = String(infosHeight) + "px";
+			document.getElementById('buildingInfos').style.height = String(infosHeight) + "px";
+			document.getElementById('modelList').style.height = getRenderHeight() + "px";
+      	}, 1000);
+
+		if(navigator.userAgent.indexOf('Ultralight') != -1) {
+		}
+		else {
+			document.getElementsByTagName("body")[0].style.backgroundColor = "#191919";
+		}
+	});
+	
+	function openModelAdd() {
+		document.getElementById('fullScreenBlur').style.display = "block";
+		document.getElementById('addModelWindow').style.display = "block";
+	}
+
+	function finishAddModel() {
+		document.getElementById('fullScreenBlur').style.display = "none";
+		document.getElementById('addModelWindow').style.display = "none";
+
+		let type = document.getElementById("modelTypeSelect").options[document.getElementById("modelTypeSelect").selectedIndex].value;
+		let filepath = "";
+		if (type == "staticMesh")
+			filepath = document.getElementById("addModelPath").innerHTML;
+		else if (type == "building")
+			filepath = document.getElementById("addBuildingPath").innerHTML;
+
+		addModel(filepath, document.getElementById("addModelMaterialPath").innerHTML, type);
+
+		document.getElementById("addModelPath").innerHTML = "<button onclick=\"pickFileAndSetValue('addModelPath', 'open', 'obj')\">Select file</button>";
+		document.getElementById("addModelMaterialPath").innerHTML = "<button onclick=\"pickFileAndSetValue('addModelMaterialPath', 'open', 'folder')\">Select file</button>";
+		document.getElementById("addBuildingPath").innerHTML = "<button onclick=\"pickFileAndSetValue('addBuildingPath', 'save', 'building')\">Create</button><button onclick=\"pickFileAndSetValue('addBuildingPath', 'open', 'building')\">Open</button>";
+	}
+
+	function finishSaveScene() {
+		document.getElementById('fullScreenBlur').style.display = "none";
+		document.getElementById('saveSceneWindow').style.display = "none";
+		saveScene(document.getElementById("saveSceneFile").innerHTML, document.getElementById("saveSceneNameInput").value);
+
+		document.getElementById("saveSceneFile").innerHTML = "<button onclick=\"pickFileAndSetValue('saveSceneFile', 'save', 'save')\">Select file</button>";
+	}
+
+	let defaultFilter = "undefined";
+	function pickFileAndSetValue(id, option, filter) {
+		if (filter == "undefined")
+			filter = defaultFilter;
+
+		let filepath = pickFile(option, filter);
+		document.getElementById(id).innerHTML = filepath;
+
+		if (id == "addModelPath") {
+			let materialFolder = filepath.substr(0, filepath.lastIndexOf("\\"));
+			document.getElementById("addModelMaterialPath").innerHTML = materialFolder;
+		}
+
+		if (id =="windowMesh") {
+			changeBuildingWindowMesh(filepath, filepath.substr(0, filepath.lastIndexOf("\\")));
+		}
+	}
+
+	function updateSelectedModelInfo(name, scaleX, scaleY, scaleZ, translateX, translateY, translateZ, rotateX, rotateY, rotateZ) {
+		function addVectorInput(name, vecX, vecY, vecZ) {
+			let htmlToAdd = "";
+			htmlToAdd += "<input type=\"number\" value=\"" + vecX + "\" onchange=\"change" + name + "(0, this.value)\"/>";
+			htmlToAdd += "<input type=\"number\" value=\"" + vecY + "\" onchange=\"change" + name + "(1, this.value)\"/>";
+			htmlToAdd += "<input type=\"number\" value=\"" + vecZ + "\" onchange=\"change" + name + "(2, this.value)\"/>";
+
+			return htmlToAdd;
+		}
+
+		let modelInfosContent = "Name: <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + name + "\"/>";
+		modelInfosContent += "<br/><br/>"
+
+		modelInfosContent += "Scale: <div class=\"vectorInput\">";
+		modelInfosContent += addVectorInput("Scale", scaleX, scaleY, scaleZ);
+		modelInfosContent += "</div><br/>";
+
+		modelInfosContent += "Translation: <div class=\"vectorInput\">";
+		modelInfosContent += addVectorInput("Translation", translateX, translateY, translateZ);
+		modelInfosContent += "</div><br/>";
+
+		modelInfosContent += "Rotation: <div class=\"vectorInput\">";
+		modelInfosContent += addVectorInput("Rotation", rotateX, rotateY, rotateZ);
+		modelInfosContent += "</div><br/>";
+
+		document.getElementById('modelInfos').innerHTML = modelInfosContent;
+	}
+
+	function updateSelectedBuildingInfo(buildingSizeX, buildingSizeZ, floorCount, windowSideSize) {
+		document.getElementById("tabLinkBuilding").style.display = "block";
+
+		let buildingInfoContent = "Building size: ";
+		buildingInfoContent += "<input type=\"number\" value=\"" + buildingSizeX + "\" onchange=\"changeBuildingSize('x', this.value)\"/>";
+		buildingInfoContent += "<input type=\"number\" value=\"" + buildingSizeZ + "\" onchange=\"changeBuildingSize('z', this.value)\"/>";
+
+		buildingInfoContent += "Floor count: ";
+		buildingInfoContent += "<input type=\"number\" value=\"" + floorCount + "\" onchange=\"changeBuildingFloorCount(this.value)\"/>";
+
+		buildingInfoContent += "<br/>Window side size: "
+		buildingInfoContent += "<input type=\"number\" value=\"" + windowSideSize + "\" onchange=\"changeBuildingWindowSideSize(this.value)\"/>";
+
+		buildingInfoContent += "Window mesh: "
+		buildingInfoContent += "<div id='windowMesh'>SelectedMesh </div><button onclick=\"pickFileAndSetValue('windowMesh', 'open', 'obj')\">Select file</button>";
+
+		document.getElementById("buildingInfos").innerHTML = buildingInfoContent;
+	}
+
+	function resetSelectedModel() {
+		document.getElementById('modelInfos').innerHTML = "No model selected";
+		document.getElementById("tabLinkBuilding").style.display = "none";
+		document.getElementById("buildingInfos").style.display = "none";
+	}
+
+	function addModelToList(name) {
+		document.getElementById('modelList').innerHTML += "<div onclick=\"selectModelByName('" + name + "')\">" + name + "</div><br/>";
+	}
+
+	function resetModelList() {
+		document.getElementById('modelList').innerHTML = "";
+	}
+
+	function makeID(length) {
+		let result = '';
+		const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		const charactersLength = characters.length;
+		let counter = 0;
+		while (counter < length) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+			counter += 1;
+			}
+		return result;
+	}
+
+	function addLog(log, type) {
+		let logID = makeID(10);
+		document.getElementById('logs').innerHTML += "<br/><div class='" + type + "' id='" + logID + "'>" + log + "</div>";
+
+		setTimeout(()=> {
+			document.getElementById(logID).classList.add("hidden");
+		}, 3000);
+
+		setTimeout(()=> {
+			document.getElementById(logID).remove();
+		}, 4000);
+	}
+
+	const FileSelectionActionType = {
+		Unknown: 0,
+		LoadScene: 1
+	};
+
+	let fileSelectionActionType = FileSelectionActionType.Unknown;
+
+	function selectFileAndLoadScene() {
+		document.getElementById('fullScreenBlur').style.display = "block";
+		document.getElementById('selectFileWindow').style.display = "block";
+		document.getElementById('selectFileFinishButton').innerHTML = "Load";
+		defaultFilter = "save";
+
+		fileSelectionActionType = FileSelectionActionType.LoadScene;
+	}
+
+	function finishFileSelection() {
+		let path = document.getElementById("selectFile").innerHTML;
+
+		switch (fileSelectionActionType){
+			case FileSelectionActionType.Unknown:
+				// Error
+				break;
+			case FileSelectionActionType.LoadScene:
+				loadScene(path);
+				break;
+		}
+
+		document.getElementById('fullScreenBlur').style.display = "none";
+		document.getElementById('selectFileWindow').style.display = "none";
+		document.getElementById('selectFile').innerHTML = "Path: <button id=\"selectFileButton\" onclick=\"pickFileAndSetValue('selectFile', 'open', 'undefined')\">Select file</button>";
+	}
+
+	function openSaveSceneWindow() {
+		document.getElementById('fullScreenBlur').style.display = "block";
+		document.getElementById('saveSceneWindow').style.display = "block";
+	}
+
+	function setSceneName(name) {
+		document.getElementById('sceneName').innerHTML = name;
+	}
+
+	function modelTypeSelectChanged() {
+		let selectedOption = document.getElementById("modelTypeSelect").options[document.getElementById("modelTypeSelect").selectedIndex].value;
+
+		if (selectedOption == "staticMesh") {
+			document.getElementById("addModelPathTR").style.display = "table-row";
+			document.getElementById("addModelMaterialPathTR").style.display = "table-row";
+			document.getElementById("addBuildingPathTR").style.display = "none";
+		}
+		else {
+			document.getElementById("addModelPathTR").style.display = "none";
+			document.getElementById("addModelMaterialPathTR").style.display = "none";
+			document.getElementById("addBuildingPathTR").style.display = "table-row";
+		}
+	}
+
+	function selectTabInfo(tabID, infoID) {
+		let tabLinks = document.getElementsByClassName("tabLink");
+		for (var i = 0; i < tabLinks.length; ++i) {
+			var tabLink = tabLinks[i];  
+			tabLink.classList.remove("tabSelected");
+		}
+		document.getElementById(tabID).classList.add("tabSelected");
+
+		let infoDivs = document.getElementsByClassName("info");
+		for (var i = 0; i < infoDivs.length; ++i) {
+			var infoDiv = infoDivs[i];  
+			infoDiv.style.display = "none";
+		}
+		document.getElementById(infoID).style.display = "block";
+	}
+
+	function setCameraPosition(cameraPositionStr) {
+		document.getElementById("cameraPosition").innerHTML = "Camera position: " + cameraPositionStr;
+	}
+    </script>
+  </body>
+</html>
