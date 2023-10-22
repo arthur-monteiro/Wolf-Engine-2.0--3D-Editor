@@ -65,6 +65,14 @@ void main()
 
 		inputPosition = rotMatrix * inputPosition;
     }
+	else if(cosTheta < 0.0f)
+	{
+		rotMatrix = mat3(-1, 0, 0,
+		                  0, 1, 0,
+						  0, 0, -1);
+
+		inputPosition = rotMatrix * inputPosition;
+	}
 
 	vec4 viewPos = ubMVP.view * ubMVP.model * vec4(inputPosition + inPositionOffset, 1.0);
 

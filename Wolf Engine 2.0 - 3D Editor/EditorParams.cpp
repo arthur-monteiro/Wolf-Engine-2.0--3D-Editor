@@ -19,12 +19,12 @@ VkViewport EditorParams::getRenderViewport()
 
 uint32_t EditorParams::getRenderOffsetLeft()
 {
-	return 500;
+	return m_renderOffsetLeft;
 }
 
 uint32_t EditorParams::getRenderOffsetRight()
 {
-	return 300;
+	return m_renderOffsetRight;
 }
 
 uint32_t EditorParams::getRenderWidth()

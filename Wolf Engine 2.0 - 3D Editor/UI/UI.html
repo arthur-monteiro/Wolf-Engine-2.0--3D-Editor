@@ -67,9 +67,12 @@
 		No model selected
 	</div>
 
-	<div id="buildingInfos" class="info" style="display: none;">
+	<div id="buildingInfos" class="info" style="display: none; overflow-x: scroll;">
 		Building info placeholder
 	</div>
+
+	<div id="sliderInfo" onmousedown="resizeInfo()"></div>
+	<div id="sliderList" onmousedown="resizeList()"></div>
 
 	<div id="modelList"></div>
 
@@ -88,20 +91,39 @@
 		setTimeout(()=> {
 			updateFrameRate();
 
-			let renderHeight = parseInt(getRenderHeight());
-			let infosHeight = renderHeight - 50;
-
-			document.getElementById('modelInfos').style.height = String(infosHeight) + "px";
-			document.getElementById('buildingInfos').style.height = String(infosHeight) + "px";
-			document.getElementById('modelList').style.height = getRenderHeight() + "px";
+			refreshWindowSize();
       	}, 1000);
 
 		if(navigator.userAgent.indexOf('Ultralight') != -1) {
 		}
 		else {
 			document.getElementsByTagName("body")[0].style.backgroundColor = "#191919";
+
+			let script = document.createElement("script"); 
+			script.src = "./fakeEngine.js";
+			document.head.appendChild(script); 
+
 		}
 	});
+
+	function refreshWindowSize() {
+		let renderHeight = parseInt(getRenderHeight());
+		let infosHeight = renderHeight - 30;
+
+		for(let i = 0; i < document.getElementsByClassName('info').length; ++i) {
+			document.getElementsByClassName('info')[i].style.height = String(infosHeight) + "px";
+			document.getElementsByClassName('info')[i].style.width = String(parseInt(getRenderOffsetLeft())) + "px";
+		}
+		document.getElementById('modelList').style.height = getRenderHeight() + "px";
+		document.getElementById('modelList').style.left = parseInt(getRenderOffsetLeft()) + parseInt(getRenderWidth());
+		document.getElementById('infoTabs').style.width = String(parseInt(getRenderOffsetLeft())) + "px";
+
+		document.getElementById('sliderInfo').style.left = String(parseInt(getRenderOffsetLeft()) - 2) + "px";
+		document.getElementById('sliderInfo').style.height = getRenderHeight() + "px";
+
+		document.getElementById('sliderList').style.left = String(parseInt(getRenderOffsetLeft()) + parseInt(getRenderWidth()) - 2) + "px";
+		document.getElementById('sliderList').style.height = getRenderHeight() + "px";
+	}
 	
 	function openModelAdd() {
 		document.getElementById('fullScreenBlur').style.display = "block";
@@ -147,54 +169,94 @@
 			document.getElementById("addModelMaterialPath").innerHTML = materialFolder;
 		}
 
-		if (id =="windowMesh") {
-			changeBuildingWindowMesh(filepath, filepath.substr(0, filepath.lastIndexOf("\\")));
+		if (id.includes("windowMesh")) {
+			changeBuildingWindowMesh(id.replace("windowMesh", ""), filepath, filepath.substr(0, filepath.lastIndexOf("\\")));
 		}
 	}
 
 	function updateSelectedModelInfo(name, scaleX, scaleY, scaleZ, translateX, translateY, translateZ, rotateX, rotateY, rotateZ) {
-		function addVectorInput(name, vecX, vecY, vecZ) {
-			let htmlToAdd = "";
-			htmlToAdd += "<input type=\"number\" value=\"" + vecX + "\" onchange=\"change" + name + "(0, this.value)\"/>";
-			htmlToAdd += "<input type=\"number\" value=\"" + vecY + "\" onchange=\"change" + name + "(1, this.value)\"/>";
-			htmlToAdd += "<input type=\"number\" value=\"" + vecZ + "\" onchange=\"change" + name + "(2, this.value)\"/>";
+		function addVectorInput(name, min, max, vecX, vecY, vecZ) {
+			let htmlToAdd = "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom: 1px solid white;'>";
+			htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + name + " side size:</div>";
+			htmlToAdd += "<div style='display: inline-block; width: 70%'>";
+			htmlToAdd += "<wolf-slider max='" + max + "' min='" + min + "' step='0.01' oninput=\"change" + name + "X\" value=\"" + vecX + "\"></wolf-slider>";
+			htmlToAdd += "<wolf-slider max='" + max + "' min='" + min + "' step='0.01' oninput=\"change" + name + "Y\" value=\"" + vecY + "\"></wolf-slider>";
+			htmlToAdd += "<wolf-slider max='" + max + "' min='" + min + "' step='0.01' oninput=\"change" + name + "Z\" value=\"" + vecZ + "\"></wolf-slider>";
+			htmlToAdd += "</div>";
+			htmlToAdd += "</div>";
 
 			return htmlToAdd;
 		}
 
-		let modelInfosContent = "Name: <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + name + "\"/>";
-		modelInfosContent += "<br/><br/>"
+		let modelInfosContent = "<div class='blockParameters'>";
+		modelInfosContent += "<div class='blockParametersTitle'>General</div>";
+		modelInfosContent += "<div class='blockParametersContent'>";
+		modelInfosContent += "Name: <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + name + "\"/>";
+		modelInfosContent += "</div>"; // blockParametersContent
+		modelInfosContent += "</div>"; // blockParameters
 
-		modelInfosContent += "Scale: <div class=\"vectorInput\">";
-		modelInfosContent += addVectorInput("Scale", scaleX, scaleY, scaleZ);
-		modelInfosContent += "</div><br/>";
-
-		modelInfosContent += "Translation: <div class=\"vectorInput\">";
-		modelInfosContent += addVectorInput("Translation", translateX, translateY, translateZ);
-		modelInfosContent += "</div><br/>";
-
-		modelInfosContent += "Rotation: <div class=\"vectorInput\">";
-		modelInfosContent += addVectorInput("Rotation", rotateX, rotateY, rotateZ);
-		modelInfosContent += "</div><br/>";
+		modelInfosContent += "<div class='blockParameters'>";
+		modelInfosContent += "<div class='blockParametersTitle'>Transform</div>";
+		modelInfosContent += "<div class='blockParametersContent'>";
+		modelInfosContent += addVectorInput("Scale", -1, 1, scaleX, scaleY, scaleZ);
+		modelInfosContent += addVectorInput("Translation", -10, 10, translateX, translateY, translateZ);
+		modelInfosContent += addVectorInput("Rotation", 0, 6.29, rotateX, rotateY, rotateZ);
+		modelInfosContent += "</div>"; // blockParametersContent
+		modelInfosContent += "</div>"; // blockParameters
 
 		document.getElementById('modelInfos').innerHTML = modelInfosContent;
 	}
 
-	function updateSelectedBuildingInfo(buildingSizeX, buildingSizeZ, floorCount, windowSideSize) {
+	function updateSelectedBuildingInfo(buildingSizeX, buildingSizeZ, floorCount, windowSideSize, windowsMesh0) {
 		document.getElementById("tabLinkBuilding").style.display = "block";
 
-		let buildingInfoContent = "Building size: ";
-		buildingInfoContent += "<input type=\"number\" value=\"" + buildingSizeX + "\" onchange=\"changeBuildingSize('x', this.value)\"/>";
-		buildingInfoContent += "<input type=\"number\" value=\"" + buildingSizeZ + "\" onchange=\"changeBuildingSize('z', this.value)\"/>";
+		let buildingInfoContent = "<div class='blockParameters'>";
+		buildingInfoContent += "<div class='blockParametersTitle'>General</div>";
+		buildingInfoContent += "<div class='blockParametersContent'>";
+		buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>Building size:</div>";
+		buildingInfoContent += "<div id='buildingSizeSliders' style='display: inline-block; width: 70%'>";
+		buildingInfoContent += "<wolf-slider max='150' min='1' step='0.01' oninput='changeBuildingSizeX' value=\"" + buildingSizeX + "\"></wolf-slider>";
+		buildingInfoContent += "<wolf-slider max='150' min='1' step='0.01' oninput='changeBuildingSizeZ' value=\"" + buildingSizeZ + "\"></wolf-slider>";
+		buildingInfoContent += "</div>"; // buildingSizeSliders
+		buildingInfoContent += "</div>"; // blockParametersContent
+		buildingInfoContent += "</div>"; // blockParameters
 
-		buildingInfoContent += "Floor count: ";
-		buildingInfoContent += "<input type=\"number\" value=\"" + floorCount + "\" onchange=\"changeBuildingFloorCount(this.value)\"/>";
+		buildingInfoContent += "<div class='blockParameters'>";
+		buildingInfoContent += "<div class='blockParametersTitle'>Floors</div>";
+		buildingInfoContent += "<div class='blockParametersContent'>";
+		buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>Floor count:</div>";
+		buildingInfoContent += "<wolf-slider max='50' min='1' step='1' oninput='changeBuildingFloorCount' value=\"" + floorCount + "\"></wolf-slider>"
+		buildingInfoContent += "</div>"; // blockParametersContent
+		buildingInfoContent += "</div>";  // blockParameters
 
-		buildingInfoContent += "<br/>Window side size: "
-		buildingInfoContent += "<input type=\"number\" value=\"" + windowSideSize + "\" onchange=\"changeBuildingWindowSideSize(this.value)\"/>";
+		function addBuildingPieceInfos(name, sideSize, mesh0) {
+			let nameWithUppercase = name.charAt(0).toUpperCase() + name.slice(1);
 
-		buildingInfoContent += "Window mesh: "
-		buildingInfoContent += "<div id='windowMesh'>SelectedMesh </div><button onclick=\"pickFileAndSetValue('windowMesh', 'open', 'obj')\">Select file</button>";
+			buildingInfoContent += "<div style='width: 100%; height: 50px'>";
+			buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + nameWithUppercase + " side size:</div>";
+			buildingInfoContent += "<wolf-slider max='5' min='0.1' step='0.01' oninput='changeBuilding" + nameWithUppercase + "SideSize' value=\"" + sideSize + "\"></wolf-slider>"
+			buildingInfoContent += "</div>";
+			buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + nameWithUppercase + " meshes:</div>";
+			buildingInfoContent += "<table style='width: 70%; border-collapse: collapse; border-radius: 5px'>"
+			buildingInfoContent += "<tr><td><div id='" + name + "Mesh0'>" + (mesh0 ? mesh0 : "Default") +"</div></td><td><button onclick=\"pickFileAndSetValue('" + name + "Mesh0', 'open', 'obj')\">Select file</button></td></tr>";
+			buildingInfoContent += "<tr><td><div id='" + name + "Mesh1'>No mesh </div></td><td><button onclick=\"pickFileAndSetValue('" + name + "Mesh1', 'open', 'obj')\">Select file</button></td></tr>";
+			buildingInfoContent += "<tr><td><div id='" + name + "Mesh2'>No mesh </div></td><td><button onclick=\"pickFileAndSetValue('" + name + "Mesh2', 'open', 'obj')\">Select file</button></td></tr>";
+			buildingInfoContent += "</table>"
+		}
+		
+		buildingInfoContent += "<div class='blockParameters'>";
+		buildingInfoContent += "<div class='blockParametersTitle'>Windows</div>";
+		buildingInfoContent += "<div class='blockParametersContent'>";
+		addBuildingPieceInfos("window", windowSideSize, windowsMesh0);
+		buildingInfoContent += "</div>"; // blockParametersContent
+		buildingInfoContent += "</div>"; // blockParameters
+
+		buildingInfoContent += "<div class='blockParameters'>";
+		buildingInfoContent += "<div class='blockParametersTitle'>Walls</div>";
+		buildingInfoContent += "<div class='blockParametersContent'>";
+		addBuildingPieceInfos("walls", 2, "");
+		buildingInfoContent += "</div>"; // blockParametersContent
+		buildingInfoContent += "</div>"; // blockParameters
 
 		document.getElementById("buildingInfos").innerHTML = buildingInfoContent;
 	}
@@ -227,7 +289,7 @@
 
 	function addLog(log, type) {
 		let logID = makeID(10);
-		document.getElementById('logs').innerHTML += "<br/><div class='" + type + "' id='" + logID + "'>" + log + "</div>";
+		document.getElementById('logs').innerHTML += "<br/><div class='" + type + "' id='" + logID + "'><span style='background-color: #ffffff; opacity: 0.7; padding: 3px 20px 5px 20px;'>" + log + "</span></div>";
 
 		setTimeout(()=> {
 			document.getElementById(logID).classList.add("hidden");
@@ -313,6 +375,67 @@
 
 	function setCameraPosition(cameraPositionStr) {
 		document.getElementById("cameraPosition").innerHTML = "Camera position: " + cameraPositionStr;
+	}
+
+	function resizeInfo() {
+		let dragX = undefined; 
+		document.onmousemove = function onMouseMove(e) {
+			let maxOffsetWidth = 0;
+			for(let i = 0; i < document.getElementsByClassName('info').length; ++i) {
+				if (document.getElementsByClassName('info')[i].style.display != "none")
+					maxOffsetWidth = document.getElementsByClassName('info')[i].offsetWidth;
+			}
+
+			if (dragX == undefined)
+				dragX = e.clientX;
+			let newWidth = maxOffsetWidth + e.clientX - dragX;
+
+			if (newWidth < 150)
+				newWidth = 150;
+			if (newWidth > 1000)
+				newWidth = 1000;
+
+			for(let i = 0; i < document.getElementsByClassName('info').length; ++i) {
+				document.getElementsByClassName('info')[i].style.width = newWidth + "px";
+			}
+			
+			document.getElementById("infoTabs").style.width = newWidth + "px";
+			document.getElementById("sliderInfo").style.left = newWidth + "px";
+
+			setRenderOffsetLeft(newWidth);
+
+			dragX = e.clientX;
+		}
+		document.onmouseup = () => document.onmousemove = document.onmouseup = null;
+	}
+
+	function resizeList(e) {
+		let dragX = undefined;
+		let modelListLeft = parseInt(document.getElementById("modelList").style.left);
+		let modelListWidth = parseInt(document.getElementById("modelList").offsetWidth);
+		document.onmousemove = function onMouseMove(e) {
+			let offsetWidth = document.getElementById('modelList').offsetWidth;
+
+			if (dragX == undefined)
+				dragX = e.clientX;
+			let newWidth = offsetWidth + dragX - e.clientX;
+
+			if (newWidth < 150)
+				newWidth = 150;
+			if (newWidth > 1000)
+				newWidth = 1000;
+
+			document.getElementById("modelList").style.width = newWidth + "px";
+
+			let newLeft = modelListLeft - (newWidth - modelListWidth);
+			document.getElementById("modelList").style.left = newLeft + "px";
+			document.getElementById("sliderList").style.left = newLeft + "px";
+
+			setRenderOffsetRight(newWidth + 5);
+
+			dragX = e.clientX;
+		}
+		document.onmouseup = () => document.onmousemove = document.onmouseup = null;
 	}
     </script>
   </body>

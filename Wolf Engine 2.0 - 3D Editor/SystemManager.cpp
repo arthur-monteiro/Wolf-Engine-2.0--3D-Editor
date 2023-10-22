@@ -135,10 +135,18 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["addModel"] = std::bind(&SystemManager::addModelJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["pickFile"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::pickFile, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getRenderHeight"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderHeight, this, std::placeholders::_1, std::placeholders::_2));
-	jsObject["changeScale"] = std::bind(&SystemManager::changeScale, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["getRenderWidth"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderWidth, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getRenderOffsetLeft"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderOffsetLeft, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["setRenderOffsetLeft"] = std::bind(&SystemManager::setRenderOffsetLeft, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["getRenderOffsetRight"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderOffsetRight, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["setRenderOffsetRight"] = std::bind(&SystemManager::setRenderOffsetRight, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["changeScaleX"] = std::bind(&SystemManager::changeScaleX, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["changeScaleY"] = std::bind(&SystemManager::changeScaleY, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["changeScaleZ"] = std::bind(&SystemManager::changeScaleZ, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["changeRotation"] = std::bind(&SystemManager::changeRotation, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["changeTranslation"] = std::bind(&SystemManager::changeTranslation, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeBuildingSize"] = std::bind(&SystemManager::changeBuildingSize, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["changeBuildingSizeX"] = std::bind(&SystemManager::changeBuildingSizeX, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["changeBuildingSizeZ"] = std::bind(&SystemManager::changeBuildingSizeZ, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["changeBuildingFloorCount"] = std::bind(&SystemManager::changeBuildingFloorCount, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["changeBuildingWindowSideSize"] = std::bind(&SystemManager::changeBuildingWindowSideSize, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["changeBuildingWindowMesh"] = std::bind(&SystemManager::changeBuildingWindowMesh, this, std::placeholders::_1, std::placeholders::_2);
@@ -151,6 +159,8 @@ void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
 {
 	m_editorParams->setWindowWidth(width);
 	m_editorParams->setWindowHeight(height);
+
+	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
 }
 
 ultralight::JSValue SystemManager::getFrameRate(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -245,6 +255,39 @@ ultralight::JSValue SystemManager::getRenderHeight(const ultralight::JSObject& t
 	return r.c_str();
 }
 
+ultralight::JSValue SystemManager::getRenderWidth(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args) const
+{
+	const std::string r = std::to_string(m_editorParams->getRenderWidth());
+	return r.c_str();
+}
+
+ultralight::JSValue SystemManager::getRenderOffsetRight(const ultralight::JSObject& thisObject,
+                                                        const ultralight::JSArgs& args) const
+{
+	const std::string r = std::to_string(m_editorParams->getRenderOffsetRight());
+	return r.c_str();
+}
+
+ultralight::JSValue SystemManager::getRenderOffsetLeft(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args) const
+{
+	const std::string r = std::to_string(m_editorParams->getRenderOffsetLeft());
+	return r.c_str();
+}
+
+void SystemManager::setRenderOffsetLeft(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const uint32_t value = static_cast<uint32_t>(args[0].ToNumber());
+	m_editorParams->setRenderOffsetLeft(value);
+}
+
+void SystemManager::setRenderOffsetRight(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const uint32_t value = static_cast<uint32_t>(args[0].ToNumber());
+	m_editorParams->setRenderOffsetRight(value);
+}
+
 void SystemManager::addModelJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string filepath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
@@ -259,12 +302,22 @@ void SystemManager::addModelJSCallback(const ultralight::JSObject& thisObject, c
 		debugCallback(Debug::Severity::ERROR, Debug::Type::WOLF, "Model type \"" + type + "\" is not implemented");
 }
 
-void SystemManager::changeScale(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
+void SystemManager::changeScaleX(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
 {
-	const uint32_t componentIdx = static_cast<uint32_t>(args[0].ToNumber());
-	const float value = static_cast<float>(args[1].ToNumber());
+	const float value = static_cast<float>(args[0].ToNumber());
+	m_selectedModel->setScale(0, value);
+}
 
-	m_selectedModel->setScale(componentIdx, value);
+void SystemManager::changeScaleY(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
+{
+	const float value = static_cast<float>(args[0].ToNumber());
+	m_selectedModel->setScale(1, value);
+}
+
+void SystemManager::changeScaleZ(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
+{
+	const float value = static_cast<float>(args[0].ToNumber());
+	m_selectedModel->setScale(2, value);
 }
 
 void SystemManager::changeRotation(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
@@ -283,7 +336,20 @@ void SystemManager::changeTranslation(const ultralight::JSObject& thisObject, co
 	m_selectedModel->setTranslation(componentIdx, value);
 }
 
-void SystemManager::changeBuildingSize(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
+void SystemManager::changeBuildingSizeX(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
+{
+	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
+	{
+		debugCallback(Debug::Severity::ERROR, Debug::Type::WOLF, "Can't change building size of non building model");
+		return;
+	}
+	BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
+	
+	const float value = static_cast<float>(args[0].ToNumber());
+	selectedBuilding->setBuildingSizeX(value);
+}
+
+void SystemManager::changeBuildingSizeZ(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
 {
 	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
 	{
@@ -292,19 +358,12 @@ void SystemManager::changeBuildingSize(const ultralight::JSObject& thisObject, c
 	}
 	BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
 
-	const std::string component = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
-	const float value = static_cast<float>(args[1].ToNumber());
-
-	if (component == "x")
-		selectedBuilding->setBuildingSizeX(value);
-	else if (component == "z")
-		selectedBuilding->setBuildingSizeZ(value);
-	else
-		debugCallback(Debug::Severity::ERROR, Debug::Type::WOLF, "Unrecognised component " + component);
+	const float value = static_cast<float>(args[0].ToNumber());
+	selectedBuilding->setBuildingSizeZ(value);
 }
 
 void SystemManager::changeBuildingWindowSideSize(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
+                                                 const ultralight::JSArgs& args) const
 {
 	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
 	{
@@ -341,8 +400,9 @@ void SystemManager::changeBuildingWindowMesh(const ultralight::JSObject& thisObj
 	}
 	BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
 
-	const std::string filename = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
-	const std::string materialFolder = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
+	const uint32_t meshIdx = static_cast<uint32_t>(args[0].ToNumber());
+	const std::string filename = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
+	const std::string materialFolder = static_cast<ultralight::String>(args[2].ToString()).utf8().data();
 	selectedBuilding->loadWindowMesh(filename, materialFolder, m_currentBindlessOffset / 5);
 
 	std::vector<Image*> modelImages;
@@ -629,7 +689,18 @@ void SystemManager::updateUISelectedModel()
 	{
 		const BuildingModel* selectedBuilding = static_cast<const BuildingModel*>(m_selectedModel);
 
+		std::string escapedMessage;
+		for (const char character : selectedBuilding->getWindowMeshLoadingPath(0))
+		{
+			if (character == '\\')
+				escapedMessage += "\\\\";
+			else if (character == '\"')
+				escapedMessage += "\\\"";
+			else
+				escapedMessage += character;
+		}
+
 		m_wolfInstance->evaluateUserInterfaceScript("updateSelectedBuildingInfo(" + std::to_string(selectedBuilding->getBuildingSizeX()) + "," + std::to_string(selectedBuilding->getBuildingSizeZ()) + "," +
-			std::to_string(selectedBuilding->getFloorCount()) + ", " + std::to_string(selectedBuilding->getWindowSizeSize()) + ")");
+			std::to_string(selectedBuilding->getFloorCount()) + ", " + std::to_string(selectedBuilding->getWindowSizeSize()) + ", \"" + escapedMessage + "\")");
 	}
 }

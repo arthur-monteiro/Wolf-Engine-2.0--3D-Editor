@@ -50,8 +50,9 @@ public:
 	float getBuildingHeight() const { return m_fullSize.y; }
 	float getBuildingSizeX() const { return m_fullSize.x; }
 	float getBuildingSizeZ() const { return m_fullSize.z; }
-	float getWindowSizeSize() const { return m_windowSideSizeInMeter;  }
+	float getWindowSizeSize() const { return m_window.sideSizeInMeter;  }
 	uint32_t getFloorCount() const { return m_floorCount; }
+	const std::string& getWindowMeshLoadingPath(uint32_t meshIdx) const { return m_window.mesh.loadingPath; }
 	void getImages(std::vector<Wolf::Image*>& images);
 
 	void setBuildingSizeX(float value);
@@ -64,17 +65,6 @@ public:
 	void save() const;
 
 private:
-	void setDefaultWindowMesh(uint32_t materialIdOffset);
-
-	float computeFloorSize() const;
-	float computeWindowCountOnSide(const glm::vec3& sideDir) const;
-	void rebuildRenderingInfos();
-
-	std::string m_filepath;
-
-	/* User data */
-	glm::vec3 m_fullSize;
-
 	struct MeshWithMaterials
 	{
 		std::string loadingPath;
@@ -84,20 +74,38 @@ private:
 		glm::vec2 center;
 	};
 
+	void setDefaultMesh(MeshWithMaterials& output, const glm::vec3& color, uint32_t materialIdOffset);
+	void setDefaultWindowMesh(uint32_t materialIdOffset);
+	void setDefaultWallMesh(uint32_t materialIdOffset);
+
+	float computeFloorSize() const;
+	float computeWindowCountOnSide(const glm::vec3& sideDir) const;
+	void rebuildRenderingInfos();
+
+	std::string m_filepath;
+	glm::vec3 m_fullSize;
+
+	struct BuildingPiece
+	{
+		float sideSizeInMeter = 2.0f;
+		float heightInMeter = 2.0f;
+		MeshWithMaterials mesh;
+
+		std::unique_ptr<Wolf::DescriptorSet> descriptorSet;
+		std::unique_ptr<Wolf::Buffer> instanceBuffer;
+		uint32_t instanceCount = 0;
+		std::unique_ptr<Wolf::Buffer> infoUniformBuffer;
+	};
+
 	// Windows
-	float m_windowSideSizeInMeter;
-	float m_windowHeightInMeter;
-	MeshWithMaterials m_windowMesh;
+	BuildingPiece m_window;
+
+	// Walls
+	BuildingPiece m_wall;
 
 	// Floors
 	uint32_t m_floorCount;
-
-	/* Rendering info */
-	std::unique_ptr<Wolf::DescriptorSet> m_windowsDescriptorSet;
-
-	std::unique_ptr<Wolf::Buffer> m_windowInstanceBuffer;
-	uint32_t m_windowInstanceCount;
-	std::unique_ptr<Wolf::Buffer> m_windowsInfoUniformBuffer;
+	float m_floorHeightInMeter;
 };
 
 namespace Building

@@ -19,10 +19,9 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 {
 	m_filepath = filepath;
 	m_name = "Building";
-	m_windowSideSizeInMeter = 2.0f;
-	m_windowHeightInMeter = 2.0f;
 	m_floorCount = 8;
-	m_fullSize = glm::vec3(10.0f, m_windowHeightInMeter * m_floorCount, 20.0f);
+	m_floorHeightInMeter = 2.0f;
+	m_fullSize = glm::vec3(10.0f, m_floorHeightInMeter * m_floorCount, 20.0f);
 
 	if (std::filesystem::exists(m_filepath))
 	{
@@ -37,15 +36,18 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 		else
 			loadWindowMesh(meshLoadingPath, "", materialIdOffset);
 
-		m_windowSideSizeInMeter = jsonReader.getRoot()->getPropertyFloat("windowSideSizeInMeter");
-		m_windowHeightInMeter = jsonReader.getRoot()->getPropertyFloat("windowHeightInMeter");
+		setDefaultWallMesh(materialIdOffset + 1);
+
+		m_window.sideSizeInMeter = jsonReader.getRoot()->getPropertyFloat("windowSideSizeInMeter");
+		m_window.heightInMeter = jsonReader.getRoot()->getPropertyFloat("windowHeightInMeter");
 		m_floorCount = jsonReader.getRoot()->getPropertyFloat("floorCount");
 
-		m_fullSize.y = m_windowHeightInMeter * m_floorCount;
+		m_fullSize.y = m_floorHeightInMeter * m_floorCount;
 	}
 	else
 	{
 		setDefaultWindowMesh(materialIdOffset);
+		setDefaultWallMesh(materialIdOffset + 1);
 
 		save();
 	}
@@ -58,12 +60,17 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 	// Building descriptor set
-	m_windowsInfoUniformBuffer.reset(new Buffer(sizeof(Building::MeshInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
+	auto initBufferAndDescriptorSet = [](BuildingPiece& piece)
+	{
+		piece.infoUniformBuffer.reset(new Buffer(sizeof(Building::MeshInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
+		piece.descriptorSet.reset(new DescriptorSet(Building::g_descriptorSetLayout, UpdateRate::NEVER));
+		DescriptorSetGenerator buildingDescriptorSetGenerator(Building::g_descriptorSetLayoutGenerator.getDescriptorLayouts());
+		buildingDescriptorSetGenerator.setBuffer(0, *piece.infoUniformBuffer);
+		piece.descriptorSet->update(buildingDescriptorSetGenerator.getDescriptorSetCreateInfo());
+	};
 
-	m_windowsDescriptorSet.reset(new DescriptorSet(Building::g_descriptorSetLayout, UpdateRate::NEVER));
-	DescriptorSetGenerator buildingDescriptorSetGenerator(Building::g_descriptorSetLayoutGenerator.getDescriptorLayouts());
-	buildingDescriptorSetGenerator.setBuffer(0, *m_windowsInfoUniformBuffer);
-	m_windowsDescriptorSet->update(buildingDescriptorSetGenerator.getDescriptorSetCreateInfo());
+	initBufferAndDescriptorSet(m_window);
+	initBufferAndDescriptorSet(m_wall);
 
 	rebuildRenderingInfos();
 }
@@ -72,21 +79,26 @@ void BuildingModel::draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelin
 {
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, m_descriptorSet->getDescriptorSet(), 0, nullptr);
 
-	// Windows
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, m_windowsDescriptorSet->getDescriptorSet(), 0, nullptr);
+	auto drawPiece = [&](const BuildingPiece& piece)
+	{
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, piece.descriptorSet->getDescriptorSet(), 0, nullptr);
+		const VkDeviceSize offsets[1] = { 0 };
+		const VkBuffer windowsInstanceBuffer = piece.instanceBuffer->getBuffer();
+		vkCmdBindVertexBuffers(commandBuffer, 1, 1, &windowsInstanceBuffer, offsets);
+		piece.mesh.mesh->draw(commandBuffer, piece.instanceCount);
+	};
 
-	const VkDeviceSize offsets[1] = { 0 };
-	const VkBuffer windowsInstanceBuffer = m_windowInstanceBuffer->getBuffer();
-	vkCmdBindVertexBuffers(commandBuffer, 1, 1, &windowsInstanceBuffer, offsets);
-	m_windowMesh.mesh->draw(commandBuffer, m_windowInstanceCount);
+	drawPiece(m_window);
+	drawPiece(m_wall);
 }
 
 void BuildingModel::getImages(std::vector<Wolf::Image*>& images)
 {
-	for (std::unique_ptr<Image>& image : m_windowMesh.images)
-	{
+	for (std::unique_ptr<Image>& image : m_window.mesh.images)
 		images.push_back(image.get());
-	}
+
+	for (std::unique_ptr<Image>& image : m_wall.mesh.images)
+		images.push_back(image.get());
 }
 
 void BuildingModel::setBuildingSizeX(float value)
@@ -103,14 +115,14 @@ void BuildingModel::setBuildingSizeZ(float value)
 
 void BuildingModel::setWindowSideSize(float value)
 {
-	m_windowSideSizeInMeter = value;
+	m_window.sideSizeInMeter = value;
 	rebuildRenderingInfos();
 }
 
 void BuildingModel::setFloorCount(uint32_t value)
 {
 	m_floorCount = value;
-	m_fullSize.y = m_windowHeightInMeter * m_floorCount;
+	m_fullSize.y = m_floorHeightInMeter * m_floorCount;
 	rebuildRenderingInfos();
 }
 
@@ -127,20 +139,20 @@ void BuildingModel::loadWindowMesh(const std::string& filename, const std::strin
 	ModelData windowMeshData;
 	ObjLoader::loadObject(windowMeshData, modelLoadingInfo);
 
-	m_windowMesh.loadingPath = filename;
-	m_windowMesh.mesh = std::move(windowMeshData.mesh);
-	m_windowMesh.images.resize(windowMeshData.images.size());
+	m_window.mesh.loadingPath = filename;
+	m_window.mesh.mesh = std::move(windowMeshData.mesh);
+	m_window.mesh.images.resize(windowMeshData.images.size());
 	for (uint32_t i = 0; i < windowMeshData.images.size(); ++i)
 	{
-		m_windowMesh.images[i] = std::move(windowMeshData.images[i]);
+		m_window.mesh.images[i] = std::move(windowMeshData.images[i]);
 	}
-	const glm::vec3 meshSize = m_windowMesh.mesh->getAABB().getSize();
-	m_windowMesh.meshSizeInMeter = glm::vec2(meshSize.x, meshSize.y);
+	const glm::vec3 meshSize = m_window.mesh.mesh->getAABB().getSize();
+	m_window.mesh.meshSizeInMeter = glm::vec2(meshSize.x, meshSize.y);
 
-	const glm::vec3 meshCenter = m_windowMesh.mesh->getAABB().getCenter();
-	m_windowMesh.center = glm::vec2(meshCenter.x, meshCenter.y);
+	const glm::vec3 meshCenter = m_window.mesh.mesh->getAABB().getCenter();
+	m_window.mesh.center = glm::vec2(meshCenter.x, meshCenter.y);
 
-	if (m_windowsInfoUniformBuffer)
+	if (m_window.infoUniformBuffer)
 		rebuildRenderingInfos();
 }
 
@@ -159,10 +171,14 @@ void BuildingModel::save() const
 	outputFile << "\t\"fullSizeX\":" << m_fullSize.x << ",\n";
 	outputFile << "\t\"fullSizeZ\":" << m_fullSize.z << ",\n";
 
-	// Windows
-	outputFile << "\t\"windowMeshLoadingPath\":\"" << m_windowMesh.loadingPath << "\",\n";
-	outputFile << "\t\"windowSideSizeInMeter\":" << m_windowSideSizeInMeter << ",\n";
-	outputFile << "\t\"windowHeightInMeter\":" << m_windowHeightInMeter << ",\n";
+	auto savePiece = [&](const BuildingPiece& piece, const std::string& name)
+	{
+		outputFile << "\t\"" + name + "MeshLoadingPath\":\"" << piece.mesh.loadingPath << "\",\n";
+		outputFile << "\t\"" + name + "SideSizeInMeter\":" << piece.sideSizeInMeter << ",\n";
+		outputFile << "\t\"" + name + "HeightInMeter\":" << piece.heightInMeter << ",\n";
+	};
+	savePiece(m_window, "windows");
+	savePiece(m_wall, "windows");
 
 	// Floors
 	outputFile << "\t\"floorCount\":" << m_floorCount << "\n";
@@ -172,7 +188,7 @@ void BuildingModel::save() const
 	outputFile.close();
 }
 
-void BuildingModel::setDefaultWindowMesh(uint32_t materialIdOffset)
+void BuildingModel::setDefaultMesh(MeshWithMaterials& output, const glm::vec3& color, uint32_t materialIdOffset)
 {
 	const std::vector<Vertex3D> vertices =
 	{
@@ -186,11 +202,11 @@ void BuildingModel::setDefaultWindowMesh(uint32_t materialIdOffset)
 		0, 2, 1,
 		2, 3, 1
 	};
-	m_windowMesh.mesh.reset(new Mesh(vertices, indices));
-	m_windowMesh.meshSizeInMeter = glm::vec2(2.0f, 2.0f);
-	m_windowMesh.center = glm::vec2(0.0f, 0.0f);
+	output.mesh.reset(new Mesh(vertices, indices));
+	output.meshSizeInMeter = glm::vec2(2.0f, 2.0f);
+	output.center = glm::vec2(0.0f, 0.0f);
 
-	m_windowMesh.images.resize(5);
+	output.images.resize(5);
 	constexpr uint32_t DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE = 32;
 	auto createImage = [](std::unique_ptr<Image>& image)
 		{
@@ -210,7 +226,7 @@ void BuildingModel::setDefaultWindowMesh(uint32_t materialIdOffset)
 
 	// Albedo
 	{
-		std::unique_ptr<Image>& image = m_windowMesh.images[0];
+		std::unique_ptr<Image>& image = output.images[0];
 		createImage(image);
 
 		std::array<Pixel, DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE* DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE> pixels;
@@ -221,7 +237,7 @@ void BuildingModel::setDefaultWindowMesh(uint32_t materialIdOffset)
 				if (pixelX == 0 || pixelX == DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE - 1 || pixelY == 0 || pixelY == DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE - 1)
 					pixels[pixelX + DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE * pixelY] = { 255, 255, 255, 255 };
 				else
-					pixels[pixelX + DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE * pixelY] = { 255, 0, 120, 255 };
+					pixels[pixelX + DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE * pixelY] = { static_cast<uint8_t>(color.x * 255.0f), static_cast<uint8_t>(color.y * 255.0f), static_cast<uint8_t>(color.z * 255.0f), 255 };
 			}
 		}
 		image->copyCPUBuffer(reinterpret_cast<const unsigned char*>(&pixels), Image::SampledInFragmentShader());
@@ -229,27 +245,37 @@ void BuildingModel::setDefaultWindowMesh(uint32_t materialIdOffset)
 
 	// Normal
 	{
-		std::unique_ptr<Image>& image = m_windowMesh.images[1];
+		std::unique_ptr<Image>& image = output.images[1];
 		createImage(image);
 	}
 
 	// Roughness
 	{
-		std::unique_ptr<Image>& image = m_windowMesh.images[2];
+		std::unique_ptr<Image>& image = output.images[2];
 		createImage(image);
 	}
 
 	// Metalness
 	{
-		std::unique_ptr<Image>& image = m_windowMesh.images[3];
+		std::unique_ptr<Image>& image = output.images[3];
 		createImage(image);
 	}
 
 	// AO
 	{
-		std::unique_ptr<Image>& image = m_windowMesh.images[4];
+		std::unique_ptr<Image>& image = output.images[4];
 		createImage(image);
 	}
+}
+
+void BuildingModel::setDefaultWindowMesh(uint32_t materialIdOffset)
+{
+	setDefaultMesh(m_window.mesh, glm::vec3(1.0f, 0.0f, 0.4f), materialIdOffset);
+}
+
+void BuildingModel::setDefaultWallMesh(uint32_t materialIdOffset)
+{
+	setDefaultMesh(m_wall.mesh, glm::vec3(0.5f, 0.25f, 0.0f), materialIdOffset);
 }
 
 float BuildingModel::computeFloorSize() const
@@ -259,12 +285,13 @@ float BuildingModel::computeFloorSize() const
 
 float BuildingModel::computeWindowCountOnSide(const glm::vec3& sideDir) const
 {
-	return glm::length(m_fullSize * sideDir) / m_windowSideSizeInMeter;
+	return std::ceil(glm::length(m_fullSize * sideDir) / (m_window.sideSizeInMeter + m_wall.sideSizeInMeter));
 }
 
 void BuildingModel::rebuildRenderingInfos()
 {
 	std::vector<InstanceData> windowInstances;
+	std::vector<InstanceData> wallInstances;
 
 	for (uint32_t floorIdx = 0; floorIdx < m_floorCount; ++floorIdx)
 	{
@@ -274,47 +301,60 @@ void BuildingModel::rebuildRenderingInfos()
 		{
 			glm::vec3 normal;
 			glm::vec3 firstWindowPos;
-			glm::vec3 offsetBetweenWindowCenters;
+			glm::vec3 offsetScaleBetweenWindowCenters;
 		};
 		const std::array<SideInfo, 4> sideInfos =
 		{
 			SideInfo {
 				glm::vec3(1.0f, 0.0f,  0.0f),
-				glm::vec3(m_fullSize.x / 2.0f, computeFloorSize() / 2.0f + floorHeight, -m_fullSize.z / 2.0f + m_windowSideSizeInMeter / 2.0f),
-				glm::vec3(0.0f, 0.0f, m_windowSideSizeInMeter)
+				glm::vec3(m_fullSize.x / 2.0f, computeFloorSize() / 2.0f + floorHeight, -m_fullSize.z / 2.0f + m_window.sideSizeInMeter / 2.0f),
+				glm::vec3(0.0f, 0.0f, 1.0f)
 			},
 			SideInfo {
 				glm::vec3(-1.0f, 0.0f,  0.0f),
-				glm::vec3(-m_fullSize.x / 2.0f, computeFloorSize() / 2.0f + floorHeight, -m_fullSize.z / 2.0f + m_windowSideSizeInMeter / 2.0f),
-				glm::vec3(0.0f, 0.0f, m_windowSideSizeInMeter)
+				glm::vec3(-m_fullSize.x / 2.0f, computeFloorSize() / 2.0f + floorHeight, -m_fullSize.z / 2.0f + m_window.sideSizeInMeter / 2.0f),
+				glm::vec3(0.0f, 0.0f, 1.0f)
 			},
 			SideInfo {
 				glm::vec3(0.0f, 0.0f,  1.0f),
-				glm::vec3(-m_fullSize.x / 2.0f + m_windowSideSizeInMeter / 2.0f, computeFloorSize() / 2.0f + floorHeight, m_fullSize.z / 2.0f),
-				glm::vec3(m_windowSideSizeInMeter, 0.0f, 0.0f)
+				glm::vec3(-m_fullSize.x / 2.0f + m_window.sideSizeInMeter / 2.0f, computeFloorSize() / 2.0f + floorHeight, m_fullSize.z / 2.0f),
+				glm::vec3(1.0f, 0.0f, 0.0f)
 			},
 			SideInfo {
 				glm::vec3(0.0f, 0.0f, -1.0f),
-				glm::vec3(-m_fullSize.x / 2.0f + m_windowSideSizeInMeter / 2.0f, computeFloorSize() / 2.0f + floorHeight, -m_fullSize.z / 2.0f),
-				glm::vec3(m_windowSideSizeInMeter, 0.0f, 0.0f)
+				glm::vec3(-m_fullSize.x / 2.0f + m_window.sideSizeInMeter / 2.0f, computeFloorSize() / 2.0f + floorHeight, -m_fullSize.z / 2.0f),
+				glm::vec3(1.0f, 0.0f, 0.0f)
 			}
 		};
 		for (const SideInfo& sideInfo : sideInfos)
 		{
-			for (uint32_t windowIdx = 0, end = static_cast<uint32_t>(computeWindowCountOnSide(glm::normalize(sideInfo.offsetBetweenWindowCenters))); windowIdx < end; ++windowIdx)
+			for (uint32_t windowIdx = 0, end = static_cast<uint32_t>(computeWindowCountOnSide(glm::normalize(sideInfo.offsetScaleBetweenWindowCenters))); windowIdx < end; ++windowIdx)
 			{
-				const glm::vec3 windowCenterPos = sideInfo.firstWindowPos + static_cast<float>(windowIdx) * sideInfo.offsetBetweenWindowCenters;
+				const float spaceBetweenWindows = m_window.sideSizeInMeter + m_wall.sideSizeInMeter;
+
+				const glm::vec3 windowCenterPos = sideInfo.firstWindowPos + static_cast<float>(windowIdx) * (sideInfo.offsetScaleBetweenWindowCenters * spaceBetweenWindows);
 				windowInstances.push_back({ windowCenterPos, sideInfo.normal });
+
+				if (glm::length(m_fullSize * sideInfo.offsetScaleBetweenWindowCenters) / (m_window.sideSizeInMeter + m_wall.sideSizeInMeter) != computeWindowCountOnSide(glm::normalize(sideInfo.offsetScaleBetweenWindowCenters)) && windowIdx == end - 1)
+					continue;
+
+				const glm::vec3 wallCenterPos = sideInfo.firstWindowPos + static_cast<float>(windowIdx) * (sideInfo.offsetScaleBetweenWindowCenters * spaceBetweenWindows) + (sideInfo.offsetScaleBetweenWindowCenters * m_window.sideSizeInMeter);
+				wallInstances.push_back({ wallCenterPos, sideInfo.normal });
 			}
 		}
 	}
 
-	m_windowInstanceBuffer.reset(new Buffer(windowInstances.size() * sizeof(InstanceData), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, UpdateRate::NEVER));
-	m_windowInstanceBuffer->transferCPUMemoryWithStagingBuffer(windowInstances.data(), sizeof(InstanceData) * windowInstances.size());
-	m_windowInstanceCount = windowInstances.size();
+	auto updateBuffers = [](BuildingPiece& piece, const std::vector<InstanceData>& data)
+	{
+		piece.instanceBuffer.reset(new Buffer(data.size() * sizeof(InstanceData), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, UpdateRate::NEVER));
+		piece.instanceBuffer->transferCPUMemoryWithStagingBuffer(data.data(), sizeof(InstanceData) * data.size());
+		piece.instanceCount = data.size();
 
-	Building::MeshInfo windowsInfo;
-	windowsInfo.scale = glm::vec2(m_windowSideSizeInMeter / m_windowMesh.meshSizeInMeter.x, m_windowHeightInMeter / m_windowMesh.meshSizeInMeter.y);
-	windowsInfo.offset = -m_windowMesh.center;
-	m_windowsInfoUniformBuffer->transferCPUMemory(&windowsInfo, sizeof(windowsInfo), 0 /* srcOffet */);
+		Building::MeshInfo windowsInfo;
+		windowsInfo.scale = glm::vec2(piece.sideSizeInMeter / piece.mesh.meshSizeInMeter.x, piece.heightInMeter / piece.mesh.meshSizeInMeter.y);
+		windowsInfo.offset = -piece.mesh.center;
+		piece.infoUniformBuffer->transferCPUMemory(&windowsInfo, sizeof(windowsInfo), 0 /* srcOffet */);
+	};
+	updateBuffers(m_window, windowInstances);
+	updateBuffers(m_wall, wallInstances);
 }

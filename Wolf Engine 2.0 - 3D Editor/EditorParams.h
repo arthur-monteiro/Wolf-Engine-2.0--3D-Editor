@@ -20,8 +20,14 @@ public:
 	uint32_t getRenderOffsetBot();
 	uint32_t getRenderHeight();
 
+	void setRenderOffsetLeft(uint32_t value) { m_renderOffsetLeft = value; }
+	void setRenderOffsetRight(uint32_t value) { m_renderOffsetRight = value; }
+
 private:
 	uint32_t m_width;
 	uint32_t m_height;
+
+	uint32_t m_renderOffsetLeft = 500;
+	uint32_t m_renderOffsetRight = 300;
 };
 
