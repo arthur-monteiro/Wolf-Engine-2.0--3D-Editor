@@ -29,28 +29,32 @@ private:
 	void resizeCallback(uint32_t width, uint32_t height) const;
 
 	// JS callbacks
-	ultralight::JSValue getFrameRate(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
-	ultralight::JSValue pickFile(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	ultralight::JSValue pickFolder(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	ultralight::JSValue getRenderHeight(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	ultralight::JSValue getRenderWidth(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	ultralight::JSValue getRenderOffsetRight(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	ultralight::JSValue getRenderOffsetLeft(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void setRenderOffsetLeft(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
-	void setRenderOffsetRight(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue pickFileJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue pickFolderJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	ultralight::JSValue getRenderHeightJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	ultralight::JSValue getRenderWidthJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	ultralight::JSValue getRenderOffsetRightJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	ultralight::JSValue getRenderOffsetLeftJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void setRenderOffsetLeftJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void setRenderOffsetRightJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void addModelJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
-	void changeScaleX(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeScaleY(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeScaleZ(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeRotation(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeTranslation(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeBuildingSizeX(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeBuildingSizeZ(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeBuildingWindowSideSize(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeBuildingFloorCount(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
-	void changeBuildingWindowMesh(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
-	void selectModelByName(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
-	void saveScene(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void changeScaleXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeScaleYJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeScaleZJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeRotationXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeRotationYJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeRotationZJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeTranslationXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeTranslationYJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeTranslationZJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeBuildingSizeXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeBuildingSizeZJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeBuildingWindowSideSizeJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeBuildingFloorCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void changeBuildingWindowMeshJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void selectModelByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void saveSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void updateUISelectedModel();
@@ -72,6 +76,22 @@ private:
 	uint32_t m_currentBindlessOffset = 0;
 
 	std::unique_ptr<EditorParams> m_editorParams;
+
+	struct AddModelRequest
+	{
+		const std::string filepath;
+		const std::string materialPath;
+		const std::string type;
+	};
+	std::vector<AddModelRequest> m_addModelRequests;
+
+	struct ChangeBuildingWindowMeshRequest
+	{
+		const uint32_t meshIdx;
+		const std::string filename;
+		const std::string materialFolder;
+	};
+	std::vector<ChangeBuildingWindowMeshRequest> m_changeBuildingWindowMeshRequests;
 
 	ModelInterface* m_selectedModel = nullptr;
 	bool m_isCameraLocked = false;

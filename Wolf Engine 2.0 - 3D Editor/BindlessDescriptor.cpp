@@ -50,7 +50,7 @@ uint32_t BindlessDescriptor::addImages(const std::vector<Image*>& images)
 	return previousCounter;
 }
 
-void BindlessDescriptor::bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout)
+void BindlessDescriptor::bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const
 {
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, DESCRIPTOR_SLOT, 1, m_descriptorSet->getDescriptorSet(), 0, nullptr);
 }

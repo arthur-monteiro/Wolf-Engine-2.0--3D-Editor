@@ -75,6 +75,16 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 	rebuildRenderingInfos();
 }
 
+void BuildingModel::updateGraphic(const CameraInterface& camera)
+{
+	ModelInterface::updateGraphic(camera);
+
+	if (m_needRebuild)
+	{
+		rebuildRenderingInfos();
+	}
+}
+
 void BuildingModel::draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const
 {
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, m_descriptorSet->getDescriptorSet(), 0, nullptr);
@@ -104,26 +114,26 @@ void BuildingModel::getImages(std::vector<Wolf::Image*>& images)
 void BuildingModel::setBuildingSizeX(float value)
 {
 	m_fullSize.x = value;
-	rebuildRenderingInfos();
+	m_needRebuild = true;
 }
 
 void BuildingModel::setBuildingSizeZ(float value)
 {
 	m_fullSize.z = value;
-	rebuildRenderingInfos();
+	m_needRebuild = true;
 }
 
 void BuildingModel::setWindowSideSize(float value)
 {
 	m_window.sideSizeInMeter = value;
-	rebuildRenderingInfos();
+	m_needRebuild = true;
 }
 
 void BuildingModel::setFloorCount(uint32_t value)
 {
 	m_floorCount = value;
 	m_fullSize.y = m_floorHeightInMeter * m_floorCount;
-	rebuildRenderingInfos();
+	m_needRebuild = true;
 }
 
 void BuildingModel::loadWindowMesh(const std::string& filename, const std::string& materialFolder, uint32_t materialIdOffset)
@@ -357,4 +367,6 @@ void BuildingModel::rebuildRenderingInfos()
 	};
 	updateBuffers(m_window, windowInstances);
 	updateBuffers(m_wall, wallInstances);
+
+	m_needRebuild = false;
 }

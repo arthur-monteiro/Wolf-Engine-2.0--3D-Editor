@@ -18,7 +18,7 @@ public:
 
 	[[nodiscard]] uint32_t addImages(const std::vector<Wolf::Image*>& images);
 
-	void bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+	void bind(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const;
 	VkDescriptorSetLayout getDescriptorSetLayout() const { return m_descriptorSetLayout->getDescriptorSetLayout(); }
 
 private:

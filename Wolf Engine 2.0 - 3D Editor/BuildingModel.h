@@ -40,7 +40,8 @@ public:
 	};
 
 	BuildingModel(const glm::mat4& transform, const std::string& filepath, uint32_t materialIdOffset);
-	
+
+	void updateGraphic(const Wolf::CameraInterface& camera) override;
 	void draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const override;
 
 	const Wolf::AABB& getAABB() const override { return Wolf::AABB(); }
@@ -74,7 +75,7 @@ private:
 		glm::vec2 center;
 	};
 
-	void setDefaultMesh(MeshWithMaterials& output, const glm::vec3& color, uint32_t materialIdOffset);
+	static void setDefaultMesh(MeshWithMaterials& output, const glm::vec3& color, uint32_t materialIdOffset);
 	void setDefaultWindowMesh(uint32_t materialIdOffset);
 	void setDefaultWallMesh(uint32_t materialIdOffset);
 
@@ -96,6 +97,8 @@ private:
 		uint32_t instanceCount = 0;
 		std::unique_ptr<Wolf::Buffer> infoUniformBuffer;
 	};
+
+	bool m_needRebuild = false;
 
 	// Windows
 	BuildingPiece m_window;
