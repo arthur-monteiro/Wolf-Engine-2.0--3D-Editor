@@ -86,6 +86,13 @@ const glm::mat4& Camera::getProjectionMatrix() const
 	return m_projectionMatrix;
 }
 
+void Camera::setAspect(float aspect)
+{
+	m_aspect = aspect;
+	m_projectionMatrix = glm::perspective(m_radFOV, m_aspect, m_near, m_far);
+	m_projectionMatrix[1][1] *= -1;
+}
+
 void Camera::overrideMatrices(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix)
 {
 	m_viewMatrix = viewMatrix;

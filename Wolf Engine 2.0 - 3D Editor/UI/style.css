@@ -153,6 +153,10 @@ select {
     padding: 10px;
 }
 
+span {
+    cursor: default;
+}
+
 #closeButton {
     z-index: 1000;
     background-color: #ffffff;

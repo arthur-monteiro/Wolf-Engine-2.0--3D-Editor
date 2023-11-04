@@ -32,7 +32,7 @@ public:
 	float getFOV() const override { return m_radFOV; }
 
 	void setLocked(bool value) { m_locked = value; }
-	void setAspect(float aspect) { m_aspect = aspect; }
+	void setAspect(float aspect);
 
 	void overrideMatrices(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix);
 

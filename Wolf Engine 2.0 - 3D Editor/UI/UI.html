@@ -10,14 +10,14 @@
 		<button class="actionButton" onclick="selectFileAndLoadScene()">Load</button>
 		<button class="actionButton" onclick="openSaveSceneWindow()">Save</button>
 		<div id="sceneName" style="display: inline-block;">Unknown scene</div>
-		<div id="optionsIcon" style="float: right; padding: 5px 10px 0px 0px;" onclick="openOptions()"><span class="material-symbols-outlined">settings</span></div>
+		<div id="optionsIcon" style="float: right; padding: 5px 10px 0px 0px; cursor: pointer;" onclick="openOptions()"><div class="material-symbols-outlined">settings</div></div>
 	</div>
 	<div class="frameRate" id="frameRate">FPS: 60</div>
 	<div class="cameraPosition" id="cameraPosition">Camera position:</div>
 	<div class="logs" id="logs"></div>
 
 	<div id="addModelWindow" class="modalWindow" style="display: none">
-		<div id="closeButton" onclick="closeModelAdd()"><span style="display: block; transform: translate(-1px, -5px); font: message-box;">X</span></div>
+		<div id="closeButton" onclick="closeModelAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
 		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
 			<li class="table-row">
 				<div class="col col-1" data-label="infoType">Type</div>
@@ -82,7 +82,7 @@
 	</div>
 
 	<div id="modelInfos" class="info">
-		No model selected
+		<span>No model selected</span>
 	</div>
 
 	<div id="buildingInfos" class="info" style="display: none; overflow-x: scroll;">
@@ -95,7 +95,7 @@
 	<div id="modelList"></div>
 
 	<div id="options" class="modalWindow" style="display: none;">
-		<div id="closeButton" onclick="closeOptions()"><span style="display: block; transform: translate(-1px, -5px); font: message-box;">X</span></div>
+		<div id="closeButton" onclick="closeOptions()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
 		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
 			<li class="table-row">
 				<div class="col col-1" data-label="infoType">Display</div>
@@ -150,6 +150,16 @@
 			document.head.appendChild(script); 
 
 		}
+
+		// Remove focus of inputs when pressing "enter"
+		addEventListener("keypress", (event) => {
+			if (event.which == 13) {
+				let inputs = document.getElementsByTagName("input");
+				for (const input of inputs) {
+					input.blur();
+				}
+			}
+		});
 	});
 
 	function refreshWindowSize() {
