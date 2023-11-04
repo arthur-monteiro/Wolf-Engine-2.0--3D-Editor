@@ -34,7 +34,7 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 		if (meshLoadingPath.empty())
 			setDefaultWindowMesh(materialIdOffset);
 		else
-			loadWindowMesh(meshLoadingPath, "", materialIdOffset);
+			loadPieceMesh(meshLoadingPath, "", materialIdOffset, PieceType::WINDOW);
 
 		setDefaultWallMesh(materialIdOffset + 1);
 
@@ -91,7 +91,7 @@ void BuildingModel::draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelin
 
 	auto drawPiece = [&](const BuildingPiece& piece)
 	{
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, piece.descriptorSet->getDescriptorSet(), 0, nullptr);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 3, 1, piece.descriptorSet->getDescriptorSet(), 0, nullptr);
 		const VkDeviceSize offsets[1] = { 0 };
 		const VkBuffer windowsInstanceBuffer = piece.instanceBuffer->getBuffer();
 		vkCmdBindVertexBuffers(commandBuffer, 1, 1, &windowsInstanceBuffer, offsets);
@@ -102,12 +102,28 @@ void BuildingModel::draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelin
 	drawPiece(m_wall);
 }
 
-void BuildingModel::getImages(std::vector<Wolf::Image*>& images)
+void BuildingModel::getAllImages(std::vector<Wolf::Image*>& images)
 {
-	for (std::unique_ptr<Image>& image : m_window.mesh.images)
-		images.push_back(image.get());
+	getImagesForPiece(images, PieceType::WINDOW);
+	getImagesForPiece(images, PieceType::WALL);
+}
 
-	for (std::unique_ptr<Image>& image : m_wall.mesh.images)
+void BuildingModel::getImagesForPiece(std::vector<Wolf::Image*>& images, PieceType pieceType)
+{
+	BuildingPiece* buildingPiece = nullptr;
+	switch (pieceType)
+	{
+	case PieceType::WINDOW:
+		buildingPiece = &m_window;
+		break;
+	case PieceType::WALL:
+		buildingPiece = &m_wall;
+		break;
+	default:
+		Debug::sendError("Not handled piece type");
+	}
+
+	for (std::unique_ptr<Image>& image : buildingPiece->mesh.images)
 		images.push_back(image.get());
 }
 
@@ -136,7 +152,7 @@ void BuildingModel::setFloorCount(uint32_t value)
 	m_needRebuild = true;
 }
 
-void BuildingModel::loadWindowMesh(const std::string& filename, const std::string& materialFolder, uint32_t materialIdOffset)
+void BuildingModel::loadPieceMesh(const std::string& filename, const std::string& materialFolder, uint32_t materialIdOffset, PieceType pieceType)
 {
 	Timer timer(filename + " loading");
 
@@ -149,20 +165,33 @@ void BuildingModel::loadWindowMesh(const std::string& filename, const std::strin
 	ModelData windowMeshData;
 	ObjLoader::loadObject(windowMeshData, modelLoadingInfo);
 
-	m_window.mesh.loadingPath = filename;
-	m_window.mesh.mesh = std::move(windowMeshData.mesh);
-	m_window.mesh.images.resize(windowMeshData.images.size());
+	BuildingPiece* buildingPiece = nullptr;
+	switch (pieceType)
+	{
+		case PieceType::WINDOW:
+			buildingPiece = &m_window;
+			break;
+		case PieceType::WALL:
+			buildingPiece = &m_wall;
+			break;
+		default:
+			Debug::sendError("Not handled piece type");
+	}
+
+	buildingPiece->mesh.loadingPath = filename;
+	buildingPiece->mesh.mesh = std::move(windowMeshData.mesh);
+	buildingPiece->mesh.images.resize(windowMeshData.images.size());
 	for (uint32_t i = 0; i < windowMeshData.images.size(); ++i)
 	{
-		m_window.mesh.images[i] = std::move(windowMeshData.images[i]);
+		buildingPiece->mesh.images[i] = std::move(windowMeshData.images[i]);
 	}
-	const glm::vec3 meshSize = m_window.mesh.mesh->getAABB().getSize();
-	m_window.mesh.meshSizeInMeter = glm::vec2(meshSize.x, meshSize.y);
+	const glm::vec3 meshSize = buildingPiece->mesh.mesh->getAABB().getSize();
+	buildingPiece->mesh.meshSizeInMeter = glm::vec2(meshSize.x, meshSize.y);
 
-	const glm::vec3 meshCenter = m_window.mesh.mesh->getAABB().getCenter();
-	m_window.mesh.center = glm::vec2(meshCenter.x, meshCenter.y);
+	const glm::vec3 meshCenter = buildingPiece->mesh.mesh->getAABB().getCenter();
+	buildingPiece->mesh.center = glm::vec2(meshCenter.x, meshCenter.y);
 
-	if (m_window.infoUniformBuffer)
+	if (buildingPiece->infoUniformBuffer)
 		rebuildRenderingInfos();
 }
 
@@ -187,8 +216,8 @@ void BuildingModel::save() const
 		outputFile << "\t\"" + name + "SideSizeInMeter\":" << piece.sideSizeInMeter << ",\n";
 		outputFile << "\t\"" + name + "HeightInMeter\":" << piece.heightInMeter << ",\n";
 	};
-	savePiece(m_window, "windows");
-	savePiece(m_wall, "windows");
+	savePiece(m_window, "window");
+	savePiece(m_wall, "wall");
 
 	// Floors
 	outputFile << "\t\"floorCount\":" << m_floorCount << "\n";

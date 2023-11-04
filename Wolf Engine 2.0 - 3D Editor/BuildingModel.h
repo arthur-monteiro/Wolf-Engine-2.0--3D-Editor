@@ -47,6 +47,8 @@ public:
 	const Wolf::AABB& getAABB() const override { return Wolf::AABB(); }
 	const std::string& getLoadingPath() const override { return  m_filepath; }
 
+	enum class PieceType { WINDOW, WALL };
+
 	ModelType getType() override { return ModelType::BUILDING; }
 	float getBuildingHeight() const { return m_fullSize.y; }
 	float getBuildingSizeX() const { return m_fullSize.x; }
@@ -54,14 +56,15 @@ public:
 	float getWindowSizeSize() const { return m_window.sideSizeInMeter;  }
 	uint32_t getFloorCount() const { return m_floorCount; }
 	const std::string& getWindowMeshLoadingPath(uint32_t meshIdx) const { return m_window.mesh.loadingPath; }
-	void getImages(std::vector<Wolf::Image*>& images);
+	void getAllImages(std::vector<Wolf::Image*>& images);
+	void getImagesForPiece(std::vector<Wolf::Image*>& images, PieceType pieceType);
 
 	void setBuildingSizeX(float value);
 	void setBuildingSizeZ(float value);
 	void setWindowSideSize(float value);
 	void setFloorCount(uint32_t value);
 
-	void loadWindowMesh(const std::string& filename, const std::string& materialFolder, uint32_t materialIdOffset);
+	void loadPieceMesh(const std::string& filename, const std::string& materialFolder, uint32_t materialIdOffset, PieceType pieceType);
 
 	void save() const;
 

@@ -115,8 +115,13 @@ section.range-slider input:last-of-type::-moz-range-track {
 }
 
 select {
-    color: white;
-    background-color: rgba(0, 0, 0, 0.50);
+    height: 36px;
+    font-size: 14px;
+    border-radius: 4px;
+    min-width: 54px;
+    padding: 0 16px;
+    text-align: center;
+    margin: 0px 3px 0px 3px;
 }
 
 .fullscreen {
@@ -137,12 +142,28 @@ select {
     align-items: center;
     text-align: center;
     z-index: 1000;
-    background-color: white;
-    position: absolute;
+    background-color: #ffffffc2;
+    position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(0, -50%);
+    -webkit-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
     color: black;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+#closeButton {
+    z-index: 1000;
+    background-color: #ffffff;
+    position: fixed;
+    top: -20px;
+    right: -15px;
+    color: #930000;
+    border-radius: 30px;
+    padding: 10px;
+    height: 8;
+    width: 8;
 }
 
 .modalWindow td {
@@ -154,7 +175,7 @@ select {
     border: 1px solid white;
     width: 490px;
     height: 30px;
-    top: 100;
+    top: 60;
     right: 0;
     bottom: 0;
     left: 0;
@@ -168,7 +189,7 @@ select {
     border-top: none;
     width: 490px;
     height: 600px;
-    top: 130;
+    top: 90;
     right: 0;
     bottom: 0;
     left: 0;
@@ -183,7 +204,7 @@ select {
     position: absolute;
     width: 290px;
     height: 600px;
-    top: 100;
+    top: 60;
     right: 0;
     bottom: 0;
     left: 1620px;
@@ -269,7 +290,7 @@ select {
 
 #sliderInfo {
     position: absolute;
-    top: 100px;
+    top: 60px;
     width: 5px;
     cursor: col-resize;
     background-color: rgb(224, 224, 224);
@@ -278,9 +299,155 @@ select {
 
 #sliderList {
     position: absolute;
-    top: 100px;
+    top: 60px;
     width: 5px;
     cursor: col-resize;
     background-color: rgb(224, 224, 224);
     z-index: 1;
+}
+
+#actionButtons {
+    width: calc(100% - 17px);
+    height: 42;
+    border: 1px solid white;
+    position: fixed;
+    left: 0;
+    top: 5px;
+    padding-top: 5px;
+    padding-left: 5px;
+}
+
+/* CSS */
+.actionButton {
+    background-color: #f8f9fa;
+    border: 1px solid #9d9d9d;
+    border-radius: 4px;
+    color: #3c4043;
+    cursor: pointer;
+    font-family: arial,sans-serif;
+    font-size: 14px;
+    height: 36px;
+    line-height: 27px;
+    min-width: 54px;
+    padding: 0 16px;
+    text-align: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    white-space: pre;
+    margin: 0px 3px 0px 3px;
+}
+
+.actionButton:hover {
+    border-color: #dadce0;
+    box-shadow: rgba(0, 0, 0, .1) 0 1px 1px;
+    color: #202124;
+}
+
+.actionButton:focus {
+    border-color: #4285f4;
+    outline: none;
+}
+
+.validationButton {
+    align-items: center;
+    appearance: none;
+    background-color: #fff;
+    border-radius: 24px;
+    border-style: none;
+    box-shadow: rgba(0, 0, 0, .2) 0 3px 5px -1px,rgba(0, 0, 0, .14) 0 6px 10px 0,rgba(0, 0, 0, .12) 0 1px 18px 0;
+    box-sizing: border-box;
+    color: #3c4043;
+    cursor: pointer;
+    display: inline-flex;
+    fill: currentcolor;
+    font-family: "Google Sans",Roboto,Arial,sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    height: 48px;
+    justify-content: center;
+    letter-spacing: .25px;
+    line-height: normal;
+    max-width: 100%;
+    overflow: visible;
+    padding: 2px 24px;
+    position: relative;
+    text-align: center;
+    text-transform: none;
+    transition: box-shadow 280ms cubic-bezier(.4, 0, .2, 1),opacity 15ms linear 30ms,transform 270ms cubic-bezier(0, 0, .2, 1) 0ms;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    width: auto;
+    will-change: transform,opacity;
+    z-index: 0;
+}
+
+.validationButton:hover {
+    background: #F6F9FE;
+    color: #174ea6;
+}
+
+.validationButton:active {
+    box-shadow: 0 4px 4px 0 rgb(60 64 67 / 30%), 0 8px 12px 6px rgb(60 64 67 / 15%);
+    outline: none;
+}
+
+.validationButton:focus {
+    outline: none;
+    border: 2px solid #4285f4;
+}
+
+.validationButton:not(:disabled) {
+    box-shadow: rgba(60, 64, 67, .3) 0 1px 3px 0, rgba(60, 64, 67, .15) 0 4px 8px 3px;
+}
+
+.validationButton:not(:disabled):hover {
+    box-shadow: rgba(60, 64, 67, .3) 0 2px 3px 0, rgba(60, 64, 67, .15) 0 6px 10px 4px;
+}
+
+.validationButton:not(:disabled):focus {
+  box-shadow: rgba(60, 64, 67, .3) 0 1px 3px 0, rgba(60, 64, 67, .15) 0 4px 8px 3px;
+}
+
+.validationButton:not(:disabled):active {
+  box-shadow: rgba(60, 64, 67, .3) 0 4px 4px 0, rgba(60, 64, 67, .15) 0 8px 12px 6px;
+}
+
+.validationButton:disabled {
+  box-shadow: rgba(60, 64, 67, .3) 0 1px 3px 0, rgba(60, 64, 67, .15) 0 4px 8px 3px;
+}
+
+li {
+    border-radius: 10px;
+    padding: 25px 30px;
+    margin-bottom: 25px;
+    width: calc(100% - 30px - 25px);
+    height: 15px;
+    display: inline-flex;
+}
+.table-header {
+    background-color: #95A5A6;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.table-row {
+    background-color: #ffffff;
+    box-shadow: 0px 0px 9px 0px rgba(0,0,0,0.1);
+}
+.col-1 {
+    width: 50%;
+}
+.col-2 {
+    width: 50%;
+    transform: translate(0, -10px);
+    display: flex;
+    padding-left: 5px;
+}
+
+.columnDivider {
+    border-right: 1px solid #8f8f8f;
+    margin-top: -15px;
+    margin-bottom: -15px;
 }

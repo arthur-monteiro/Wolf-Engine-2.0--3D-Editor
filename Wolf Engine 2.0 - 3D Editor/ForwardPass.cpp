@@ -27,6 +27,20 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 	
 	m_semaphore.reset(new Semaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
 
+	// Shared resources
+	{
+		m_displayOptionsUniformBuffer.reset(new Buffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
+
+		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+		m_commonDescriptorSetLayout.reset(new DescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+
+		DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
+		descriptorSetGenerator.setBuffer(0, *m_displayOptionsUniformBuffer);
+
+		m_commonDescriptorSet.reset(new DescriptorSet(m_commonDescriptorSetLayout->getDescriptorSetLayout(), UpdateRate::NEVER));
+		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+	}
+
 	// Default pipeline
 	{
 		m_defaultVertexShaderParser.reset(new ShaderParser("Shaders/defaultPipeline/shader.vert"));
@@ -113,14 +127,21 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	clearValues[1] = { 1.0f };
 	m_renderPass->beginRenderPass(m_frameBuffers[frameBufferIdx]->getFramebuffer(), clearValues, commandBuffer);
 
+	/* Shared resources */
+	DisplayOptionsUBData displayOptions{};
+	displayOptions.displayType = static_cast<uint32_t>(gameContext->displayType);
+	m_displayOptionsUniformBuffer->transferCPUMemory(&displayOptions, sizeof(displayOptions), 0);
+
 	/* Default pipeline */
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_defaultPipeline->getPipeline());
 	m_bindlessDescriptor->bind(commandBuffer, m_defaultPipeline->getPipelineLayout());
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_defaultPipeline->getPipelineLayout(), COMMON_DESCRIPTOR_SET_SLOT, 1, m_commonDescriptorSet->getDescriptorSet(),
+		0, nullptr);
 
 	const VkViewport renderViewport = m_editorParams->getRenderViewport();
 	vkCmdSetViewport(commandBuffer, 0, 1, &renderViewport);
 
-	for(const ModelInterface* model : gameContext->m_modelsToRenderWithDefaultPipeline)
+	for(const ModelInterface* model : gameContext->modelsToRenderWithDefaultPipeline)
 	{
 		model->draw(commandBuffer, m_defaultPipeline->getPipelineLayout());
 	}
@@ -128,10 +149,12 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	/* Building pipeline */
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_buildingPipeline->getPipeline());
 	m_bindlessDescriptor->bind(commandBuffer, m_buildingPipeline->getPipelineLayout());
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_buildingPipeline->getPipelineLayout(), COMMON_DESCRIPTOR_SET_SLOT, 1, m_commonDescriptorSet->getDescriptorSet(),
+		0, nullptr);
 
 	vkCmdSetViewport(commandBuffer, 0, 1, &renderViewport);
 
-	for (const ModelInterface* model : gameContext->m_modelsToRenderWithBuildingPipeline)
+	for (const ModelInterface* model : gameContext->modelsToRenderWithBuildingPipeline)
 	{
 		model->draw(commandBuffer, m_buildingPipeline->getPipelineLayout());
 	}
@@ -251,7 +274,7 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
 
 		// Resources
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_bindlessDescriptor->getDescriptorSetLayout(), m_defaultDescriptorSetLayout->getDescriptorSetLayout() };
+		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_bindlessDescriptor->getDescriptorSetLayout(), m_defaultDescriptorSetLayout->getDescriptorSetLayout(), m_commonDescriptorSetLayout->getDescriptorSetLayout() };
 		pipelineCreateInfo.descriptorSetLayouts = descriptorSetLayouts;
 
 		// Viewport
@@ -299,7 +322,7 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
 
 		// Resources
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_bindlessDescriptor->getDescriptorSetLayout(), DefaultPipeline::g_descriptorSetLayout, Building::g_descriptorSetLayout };
+		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_bindlessDescriptor->getDescriptorSetLayout(), DefaultPipeline::g_descriptorSetLayout, m_commonDescriptorSetLayout->getDescriptorSetLayout(), Building::g_descriptorSetLayout };
 		pipelineCreateInfo.descriptorSetLayouts = descriptorSetLayouts;
 
 		// Viewport

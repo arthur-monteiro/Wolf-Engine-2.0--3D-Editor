@@ -3,6 +3,7 @@
 #include <WolfEngine.h>
 
 #include "BindlessDescriptor.h"
+#include "BuildingModel.h"
 #include "Camera.h"
 #include "EditorParams.h"
 #include "GameContext.h"
@@ -53,9 +54,11 @@ private:
 	void changeBuildingWindowSideSizeJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 	void changeBuildingFloorCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 	void changeBuildingWindowMeshJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void changeBuildingWallMeshJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void selectModelByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void saveSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void updateUISelectedModel();
 
@@ -85,13 +88,14 @@ private:
 	};
 	std::vector<AddModelRequest> m_addModelRequests;
 
-	struct ChangeBuildingWindowMeshRequest
+	struct ChangeBuildingPieceMeshRequest
 	{
 		const uint32_t meshIdx;
 		const std::string filename;
 		const std::string materialFolder;
+		BuildingModel::PieceType pieceType;
 	};
-	std::vector<ChangeBuildingWindowMeshRequest> m_changeBuildingWindowMeshRequests;
+	std::vector<ChangeBuildingPieceMeshRequest> m_changeBuildingPieceMeshRequests;
 
 	ModelInterface* m_selectedModel = nullptr;
 	bool m_isCameraLocked = false;

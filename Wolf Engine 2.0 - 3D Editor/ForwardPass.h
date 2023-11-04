@@ -28,7 +28,7 @@ private:
 	static Wolf::Attachment setupColorAttachment(const Wolf::InitializationContext& context);
 	Wolf::Attachment setupDepthAttachment(const Wolf::InitializationContext& context);
 	void initializeFramesBuffers(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment);
-
+	
 	void createDefaultDescriptorSetLayout();
 	void createBuildingDescriptorSetLayout();
 	void createPipelines();
@@ -39,6 +39,17 @@ private:
 
 	uint32_t m_renderWidth;
 	uint32_t m_renderHeight;
+
+	/* Shared resources */
+	struct DisplayOptionsUBData
+	{
+		uint32_t displayType;
+	};
+	Wolf::DescriptorSetLayoutGenerator m_commonDescriptorSetLayoutGenerator;
+	static constexpr uint32_t COMMON_DESCRIPTOR_SET_SLOT = 2;
+	std::unique_ptr<Wolf::DescriptorSet> m_commonDescriptorSet;
+	std::unique_ptr<Wolf::DescriptorSetLayout> m_commonDescriptorSetLayout;
+	std::unique_ptr<Wolf::Buffer> m_displayOptionsUniformBuffer;
 
 	/* Default pipeline */
 	std::unique_ptr<Wolf::ShaderParser> m_defaultVertexShaderParser;

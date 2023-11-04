@@ -155,9 +155,11 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["changeBuildingFloorCount"] = std::bind(&SystemManager::changeBuildingFloorCountJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["changeBuildingWindowSideSize"] = std::bind(&SystemManager::changeBuildingWindowSideSizeJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["changeBuildingWindowMesh"] = std::bind(&SystemManager::changeBuildingWindowMeshJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["changeBuildingWallMesh"] = std::bind(&SystemManager::changeBuildingWallMeshJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["selectModelByName"] = std::bind(&SystemManager::selectModelByNameJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["saveScene"] = std::bind(&SystemManager::saveSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -395,7 +397,23 @@ void SystemManager::changeBuildingWindowMeshJSCallback(const ultralight::JSObjec
 	const std::string filename = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
 	const std::string materialFolder = static_cast<ultralight::String>(args[2].ToString()).utf8().data();
 
-	m_changeBuildingWindowMeshRequests.push_back({ meshIdx, filename, materialFolder });
+	m_changeBuildingPieceMeshRequests.push_back({ meshIdx, filename, materialFolder, BuildingModel::PieceType::WINDOW });
+}
+
+void SystemManager::changeBuildingWallMeshJSCallback(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args)
+{
+	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
+	{
+		Debug::sendError("Can't change building wall mesh of non building model");
+		return;
+	}
+
+	const uint32_t meshIdx = static_cast<uint32_t>(args[0].ToNumber());
+	const std::string filename = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
+	const std::string materialFolder = static_cast<ultralight::String>(args[2].ToString()).utf8().data();
+
+	m_changeBuildingPieceMeshRequests.push_back({ meshIdx, filename, materialFolder, BuildingModel::PieceType::WALL });
 }
 
 void SystemManager::selectModelByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -500,6 +518,27 @@ void SystemManager::loadSceneJSCallback(const ultralight::JSObject& thisObject, 
 	m_loadSceneRequest = filename;
 }
 
+void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args)
+{
+	const uint32_t contextId = m_wolfInstance->getCurrentFrame() % g_configuration->getMaxCachedFrames();
+	const std::string displayType = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+
+
+	if (displayType == "albedo")
+		m_gameContexts[contextId].displayType = GameContext::DisplayType::ALBEDO;
+	else if (displayType == "normal")
+		m_gameContexts[contextId].displayType = GameContext::DisplayType::NORMAL;
+	else if (displayType == "roughness")
+		m_gameContexts[contextId].displayType = GameContext::DisplayType::ROUGHNESS;
+	else if (displayType == "metalness")
+		m_gameContexts[contextId].displayType = GameContext::DisplayType::METALNESS;
+	else if (displayType == "matAO")
+		m_gameContexts[contextId].displayType = GameContext::DisplayType::MAT_AO;
+	else
+		Debug::sendError("Unsupported display type: " + displayType);
+}
+
 void SystemManager::updateBeforeFrame()
 {
 	const uint32_t contextId = m_wolfInstance->getCurrentFrame() % g_configuration->getMaxCachedFrames();
@@ -520,27 +559,27 @@ void SystemManager::updateBeforeFrame()
 	}
 	m_addModelRequests.clear();
 
-	for (const ChangeBuildingWindowMeshRequest& request : m_changeBuildingWindowMeshRequests)
+	for (const ChangeBuildingPieceMeshRequest& request : m_changeBuildingPieceMeshRequests)
 	{
 		BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
-		selectedBuilding->loadWindowMesh(request.filename, request.materialFolder, m_currentBindlessOffset / 5);
+		selectedBuilding->loadPieceMesh(request.filename, request.materialFolder, m_currentBindlessOffset / 5, request.pieceType);
 
 		std::vector<Image*> modelImages;
-		selectedBuilding->getImages(modelImages);
+		selectedBuilding->getImagesForPiece(modelImages, request.pieceType);
 		m_currentBindlessOffset = m_bindlessDescriptor->addImages(modelImages) + modelImages.size();
 	}
-	m_changeBuildingWindowMeshRequests.clear();
+	m_changeBuildingPieceMeshRequests.clear();
 
 	m_modelsContainer->moveToNextFrame();
 	const std::vector<std::unique_ptr<ModelInterface>>& allModels = m_modelsContainer->getModels();
-	m_gameContexts[contextId].m_modelsToRenderWithDefaultPipeline.clear();
-	m_gameContexts[contextId].m_modelsToRenderWithBuildingPipeline.clear();
+	m_gameContexts[contextId].modelsToRenderWithDefaultPipeline.clear();
+	m_gameContexts[contextId].modelsToRenderWithBuildingPipeline.clear();
 	for (const std::unique_ptr<ModelInterface>& model : allModels)
 	{
 		if (model->getType() == ModelInterface::ModelType::BUILDING)
-			m_gameContexts[contextId].m_modelsToRenderWithBuildingPipeline.push_back(model.get());
+			m_gameContexts[contextId].modelsToRenderWithBuildingPipeline.push_back(model.get());
 		else
-			m_gameContexts[contextId].m_modelsToRenderWithDefaultPipeline.push_back(model.get());
+			m_gameContexts[contextId].modelsToRenderWithDefaultPipeline.push_back(model.get());
 		model->updateGraphic(*m_camera);
 	}
 
@@ -665,7 +704,7 @@ void SystemManager::addBuildingModel(const std::string& filepath, const glm::mat
 	BuildingModel* model = new BuildingModel(transform, filepath, m_currentBindlessOffset / 5);
 	m_modelsContainer->addModel(model);
 	std::vector<Image*> modelImages;
-	model->getImages(modelImages);
+	model->getAllImages(modelImages);
 	m_currentBindlessOffset = m_bindlessDescriptor->addImages(modelImages) + modelImages.size();
 
 	const std::string scriptToAddModelToList = "addModelToList(\"" + model->getName() + "\")";

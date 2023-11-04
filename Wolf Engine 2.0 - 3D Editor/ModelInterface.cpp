@@ -25,7 +25,7 @@ void ModelInterface::updateGraphic(const Wolf::CameraInterface& camera)
 	mvp.projection = camera.getProjectionMatrix();
 	mvp.view = camera.getViewMatrix();
 	mvp.model = m_transform;
-	m_matricesUniformBuffer->transferCPUMemory(&mvp, sizeof(mvp), 0 /* srcOffet */);
+	m_matricesUniformBuffer->transferCPUMemory(&mvp, sizeof(mvp), 0);
 }
 
 void ModelInterface::setScale(uint32_t componentIdx, float value)

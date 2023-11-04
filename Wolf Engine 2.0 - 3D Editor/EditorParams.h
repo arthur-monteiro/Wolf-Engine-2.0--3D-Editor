@@ -13,12 +13,12 @@ public:
 	float getAspect();
 	VkViewport getRenderViewport();
 
-	uint32_t getRenderOffsetLeft();
-	uint32_t getRenderOffsetRight();
-	uint32_t getRenderWidth();
-	uint32_t getRenderOffsetTop();
-	uint32_t getRenderOffsetBot();
-	uint32_t getRenderHeight();
+	uint32_t getRenderOffsetLeft() const;
+	uint32_t getRenderOffsetRight() const;
+	uint32_t getRenderWidth() const;
+	uint32_t getRenderOffsetTop() const;
+	uint32_t getRenderOffsetBot() const;
+	uint32_t getRenderHeight() const;
 
 	void setRenderOffsetLeft(uint32_t value) { m_renderOffsetLeft = value; }
 	void setRenderOffsetRight(uint32_t value) { m_renderOffsetRight = value; }

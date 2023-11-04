@@ -43,3 +43,5 @@ function changeBuildingWindowSideSize(value) {}
 function changeBuildingWindowMesh(meshIdx, filepath, materialFolder) {} 
 function setRenderOffsetLeft(value) { console.log("setRenderOffsetLeft " + value); }
 function setRenderOffsetRight(value) { console.log("setRenderOffsetRight " + value); }
+function changeBuildingWallMesh(idx, filename, folder) { console.log("changeBuildingWallMesh " + idx + " " + filename + " " + folder); }
+function displayTypeSelectChanged(value) { console.log("displayTypeSelectChanged " + value); }

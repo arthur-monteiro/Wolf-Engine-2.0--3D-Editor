@@ -1,42 +1,60 @@
 <html>
   <head>
-	<link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="style.css">	
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   </head>
   <body>
 	<div class="fullscreen" id="fullScreenBlur" style="display: none"></div>
-	<button onclick="openModelAdd()">Add model</button>
-	<button onclick="selectFileAndLoadScene()">Load</button>
-	<button onclick="openSaveSceneWindow()">Save</button>
-	<div id="sceneName" style="display: inline-block;">Unknown scene</div>
+	<div id="actionButtons">
+		<button class="actionButton" onclick="openModelAdd()">Add model</button>
+		<button class="actionButton" onclick="selectFileAndLoadScene()">Load</button>
+		<button class="actionButton" onclick="openSaveSceneWindow()">Save</button>
+		<div id="sceneName" style="display: inline-block;">Unknown scene</div>
+		<div id="optionsIcon" style="float: right; padding: 5px 10px 0px 0px;" onclick="openOptions()"><span class="material-symbols-outlined">settings</span></div>
+	</div>
 	<div class="frameRate" id="frameRate">FPS: 60</div>
 	<div class="cameraPosition" id="cameraPosition">Camera position:</div>
 	<div class="logs" id="logs"></div>
 
 	<div id="addModelWindow" class="modalWindow" style="display: none">
-		<table style="width: 100%;">
-			<tr>
-				<td>Type</td>
-				<td>
+		<div id="closeButton" onclick="closeModelAdd()"><span style="display: block; transform: translate(-1px, -5px); font: message-box;">X</span></div>
+		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
+			<li class="table-row">
+				<div class="col col-1" data-label="infoType">Type</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue" style="display: block;">
 					<select id="modelTypeSelect" onchange="modelTypeSelectChanged()">
 						<option value="staticMesh">Static mesh</option>
 						<option value="building">Building</option>
 					</select>
-				</td>
-			</tr>
-			<tr id="addModelPathTR">
-				<td>Path</td>
-				<td id="addModelPath"><button onclick="pickFileAndSetValue('addModelPath', 'open', 'obj')">Select file</button></td>
-			</tr>
-			<tr id="addModelMaterialPathTR">
-				<td>Material path</td>
-				<td id="addModelMaterialPath"><button onclick="pickFileAndSetValue('addModelMaterialPath', 'open', 'folder')">Select file</button></td>
-			</tr>
-			<tr id="addBuildingPathTR" style="display: none;">
-				<td>Building path</td>
-				<td id="addBuildingPath"><button onclick="pickFileAndSetValue('addBuildingPath', 'save', 'building')">Create</button><button onclick="pickFileAndSetValue('addBuildingPath', 'open', 'building')">Open</button></td>
-			</tr>
-		</table>
-		<button onclick="finishAddModel()">Add model</button>
+				</div>
+			</li>
+			<li class="table-row" id="addModelPathTR">
+				<div class="col col-1" data-label="infoType">Path</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue">
+					<button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('addModelPath', 'open', 'obj')">Select file</button>
+					<div id="addModelPath" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translate(10px, 10px);">No file selected</div>
+				</div>
+			</li>
+			<li class="table-row" id="addModelMaterialPathTR">
+				<div class="col col-1" data-label="infoType">Material path</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue">
+					<button class="actionButton" onclick="pickFileAndSetValue('addModelMaterialPath', 'open', 'folder')">Select folder</button>
+					<div id="addModelMaterialPath" style="width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translate(10px, 10px);">No folder selected</div>
+				</div>
+			</li>
+			<li class="table-row" id="addBuildingPathTR" style="display: none;">
+				<div class="col col-1" data-label="infoType">Building path</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue" id="addBuildingPath" style="display: block;">
+					<button class="actionButton" onclick="pickFileAndSetValue('addBuildingPath', 'save', 'building')">Create</button>
+					<button class="actionButton" onclick="pickFileAndSetValue('addBuildingPath', 'open', 'building')">Open</button>
+				</div>
+			</li>
+		</ul>
+		<button class="validationButton" onclick="finishAddModel()">Add model</button>
 	</div>
 
 	<div id="saveSceneWindow" class="modalWindow" style="display: none">
@@ -75,6 +93,34 @@
 	<div id="sliderList" onmousedown="resizeList()"></div>
 
 	<div id="modelList"></div>
+
+	<div id="options" class="modalWindow" style="display: none;">
+		<div id="closeButton" onclick="closeOptions()"><span style="display: block; transform: translate(-1px, -5px); font: message-box;">X</span></div>
+		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
+			<li class="table-row">
+				<div class="col col-1" data-label="infoType">Display</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px">
+					<select id="displayTypeSelect" onchange="displayTypeSelectChanged(this.options[this.selectedIndex].value)">
+						<option value="albedo">Albedo</option>
+						<option value="normal">Normal</option>
+						<option value="roughness">Rougness</option>
+						<option value="metalness">Metalness</option>
+						<option value="matAO">Material AO</option>
+					</select>
+				</div>
+			</li>
+			<li class="table-row">
+				<div class="col col-1" data-label="infoType">Camera</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px">
+					<select id="cameraTypeSelect" onchange="cameraTypeSelectChanged(this.options[this.selectedIndex].value)">
+						<option value="fps">FPS</option>
+					</select>
+				</div>
+			</li>
+		</ul>
+	</div>
 
     <script src="./slider.js"></script>
     <script src="./select.js"></script>
@@ -130,6 +176,11 @@
 		document.getElementById('addModelWindow').style.display = "block";
 	}
 
+	function closeModelAdd() {
+		document.getElementById('fullScreenBlur').style.display = "none";
+		document.getElementById('addModelWindow').style.display = "none";
+	}
+
 	function finishAddModel() {
 		document.getElementById('fullScreenBlur').style.display = "none";
 		document.getElementById('addModelWindow').style.display = "none";
@@ -143,8 +194,8 @@
 
 		addModel(filepath, document.getElementById("addModelMaterialPath").innerHTML, type);
 
-		document.getElementById("addModelPath").innerHTML = "<button onclick=\"pickFileAndSetValue('addModelPath', 'open', 'obj')\">Select file</button>";
-		document.getElementById("addModelMaterialPath").innerHTML = "<button onclick=\"pickFileAndSetValue('addModelMaterialPath', 'open', 'folder')\">Select file</button>";
+		document.getElementById("addModelPath").innerHTML = "No file selected";
+		document.getElementById("addModelMaterialPath").innerHTML = "No folder selected";
 		document.getElementById("addBuildingPath").innerHTML = "<button onclick=\"pickFileAndSetValue('addBuildingPath', 'save', 'building')\">Create</button><button onclick=\"pickFileAndSetValue('addBuildingPath', 'open', 'building')\">Open</button>";
 	}
 
@@ -154,6 +205,14 @@
 		saveScene(document.getElementById("saveSceneFile").innerHTML, document.getElementById("saveSceneNameInput").value);
 
 		document.getElementById("saveSceneFile").innerHTML = "<button onclick=\"pickFileAndSetValue('saveSceneFile', 'save', 'save')\">Select file</button>";
+	}
+
+	function openOptions() {
+		document.getElementById("options").style.display = "block";
+	}
+	
+	function closeOptions() {
+		document.getElementById("options").style.display = "none";
 	}
 
 	let defaultFilter = "undefined";
@@ -171,6 +230,9 @@
 
 		if (id.includes("windowMesh")) {
 			changeBuildingWindowMesh(id.replace("windowMesh", ""), filepath, filepath.substr(0, filepath.lastIndexOf("\\")));
+		}
+		else if (id.includes("wallMesh")) {
+			changeBuildingWallMesh(id.replace("wallMesh", ""), filepath, filepath.substr(0, filepath.lastIndexOf("\\")));
 		}
 	}
 
@@ -254,7 +316,7 @@
 		buildingInfoContent += "<div class='blockParameters'>";
 		buildingInfoContent += "<div class='blockParametersTitle'>Walls</div>";
 		buildingInfoContent += "<div class='blockParametersContent'>";
-		addBuildingPieceInfos("walls", 2, "");
+		addBuildingPieceInfos("wall", 2, "");
 		buildingInfoContent += "</div>"; // blockParametersContent
 		buildingInfoContent += "</div>"; // blockParameters
 
@@ -346,14 +408,14 @@
 		let selectedOption = document.getElementById("modelTypeSelect").options[document.getElementById("modelTypeSelect").selectedIndex].value;
 
 		if (selectedOption == "staticMesh") {
-			document.getElementById("addModelPathTR").style.display = "table-row";
-			document.getElementById("addModelMaterialPathTR").style.display = "table-row";
+			document.getElementById("addModelPathTR").style.display = "inline-flex";
+			document.getElementById("addModelMaterialPathTR").style.display = "inline-flex";
 			document.getElementById("addBuildingPathTR").style.display = "none";
 		}
 		else {
 			document.getElementById("addModelPathTR").style.display = "none";
 			document.getElementById("addModelMaterialPathTR").style.display = "none";
-			document.getElementById("addBuildingPathTR").style.display = "table-row";
+			document.getElementById("addBuildingPathTR").style.display = "inline-flex";
 		}
 	}
 

@@ -17,32 +17,32 @@ VkViewport EditorParams::getRenderViewport()
 	return viewport;
 }
 
-uint32_t EditorParams::getRenderOffsetLeft()
+uint32_t EditorParams::getRenderOffsetLeft() const
 {
 	return m_renderOffsetLeft;
 }
 
-uint32_t EditorParams::getRenderOffsetRight()
+uint32_t EditorParams::getRenderOffsetRight() const
 {
 	return m_renderOffsetRight;
 }
 
-uint32_t EditorParams::getRenderWidth()
+uint32_t EditorParams::getRenderWidth() const
 {
 	return m_width - getRenderOffsetLeft() - getRenderOffsetRight();
 }
 
-uint32_t EditorParams::getRenderOffsetTop()
+uint32_t EditorParams::getRenderOffsetTop() const
 {
-	return 100;
+	return 60;
 }
 
-uint32_t EditorParams::getRenderOffsetBot()
+uint32_t EditorParams::getRenderOffsetBot() const
 {
 	return 50;
 }
 
-uint32_t EditorParams::getRenderHeight()
+uint32_t EditorParams::getRenderHeight() const
 {
 	return m_height - getRenderOffsetTop() - getRenderOffsetBot();
 }

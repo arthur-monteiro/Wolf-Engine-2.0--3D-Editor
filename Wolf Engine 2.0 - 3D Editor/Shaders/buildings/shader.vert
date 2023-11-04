@@ -8,7 +8,7 @@ layout(binding = 0, set = 1) uniform UniformBufferMVP
 	mat4 projection;
 } ubMVP;
 
-layout(binding = 0, set = 2) uniform UniformBufferBuildingMesh
+layout(binding = 0, set = 3) uniform UniformBufferBuildingMesh
 {
     vec2 scale;
 	vec2 offset;
