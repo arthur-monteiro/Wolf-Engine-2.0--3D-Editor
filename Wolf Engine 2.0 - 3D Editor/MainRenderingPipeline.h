@@ -11,7 +11,7 @@ class EditorParams;
 class MainRenderingPipeline
 {
 public:
-	MainRenderingPipeline(const Wolf::WolfEngine* wolfInstance, BindlessDescriptor* bindlessDescriptor, EditorParams* editorParams);
+	MainRenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams);
 
 	void update(const Wolf::WolfEngine* wolfInstance);
 	void frame(Wolf::WolfEngine* wolfInstance) const;

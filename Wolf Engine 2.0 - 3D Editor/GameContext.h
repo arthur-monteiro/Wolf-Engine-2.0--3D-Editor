@@ -1,14 +1,9 @@
 #pragma once
 
-#include <vector>
-
 class ModelInterface;
 
 struct GameContext
 {
-	std::vector<ModelInterface*> modelsToRenderWithDefaultPipeline;
-	std::vector<ModelInterface*> modelsToRenderWithBuildingPipeline;
-
 	enum class DisplayType
 	{
 		ALBEDO = 0,

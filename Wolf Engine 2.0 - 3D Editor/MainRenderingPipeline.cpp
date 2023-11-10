@@ -2,9 +2,9 @@
 
 using namespace Wolf;
 
-MainRenderingPipeline::MainRenderingPipeline(const WolfEngine* wolfInstance, BindlessDescriptor* bindlessDescriptor, EditorParams* editorParams)
+MainRenderingPipeline::MainRenderingPipeline(const WolfEngine* wolfInstance, EditorParams* editorParams)
 {
-	m_forwardPass.reset(new ForwardPass(bindlessDescriptor, editorParams));
+	m_forwardPass.reset(new ForwardPass(editorParams));
 	wolfInstance->initializePass(m_forwardPass.get());
 }
 

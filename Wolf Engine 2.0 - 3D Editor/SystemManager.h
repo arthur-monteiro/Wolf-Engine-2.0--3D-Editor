@@ -21,6 +21,8 @@ private:
 	void createMainRenderer();
 	void updateBeforeFrame();
 
+	uint32_t addImagesToBindlessDescriptor(const std::vector<Wolf::Image*>& images) const;
+
 	void loadScene();
 	void addStaticModel(const std::string& filepath, const std::string& materialFolder, const glm::mat4& transform);
 	void addBuildingModel(const std::string& filepath, const glm::mat4& transform);
@@ -75,8 +77,7 @@ private:
 	std::vector<GameContext> m_gameContexts;
 	std::unique_ptr<ModelsContainer> m_modelsContainer;
 	std::unique_ptr<Camera> m_camera;
-	std::unique_ptr<BindlessDescriptor> m_bindlessDescriptor;
-	uint32_t m_currentBindlessOffset = 0;
+	uint32_t m_currentBindlessOffset = 5;
 
 	std::unique_ptr<EditorParams> m_editorParams;
 

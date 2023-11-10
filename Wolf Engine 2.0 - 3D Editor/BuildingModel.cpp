@@ -7,21 +7,67 @@
 #include <JSONReader.h>
 #include <ObjLoader.h>
 
-#include "DefaultPipelineInfos.h"
+#include "CommonDescriptorLayouts.h"
 #include "Timer.h"
 
 using namespace Wolf;
 
-DescriptorSetLayoutGenerator Building::g_descriptorSetLayoutGenerator;
-VkDescriptorSetLayout Building::g_descriptorSetLayout = nullptr;
-
-BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& filepath, uint32_t materialIdOffset) : ModelInterface(transform)
+BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& filepath, uint32_t materialIdOffset, const BindlessDescriptor& bindlessDescriptor) : ModelInterface(transform)
 {
 	m_filepath = filepath;
 	m_name = "Building";
 	m_floorCount = 8;
 	m_floorHeightInMeter = 2.0f;
 	m_fullSize = glm::vec3(10.0f, m_floorHeightInMeter * m_floorCount, 20.0f);
+
+	m_buildingDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, BuildingModel>([this](std::unique_ptr<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
+		{
+			descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
+			descriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // mesh infos
+		}));
+
+	m_buildingDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, BuildingModel>([this](std::unique_ptr<DescriptorSetLayout>& descriptorSetLayout)
+		{
+			descriptorSetLayout.reset(new DescriptorSetLayout(m_buildingDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
+		}));
+
+	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, BuildingModel>([this, &bindlessDescriptor](std::unique_ptr<PipelineSet>& pipelineSet)
+		{
+			pipelineSet.reset(new PipelineSet);
+
+			PipelineSet::PipelineInfo pipelineInfo;
+
+			pipelineInfo.shaderInfos.resize(2);
+			pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/buildings/shader.vert";
+			pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
+			pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			// IA
+			Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+			InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 1, static_cast<uint32_t>(pipelineInfo.vertexInputAttributeDescriptions.size()));
+
+			pipelineInfo.vertexInputBindingDescriptions.resize(2);
+			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
+
+			// Resources
+			pipelineInfo.descriptorSetLayouts = { bindlessDescriptor.getDescriptorSetLayout(), m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(),
+				CommonDescriptorLayouts::g_commonDescriptorSetLayout, m_buildingDescriptorSetLayout->getResource()->getDescriptorSetLayout() };
+
+			// Color Blend
+			pipelineInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
+
+			// Dynamic states
+			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+
+			// Rasterization
+			pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+
+			const uint32_t pipelineIdx = pipelineSet->addPipeline(pipelineInfo);
+			if (pipelineIdx != 0)
+				Debug::sendError("Unexpected pipeline idx");
+		}));
 
 	if (std::filesystem::exists(m_filepath))
 	{
@@ -53,18 +99,18 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 	}
 
 	// Model descriptor set
-	m_descriptorSet.reset(new DescriptorSet(DefaultPipeline::g_descriptorSetLayout, UpdateRate::NEVER));
+	m_descriptorSet.reset(new DescriptorSet(m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
 
-	DescriptorSetGenerator descriptorSetGenerator(DefaultPipeline::g_descriptorSetLayoutGenerator.getDescriptorLayouts());
+	DescriptorSetGenerator descriptorSetGenerator(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts());
 	descriptorSetGenerator.setBuffer(0, *m_matricesUniformBuffer);
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 	// Building descriptor set
-	auto initBufferAndDescriptorSet = [](BuildingPiece& piece)
+	auto initBufferAndDescriptorSet = [&](BuildingPiece& piece)
 	{
 		piece.infoUniformBuffer.reset(new Buffer(sizeof(Building::MeshInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
-		piece.descriptorSet.reset(new DescriptorSet(Building::g_descriptorSetLayout, UpdateRate::NEVER));
-		DescriptorSetGenerator buildingDescriptorSetGenerator(Building::g_descriptorSetLayoutGenerator.getDescriptorLayouts());
+		piece.descriptorSet.reset(new DescriptorSet(m_buildingDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
+		DescriptorSetGenerator buildingDescriptorSetGenerator(m_buildingDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts());
 		buildingDescriptorSetGenerator.setBuffer(0, *piece.infoUniformBuffer);
 		piece.descriptorSet->update(buildingDescriptorSetGenerator.getDescriptorSetCreateInfo());
 	};
@@ -85,30 +131,29 @@ void BuildingModel::updateGraphic(const CameraInterface& camera)
 	}
 }
 
-void BuildingModel::draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const
+void BuildingModel::addMeshesToRenderList(RenderMeshList& renderMeshList) const
 {
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, m_descriptorSet->getDescriptorSet(), 0, nullptr);
+	auto addPiece = [&](const BuildingPiece& piece)
+		{
+			RenderMeshList::MeshToRenderInfo meshToRenderInfo(piece.mesh.mesh.get(), m_defaultPipelineSet->getResource());
+			meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.get(), 1 });
+			meshToRenderInfo.descriptorSets.push_back({ piece.descriptorSet.get(), 3 });
+			meshToRenderInfo.instanceInfos = { piece.instanceBuffer.get(), piece.instanceCount };
 
-	auto drawPiece = [&](const BuildingPiece& piece)
-	{
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 3, 1, piece.descriptorSet->getDescriptorSet(), 0, nullptr);
-		const VkDeviceSize offsets[1] = { 0 };
-		const VkBuffer windowsInstanceBuffer = piece.instanceBuffer->getBuffer();
-		vkCmdBindVertexBuffers(commandBuffer, 1, 1, &windowsInstanceBuffer, offsets);
-		piece.mesh.mesh->draw(commandBuffer, piece.instanceCount);
-	};
+			renderMeshList.addMeshToRender(meshToRenderInfo);
+		};
 
-	drawPiece(m_window);
-	drawPiece(m_wall);
+	addPiece(m_window);
+	addPiece(m_wall);
 }
 
-void BuildingModel::getAllImages(std::vector<Wolf::Image*>& images)
+void BuildingModel::getAllImages(std::vector<Image*>& images)
 {
 	getImagesForPiece(images, PieceType::WINDOW);
 	getImagesForPiece(images, PieceType::WALL);
 }
 
-void BuildingModel::getImagesForPiece(std::vector<Wolf::Image*>& images, PieceType pieceType)
+void BuildingModel::getImagesForPiece(std::vector<Image*>& images, PieceType pieceType)
 {
 	BuildingPiece* buildingPiece = nullptr;
 	switch (pieceType)
@@ -324,7 +369,7 @@ float BuildingModel::computeFloorSize() const
 
 float BuildingModel::computeWindowCountOnSide(const glm::vec3& sideDir) const
 {
-	return std::ceil(glm::length(m_fullSize * sideDir) / (m_window.sideSizeInMeter + m_wall.sideSizeInMeter));
+	return std::ceil(length(m_fullSize * sideDir) / (m_window.sideSizeInMeter + m_wall.sideSizeInMeter));
 }
 
 void BuildingModel::rebuildRenderingInfos()
@@ -367,14 +412,15 @@ void BuildingModel::rebuildRenderingInfos()
 		};
 		for (const SideInfo& sideInfo : sideInfos)
 		{
-			for (uint32_t windowIdx = 0, end = static_cast<uint32_t>(computeWindowCountOnSide(glm::normalize(sideInfo.offsetScaleBetweenWindowCenters))); windowIdx < end; ++windowIdx)
+			for (uint32_t windowIdx = 0, end = static_cast<uint32_t>(computeWindowCountOnSide(normalize(sideInfo.offsetScaleBetweenWindowCenters))); windowIdx < end; ++windowIdx)
 			{
 				const float spaceBetweenWindows = m_window.sideSizeInMeter + m_wall.sideSizeInMeter;
 
 				const glm::vec3 windowCenterPos = sideInfo.firstWindowPos + static_cast<float>(windowIdx) * (sideInfo.offsetScaleBetweenWindowCenters * spaceBetweenWindows);
 				windowInstances.push_back({ windowCenterPos, sideInfo.normal });
 
-				if (glm::length(m_fullSize * sideInfo.offsetScaleBetweenWindowCenters) / (m_window.sideSizeInMeter + m_wall.sideSizeInMeter) != computeWindowCountOnSide(glm::normalize(sideInfo.offsetScaleBetweenWindowCenters)) && windowIdx == end - 1)
+				if (length(m_fullSize * sideInfo.offsetScaleBetweenWindowCenters) / (m_window.sideSizeInMeter + m_wall.sideSizeInMeter) != computeWindowCountOnSide(
+					normalize(sideInfo.offsetScaleBetweenWindowCenters)) && windowIdx == end - 1)
 					continue;
 
 				const glm::vec3 wallCenterPos = sideInfo.firstWindowPos + static_cast<float>(windowIdx) * (sideInfo.offsetScaleBetweenWindowCenters * spaceBetweenWindows) + (sideInfo.offsetScaleBetweenWindowCenters * m_window.sideSizeInMeter);

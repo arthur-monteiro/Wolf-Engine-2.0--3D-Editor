@@ -4,6 +4,7 @@
 #include <DescriptorSetLayout.h>
 #include <DescriptorSetLayoutGenerator.h>
 #include <Mesh.h>
+#include <PipelineSet.h>
 
 #include "ModelInterface.h"
 
@@ -39,11 +40,11 @@ public:
 		}
 	};
 
-	BuildingModel(const glm::mat4& transform, const std::string& filepath, uint32_t materialIdOffset);
+	BuildingModel(const glm::mat4& transform, const std::string& filepath, uint32_t materialIdOffset, const Wolf::BindlessDescriptor& bindlessDescriptor);
 
 	void updateGraphic(const Wolf::CameraInterface& camera) override;
-	void draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const override;
-
+	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const override;
+	
 	const Wolf::AABB& getAABB() const override { return Wolf::AABB(); }
 	const std::string& getLoadingPath() const override { return  m_filepath; }
 
@@ -112,6 +113,10 @@ private:
 	// Floors
 	uint32_t m_floorCount;
 	float m_floorHeightInMeter;
+
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, BuildingModel>> m_defaultPipelineSet;
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayoutGenerator, BuildingModel>> m_buildingDescriptorSetLayoutGenerator;
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, BuildingModel>> m_buildingDescriptorSetLayout;
 };
 
 namespace Building
@@ -121,7 +126,4 @@ namespace Building
 		glm::vec2 scale;
 		glm::vec2 offset;
 	};
-
-	extern Wolf::DescriptorSetLayoutGenerator g_descriptorSetLayoutGenerator;
-	extern VkDescriptorSetLayout g_descriptorSetLayout;
 }

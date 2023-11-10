@@ -3,8 +3,6 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "DefaultPipelineInfos.h"
-
 using namespace Wolf;
 
 ModelInterface::ModelInterface(const glm::mat4& transform)
@@ -16,12 +14,23 @@ ModelInterface::ModelInterface(const glm::mat4& transform)
 	glm::decompose(m_transform, m_scale, quatRotation, m_translation, skew, perspective);
 	m_rotation = glm::eulerAngles(quatRotation) * 3.14159f / 180.f;
 
-	m_matricesUniformBuffer.reset(new Buffer(sizeof(DefaultPipeline::MatricesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
+	m_matricesUniformBuffer.reset(new Buffer(sizeof(MatricesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
+
+	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, ModelInterface>([this](std::unique_ptr<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
+		{
+			descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
+			descriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // matrices
+		}));
+
+	m_modelDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, ModelInterface>([this](std::unique_ptr<DescriptorSetLayout>& descriptorSetLayout)
+		{
+			descriptorSetLayout.reset(new DescriptorSetLayout(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
+		}));
 }
 
 void ModelInterface::updateGraphic(const Wolf::CameraInterface& camera)
 {
-	DefaultPipeline::MatricesUBData mvp;
+	MatricesUBData mvp;
 	mvp.projection = camera.getProjectionMatrix();
 	mvp.view = camera.getViewMatrix();
 	mvp.model = m_transform;

@@ -17,7 +17,6 @@ using namespace Wolf;
 SystemManager::SystemManager()
 {
 	createWolfInstance();
-	m_bindlessDescriptor.reset(new BindlessDescriptor);
 	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
 
 	createMainRenderer();
@@ -61,6 +60,7 @@ void SystemManager::createWolfInstance()
 	};
 	wolfInstanceCreateInfo.htmlURL = "UI/UI.html";
 	wolfInstanceCreateInfo.bindUltralightCallbacks = [this] { bindUltralightCallbacks(); };
+	wolfInstanceCreateInfo.useBindlessDescriptor = true;
 
 	m_wolfInstance.reset(new WolfEngine(wolfInstanceCreateInfo));
 	bindUltralightCallbacks();
@@ -77,7 +77,7 @@ void SystemManager::createWolfInstance()
 
 void SystemManager::createMainRenderer()
 {
-	m_mainRenderer.reset(new MainRenderingPipeline(m_wolfInstance.get(), m_bindlessDescriptor.get(), m_editorParams.get()));
+	m_mainRenderer.reset(new MainRenderingPipeline(m_wolfInstance.get(), m_editorParams.get()));
 }
 
 void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const
@@ -566,20 +566,15 @@ void SystemManager::updateBeforeFrame()
 
 		std::vector<Image*> modelImages;
 		selectedBuilding->getImagesForPiece(modelImages, request.pieceType);
-		m_currentBindlessOffset = m_bindlessDescriptor->addImages(modelImages) + modelImages.size();
+		m_currentBindlessOffset = addImagesToBindlessDescriptor(modelImages);
 	}
 	m_changeBuildingPieceMeshRequests.clear();
 
 	m_modelsContainer->moveToNextFrame();
 	const std::vector<std::unique_ptr<ModelInterface>>& allModels = m_modelsContainer->getModels();
-	m_gameContexts[contextId].modelsToRenderWithDefaultPipeline.clear();
-	m_gameContexts[contextId].modelsToRenderWithBuildingPipeline.clear();
 	for (const std::unique_ptr<ModelInterface>& model : allModels)
 	{
-		if (model->getType() == ModelInterface::ModelType::BUILDING)
-			m_gameContexts[contextId].modelsToRenderWithBuildingPipeline.push_back(model.get());
-		else
-			m_gameContexts[contextId].modelsToRenderWithDefaultPipeline.push_back(model.get());
+		model->addMeshesToRenderList(m_wolfInstance->getRenderMeshList());
 		model->updateGraphic(*m_camera);
 	}
 
@@ -639,6 +634,18 @@ void SystemManager::updateBeforeFrame()
 	m_wolfInstance->evaluateUserInterfaceScript("setCameraPosition(\"" + std::to_string(cameraPosition.x) + ", " + std::to_string(cameraPosition.y) + ", " + std::to_string(cameraPosition.z) + "\")");
 }
 
+uint32_t SystemManager::addImagesToBindlessDescriptor(const std::vector<Wolf::Image*>& images) const
+{
+	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(images.size());
+	for (uint32_t i = 0; i < images.size(); ++i)
+	{
+		imageDescriptions[i].imageView = images[i]->getDefaultImageView();
+		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+
+	return m_wolfInstance->getBindlessDescriptor().addImages(imageDescriptions) + static_cast<uint32_t>(images.size());
+}
+
 void SystemManager::loadScene()
 {
 	m_modelsContainer->clear();
@@ -689,11 +696,11 @@ void SystemManager::loadScene()
 
 void SystemManager::addStaticModel(const std::string& filepath, const std::string& materialFolder, const glm::mat4& transform)
 {
-	ObjectModel* model = new ObjectModel(transform, false, filepath, materialFolder, true, m_currentBindlessOffset / 5);
+	ObjectModel* model = new ObjectModel(transform, false, filepath, materialFolder, true, m_currentBindlessOffset / 5, m_wolfInstance->getBindlessDescriptor());
 	m_modelsContainer->addModel(model);
 	std::vector<Image*> modelImages;
 	model->getImages(modelImages);
-	m_currentBindlessOffset = m_bindlessDescriptor->addImages(modelImages) + modelImages.size();
+	m_currentBindlessOffset = addImagesToBindlessDescriptor(modelImages);
 
 	const std::string scriptToAddModelToList = "addModelToList(\"" + model->getName() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
@@ -701,11 +708,11 @@ void SystemManager::addStaticModel(const std::string& filepath, const std::strin
 
 void SystemManager::addBuildingModel(const std::string& filepath, const glm::mat4& transform)
 {
-	BuildingModel* model = new BuildingModel(transform, filepath, m_currentBindlessOffset / 5);
+	BuildingModel* model = new BuildingModel(transform, filepath, m_currentBindlessOffset / 5, m_wolfInstance->getBindlessDescriptor());
 	m_modelsContainer->addModel(model);
 	std::vector<Image*> modelImages;
 	model->getAllImages(modelImages);
-	m_currentBindlessOffset = m_bindlessDescriptor->addImages(modelImages) + modelImages.size();
+	m_currentBindlessOffset = addImagesToBindlessDescriptor(modelImages);
 
 	const std::string scriptToAddModelToList = "addModelToList(\"" + model->getName() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);

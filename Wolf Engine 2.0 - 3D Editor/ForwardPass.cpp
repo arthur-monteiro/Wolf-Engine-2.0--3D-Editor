@@ -1,22 +1,22 @@
 #include "ForwardPass.h"
 
 #include <DebugMarker.h>
+#include <DescriptorSet.h>
 #include <DescriptorSetGenerator.h>
 #include <Image.h>
 
 #include "BuildingModel.h"
-#include "DefaultPipelineInfos.h"
+#include "CommonDescriptorLayouts.h"
 #include "GameContext.h"
 #include "ModelInterface.h"
 #include "ObjLoader.h"
 #include "Vertex2DTextured.h"
 
-Wolf::DescriptorSetLayoutGenerator DefaultPipeline::g_descriptorSetLayoutGenerator;
-VkDescriptorSetLayout DefaultPipeline::g_descriptorSetLayout = nullptr;
-
 using namespace Wolf;
 
-void ForwardPass::initializeResources(const Wolf::InitializationContext& context)
+VkDescriptorSetLayout CommonDescriptorLayouts::g_commonDescriptorSetLayout;
+
+void ForwardPass::initializeResources(const InitializationContext& context)
 {
 	Attachment color = setupColorAttachment(context);
 	Attachment depth = setupDepthAttachment(context);
@@ -34,26 +34,13 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
 		m_commonDescriptorSetLayout.reset(new DescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
+		CommonDescriptorLayouts::g_commonDescriptorSetLayout = m_commonDescriptorSetLayout->getDescriptorSetLayout();
+
 		DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, *m_displayOptionsUniformBuffer);
 
 		m_commonDescriptorSet.reset(new DescriptorSet(m_commonDescriptorSetLayout->getDescriptorSetLayout(), UpdateRate::NEVER));
 		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
-	}
-
-	// Default pipeline
-	{
-		m_defaultVertexShaderParser.reset(new ShaderParser("Shaders/defaultPipeline/shader.vert"));
-		m_defaultFragmentShaderParser.reset(new ShaderParser("Shaders/defaultPipeline/shader.frag"));
-
-		createDefaultDescriptorSetLayout();
-	}
-
-	// Building pipeline
-	{
-		m_buildingVertexShaderParser.reset(new ShaderParser("Shaders/buildings/shader.vert"));
-
-		createBuildingDescriptorSetLayout();
 	}
 
 	// UI resources
@@ -94,7 +81,7 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 	createPipelines();
 }
 
-void ForwardPass::resize(const Wolf::InitializationContext& context)
+void ForwardPass::resize(const InitializationContext& context)
 {
 	m_renderPass->setExtent({ context.swapChainWidth, context.swapChainHeight });
 
@@ -111,7 +98,7 @@ void ForwardPass::resize(const Wolf::InitializationContext& context)
 	createPipelines(); // may be overkill but resets the viewport for UI
 }
 
-void ForwardPass::record(const Wolf::RecordContext& context)
+void ForwardPass::record(const RecordContext& context)
 {
 	/* Command buffer record */
 	const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
@@ -132,32 +119,14 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	displayOptions.displayType = static_cast<uint32_t>(gameContext->displayType);
 	m_displayOptionsUniformBuffer->transferCPUMemory(&displayOptions, sizeof(displayOptions), 0);
 
-	/* Default pipeline */
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_defaultPipeline->getPipeline());
-	m_bindlessDescriptor->bind(commandBuffer, m_defaultPipeline->getPipelineLayout());
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_defaultPipeline->getPipelineLayout(), COMMON_DESCRIPTOR_SET_SLOT, 1, m_commonDescriptorSet->getDescriptorSet(),
-		0, nullptr);
-
 	const VkViewport renderViewport = m_editorParams->getRenderViewport();
 	vkCmdSetViewport(commandBuffer, 0, 1, &renderViewport);
 
-	for(const ModelInterface* model : gameContext->modelsToRenderWithDefaultPipeline)
-	{
-		model->draw(commandBuffer, m_defaultPipeline->getPipelineLayout());
-	}
-
-	/* Building pipeline */
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_buildingPipeline->getPipeline());
-	m_bindlessDescriptor->bind(commandBuffer, m_buildingPipeline->getPipelineLayout());
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_buildingPipeline->getPipelineLayout(), COMMON_DESCRIPTOR_SET_SLOT, 1, m_commonDescriptorSet->getDescriptorSet(),
-		0, nullptr);
-
-	vkCmdSetViewport(commandBuffer, 0, 1, &renderViewport);
-
-	for (const ModelInterface* model : gameContext->modelsToRenderWithBuildingPipeline)
-	{
-		model->draw(commandBuffer, m_buildingPipeline->getPipelineLayout());
-	}
+	context.renderMeshList->draw(commandBuffer, m_renderPass.get(), 0,
+		{
+			{ 0, context.bindlessDescriptorSet },
+			{ COMMON_DESCRIPTOR_SET_SLOT, m_commonDescriptorSet.get() }
+		});
 
 	/* UI */
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_userInterfacePipeline->getPipeline());
@@ -172,16 +141,14 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->endCommandBuffer(context.commandBufferIdx);
 }
 
-void ForwardPass::submit(const Wolf::SubmitContext& context)
+void ForwardPass::submit(const SubmitContext& context)
 {
 	const std::vector waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
 	const std::vector signalSemaphores{ m_semaphore->getSemaphore() };
 	m_commandBuffer->submit(context.commandBufferIdx, waitSemaphores, signalSemaphores, context.frameFence);
 
-	bool anyShaderModified = m_defaultFragmentShaderParser->compileIfFileHasBeenModified();
-	if (m_defaultFragmentShaderParser->compileIfFileHasBeenModified())
-		anyShaderModified = true;
-	if (m_buildingVertexShaderParser->compileIfFileHasBeenModified())
+	bool anyShaderModified = m_userInterfaceVertexShaderParser->compileIfFileHasBeenModified();
+	if (m_userInterfaceFragmentShaderParser->compileIfFileHasBeenModified())
 		anyShaderModified = true;
 
 	if (anyShaderModified)
@@ -191,13 +158,13 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 	}
 }
 
-Wolf::Attachment ForwardPass::setupColorAttachment(const Wolf::InitializationContext& context)
+Attachment ForwardPass::setupColorAttachment(const InitializationContext& context)
 {
 	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		nullptr);
 }
 
-Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationContext& context)
+Attachment ForwardPass::setupDepthAttachment(const InitializationContext& context)
 {
 	CreateImageInfo depthImageCreateInfo;
 	depthImageCreateInfo.format = context.depthFormat;
@@ -213,7 +180,7 @@ Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationCon
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, m_depthImage->getDefaultImageView());
 }
 
-void ForwardPass::initializeFramesBuffers(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment)
+void ForwardPass::initializeFramesBuffers(const InitializationContext& context, Attachment& colorAttachment, Attachment& depthAttachment)
 {
 	m_frameBuffers.clear();
 	m_frameBuffers.resize(context.swapChainImageCount);
@@ -224,140 +191,19 @@ void ForwardPass::initializeFramesBuffers(const Wolf::InitializationContext& con
 	}
 }
 
-void ForwardPass::createDefaultDescriptorSetLayout()
-{
-	DefaultPipeline::g_descriptorSetLayoutGenerator.reset();
-	DefaultPipeline::g_descriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // matrices
-	
-	m_defaultDescriptorSetLayout.reset(new DescriptorSetLayout(DefaultPipeline::g_descriptorSetLayoutGenerator.getDescriptorLayouts()));
-	DefaultPipeline::g_descriptorSetLayout = m_defaultDescriptorSetLayout->getDescriptorSetLayout();
-}
-
-void ForwardPass::createBuildingDescriptorSetLayout()
-{
-	Building::g_descriptorSetLayoutGenerator.reset();
-	Building::g_descriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // mesh infos
-
-	m_buildingDescriptorSetLayout.reset(new DescriptorSetLayout(Building::g_descriptorSetLayoutGenerator.getDescriptorLayouts()));
-	Building::g_descriptorSetLayout = m_buildingDescriptorSetLayout->getDescriptorSetLayout();
-}
-
 void ForwardPass::createPipelines()
 {
-	// Default pipeline
-	{
-		RenderingPipelineCreateInfo pipelineCreateInfo;
-		pipelineCreateInfo.renderPass = m_renderPass->getRenderPass();
-
-		// Programming stages
-		std::vector<char> vertexShaderCode;
-		m_defaultVertexShaderParser->readCompiledShader(vertexShaderCode);
-		std::vector<char> fragmentShaderCode;
-		m_defaultFragmentShaderParser->readCompiledShader(fragmentShaderCode);
-
-		std::vector<ShaderCreateInfo> shaders(2);
-		shaders[0].shaderCode = vertexShaderCode;
-		shaders[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-		shaders[1].shaderCode = fragmentShaderCode;
-		shaders[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-		pipelineCreateInfo.shaderCreateInfos = shaders;
-
-		// IA
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-		Vertex3D::getAttributeDescriptions(attributeDescriptions, 0);
-		pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
-
-		std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
-		bindingDescriptions[0] = {};
-		Vertex3D::getBindingDescription(bindingDescriptions[0], 0);
-		pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
-
-		// Resources
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_bindlessDescriptor->getDescriptorSetLayout(), m_defaultDescriptorSetLayout->getDescriptorSetLayout(), m_commonDescriptorSetLayout->getDescriptorSetLayout() };
-		pipelineCreateInfo.descriptorSetLayouts = descriptorSetLayouts;
-
-		// Viewport
-		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
-
-		// Color Blend
-		std::vector<RenderingPipelineCreateInfo::BLEND_MODE> blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
-		pipelineCreateInfo.blendModes = blendModes;
-
-		// Dynamic states
-		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-
-		m_defaultPipeline.reset(new Pipeline(pipelineCreateInfo));
-	}
-
-	// Building pipeline
-	{
-		RenderingPipelineCreateInfo pipelineCreateInfo;
-		pipelineCreateInfo.renderPass = m_renderPass->getRenderPass();
-
-		// Programming stages
-		std::vector<char> vertexShaderCode;
-		m_buildingVertexShaderParser->readCompiledShader(vertexShaderCode);
-		std::vector<char> fragmentShaderCode;
-		m_defaultFragmentShaderParser->readCompiledShader(fragmentShaderCode);
-
-		std::vector<ShaderCreateInfo> shaders(2);
-		shaders[0].shaderCode = vertexShaderCode;
-		shaders[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-		shaders[1].shaderCode = fragmentShaderCode;
-		shaders[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-		pipelineCreateInfo.shaderCreateInfos = shaders;
-
-		// IA
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-		Vertex3D::getAttributeDescriptions(attributeDescriptions, 0);
-		BuildingModel::InstanceData::getAttributeDescriptions(attributeDescriptions, 1, attributeDescriptions.size());
-		pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
-
-		std::vector<VkVertexInputBindingDescription> bindingDescriptions(2);
-		bindingDescriptions[0] = {};
-		Vertex3D::getBindingDescription(bindingDescriptions[0], 0);
-		BuildingModel::InstanceData::getBindingDescription(bindingDescriptions[1], 1);
-		pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
-
-		// Resources
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_bindlessDescriptor->getDescriptorSetLayout(), DefaultPipeline::g_descriptorSetLayout, m_commonDescriptorSetLayout->getDescriptorSetLayout(), Building::g_descriptorSetLayout };
-		pipelineCreateInfo.descriptorSetLayouts = descriptorSetLayouts;
-
-		// Viewport
-		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
-
-		// Color Blend
-		std::vector<RenderingPipelineCreateInfo::BLEND_MODE> blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
-		pipelineCreateInfo.blendModes = blendModes;
-
-		// Dynamic states
-		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-
-		pipelineCreateInfo.cullMode = VK_CULL_MODE_NONE; // temp
-
-		m_buildingPipeline.reset(new Pipeline(pipelineCreateInfo));
-	}
-
 	// UI
 	{
 		RenderingPipelineCreateInfo pipelineCreateInfo;
 		pipelineCreateInfo.renderPass = m_renderPass->getRenderPass();
 
 		// Programming stages
-		std::vector<char> vertexShaderCode;
-		m_userInterfaceVertexShaderParser->readCompiledShader(vertexShaderCode);
-		std::vector<char> fragmentShaderCode;
-		m_userInterfaceFragmentShaderParser->readCompiledShader(fragmentShaderCode);
-
-		std::vector<ShaderCreateInfo> shaders(2);
-		shaders[0].shaderCode = vertexShaderCode;
-		shaders[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-		shaders[1].shaderCode = fragmentShaderCode;
-		shaders[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-		pipelineCreateInfo.shaderCreateInfos = shaders;
+		pipelineCreateInfo.shaderCreateInfos.resize(2);
+		m_userInterfaceVertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);
+		pipelineCreateInfo.shaderCreateInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		m_userInterfaceFragmentShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[1].shaderCode);
+		pipelineCreateInfo.shaderCreateInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		// IA
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;

@@ -4,6 +4,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Wolf Engine 2.0 - 3D Editor", "Wolf Engine 2.0 - 3D Editor\Wolf Engine 2.0 - 3D Editor.vcxproj", "{9E7FDF8C-4B80-42EF-AE4D-9378D498BF5E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F} = {192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F}
+		{3846443B-0E65-4851-9679-39B56090C24E} = {3846443B-0E65-4851-9679-39B56090C24E}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Engine Core", "..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0.vcxproj", "{192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F}"
 EndProject

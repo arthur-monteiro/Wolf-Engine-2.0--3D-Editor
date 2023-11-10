@@ -17,7 +17,7 @@
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPass(BindlessDescriptor* bindlessDescriptor, EditorParams* editorParams) : m_bindlessDescriptor(bindlessDescriptor), m_editorParams(editorParams) {}
+	ForwardPass(EditorParams* editorParams) : m_editorParams(editorParams) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -28,9 +28,7 @@ private:
 	static Wolf::Attachment setupColorAttachment(const Wolf::InitializationContext& context);
 	Wolf::Attachment setupDepthAttachment(const Wolf::InitializationContext& context);
 	void initializeFramesBuffers(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment);
-	
-	void createDefaultDescriptorSetLayout();
-	void createBuildingDescriptorSetLayout();
+
 	void createPipelines();
 
 	std::unique_ptr<Wolf::RenderPass> m_renderPass;
@@ -51,17 +49,6 @@ private:
 	std::unique_ptr<Wolf::DescriptorSetLayout> m_commonDescriptorSetLayout;
 	std::unique_ptr<Wolf::Buffer> m_displayOptionsUniformBuffer;
 
-	/* Default pipeline */
-	std::unique_ptr<Wolf::ShaderParser> m_defaultVertexShaderParser;
-	std::unique_ptr<Wolf::ShaderParser> m_defaultFragmentShaderParser;
-	std::unique_ptr<Wolf::DescriptorSetLayout> m_defaultDescriptorSetLayout;
-	std::unique_ptr<Wolf::Pipeline> m_defaultPipeline;
-
-	/* Building pipeline */
-	std::unique_ptr<Wolf::ShaderParser> m_buildingVertexShaderParser;
-	std::unique_ptr<Wolf::DescriptorSetLayout> m_buildingDescriptorSetLayout;
-	std::unique_ptr<Wolf::Pipeline> m_buildingPipeline;
-
 	/* UI resources */
 	Wolf::DescriptorSetLayoutGenerator m_userInterfaceDescriptorSetLayoutGenerator;
 	std::unique_ptr<Wolf::DescriptorSetLayout> m_userInterfaceDescriptorSetLayout;
@@ -73,7 +60,6 @@ private:
 	std::unique_ptr<Wolf::ShaderParser> m_userInterfaceFragmentShaderParser;
 	std::unique_ptr<Wolf::Pipeline> m_userInterfacePipeline;
 
-	BindlessDescriptor* m_bindlessDescriptor;
 	EditorParams* m_editorParams;
 };
 

@@ -42,13 +42,13 @@
     <ClCompile Include="Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BindlessDescriptor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="EditorParams.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BuildingModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CommonDescriptorLayouts.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -77,19 +77,16 @@
     <ClInclude Include="ObjectModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DefaultPipelineInfos.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BindlessDescriptor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorParams.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BuildingModel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonDescriptorLayouts.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
