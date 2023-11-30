@@ -22,8 +22,7 @@ SystemManager::SystemManager()
 	createMainRenderer();
 
 	m_modelsContainer.reset(new ModelsContainer);
-	m_camera.reset(new Camera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
-	m_wolfInstance->setCameraInterface(m_camera.get());
+	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
 }
 
 void SystemManager::run()
@@ -73,6 +72,8 @@ void SystemManager::createWolfInstance()
 		contextPtrs[i] = &m_gameContexts.back();
 	}
 	m_wolfInstance->setGameContexts(contextPtrs);
+
+	EditorParamInterface::setGlobalWolfInstance(m_wolfInstance.get());
 }
 
 void SystemManager::createMainRenderer()
@@ -141,21 +142,6 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["setRenderOffsetLeft"] = std::bind(&SystemManager::setRenderOffsetLeftJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["getRenderOffsetRight"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderOffsetRightJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["setRenderOffsetRight"] = std::bind(&SystemManager::setRenderOffsetRightJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeScaleX"] = std::bind(&SystemManager::changeScaleXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeScaleY"] = std::bind(&SystemManager::changeScaleYJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeScaleZ"] = std::bind(&SystemManager::changeScaleZJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeRotationX"] = std::bind(&SystemManager::changeRotationXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeRotationY"] = std::bind(&SystemManager::changeRotationYJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeRotationZ"] = std::bind(&SystemManager::changeRotationZJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeTranslationX"] = std::bind(&SystemManager::changeTranslationXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeTranslationY"] = std::bind(&SystemManager::changeTranslationYJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeTranslationZ"] = std::bind(&SystemManager::changeTranslationZJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeBuildingSizeX"] = std::bind(&SystemManager::changeBuildingSizeXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeBuildingSizeZ"] = std::bind(&SystemManager::changeBuildingSizeZJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeBuildingFloorCount"] = std::bind(&SystemManager::changeBuildingFloorCountJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeBuildingWindowSideSize"] = std::bind(&SystemManager::changeBuildingWindowSideSizeJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeBuildingWindowMesh"] = std::bind(&SystemManager::changeBuildingWindowMeshJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["changeBuildingWallMesh"] = std::bind(&SystemManager::changeBuildingWallMeshJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["selectModelByName"] = std::bind(&SystemManager::selectModelByNameJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["saveScene"] = std::bind(&SystemManager::saveSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -271,157 +257,12 @@ void SystemManager::addModelJSCallback(const ultralight::JSObject& thisObject, c
 	m_addModelRequests.push_back({ filepath, materialPath, type });
 }
 
-void SystemManager::changeScaleXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setScale(0, value);
-}
-
-void SystemManager::changeScaleYJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setScale(1, value);
-}
-
-void SystemManager::changeScaleZJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setScale(2, value);
-}
-
-void SystemManager::changeRotationXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setRotation(0, value);
-}
-
-void SystemManager::changeRotationYJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setRotation(1, value);
-}
-
-void SystemManager::changeRotationZJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setRotation(2, value);
-}
-
-void SystemManager::changeTranslationXJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setTranslation(0, value);
-}
-
-void SystemManager::changeTranslationYJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setTranslation(1, value);
-}
-
-void SystemManager::changeTranslationZJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
-{
-	const float value = static_cast<float>(args[0].ToNumber());
-	m_selectedModel->setTranslation(2, value);
-}
-
-void SystemManager::changeBuildingSizeXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
-{
-	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
-	{
-		Debug::sendError("Can't change building size of non building model");
-		return;
-	}
-	BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
-	
-	const float value = static_cast<float>(args[0].ToNumber());
-	selectedBuilding->setBuildingSizeX(value);
-}
-
-void SystemManager::changeBuildingSizeZJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
-{
-	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
-	{
-		Debug::sendError("Can't change building size of non building model");
-		return;
-	}
-	BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
-
-	const float value = static_cast<float>(args[0].ToNumber());
-	selectedBuilding->setBuildingSizeZ(value);
-}
-
-void SystemManager::changeBuildingWindowSideSizeJSCallback(const ultralight::JSObject& thisObject,
-                                                 const ultralight::JSArgs& args) const
-{
-	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
-	{
-		Debug::sendError("Can't change building window size of non building model");
-		return;
-	}
-	BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
-
-	const float value = static_cast<float>(args[0].ToNumber());
-	selectedBuilding->setWindowSideSize(value);
-}
-
-void SystemManager::changeBuildingFloorCountJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
-{
-	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
-	{
-		Debug::sendError("Can't change building floor count of non building model");
-		return;
-	}
-	BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
-
-	const uint32_t value = static_cast<uint32_t>(args[0].ToNumber());
-	selectedBuilding->setFloorCount(value);
-}
-
-void SystemManager::changeBuildingWindowMeshJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args)
-{
-	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
-	{
-		Debug::sendError("Can't change building window mesh of non building model");
-		return;
-	}
-
-	const uint32_t meshIdx = static_cast<uint32_t>(args[0].ToNumber());
-	const std::string filename = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
-	const std::string materialFolder = static_cast<ultralight::String>(args[2].ToString()).utf8().data();
-
-	m_changeBuildingPieceMeshRequests.push_back({ meshIdx, filename, materialFolder, BuildingModel::PieceType::WINDOW });
-}
-
-void SystemManager::changeBuildingWallMeshJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args)
-{
-	if (m_selectedModel->getType() != ModelInterface::ModelType::BUILDING)
-	{
-		Debug::sendError("Can't change building wall mesh of non building model");
-		return;
-	}
-
-	const uint32_t meshIdx = static_cast<uint32_t>(args[0].ToNumber());
-	const std::string filename = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
-	const std::string materialFolder = static_cast<ultralight::String>(args[2].ToString()).utf8().data();
-
-	m_changeBuildingPieceMeshRequests.push_back({ meshIdx, filename, materialFolder, BuildingModel::PieceType::WALL });
-}
-
 void SystemManager::selectModelByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string name = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 
-	const std::vector<std::unique_ptr<ModelInterface>>& allModels = m_modelsContainer->getModels();
-	for (const std::unique_ptr<ModelInterface>& model : allModels)
+	const std::vector<std::unique_ptr<EditorModelInterface>>& allModels = m_modelsContainer->getModels();
+	for (const std::unique_ptr<EditorModelInterface>& model : allModels)
 	{
 		if(model->getName() == name)
 		{
@@ -450,7 +291,7 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	outputFile << "{\n";
 
 	// Scene data
-	const std::vector<std::unique_ptr<ModelInterface>>& allModels = m_modelsContainer->getModels();
+	const std::vector<std::unique_ptr<EditorModelInterface>>& allModels = m_modelsContainer->getModels();
 	outputFile << "\t\"sceneName\":\"" << m_currentSceneName << "\",\n";
 	outputFile << "\t\"modelCount\":" << allModels.size() << ",\n";
 
@@ -458,15 +299,15 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	outputFile << "\t\"models\": [\n";
 	for (uint32_t i = 0; i < allModels.size(); ++i)
 	{
-		const std::unique_ptr<ModelInterface>& model = allModels[i];
+		const std::unique_ptr<EditorModelInterface>& model = allModels[i];
 
 		outputFile << "\t\t{\n";
 		outputFile << "\t\t\t\"modelName\":\"" << model->getName() << "\",\n";
 
-		const ModelInterface::ModelType modelType = model->getType();
-		outputFile << "\t\t\t\"modelType\":\"" << ModelInterface::convertModelTypeToString(modelType) << "\",\n";
+		const EditorModelInterface::ModelType modelType = model->getType();
+		outputFile << "\t\t\t\"modelType\":\"" << EditorModelInterface::convertModelTypeToString(modelType) << "\",\n";
 
-		if (modelType == ModelInterface::ModelType::BUILDING)
+		if (modelType == EditorModelInterface::ModelType::BUILDING)
 			static_cast<BuildingModel*>(model.get())->save();
 
 		const std::string& loadingPath = model->getLoadingPath();
@@ -559,28 +400,20 @@ void SystemManager::updateBeforeFrame()
 	}
 	m_addModelRequests.clear();
 
-	for (const ChangeBuildingPieceMeshRequest& request : m_changeBuildingPieceMeshRequests)
-	{
-		BuildingModel* selectedBuilding = static_cast<BuildingModel*>(m_selectedModel);
-		selectedBuilding->loadPieceMesh(request.filename, request.materialFolder, m_currentBindlessOffset / 5, request.pieceType);
-
-		std::vector<Image*> modelImages;
-		selectedBuilding->getImagesForPiece(modelImages, request.pieceType);
-		m_currentBindlessOffset = addImagesToBindlessDescriptor(modelImages);
-	}
-	m_changeBuildingPieceMeshRequests.clear();
-
 	m_modelsContainer->moveToNextFrame();
-	const std::vector<std::unique_ptr<ModelInterface>>& allModels = m_modelsContainer->getModels();
-	for (const std::unique_ptr<ModelInterface>& model : allModels)
+	const std::vector<std::unique_ptr<EditorModelInterface>>& allModels = m_modelsContainer->getModels();
+	RenderMeshList& renderList = m_wolfInstance->getRenderMeshList();
+	for (const std::unique_ptr<EditorModelInterface>& model : allModels)
 	{
-		model->addMeshesToRenderList(m_wolfInstance->getRenderMeshList());
-		model->updateGraphic(*m_camera);
+		model->updateGraphic();
+		model->addMeshesToRenderList(renderList);
 	}
+
+	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
 
 	m_camera->setAspect(m_editorParams->getAspect());
 
-	m_wolfInstance->updateEvents();
+	m_wolfInstance->updateBeforeFrame();
 	m_mainRenderer->update(m_wolfInstance.get());
 
 	if (m_wolfInstance->getInputHandler().keyPressedThisFrame(GLFW_KEY_ESCAPE))
@@ -611,7 +444,7 @@ void SystemManager::updateBeforeFrame()
 
 		m_selectedModel = nullptr;
 		float minDistance = 2'000.0f;
-		for (const std::unique_ptr<ModelInterface>& model : allModels)
+		for (const std::unique_ptr<EditorModelInterface>& model : allModels)
 		{
 			if(float intersectionDistance = model->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
 			{
@@ -630,11 +463,11 @@ void SystemManager::updateBeforeFrame()
 			m_wolfInstance->evaluateUserInterfaceScript("resetSelectedModel()");
 	}
 
-	glm::vec3 cameraPosition = m_camera->getPosition();
+	const glm::vec3 cameraPosition = m_camera->getPosition();
 	m_wolfInstance->evaluateUserInterfaceScript("setCameraPosition(\"" + std::to_string(cameraPosition.x) + ", " + std::to_string(cameraPosition.y) + ", " + std::to_string(cameraPosition.z) + "\")");
 }
 
-uint32_t SystemManager::addImagesToBindlessDescriptor(const std::vector<Wolf::Image*>& images) const
+void SystemManager::addImagesToBindlessDescriptor(const std::vector<Wolf::Image*>& images) const
 {
 	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(images.size());
 	for (uint32_t i = 0; i < images.size(); ++i)
@@ -643,7 +476,7 @@ uint32_t SystemManager::addImagesToBindlessDescriptor(const std::vector<Wolf::Im
 		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
-	return m_wolfInstance->getBindlessDescriptor().addImages(imageDescriptions) + static_cast<uint32_t>(images.size());
+	m_wolfInstance->getBindlessDescriptor().addImages(imageDescriptions) + static_cast<uint32_t>(images.size());
 }
 
 void SystemManager::loadScene()
@@ -694,69 +527,49 @@ void SystemManager::loadScene()
 	m_loadSceneRequest.clear();
 }
 
-void SystemManager::addStaticModel(const std::string& filepath, const std::string& materialFolder, const glm::mat4& transform)
+void SystemManager::addStaticModel(const std::string& filepath, const std::string& materialFolder, const glm::mat4& transform) const
 {
-	ObjectModel* model = new ObjectModel(transform, false, filepath, materialFolder, true, m_currentBindlessOffset / 5, m_wolfInstance->getBindlessDescriptor());
+	ObjectModel* model = new ObjectModel(transform, filepath, materialFolder, true, m_wolfInstance->getBindlessDescriptor().getCurrentCounter() / 5);
 	m_modelsContainer->addModel(model);
 	std::vector<Image*> modelImages;
 	model->getImages(modelImages);
-	m_currentBindlessOffset = addImagesToBindlessDescriptor(modelImages);
+	addImagesToBindlessDescriptor(modelImages);
 
 	const std::string scriptToAddModelToList = "addModelToList(\"" + model->getName() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
 }
 
-void SystemManager::addBuildingModel(const std::string& filepath, const glm::mat4& transform)
+void SystemManager::addBuildingModel(const std::string& filepath, const glm::mat4& transform) const
 {
-	BuildingModel* model = new BuildingModel(transform, filepath, m_currentBindlessOffset / 5, m_wolfInstance->getBindlessDescriptor());
+	BuildingModel* model = new BuildingModel(transform, filepath, m_wolfInstance->getBindlessDescriptor());
 	m_modelsContainer->addModel(model);
-	std::vector<Image*> modelImages;
-	model->getAllImages(modelImages);
-	m_currentBindlessOffset = addImagesToBindlessDescriptor(modelImages);
 
 	const std::string scriptToAddModelToList = "addModelToList(\"" + model->getName() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
 }
 
-void SystemManager::updateUISelectedModel()
+void SystemManager::updateUISelectedModel() const
 {
-	std::string jsFunctionCall = "updateSelectedModelInfo(";
-	jsFunctionCall += "\"" + m_selectedModel->getName() + "\", ";
+	m_selectedModel->activateParams();
+	std::string jsonParams;
+	m_selectedModel->fillJSONForParams(jsonParams);
 
-	glm::vec3 scale;
-	glm::quat rotation;
-	glm::vec3 translation;
-	glm::vec3 skew;
-	glm::vec4 perspective;
-	glm::decompose(m_selectedModel->getTransform(), scale, rotation, translation, skew, perspective);
-	glm::vec3 eulerRotation = glm::eulerAngles(rotation) * 3.14159f / 180.f;
-
-	auto addVectorComponentsToParameters = [&](const glm::vec3& vector, bool isLast = false)
+	std::string jsFunctionCall = "setNewParams(\"";
+	std::string escapedJSON;
+	for (const char character : jsonParams)
 	{
-		jsFunctionCall += std::to_string(vector.x) + ", " + std::to_string(vector.y) + ", " + std::to_string(vector.y) + (isLast ? ")" : ", ");
-	};
-	addVectorComponentsToParameters(scale);
-	addVectorComponentsToParameters(translation);
-	addVectorComponentsToParameters(eulerRotation, true);
-
-	m_wolfInstance->evaluateUserInterfaceScript(jsFunctionCall);
-
-	if (m_selectedModel->getType() == ModelInterface::ModelType::BUILDING)
-	{
-		const BuildingModel* selectedBuilding = static_cast<const BuildingModel*>(m_selectedModel);
-
-		std::string escapedMessage;
-		for (const char character : selectedBuilding->getWindowMeshLoadingPath(0))
-		{
-			if (character == '\\')
-				escapedMessage += "\\\\";
-			else if (character == '\"')
-				escapedMessage += "\\\"";
-			else
-				escapedMessage += character;
-		}
-
-		m_wolfInstance->evaluateUserInterfaceScript("updateSelectedBuildingInfo(" + std::to_string(selectedBuilding->getBuildingSizeX()) + "," + std::to_string(selectedBuilding->getBuildingSizeZ()) + "," +
-			std::to_string(selectedBuilding->getFloorCount()) + ", " + std::to_string(selectedBuilding->getWindowSizeSize()) + ", \"" + escapedMessage + "\")");
+		if (character == '\\')
+			escapedJSON += R"(\\\\)";
+		else if (character == '\"')
+			escapedJSON += "\\\"";
+		else if (character == '\n')
+			continue;
+		else if (character == '\t')
+			escapedJSON += ' ';
+		else
+			escapedJSON += character;
 	}
+	jsFunctionCall += escapedJSON;
+	jsFunctionCall += "\")";
+	m_wolfInstance->evaluateUserInterfaceScript(jsFunctionCall);
 }

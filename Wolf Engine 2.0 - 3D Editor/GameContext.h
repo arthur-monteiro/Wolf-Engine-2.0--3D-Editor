@@ -1,6 +1,6 @@
 #pragma once
 
-class ModelInterface;
+class EditorModelInterface;
 
 struct GameContext
 {

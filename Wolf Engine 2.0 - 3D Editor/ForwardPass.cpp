@@ -8,8 +8,7 @@
 #include "BuildingModel.h"
 #include "CommonDescriptorLayouts.h"
 #include "GameContext.h"
-#include "ModelInterface.h"
-#include "ObjLoader.h"
+#include "EditorModelInterface.h"
 #include "Vertex2DTextured.h"
 
 using namespace Wolf;
@@ -122,9 +121,8 @@ void ForwardPass::record(const RecordContext& context)
 	const VkViewport renderViewport = m_editorParams->getRenderViewport();
 	vkCmdSetViewport(commandBuffer, 0, 1, &renderViewport);
 
-	context.renderMeshList->draw(commandBuffer, m_renderPass.get(), 0,
+	context.renderMeshList->draw(context, commandBuffer, m_renderPass.get(), 0, 0,
 		{
-			{ 0, context.bindlessDescriptorSet },
 			{ COMMON_DESCRIPTOR_SET_SLOT, m_commonDescriptorSet.get() }
 		});
 
@@ -132,7 +130,7 @@ void ForwardPass::record(const RecordContext& context)
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_userInterfacePipeline->getPipeline());
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_userInterfacePipeline->getPipelineLayout(), 0, 1,
 		m_userInterfaceDescriptorSet->getDescriptorSet(), 0, nullptr);
-	m_fullscreenRect->draw(commandBuffer);
+	m_fullscreenRect->draw(commandBuffer, RenderMeshList::NO_CAMERA_IDX);
 
 	m_renderPass->endRenderPass(commandBuffer);
 

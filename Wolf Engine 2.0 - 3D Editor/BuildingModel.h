@@ -6,9 +6,10 @@
 #include <Mesh.h>
 #include <PipelineSet.h>
 
-#include "ModelInterface.h"
+#include "EditorModelInterface.h"
+#include "Notifier.h"
 
-class BuildingModel : public ModelInterface
+class BuildingModel : public EditorModelInterface
 {
 public:
 	struct InstanceData
@@ -40,10 +41,13 @@ public:
 		}
 	};
 
-	BuildingModel(const glm::mat4& transform, const std::string& filepath, uint32_t materialIdOffset, const Wolf::BindlessDescriptor& bindlessDescriptor);
+	BuildingModel(const glm::mat4& transform, const std::string& filepath, Wolf::BindlessDescriptor& bindlessDescriptor);
 
-	void updateGraphic(const Wolf::CameraInterface& camera) override;
+	void updateGraphic() override;
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const override;
+
+	void activateParams() override;
+	void fillJSONForParams(std::string& outJSON) override;
 	
 	const Wolf::AABB& getAABB() const override { return Wolf::AABB(); }
 	const std::string& getLoadingPath() const override { return  m_filepath; }
@@ -51,57 +55,94 @@ public:
 	enum class PieceType { WINDOW, WALL };
 
 	ModelType getType() override { return ModelType::BUILDING; }
-	float getBuildingHeight() const { return m_fullSize.y; }
-	float getBuildingSizeX() const { return m_fullSize.x; }
-	float getBuildingSizeZ() const { return m_fullSize.z; }
-	float getWindowSizeSize() const { return m_window.sideSizeInMeter;  }
-	uint32_t getFloorCount() const { return m_floorCount; }
-	const std::string& getWindowMeshLoadingPath(uint32_t meshIdx) const { return m_window.mesh.loadingPath; }
-	void getAllImages(std::vector<Wolf::Image*>& images);
-	void getImagesForPiece(std::vector<Wolf::Image*>& images, PieceType pieceType);
-
-	void setBuildingSizeX(float value);
-	void setBuildingSizeZ(float value);
-	void setWindowSideSize(float value);
-	void setFloorCount(uint32_t value);
-
-	void loadPieceMesh(const std::string& filename, const std::string& materialFolder, uint32_t materialIdOffset, PieceType pieceType);
+	const std::string& getWindowMeshLoadingPath(uint32_t meshIdx) const { return m_window.getMeshWithMaterials().getLoadingPath(); }
 
 	void save() const;
 
 private:
-	struct MeshWithMaterials
+	struct MeshInfo
 	{
-		std::string loadingPath;
-		std::unique_ptr<Wolf::Mesh> mesh;
-		std::vector<std::unique_ptr<Wolf::Image>> images;
-		glm::vec2 meshSizeInMeter;
-		glm::vec2 center;
+		glm::vec2 scale;
+		glm::vec2 offset;
 	};
 
-	static void setDefaultMesh(MeshWithMaterials& output, const glm::vec3& color, uint32_t materialIdOffset);
-	void setDefaultWindowMesh(uint32_t materialIdOffset);
-	void setDefaultWallMesh(uint32_t materialIdOffset);
+	class MeshWithMaterials : public Notifier
+	{
+	public:
+		MeshWithMaterials(const std::string& category, Wolf::BindlessDescriptor& bindlessDescriptor) :
+			m_bindlessDescriptor(bindlessDescriptor), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, true) {}
+
+		void updateBeforeFrame();
+		void loadMesh();
+		void loadDefaultMesh(const glm::vec3& color);
+
+		void setLoadingPath(const std::string& loadingPath) { m_loadingPathParam = loadingPath; }
+
+		const std::string& getLoadingPath() const { return m_loadingPathParam; }
+		Wolf::Mesh* getMesh() const { return m_mesh.get(); }
+		const glm::vec2& getSizeInMeter() const { return m_sizeInMeter; }
+		const glm::vec2& getCenter() const { return m_center; }
+
+		EditorParamString* getLoadingPathParam() { return &m_loadingPathParam; }
+
+	private:
+		Wolf::BindlessDescriptor& m_bindlessDescriptor;
+		void addImagesToBindlessDescriptor() const;
+
+		EditorParamString m_loadingPathParam;
+		std::unique_ptr<Wolf::Mesh> m_mesh;
+		std::vector<std::unique_ptr<Wolf::Image>> m_images;
+		glm::vec2 m_sizeInMeter;
+		glm::vec2 m_center;
+
+		void requestMeshLoading();
+		bool m_meshLoadingRequested = false;
+	};
+
+	class BuildingPiece : public Notifier
+	{
+	public:
+		BuildingPiece(const std::string& name, const std::function<void()>& callbackValueChanged, Wolf::BindlessDescriptor& bindlessDescriptor) :
+			m_sideSizeInMeterParam("Side size in meter", "Building", name, 0.1f, 5.0f, callbackValueChanged),
+			m_meshWithMaterials(name, bindlessDescriptor)
+		{
+			m_sideSizeInMeterParam = 2.0f;
+			m_meshWithMaterials.subscribe(this, [this] { notifySubscribers(); });
+		}
+
+		MeshWithMaterials& getMeshWithMaterials() { return m_meshWithMaterials; }
+		const MeshWithMaterials& getMeshWithMaterials() const { return m_meshWithMaterials; }
+		EditorParamFloat* getSideSizeInMeterParam() { return &m_sideSizeInMeterParam; }
+		const EditorParamFloat* getSideSizeInMeterParam() const { return &m_sideSizeInMeterParam; }
+		float getSideSizeInMeter() const { return m_sideSizeInMeterParam; }
+		float getHeightInMeter() const { return m_heightInMeter; }
+		std::unique_ptr<Wolf::Buffer>& getInfoUniformBuffer() { return m_infoUniformBuffer; }
+		std::unique_ptr<Wolf::DescriptorSet>& getDescriptorSet() { return m_descriptorSet; }
+		const std::unique_ptr<Wolf::DescriptorSet>& getDescriptorSet() const { return m_descriptorSet; }
+		std::unique_ptr<Wolf::Buffer>& getInstanceBuffer() { return m_instanceBuffer; }
+		const std::unique_ptr<Wolf::Buffer>& getInstanceBuffer() const { return m_instanceBuffer; }
+		uint32_t getInstanceCount() const { return m_instanceCount; }
+
+		void setHeightInMeter(float value) { m_heightInMeter = value; }
+		void setInstanceCount(uint32_t value) { m_instanceCount = value; }
+
+	private:
+		EditorParamFloat m_sideSizeInMeterParam;
+		float m_heightInMeter = 2.0f;
+		MeshWithMaterials m_meshWithMaterials;
+
+		std::unique_ptr<Wolf::DescriptorSet> m_descriptorSet;
+		std::unique_ptr<Wolf::Buffer> m_instanceBuffer;
+		uint32_t m_instanceCount = 0;
+		std::unique_ptr<Wolf::Buffer> m_infoUniformBuffer;
+	};
 
 	float computeFloorSize() const;
 	float computeWindowCountOnSide(const glm::vec3& sideDir) const;
 	void rebuildRenderingInfos();
 
 	std::string m_filepath;
-	glm::vec3 m_fullSize;
-
-	struct BuildingPiece
-	{
-		float sideSizeInMeter = 2.0f;
-		float heightInMeter = 2.0f;
-		MeshWithMaterials mesh;
-
-		std::unique_ptr<Wolf::DescriptorSet> descriptorSet;
-		std::unique_ptr<Wolf::Buffer> instanceBuffer;
-		uint32_t instanceCount = 0;
-		std::unique_ptr<Wolf::Buffer> infoUniformBuffer;
-	};
-
+	float m_fullSizeY;
 	bool m_needRebuild = false;
 
 	// Windows
@@ -111,19 +152,26 @@ private:
 	BuildingPiece m_wall;
 
 	// Floors
-	uint32_t m_floorCount;
 	float m_floorHeightInMeter;
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, BuildingModel>> m_defaultPipelineSet;
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayoutGenerator, BuildingModel>> m_buildingDescriptorSetLayoutGenerator;
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, BuildingModel>> m_buildingDescriptorSetLayout;
-};
 
-namespace Building
-{
-	struct MeshInfo
+	EditorParamVector2 m_sizeXZParam = EditorParamVector2("Building size", "Building", "General", 1.0f, 150.0f, [this] { m_needRebuild = true; });
+	EditorParamUInt m_floorCountParam = EditorParamUInt("Floor count", "Building", "Floors", 1, 50, [this]
 	{
-		glm::vec2 scale;
-		glm::vec2 offset;
+		m_fullSizeY = m_floorHeightInMeter * static_cast<float>(m_floorCountParam);
+		m_needRebuild = true;
+	});
+
+	std::array<EditorParamInterface*, 6> m_buildingParams =
+	{
+		&m_sizeXZParam,
+		&m_floorCountParam,
+		m_window.getSideSizeInMeterParam(),
+		m_window.getMeshWithMaterials().getLoadingPathParam(),
+		m_wall.getSideSizeInMeterParam(),
+		m_wall.getMeshWithMaterials().getLoadingPathParam()
 	};
-}
+};

@@ -1,11 +1,8 @@
-#version 450
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 0, set = 1) uniform UniformBufferMVP
 {
     mat4 model;
-	mat4 view;
-	mat4 projection;
 } ubMVP;
 
 layout(binding = 0, set = 3) uniform UniformBufferBuildingMesh
@@ -74,11 +71,11 @@ void main()
 		inputPosition = rotMatrix * inputPosition;
 	}
 
-	vec4 viewPos = ubMVP.view * ubMVP.model * vec4(inputPosition + inPositionOffset, 1.0);
+	vec4 viewPos = getViewMatrix() * ubMVP.model * vec4(inputPosition + inPositionOffset, 1.0);
 
-    gl_Position = ubMVP.projection * viewPos;
+    gl_Position = getProjectionMatrix() * viewPos;
 
-	mat3 usedModelMatrix = transpose(inverse(mat3(ubMVP.view * ubMVP.model)));
+	mat3 usedModelMatrix = transpose(inverse(mat3(getViewMatrix() * ubMVP.model)));
     vec3 n = normalize(usedModelMatrix * inNormal);
 	vec3 t = normalize(usedModelMatrix * inTangent);
 	t = normalize(t - dot(t, n) * n);

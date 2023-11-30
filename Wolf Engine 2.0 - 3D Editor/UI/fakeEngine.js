@@ -29,7 +29,52 @@ function pickFile(inputOption) {
 }
 
 function selectModelByName(name) {
-    updateSelectedModelInfo(name, 1, 1, 1, 0, 0, 0, 0, 0, 0);
+    let json = "{ \
+        \"params\": [ \
+            { \
+                \"name\" : \"Scale\", \
+                \"tab\" : \"Model\", \
+                \"category\" : \"Transform\", \
+                \"type\" : \"Vector3\", \
+                \"valueX\" : 1.000000, \
+                \"valueY\" : 1.000000, \
+                \"valueZ\" : 1.000000, \
+                \"min\" : -1.0, \
+                \"max\" : 1.0 \
+            }, \
+            { \
+                \"name\" : \"Translation\", \
+                \"tab\" : \"Model\", \
+                \"category\" : \"Transform\", \
+                \"type\" : \"Vector3\", \
+                \"valueX\" : 0.000000, \
+                \"valueY\" : 0.000000, \
+                \"valueZ\" : 0.000000, \
+                \"min\" : -10.0, \
+                \"max\" : 10.0 \
+            }, \
+            { \
+                \"name\" : \"Rotation\", \
+                \"tab\" : \"Model\", \
+                \"category\" : \"Transform\", \
+                \"type\" : \"Vector3\", \
+                \"valueX\" : 0.000000, \
+                \"valueY\" : -0.000000, \
+                \"valueZ\" : 0.000000, \
+                \"min\" : 0.0, \
+                \"max\" : 6.29 \
+            }, \
+            { \
+                \"name\" : \"Name\", \
+                \"tab\" : \"Model\", \
+                \"category\" : \"General\", \
+                \"type\" : \"String\", \
+                \"value\" : \"cube.obj\" \
+            } \
+        ] \
+    }"
+
+    setNewParams(json);
 
     if (name.includes("building")) {
         updateSelectedBuildingInfo(10, 20, 8, 2, "F:\\Code\\Wolf Engine 2.0 - 3D Editor\\Wolf Engine 2.0 - 3D Editor\\UI\\UI.html");

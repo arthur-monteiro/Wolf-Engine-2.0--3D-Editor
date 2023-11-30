@@ -9,12 +9,11 @@
 
 using namespace Wolf;
 
-ObjectModel::ObjectModel(const glm::mat4& transform, bool buildAccelerationStructures, const std::string& filename,
-	const std::string& mtlFolder, bool loadMaterials, uint32_t materialIdOffset, const BindlessDescriptor& bindlessDescriptor) : ModelInterface(transform)
+ObjectModel::ObjectModel(const glm::mat4& transform, const std::string& filename, const std::string& mtlFolder, bool loadMaterials, uint32_t materialIdOffset) : EditorModelInterface(transform)
 {
 	Timer timer(filename + " loading");
 
-	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, ObjectModel>([this, &bindlessDescriptor](std::unique_ptr<PipelineSet>& pipelineSet)
+	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, ObjectModel>([this](std::unique_ptr<PipelineSet>& pipelineSet)
 		{
 			pipelineSet.reset(new PipelineSet);
 
@@ -33,7 +32,9 @@ ObjectModel::ObjectModel(const glm::mat4& transform, bool buildAccelerationStruc
 			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
 			// Resources
-			pipelineInfo.descriptorSetLayouts = { bindlessDescriptor.getDescriptorSetLayout(), m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), CommonDescriptorLayouts::g_commonDescriptorSetLayout };
+			pipelineInfo.descriptorSetLayouts = { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), CommonDescriptorLayouts::g_commonDescriptorSetLayout };
+			pipelineInfo.bindlessDescriptorSlot = 0;
+			pipelineInfo.cameraDescriptorSlot = 3;
 
 			// Color Blend
 			pipelineInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
@@ -52,7 +53,7 @@ ObjectModel::ObjectModel(const glm::mat4& transform, bool buildAccelerationStruc
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.loadMaterials = loadMaterials;
 	modelLoadingInfo.materialIdOffset = materialIdOffset;
-	ObjLoader::loadObject(m_modelData, modelLoadingInfo);
+	ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
 	m_descriptorSet.reset(new DescriptorSet(m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
 
@@ -61,7 +62,7 @@ ObjectModel::ObjectModel(const glm::mat4& transform, bool buildAccelerationStruc
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 	const uint32_t lastBackslashCharPos = filename.find_last_of('\\') + 1;
-	m_name = filename.substr(lastBackslashCharPos, filename.size() - lastBackslashCharPos);
+	m_nameParam = filename.substr(lastBackslashCharPos, filename.size() - lastBackslashCharPos);
 	m_filename = filename;
 }
 

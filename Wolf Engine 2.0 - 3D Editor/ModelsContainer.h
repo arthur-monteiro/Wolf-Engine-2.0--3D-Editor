@@ -3,20 +3,20 @@
 #include <memory>
 #include <vector>
 
-#include "ModelInterface.h"
+#include "EditorModelInterface.h"
 
 class ModelsContainer
 {
 public:
-	void addModel(ModelInterface* model);
+	void addModel(EditorModelInterface* model);
 	void moveToNextFrame();
 
 	void clear();
 
-	const std::vector<std::unique_ptr<ModelInterface>>& getModels() { return m_currentModels; }
+	const std::vector<std::unique_ptr<EditorModelInterface>>& getModels() { return m_currentModels; }
 
 private:
-	std::vector<std::unique_ptr<ModelInterface>> m_currentModels;
-	std::vector<std::unique_ptr<ModelInterface>> m_newModels;
+	std::vector<std::unique_ptr<EditorModelInterface>> m_currentModels;
+	std::vector<std::unique_ptr<EditorModelInterface>> m_newModels;
 
 };

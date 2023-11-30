@@ -1,14 +1,14 @@
 #pragma once
 
-#include <ObjLoader.h>
+#include <ModelLoader.h>
 #include <PipelineSet.h>
 
-#include "ModelInterface.h"
+#include "EditorModelInterface.h"
 
-class ObjectModel : public ModelInterface
+class ObjectModel : public EditorModelInterface
 {
 public:
-	ObjectModel(const glm::mat4& transform, bool buildAccelerationStructures, const std::string& filename, const std::string& mtlFolder, bool loadMaterials, uint32_t materialIdOffset, const Wolf::BindlessDescriptor& bindlessDescriptor);
+	ObjectModel(const glm::mat4& transform, const std::string& filename, const std::string& mtlFolder, bool loadMaterials, uint32_t materialIdOffset);
 	~ObjectModel() override = default;
 	
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const override;

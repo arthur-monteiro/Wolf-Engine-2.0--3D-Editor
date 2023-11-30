@@ -27,7 +27,7 @@
     <ClCompile Include="ForwardPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ModelInterface.cpp">
+    <ClCompile Include="EditorModelInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ModelsContainer.cpp">
@@ -39,9 +39,6 @@
     <ClCompile Include="ObjectModel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="EditorParams.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -49,6 +46,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CommonDescriptorLayouts.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorTypes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Notifier.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -65,7 +68,7 @@
     <ClInclude Include="ForwardPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ModelInterface.h">
+    <ClInclude Include="EditorModelInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ModelsContainer.h">
@@ -77,9 +80,6 @@
     <ClInclude Include="ObjectModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="EditorParams.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -87,6 +87,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CommonDescriptorLayouts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Notifier.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -125,6 +125,7 @@
 
     <script src="./slider.js"></script>
     <script src="./select.js"></script>
+	<script src="./paramsEdition.js"></script>
 	<script type="text/javascript">
 	function updateFrameRate() {
 		document.getElementById('frameRate').innerHTML = getFrameRate();
@@ -232,111 +233,20 @@
 	}
 
 	let defaultFilter = "undefined";
-	function pickFileAndSetValue(id, option, filter) {
+	function pickFileAndSetValue(id, option, filter, callback) {
 		if (filter == "undefined")
 			filter = defaultFilter;
 
 		let filepath = pickFile(option, filter);
 		document.getElementById(id).innerHTML = filepath;
 
+		if (callback != undefined)
+			callback(filepath);
+
 		if (id == "addModelPath") {
 			let materialFolder = filepath.substr(0, filepath.lastIndexOf("\\"));
 			document.getElementById("addModelMaterialPath").innerHTML = materialFolder;
 		}
-
-		if (id.includes("windowMesh")) {
-			changeBuildingWindowMesh(id.replace("windowMesh", ""), filepath, filepath.substr(0, filepath.lastIndexOf("\\")));
-		}
-		else if (id.includes("wallMesh")) {
-			changeBuildingWallMesh(id.replace("wallMesh", ""), filepath, filepath.substr(0, filepath.lastIndexOf("\\")));
-		}
-	}
-
-	function updateSelectedModelInfo(name, scaleX, scaleY, scaleZ, translateX, translateY, translateZ, rotateX, rotateY, rotateZ) {
-		function addVectorInput(name, min, max, vecX, vecY, vecZ) {
-			let htmlToAdd = "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom: 1px solid white;'>";
-			htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + name + " side size:</div>";
-			htmlToAdd += "<div style='display: inline-block; width: 70%'>";
-			htmlToAdd += "<wolf-slider max='" + max + "' min='" + min + "' step='0.01' oninput=\"change" + name + "X\" value=\"" + vecX + "\"></wolf-slider>";
-			htmlToAdd += "<wolf-slider max='" + max + "' min='" + min + "' step='0.01' oninput=\"change" + name + "Y\" value=\"" + vecY + "\"></wolf-slider>";
-			htmlToAdd += "<wolf-slider max='" + max + "' min='" + min + "' step='0.01' oninput=\"change" + name + "Z\" value=\"" + vecZ + "\"></wolf-slider>";
-			htmlToAdd += "</div>";
-			htmlToAdd += "</div>";
-
-			return htmlToAdd;
-		}
-
-		let modelInfosContent = "<div class='blockParameters'>";
-		modelInfosContent += "<div class='blockParametersTitle'>General</div>";
-		modelInfosContent += "<div class='blockParametersContent'>";
-		modelInfosContent += "Name: <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + name + "\"/>";
-		modelInfosContent += "</div>"; // blockParametersContent
-		modelInfosContent += "</div>"; // blockParameters
-
-		modelInfosContent += "<div class='blockParameters'>";
-		modelInfosContent += "<div class='blockParametersTitle'>Transform</div>";
-		modelInfosContent += "<div class='blockParametersContent'>";
-		modelInfosContent += addVectorInput("Scale", -1, 1, scaleX, scaleY, scaleZ);
-		modelInfosContent += addVectorInput("Translation", -10, 10, translateX, translateY, translateZ);
-		modelInfosContent += addVectorInput("Rotation", 0, 6.29, rotateX, rotateY, rotateZ);
-		modelInfosContent += "</div>"; // blockParametersContent
-		modelInfosContent += "</div>"; // blockParameters
-
-		document.getElementById('modelInfos').innerHTML = modelInfosContent;
-	}
-
-	function updateSelectedBuildingInfo(buildingSizeX, buildingSizeZ, floorCount, windowSideSize, windowsMesh0) {
-		document.getElementById("tabLinkBuilding").style.display = "block";
-
-		let buildingInfoContent = "<div class='blockParameters'>";
-		buildingInfoContent += "<div class='blockParametersTitle'>General</div>";
-		buildingInfoContent += "<div class='blockParametersContent'>";
-		buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>Building size:</div>";
-		buildingInfoContent += "<div id='buildingSizeSliders' style='display: inline-block; width: 70%'>";
-		buildingInfoContent += "<wolf-slider max='150' min='1' step='0.01' oninput='changeBuildingSizeX' value=\"" + buildingSizeX + "\"></wolf-slider>";
-		buildingInfoContent += "<wolf-slider max='150' min='1' step='0.01' oninput='changeBuildingSizeZ' value=\"" + buildingSizeZ + "\"></wolf-slider>";
-		buildingInfoContent += "</div>"; // buildingSizeSliders
-		buildingInfoContent += "</div>"; // blockParametersContent
-		buildingInfoContent += "</div>"; // blockParameters
-
-		buildingInfoContent += "<div class='blockParameters'>";
-		buildingInfoContent += "<div class='blockParametersTitle'>Floors</div>";
-		buildingInfoContent += "<div class='blockParametersContent'>";
-		buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>Floor count:</div>";
-		buildingInfoContent += "<wolf-slider max='50' min='1' step='1' oninput='changeBuildingFloorCount' value=\"" + floorCount + "\"></wolf-slider>"
-		buildingInfoContent += "</div>"; // blockParametersContent
-		buildingInfoContent += "</div>";  // blockParameters
-
-		function addBuildingPieceInfos(name, sideSize, mesh0) {
-			let nameWithUppercase = name.charAt(0).toUpperCase() + name.slice(1);
-
-			buildingInfoContent += "<div style='width: 100%; height: 50px'>";
-			buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + nameWithUppercase + " side size:</div>";
-			buildingInfoContent += "<wolf-slider max='5' min='0.1' step='0.01' oninput='changeBuilding" + nameWithUppercase + "SideSize' value=\"" + sideSize + "\"></wolf-slider>"
-			buildingInfoContent += "</div>";
-			buildingInfoContent += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + nameWithUppercase + " meshes:</div>";
-			buildingInfoContent += "<table style='width: 70%; border-collapse: collapse; border-radius: 5px'>"
-			buildingInfoContent += "<tr><td><div id='" + name + "Mesh0'>" + (mesh0 ? mesh0 : "Default") +"</div></td><td><button onclick=\"pickFileAndSetValue('" + name + "Mesh0', 'open', 'obj')\">Select file</button></td></tr>";
-			buildingInfoContent += "<tr><td><div id='" + name + "Mesh1'>No mesh </div></td><td><button onclick=\"pickFileAndSetValue('" + name + "Mesh1', 'open', 'obj')\">Select file</button></td></tr>";
-			buildingInfoContent += "<tr><td><div id='" + name + "Mesh2'>No mesh </div></td><td><button onclick=\"pickFileAndSetValue('" + name + "Mesh2', 'open', 'obj')\">Select file</button></td></tr>";
-			buildingInfoContent += "</table>"
-		}
-		
-		buildingInfoContent += "<div class='blockParameters'>";
-		buildingInfoContent += "<div class='blockParametersTitle'>Windows</div>";
-		buildingInfoContent += "<div class='blockParametersContent'>";
-		addBuildingPieceInfos("window", windowSideSize, windowsMesh0);
-		buildingInfoContent += "</div>"; // blockParametersContent
-		buildingInfoContent += "</div>"; // blockParameters
-
-		buildingInfoContent += "<div class='blockParameters'>";
-		buildingInfoContent += "<div class='blockParametersTitle'>Walls</div>";
-		buildingInfoContent += "<div class='blockParametersContent'>";
-		addBuildingPieceInfos("wall", 2, "");
-		buildingInfoContent += "</div>"; // blockParametersContent
-		buildingInfoContent += "</div>"; // blockParameters
-
-		document.getElementById("buildingInfos").innerHTML = buildingInfoContent;
 	}
 
 	function resetSelectedModel() {
@@ -346,7 +256,7 @@
 	}
 
 	function addModelToList(name) {
-		document.getElementById('modelList').innerHTML += "<div onclick=\"selectModelByName('" + name + "')\">" + name + "</div><br/>";
+		document.getElementById('modelList').innerHTML += "<div class='modelListItem' onclick=\"selectModelByName('" + name + "')\">" + name + "</div><br/>";
 	}
 
 	function resetModelList() {

@@ -1,15 +1,15 @@
 #include "ModelsContainer.h"
 
-void ModelsContainer::addModel(ModelInterface* model)
+void ModelsContainer::addModel(EditorModelInterface* model)
 {
-	m_newModels.push_back(std::unique_ptr<ModelInterface>(model));
+	m_newModels.push_back(std::unique_ptr<EditorModelInterface>(model));
 }
 
 void ModelsContainer::moveToNextFrame()
 {
-	for(std::unique_ptr<ModelInterface>& model : m_newModels)
+	for(std::unique_ptr<EditorModelInterface>& model : m_newModels)
 	{
-		m_currentModels.push_back(std::unique_ptr<ModelInterface>(model.release()));
+		m_currentModels.push_back(std::unique_ptr<EditorModelInterface>(model.release()));
 	}
 	m_newModels.clear();
 }

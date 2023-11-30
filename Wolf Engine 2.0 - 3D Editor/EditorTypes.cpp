@@ -1,0 +1,254 @@
+#include "EditorTypes.h"
+
+#include <WolfEngine.h>
+
+Wolf::WolfEngine* EditorParamInterface::ms_wolfInstance = nullptr;
+
+void EditorParamInterface::setGlobalWolfInstance(Wolf::WolfEngine* wolfInstance)
+{
+	ms_wolfInstance = wolfInstance;
+}
+
+void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCount)
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + R"("name" : ")" + m_name + "\",\n";
+	out += tabs + R"("tab" : ")" + m_tab + "\",\n";
+	out += tabs + R"("category" : ")" + m_category + "\",\n";
+	out += tabs + R"("type" : ")" + getTypeAsString() + "\",\n";
+}
+
+std::string EditorParamInterface::getTypeAsString()
+{
+	switch (m_type)
+	{
+		case Type::Float:
+			return "Float";
+			break;
+		case Type::Vector2:
+			return "Vector2";
+			break;
+		case Type::Vector3: 
+			return "Vector3";
+			break;
+		case Type::String:
+			return "String";
+			break;
+		case Type::UInt:
+			return "UInt";
+			break;
+		case Type::File:
+			return "File";
+			break;
+		default:
+			Wolf::Debug::sendError("Undefined type");
+			return "Undefined_type";
+	}
+}
+
+std::string EditorParamInterface::removeSpaces(const std::string& in)
+{
+	std::string out;
+	bool nextCharIsUpper = false;
+	for (const char character : in)
+	{
+		if (character == ' ')
+		{
+			nextCharIsUpper = true;
+			continue;
+		}
+
+		out += nextCharIsUpper ? std::toupper(character) : character;
+		nextCharIsUpper = false;
+	}
+	return out;
+}
+
+template void EditorParamsVector<glm::vec2>::activate();
+template void EditorParamsVector<glm::vec3>::activate();
+
+template <typename T>
+void EditorParamsVector<T>::activate()
+{
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+	const std::string functionPrefix = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+
+	const std::string functionChangeXName = functionPrefix + "X";
+	jsObject[functionChangeXName.c_str()] = std::bind(&EditorParamsVector::setValueXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+
+	const std::string functionChangeYName = functionPrefix + "Y";
+	jsObject[functionChangeYName.c_str()] = std::bind(&EditorParamsVector::setValueYJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+
+	if (sizeof(T) > sizeof(glm::vec2))
+	{
+		const std::string functionChangeZName = functionPrefix + "Z";
+		jsObject[functionChangeZName.c_str()] = std::bind(&EditorParamsVector::setValueZJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	}
+}
+
+template void EditorParamsVector<glm::vec2>::addToJSON(std::string& out, uint32_t tabCount, bool isLast);
+template void EditorParamsVector<glm::vec3>::addToJSON(std::string& out, uint32_t tabCount, bool isLast);
+
+template <typename T>
+void EditorParamsVector<T>::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + + "{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	out += tabs + '\t' + R"("valueX" : )" + std::to_string(m_value.x) + ",\n";
+	out += tabs + '\t' + R"("valueY" : )" + std::to_string(m_value.y) + ",\n";
+	if (sizeof(T) > sizeof(glm::vec2))
+		out += tabs + '\t' + R"("valueZ" : )" + std::to_string(m_value[2]) + ",\n";
+	out += tabs + '\t' + R"("min" : )" + std::to_string(m_min) + ",\n";
+	out += tabs + '\t' + R"("max" : )" + std::to_string(m_max) + "\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+template void EditorParamsVector<glm::vec2>::setValue(const glm::vec2& value);
+template void EditorParamsVector<glm::vec3>::setValue(const glm::vec3& value);
+
+template <typename T>
+void EditorParamsVector<T>::setValue(const T& value)
+{
+	m_value = value;
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
+}
+
+template <typename T>
+void EditorParamsVector<T>::setValue(float value, uint32_t componentIdx)
+{
+	m_value[static_cast<int>(componentIdx)] = value;
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
+}
+
+template <typename T>
+void EditorParamsVector<T>::setValueXJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const float value = static_cast<float>(args[0].ToNumber());
+	setValue(value, 0);
+}
+
+template <typename T>
+void EditorParamsVector<T>::setValueYJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const float value = static_cast<float>(args[0].ToNumber());
+	setValue(value, 1);
+}
+
+template <typename T>
+void EditorParamsVector<T>::setValueZJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const float value = static_cast<float>(args[0].ToNumber());
+	setValue(value, 2);
+}
+
+void EditorParamUInt::activate()
+{
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+	const std::string functionChangeName = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamUInt::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void EditorParamUInt::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	out += tabs + '\t' + R"("value" : )" + std::to_string(m_value) + ",\n";
+	out += tabs + '\t' + R"("min" : )" + std::to_string(m_min) + ",\n";
+	out += tabs + '\t' + R"("max" : )" + std::to_string(m_max) + "\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamUInt::setValue(uint32_t value)
+{
+	m_value = value;
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
+}
+
+void EditorParamUInt::setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const uint32_t value = static_cast<uint32_t>(args[0].ToInteger());
+	setValue(value);
+}
+
+void EditorParamFloat::activate()
+{
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+	const std::string functionChangeName = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamFloat::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void EditorParamFloat::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	out += tabs + '\t' + R"("value" : )" + std::to_string(m_value) + ",\n";
+	out += tabs + '\t' + R"("min" : )" + std::to_string(m_min) + ",\n";
+	out += tabs + '\t' + R"("max" : )" + std::to_string(m_max) + "\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamFloat::setValue(float value)
+{
+	m_value = value;
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
+}
+
+void EditorParamFloat::setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const float value = static_cast<float>(args[0].ToNumber());
+	setValue(value);
+}
+
+void EditorParamString::activate()
+{
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+	
+	const std::string functionChangeName = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamString::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	out += tabs + '\t' + R"("value" : ")" + m_value + "\"\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamString::setValue(const std::string& value)
+{
+	m_value = value;
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
+}
+
+void EditorParamString::setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string value = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	setValue(value);
+}

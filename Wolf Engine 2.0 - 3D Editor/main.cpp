@@ -5,5 +5,5 @@ int main()
 	const std::unique_ptr<SystemManager> s(new SystemManager);
 	s->run();
 
-	return 0;
+	return EXIT_SUCCESS;
 }

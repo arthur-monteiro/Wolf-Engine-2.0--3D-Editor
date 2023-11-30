@@ -1,0 +1,148 @@
+function setNewParams(inputJSON)
+{
+    // Hide all tab links
+    let tabLinks = document.getElementsByClassName("tabLink");
+    for (var i = 0; i < tabLinks.length; ++i) {
+        var tabLink = tabLinks[i];  
+        tabLink.classList.remove("tabSelected");
+        tabLink.style.display = "none";
+    }
+    document.getElementById("tabLinkModel").classList.add("tabSelected");
+    document.getElementById("modelInfos").style.display = "block";
+
+    const jsonObject = JSON.parse(inputJSON);
+
+    // 1 - Fill initial data (tab count, categories count, ...)
+    let tabs = []
+    jsonObject.params.forEach(function(param) {
+        let tabIdx = -1;
+        for (let i = 0; i < tabs.length; ++i){
+            if (tabs[i][0] == param.tab) {
+                tabIdx = i;
+                break;
+            }
+        }
+
+        if (tabIdx == -1) {
+            tabs.push([param.tab, []]);
+            tabIdx = tabs.length - 1;
+        }
+        let tab = tabs[tabIdx];
+        let categories = tab[1];
+
+        let categoryIdx = -1;
+        for (let i = 0; i < categories.length; ++i){
+            if (categories[i][0] == param.category) {
+                categoryIdx = i;
+                break;
+            }
+        }
+
+        if (categoryIdx == -1) {
+            let initialHTML = "<div class='blockParameters'>";
+            initialHTML += "<div class='blockParametersTitle'>" + param.category + "</div>";
+		    initialHTML += "<div class='blockParametersContent'>";
+            categories.push([param.category, 0, initialHTML]);
+            categoryIdx = categories.length - 1;
+        }
+    
+        categories[categoryIdx][1]++;
+    });
+
+    // 2 - Fill content
+    tabs.forEach(function(tab) {
+        let currentCategoryCounter = [];
+        let categories = tab[1];
+        for (let i = 0; i < categories.length; ++i)
+            currentCategoryCounter.push(0);
+
+        for (let i = 0; i < jsonObject.params.length; ++i) {
+            let param = jsonObject.params[i];
+            if (param.tab != tab[0])
+                continue;
+            let categoryIdx = -1;
+            for (let j = 0; j < categories.length; ++j){
+                if (categories[j][0] == param.category) {
+                    categoryIdx = j;
+                    break;
+                }
+            }
+            currentCategoryCounter[categoryIdx]++;
+            categories[categoryIdx][2] += computeInput(param, categories[categoryIdx][1] == currentCategoryCounter[categoryIdx]);
+        }
+    });
+
+
+    // 3 - Push to DOM
+    tabs.forEach(function(tab) {
+        let htmlToAdd = "";
+
+        let categories = tab[1];
+        for (let i = 0; i < categories.length; ++i){
+            categories[i][2] += "</div></div>";
+            htmlToAdd += categories[i][2];        
+        }
+
+        let tabId = tab[0].charAt(0).toLowerCase() + tab[0].slice(1) + "Infos";
+        document.getElementById("tabLink" + tab[0]).style.display = "block";
+        document.getElementById(tabId).innerHTML = htmlToAdd;
+    });
+}
+
+function computeInput(param, isLast)
+{
+    function removeSpaces(input){
+        let out = "";
+        let nextCharIsUpper = false;
+
+        for (let i = 0; i < input.length; ++i) {
+            let character = input[i];
+
+            if (character == ' ') {
+                nextCharIsUpper = true;
+            }
+            else {
+                out += nextCharIsUpper ? character.toUpperCase() : character;
+                nextCharIsUpper = false;
+            }
+        }
+
+        return out;
+    }
+
+    let addBottomBorder = !(isLast || (param.type != "Vector2" && param.type != "Vector3"));
+    let nameForCallback = param.tab + removeSpaces(param.name) + removeSpaces(param.category);
+    let htmlToAdd = "<div style='width: 100%; overflow: auto;" + (!addBottomBorder && !isLast ? "padding-bottom: 5px;" : "") + "'>";
+
+    if (param.type == "String")
+        htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + param.value + "\"/>";
+    else if (param.type == "Vector2" || param.type == "Vector3" || param.type == "UInt" || param.type == "Float") {
+        htmlToAdd += addBottomBorder ? "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom:1px solid white;'>" : "" ;
+        htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
+        htmlToAdd += "<div style='display: inline-block; width: 70%'>";
+        if (param.type == "UInt")
+            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"></wolf-slider>";
+        else if (param.type == "Float")
+            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"></wolf-slider>";
+        else {
+            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "X\" value=\"" + param.valueX + "\"></wolf-slider>";
+            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "Y\" value=\"" + param.valueY + "\"></wolf-slider>";
+            if (param.type == "Vector3")
+                htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "Z\" value=\"" + param.valueZ + "\"></wolf-slider>";
+        }
+        htmlToAdd += "</div>";
+        if (addBottomBorder) htmlToAdd += "</div>";
+    }
+    else if (param.type == "File")
+    {       
+        htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
+        htmlToAdd += "<table style='width: 70%; border-collapse: collapse; border-radius: 5px'>"
+
+        let id = param.tab + removeSpaces(param.name) + removeSpaces(param.category);
+        htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', 'obj', change" + nameForCallback + ")\">Select file</button></td></tr>";
+        htmlToAdd += "</table>";
+    }
+
+    htmlToAdd += "</div>"
+    return htmlToAdd;
+}

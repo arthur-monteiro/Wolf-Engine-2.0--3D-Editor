@@ -136,28 +136,30 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BuildingModel.cpp" />
-    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CommonDescriptorLayouts.cpp" />
     <ClCompile Include="EditorParams.cpp" />
+    <ClCompile Include="EditorTypes.cpp" />
     <ClCompile Include="ForwardPass.cpp" />
     <ClCompile Include="GameContext.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainRenderingPipeline.cpp" />
-    <ClCompile Include="ModelInterface.cpp" />
+    <ClCompile Include="EditorModelInterface.cpp" />
     <ClCompile Include="ModelsContainer.cpp" />
+    <ClCompile Include="Notifier.cpp" />
     <ClCompile Include="ObjectModel.cpp" />
     <ClCompile Include="SystemManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BuildingModel.h" />
-    <ClInclude Include="Camera.h" />
     <ClInclude Include="CommonDescriptorLayouts.h" />
     <ClInclude Include="EditorParams.h" />
+    <ClInclude Include="EditorTypes.h" />
     <ClInclude Include="ForwardPass.h" />
     <ClInclude Include="GameContext.h" />
     <ClInclude Include="MainRenderingPipeline.h" />
-    <ClInclude Include="ModelInterface.h" />
+    <ClInclude Include="EditorModelInterface.h" />
     <ClInclude Include="ModelsContainer.h" />
+    <ClInclude Include="Notifier.h" />
     <ClInclude Include="ObjectModel.h" />
     <ClInclude Include="SystemManager.h" />
     <ClInclude Include="Vertex2DTextured.h" />
