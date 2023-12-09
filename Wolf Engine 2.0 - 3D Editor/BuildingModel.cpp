@@ -12,7 +12,7 @@
 
 using namespace Wolf;
 
-BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& filepath, Wolf::BindlessDescriptor& bindlessDescriptor)
+BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& filepath, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor)
 : EditorModelInterface(transform),
   m_window("Window", [this] { m_needRebuild = true; }, bindlessDescriptor),
   m_wall("Wall", [this] { m_needRebuild = true; }, bindlessDescriptor)
@@ -234,7 +234,7 @@ void BuildingModel::MeshWithMaterials::loadMesh()
 	modelLoadingInfo.mtlFolder = materialFolder;
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.loadMaterials = true;
-	modelLoadingInfo.materialIdOffset = m_bindlessDescriptor.getCurrentCounter() / 5;
+	modelLoadingInfo.materialIdOffset = m_bindlessDescriptor->getCurrentCounter() / 5;
 	ModelData windowMeshData;
 	ModelLoader::loadObject(windowMeshData, modelLoadingInfo);
 
@@ -256,7 +256,7 @@ void BuildingModel::MeshWithMaterials::loadMesh()
 
 void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 {
-	const uint32_t materialIdOffset = m_bindlessDescriptor.getCurrentCounter() / 5;
+	const uint32_t materialIdOffset = m_bindlessDescriptor->getCurrentCounter() / 5;
 
 	const std::vector<Vertex3D> vertices =
 	{
@@ -347,7 +347,7 @@ void BuildingModel::MeshWithMaterials::addImagesToBindlessDescriptor() const
 		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
-	m_bindlessDescriptor.addImages(imageDescriptions);
+	m_bindlessDescriptor->addImages(imageDescriptions);
 }
 
 void BuildingModel::MeshWithMaterials::requestMeshLoading()

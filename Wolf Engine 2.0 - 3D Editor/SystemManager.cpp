@@ -416,19 +416,19 @@ void SystemManager::updateBeforeFrame()
 	m_wolfInstance->updateBeforeFrame();
 	m_mainRenderer->update(m_wolfInstance.get());
 
-	if (m_wolfInstance->getInputHandler().keyPressedThisFrame(GLFW_KEY_ESCAPE))
+	if (m_wolfInstance->getInputHandler()->keyPressedThisFrame(GLFW_KEY_ESCAPE))
 	{
 		m_isCameraLocked = !m_isCameraLocked;
 		m_camera->setLocked(m_isCameraLocked);
 	}
 
 	// Select object by click
-	if (m_wolfInstance->getInputHandler().mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	if (m_wolfInstance->getInputHandler()->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
 	{
 		const glm::vec3 rayOrigin = m_camera->getPosition();
 
 		float currentMousePosX, currentMousePosY;
-		m_wolfInstance->getInputHandler().getMousePosition(currentMousePosX, currentMousePosY);
+		m_wolfInstance->getInputHandler()->getMousePosition(currentMousePosX, currentMousePosY);
 
 		const float renderPosX = currentMousePosX - m_editorParams->getRenderOffsetLeft();
 		const float renderPosY = currentMousePosY - m_editorParams->getRenderOffsetBot();
@@ -476,7 +476,7 @@ void SystemManager::addImagesToBindlessDescriptor(const std::vector<Wolf::Image*
 		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
-	m_wolfInstance->getBindlessDescriptor().addImages(imageDescriptions) + static_cast<uint32_t>(images.size());
+	m_wolfInstance->getBindlessDescriptor()->addImages(imageDescriptions);
 }
 
 void SystemManager::loadScene()
@@ -529,7 +529,7 @@ void SystemManager::loadScene()
 
 void SystemManager::addStaticModel(const std::string& filepath, const std::string& materialFolder, const glm::mat4& transform) const
 {
-	ObjectModel* model = new ObjectModel(transform, filepath, materialFolder, true, m_wolfInstance->getBindlessDescriptor().getCurrentCounter() / 5);
+	ObjectModel* model = new ObjectModel(transform, filepath, materialFolder, true, m_wolfInstance->getBindlessDescriptor()->getCurrentCounter() / 5);
 	m_modelsContainer->addModel(model);
 	std::vector<Image*> modelImages;
 	model->getImages(modelImages);

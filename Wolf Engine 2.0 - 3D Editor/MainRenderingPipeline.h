@@ -14,8 +14,8 @@ public:
 	MainRenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams);
 
 	void update(const Wolf::WolfEngine* wolfInstance);
-	void frame(Wolf::WolfEngine* wolfInstance) const;
+	void frame(Wolf::WolfEngine* wolfInstance);
 
 private:
-	std::unique_ptr<ForwardPass> m_forwardPass;
+	Wolf::ResourceUniqueOwner<ForwardPass> m_forwardPass;
 };

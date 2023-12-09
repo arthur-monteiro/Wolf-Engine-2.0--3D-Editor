@@ -41,7 +41,7 @@ public:
 		}
 	};
 
-	BuildingModel(const glm::mat4& transform, const std::string& filepath, Wolf::BindlessDescriptor& bindlessDescriptor);
+	BuildingModel(const glm::mat4& transform, const std::string& filepath, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor);
 
 	void updateGraphic() override;
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const override;
@@ -69,7 +69,7 @@ private:
 	class MeshWithMaterials : public Notifier
 	{
 	public:
-		MeshWithMaterials(const std::string& category, Wolf::BindlessDescriptor& bindlessDescriptor) :
+		MeshWithMaterials(const std::string& category, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor) :
 			m_bindlessDescriptor(bindlessDescriptor), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, true) {}
 
 		void updateBeforeFrame();
@@ -86,7 +86,7 @@ private:
 		EditorParamString* getLoadingPathParam() { return &m_loadingPathParam; }
 
 	private:
-		Wolf::BindlessDescriptor& m_bindlessDescriptor;
+		Wolf::ResourceNonOwner<Wolf::BindlessDescriptor> m_bindlessDescriptor;
 		void addImagesToBindlessDescriptor() const;
 
 		EditorParamString m_loadingPathParam;
@@ -102,7 +102,7 @@ private:
 	class BuildingPiece : public Notifier
 	{
 	public:
-		BuildingPiece(const std::string& name, const std::function<void()>& callbackValueChanged, Wolf::BindlessDescriptor& bindlessDescriptor) :
+		BuildingPiece(const std::string& name, const std::function<void()>& callbackValueChanged, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor) :
 			m_sideSizeInMeterParam("Side size in meter", "Building", name, 0.1f, 5.0f, callbackValueChanged),
 			m_meshWithMaterials(name, bindlessDescriptor)
 		{

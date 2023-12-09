@@ -43,6 +43,9 @@ std::string EditorModelInterface::convertModelTypeToString(ModelType modelType)
 			return "staticMesh";
 		case ModelType::BUILDING:
 			return "building";
+		default:
+			Debug::sendError("Unsupported model type");
+			return "";
 	}
 }
 
