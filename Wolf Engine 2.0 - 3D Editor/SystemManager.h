@@ -44,6 +44,7 @@ private:
 	void saveSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void updateUISelectedModel() const;
 

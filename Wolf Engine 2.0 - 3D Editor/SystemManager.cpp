@@ -105,8 +105,10 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 	{
 		if (character == '\\')
 			escapedMessage += "\\\\";
-		else if(character == '\"')
+		else if (character == '\"')
 			escapedMessage += "\\\"";
+		else if (character == '\n')
+			escapedMessage += "  ";
 		else
 			escapedMessage += character;
 	}
@@ -146,6 +148,7 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["saveScene"] = std::bind(&SystemManager::saveSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["openUIInBrowser"] = std::bind(&SystemManager::openUIInBrowserJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -380,10 +383,53 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		Debug::sendError("Unsupported display type: " + displayType);
 }
 
+void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	if(!g_configuration->getUICommands())
+		Debug::sendWarning("UI Commands are not saved");
+
+	std::ifstream inHTML("UI/UI.html");
+
+	std::filesystem::remove_all("tmp/UI/");
+	std::filesystem::create_directories("tmp/UI/");
+	std::ofstream outHTML("tmp/UI/UI_dmp.html");
+
+	std::string inLine;
+	while (getline(inHTML, inLine))
+	{
+		outHTML << inLine << "\n";
+
+		if (inLine.find("<body>") != std::string::npos)
+		{
+			std::erase_if(inLine, isspace);
+			if (inLine != "<body>")
+				Debug::sendError("Body begin declaration is not written on a dedicated line, this behaviour is not supported");
+
+			outHTML << "<script type=\"text/javascript\">\n";
+			outHTML << "\twindow.addEventListener('DOMContentLoaded', (event) => {\n";
+
+			for (const std::string& command : m_wolfInstance->getSavedUICommands())
+			{
+				if (command.find("setCameraPosition") != std::string::npos)
+					continue;
+
+				outHTML << "\n\// STEP\n";
+				outHTML << command << "\n";
+			}
+
+			outHTML << "\t});";
+			outHTML << "</script>";
+		}
+	}
+	outHTML.close();
+	inHTML.close();
+
+	std::filesystem::copy("UI/", "tmp/UI/");
+	system("start tmp/UI/UI_dmp.html");
+}
+
 void SystemManager::updateBeforeFrame()
 {
-	const uint32_t contextId = m_wolfInstance->getCurrentFrame() % g_configuration->getMaxCachedFrames();
-
 	if(!m_loadSceneRequest.empty())
 	{
 		loadScene();
