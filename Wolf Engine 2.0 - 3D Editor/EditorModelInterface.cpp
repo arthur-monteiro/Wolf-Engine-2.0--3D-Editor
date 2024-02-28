@@ -3,6 +3,8 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "EditorParamsHelper.h"
+
 using namespace Wolf;
 
 EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
@@ -35,20 +37,6 @@ void EditorModelInterface::updateGraphic()
 	m_matricesUniformBuffer->transferCPUMemory(&mvp, sizeof(mvp), 0);
 }
 
-std::string EditorModelInterface::convertModelTypeToString(ModelType modelType)
-{
-	switch (modelType)
-	{
-		case ModelType::STATIC_MESH: 
-			return "staticMesh";
-		case ModelType::BUILDING:
-			return "building";
-		default:
-			Debug::sendError("Unsupported model type");
-			return "";
-	}
-}
-
 void EditorModelInterface::activateParams()
 {
 	for (EditorParamInterface* param : m_modelParams)
@@ -57,13 +45,9 @@ void EditorModelInterface::activateParams()
 	}
 }
 
-void EditorModelInterface::fillJSONForParams(std::string& outJSON)
+void EditorModelInterface::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
-	outJSON += "{\n";
-	outJSON += "\t" R"("params": [)" "\n";
-	addParamsToJSON(outJSON, m_modelParams, true);
-	outJSON += "\t]\n";
-	outJSON += "}";
+	::addParamsToJSON(outJSON, m_modelParams, false, tabCount);
 }
 
 void EditorModelInterface::recomputeTransform()
@@ -73,13 +57,4 @@ void EditorModelInterface::recomputeTransform()
 	m_transform = glm::rotate(m_transform, static_cast<glm::vec3>(m_rotationParam).y, glm::vec3(0.0f, 1.0f, 0.0f));
 	m_transform = glm::rotate(m_transform, static_cast<glm::vec3>(m_rotationParam).z, glm::vec3(0.0f, 0.0f, 1.0f));
 	m_transform = glm::translate(m_transform, static_cast<glm::vec3>(m_translationParam));
-}
-
-void EditorModelInterface::addParamsToJSON(std::string& outJSON, std::span<EditorParamInterface*> params, bool isLast)
-{
-	for (uint32_t i = 0; i < params.size(); ++i)
-	{
-		EditorParamInterface* param = params[i];
-		param->addToJSON(outJSON, 2, isLast && i == params.size() - 1);
-	}
 }

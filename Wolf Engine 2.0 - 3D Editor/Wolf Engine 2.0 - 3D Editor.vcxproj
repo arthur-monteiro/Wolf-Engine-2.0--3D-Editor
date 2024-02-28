@@ -5,6 +5,14 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Lib - Debug|Win32">
+      <Configuration>Lib - Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Lib - Debug|x64">
+      <Configuration>Lib - Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -32,6 +40,12 @@
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -41,6 +55,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
@@ -60,10 +80,16 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -71,6 +97,18 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
@@ -114,6 +152,22 @@
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;LibOVR.lib;UltralightCore.lib;Ultralight.lib;WebCore.lib;AppCore.lib;Engine Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;RESOURCE_DEBUG;LIB_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\x64\Debug;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Lib\Windows\x64\Debug\VS2017;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\lib-vc2019;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Lib;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Wolf Engine\lib;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;LibOVR.lib;UltralightCore.lib;Ultralight.lib;WebCore.lib;AppCore.lib;Engine Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -137,8 +191,12 @@
   <ItemGroup>
     <ClCompile Include="BuildingModel.cpp" />
     <ClCompile Include="CommonDescriptorLayouts.cpp" />
+    <ClCompile Include="ComponentInstancier.cpp" />
+    <ClCompile Include="ComponentInterface.cpp" />
     <ClCompile Include="EditorParams.cpp" />
     <ClCompile Include="EditorTypes.cpp" />
+    <ClCompile Include="Entity.cpp" />
+    <ClCompile Include="EntityContainer.cpp" />
     <ClCompile Include="ForwardPass.cpp" />
     <ClCompile Include="GameContext.cpp" />
     <ClCompile Include="main.cpp" />
@@ -146,21 +204,26 @@
     <ClCompile Include="EditorModelInterface.cpp" />
     <ClCompile Include="ModelsContainer.cpp" />
     <ClCompile Include="Notifier.cpp" />
-    <ClCompile Include="ObjectModel.cpp" />
+    <ClCompile Include="StaticModel.cpp" />
     <ClCompile Include="SystemManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BuildingModel.h" />
     <ClInclude Include="CommonDescriptorLayouts.h" />
+    <ClInclude Include="ComponentInstancier.h" />
+    <ClInclude Include="ComponentInterface.h" />
     <ClInclude Include="EditorParams.h" />
+    <ClInclude Include="EditorParamsHelper.h" />
     <ClInclude Include="EditorTypes.h" />
+    <ClInclude Include="Entity.h" />
+    <ClInclude Include="EntityContainer.h" />
     <ClInclude Include="ForwardPass.h" />
     <ClInclude Include="GameContext.h" />
     <ClInclude Include="MainRenderingPipeline.h" />
     <ClInclude Include="EditorModelInterface.h" />
     <ClInclude Include="ModelsContainer.h" />
     <ClInclude Include="Notifier.h" />
-    <ClInclude Include="ObjectModel.h" />
+    <ClInclude Include="StaticModel.h" />
     <ClInclude Include="SystemManager.h" />
     <ClInclude Include="Vertex2DTextured.h" />
   </ItemGroup>

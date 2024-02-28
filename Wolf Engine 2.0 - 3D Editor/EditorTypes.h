@@ -29,8 +29,11 @@ public:
 	virtual void activate() = 0;
 	virtual void addToJSON(std::string& out, uint32_t tabCount, bool isLast) = 0;
 
-protected:
 	enum class Type { Float, Vector2, Vector3, String, UInt, File };
+	Type getType() const { return m_type; }
+	const std::string& getName() const { return m_name; }
+
+protected:
 	EditorParamInterface(Type type, std::string name, std::string tab, std::string category) : m_name(std::move(name)), m_tab(std::move(tab)), m_category(std::move(category)), m_type(type) {}
 
 	static Wolf::WolfEngine* ms_wolfInstance;

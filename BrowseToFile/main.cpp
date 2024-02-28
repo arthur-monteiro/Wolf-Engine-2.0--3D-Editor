@@ -49,8 +49,9 @@ int main(int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 
-	std::string inputOption = argv[1];
-	std::string inputFilter = argv[2];
+	const std::string inputOption = argv[1];
+	const std::string inputFilter = argv[2];
+	const std::string folderRestriction = argv[3];
 
 	BrowseToFileOption browseToFileOption;
 	if (inputOption == "open")
@@ -77,7 +78,8 @@ int main(int argc, char** argv)
 	}
 
 	std::string filename;
-	BrowseToFile(filename, browseToFileOption, browseToFileFilter);
+	while (filename.empty() || filename.substr(0, folderRestriction.size()) != folderRestriction)
+		BrowseToFile(filename, browseToFileOption, browseToFileFilter);
 
 	std::cout << filename << "\n";
 }

@@ -8,9 +8,6 @@
 
 #include <JSONReader.h>
 
-#include "BuildingModel.h"
-#include "ObjectModel.h"
-
 enum class BrowseToFileOption;
 using namespace Wolf;
 
@@ -20,8 +17,9 @@ SystemManager::SystemManager()
 	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
 
 	createMainRenderer();
-
-	m_modelsContainer.reset(new ModelsContainer);
+	
+	m_entityContainer.reset(new EntityContainer);
+	m_componentInstancier.reset(new ComponentInstancier);
 	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
 }
 
@@ -136,7 +134,8 @@ void SystemManager::bindUltralightCallbacks()
 	ultralight::JSObject jsObject;
 	m_wolfInstance->getUserInterfaceJSObject(jsObject);
 	jsObject["getFrameRate"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getFrameRateJSCallback, this, std::placeholders::_1, std::placeholders::_2));
-	jsObject["addModel"] = std::bind(&SystemManager::addModelJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["addEntity"] = std::bind(&SystemManager::addEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["addComponent"] = std::bind(&SystemManager::addComponentJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["pickFile"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::pickFileJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getRenderHeight"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderHeightJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getRenderWidth"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderWidthJSCallback, this, std::placeholders::_1, std::placeholders::_2));
@@ -144,11 +143,12 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["setRenderOffsetLeft"] = std::bind(&SystemManager::setRenderOffsetLeftJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["getRenderOffsetRight"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderOffsetRightJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["setRenderOffsetRight"] = std::bind(&SystemManager::setRenderOffsetRightJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["selectModelByName"] = std::bind(&SystemManager::selectModelByNameJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["selectEntityByName"] = std::bind(&SystemManager::selectEntityByNameJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["saveScene"] = std::bind(&SystemManager::saveSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openUIInBrowser"] = std::bind(&SystemManager::openUIInBrowserJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["getAllComponentTypes"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getAllComponentTypesJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -194,7 +194,7 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 
 	std::string filename;
 #ifdef _WIN32
-	const std::string cmd = "BrowseToFile.exe " + inputOption + " " + inputFilter;
+	const std::string cmd = "BrowseToFile.exe " + inputOption + " " + inputFilter + " F:\\Code\\Wolf Engine 2.0 - 3D Editor\\Wolf Engine 2.0 - 3D Editor";
 	filename = exec(cmd.c_str());
 #else
 	Debug::sendError("Pick file not implemented for this platform");
@@ -203,8 +203,7 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 	return filename.c_str();
 }
 
-ultralight::JSValue SystemManager::pickFolderJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
+ultralight::JSValue SystemManager::pickFolderJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
 {
 	// Not implemented
 	__debugbreak();
@@ -219,21 +218,21 @@ ultralight::JSValue SystemManager::getRenderHeightJSCallback(const ultralight::J
 }
 
 ultralight::JSValue SystemManager::getRenderWidthJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
+                                                                        const ultralight::JSArgs& args) const
 {
 	const std::string r = std::to_string(m_editorParams->getRenderWidth());
 	return r.c_str();
 }
 
 ultralight::JSValue SystemManager::getRenderOffsetRightJSCallback(const ultralight::JSObject& thisObject,
-                                                        const ultralight::JSArgs& args) const
+                                                                              const ultralight::JSArgs& args) const
 {
 	const std::string r = std::to_string(m_editorParams->getRenderOffsetRight());
 	return r.c_str();
 }
 
 ultralight::JSValue SystemManager::getRenderOffsetLeftJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args) const
+                                                                             const ultralight::JSArgs& args) const
 {
 	const std::string r = std::to_string(m_editorParams->getRenderOffsetLeft());
 	return r.c_str();
@@ -251,26 +250,29 @@ void SystemManager::setRenderOffsetRightJSCallback(const ultralight::JSObject& t
 	m_editorParams->setRenderOffsetRight(value);
 }
 
-void SystemManager::addModelJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+void SystemManager::addEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string filepath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
-	const std::string materialPath = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
-	const std::string type = static_cast<ultralight::String>(args[2].ToString()).utf8().data();
-
-	m_addModelRequests.push_back({ filepath, materialPath, type });
+	addEntity(filepath);
 }
 
-void SystemManager::selectModelByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+void SystemManager::addComponentJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string componentId = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	addComponent(componentId);
+}
+
+void SystemManager::selectEntityByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string name = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 
-	const std::vector<std::unique_ptr<EditorModelInterface>>& allModels = m_modelsContainer->getModels();
-	for (const std::unique_ptr<EditorModelInterface>& model : allModels)
+	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		if(model->getName() == name)
+		if(entity->getName() == name)
 		{
-			m_selectedModel = model.get();
-			updateUISelectedModel();
+			m_selectedEntity.reset(new ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
+			updateUISelectedEntity();
 			break;
 		}
 	}
@@ -294,26 +296,20 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	outputFile << "{\n";
 
 	// Scene data
-	const std::vector<std::unique_ptr<EditorModelInterface>>& allModels = m_modelsContainer->getModels();
+	const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 	outputFile << "\t\"sceneName\":\"" << m_currentSceneName << "\",\n";
-	outputFile << "\t\"modelCount\":" << allModels.size() << ",\n";
+	outputFile << "\t\"entityCount\":" << allEntities.size() << ",\n";
 
 	// Model infos
-	outputFile << "\t\"models\": [\n";
-	for (uint32_t i = 0; i < allModels.size(); ++i)
+	outputFile << "\t\"entities\": [\n";
+	for (uint32_t i = 0; i < allEntities.size(); ++i)
 	{
-		const std::unique_ptr<EditorModelInterface>& model = allModels[i];
+		const ResourceUniqueOwner<Entity>& entity = allEntities[i];
+		entity->save();
 
 		outputFile << "\t\t{\n";
-		outputFile << "\t\t\t\"modelName\":\"" << model->getName() << "\",\n";
 
-		const EditorModelInterface::ModelType modelType = model->getType();
-		outputFile << "\t\t\t\"modelType\":\"" << EditorModelInterface::convertModelTypeToString(modelType) << "\",\n";
-
-		if (modelType == EditorModelInterface::ModelType::BUILDING)
-			static_cast<BuildingModel*>(model.get())->save();
-
-		const std::string& loadingPath = model->getLoadingPath();
+		const std::string& loadingPath = entity->getLoadingPath();
 		std::string escapedLoadingPath;
 		for(const char character : loadingPath)
 		{
@@ -322,26 +318,10 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 			else
 				escapedLoadingPath += character;
 		}
-		outputFile << "\t\t\t\"loadingPath\":\"" << escapedLoadingPath << "\",\n";
-
-		const glm::mat4& transform = model->getTransform();
-		outputFile << "\t\t\t\"transform\":[";
-		for(uint32_t matI = 0; matI < 4; ++matI)
-		{
-			for (uint32_t matJ = 0; matJ < 4; ++matJ)
-			{
-				outputFile << transform[matI][matJ];
-				if (matI != 3 || matJ != 3)
-					outputFile << ",";
-			}
-
-			if (matI != 3)
-				outputFile << "\n\t\t\t             ";
-		}
-		outputFile << "]\n";
+		outputFile << "\t\t\t\"loadingPath\":\"" << escapedLoadingPath << "\"\n";
 
 		outputFile << "\t\t}";
-		if (i != allModels.size() - 1)
+		if (i != allEntities.size() - 1)
 		{
 			outputFile << ",";
 		}
@@ -363,7 +343,7 @@ void SystemManager::loadSceneJSCallback(const ultralight::JSObject& thisObject, 
 }
 
 void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args)
+                                                                   const ultralight::JSArgs& args)
 {
 	const uint32_t contextId = m_wolfInstance->getCurrentFrame() % g_configuration->getMaxCachedFrames();
 	const std::string displayType = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
@@ -413,7 +393,7 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 				if (command.find("setCameraPosition") != std::string::npos)
 					continue;
 
-				outHTML << "\n\// STEP\n";
+				outHTML << "\n// STEP\n";
 				outHTML << command << "\n";
 			}
 
@@ -428,6 +408,13 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 	system("start tmp/UI/UI_dmp.html");
 }
 
+ultralight::JSValue SystemManager::getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args)
+{
+	return { m_componentInstancier->getAllComponentTypes().c_str() };
+	return R"({ "components": [ { "name":"Static model", "value":"staticModel" }, { "name":"Building model", "value":"buildingModel" } ] })";
+}
+
 void SystemManager::updateBeforeFrame()
 {
 	if(!m_loadSceneRequest.empty())
@@ -435,24 +422,26 @@ void SystemManager::updateBeforeFrame()
 		loadScene();
 	}
 
-	for (const AddModelRequest& request : m_addModelRequests)
-	{
-		if (request.type == "staticMesh")
-			addStaticModel(request.filepath, request.materialPath, glm::mat4(1.0f));
-		else if (request.type == "building")
-			addBuildingModel(request.filepath, glm::mat4(1.0f));
-		else
-			Debug::sendError("Model type \"" + request.type + "\" is not implemented");
-	}
-	m_addModelRequests.clear();
+	m_entityContainer->moveToNextFrame();
 
-	m_modelsContainer->moveToNextFrame();
-	const std::vector<std::unique_ptr<EditorModelInterface>>& allModels = m_modelsContainer->getModels();
+	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	std::vector<std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>> allModels;
+
 	RenderMeshList& renderList = m_wolfInstance->getRenderMeshList();
-	for (const std::unique_ptr<EditorModelInterface>& model : allModels)
+
+	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		model->updateGraphic();
-		model->addMeshesToRenderList(renderList);
+		std::vector<ResourceUniqueOwner<ComponentInterface>>& components = entity->getAllComponents();
+		for (ResourceUniqueOwner<ComponentInterface>& component : components)
+		{
+			if (const ResourceNonOwner<EditorModelInterface> componentAsModel = component.createNonOwnerResource<EditorModelInterface>())
+			{
+				componentAsModel->updateGraphic();
+				componentAsModel->addMeshesToRenderList(renderList);
+
+				allModels.emplace_back(componentAsModel, entity.createNonOwnerResource());
+			}
+		}
 	}
 
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
@@ -469,7 +458,7 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	// Select object by click
-	if (m_wolfInstance->getInputHandler()->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	if (false && m_wolfInstance->getInputHandler()->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
 	{
 		const glm::vec3 rayOrigin = m_camera->getPosition();
 
@@ -487,26 +476,23 @@ void SystemManager::updateBeforeFrame()
 
 		const glm::vec3 clipTarget = glm::vec3(glm::inverse(m_camera->getProjectionMatrix()) * glm::vec4(renderPosClipSpaceX, renderPosClipSpaceY, 1.0f, 1.0f));
 		const glm::vec3 rayDirection = glm::vec3(glm::inverse(m_camera->getViewMatrix()) * glm::vec4(clipTarget, 0.0f));
-
-		m_selectedModel = nullptr;
+		
 		float minDistance = 2'000.0f;
-		for (const std::unique_ptr<EditorModelInterface>& model : allModels)
+		for (const std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>& model : allModels)
 		{
-			if(float intersectionDistance = model->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
+			if(float intersectionDistance = model.first->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
 			{
 				intersectionDistance = intersectionDistance > 0.0f ? intersectionDistance : 1'000.0f;
 				if(intersectionDistance < minDistance)
 				{
 					minDistance = intersectionDistance;
-					m_selectedModel = model.get();
+					m_selectedEntity.reset(new ResourceNonOwner<Entity>(model.second));
 				}
 			}
 		}
 
-		if(m_selectedModel)
-			updateUISelectedModel();
-		else
-			m_wolfInstance->evaluateUserInterfaceScript("resetSelectedModel()");
+		if(m_selectedEntity)
+			updateUISelectedEntity();
 	}
 
 	const glm::vec3 cameraPosition = m_camera->getPosition();
@@ -527,23 +513,24 @@ void SystemManager::addImagesToBindlessDescriptor(const std::vector<Wolf::Image*
 
 void SystemManager::loadScene()
 {
-	m_modelsContainer->clear();
+	m_selectedEntity.reset(nullptr);
+	m_entityContainer->clear();
+
 	m_wolfInstance->evaluateUserInterfaceScript("resetModelList()");
-	m_wolfInstance->evaluateUserInterfaceScript("resetSelectedModel()");
-	m_selectedModel = nullptr;
+	m_wolfInstance->evaluateUserInterfaceScript("resetSelectedEntity()");
 
 	JSONReader jsonReader(m_loadSceneRequest);
 
-	const uint32_t nbObject = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("modelCount"));
+	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
 	const std::string& sceneName = jsonReader.getRoot()->getPropertyString("sceneName");
-	for(uint32_t objectIdx = 0; objectIdx < nbObject; objectIdx++)
+	for(uint32_t entityIdx = 0; entityIdx < entityCount; entityIdx++)
 	{
-		JSONReader::JSONObjectInterface* modelObject = jsonReader.getRoot()->getArrayObjectItem("models", objectIdx);
+		JSONReader::JSONObjectInterface* entityObject = jsonReader.getRoot()->getArrayObjectItem("entities", entityIdx);
 
-		const std::string& modelLoadingPath = modelObject->getPropertyString("loadingPath");
+		const std::string& entityLoadingPath = entityObject->getPropertyString("loadingPath");
 		std::string deduplicatedLoadingPath;
 		bool ignoreNextCharacter = false;
-		for (const char character : modelLoadingPath)
+		for (const char character : entityLoadingPath)
 		{
 			if (ignoreNextCharacter)
 			{
@@ -556,16 +543,8 @@ void SystemManager::loadScene()
 
 			deduplicatedLoadingPath += character;
 		}
-		const std::string& modelName = modelObject->getPropertyString("modelName");
 
-		glm::mat4 transform;
-		std::memcpy(&transform, modelObject->getPropertyFloatArray("transform").data(), sizeof(glm::mat4));
-
-		const std::string& modelType = modelObject->getPropertyString("modelType");
-		if(modelType == "staticMesh")
-			addStaticModel(deduplicatedLoadingPath, "", transform);
-		else if(modelType == "building")
-			addBuildingModel(deduplicatedLoadingPath, transform);
+		addEntity(deduplicatedLoadingPath);
 	}
 	m_wolfInstance->evaluateUserInterfaceScript("setSceneName(\"" + sceneName + "\")");
 	m_currentSceneName = sceneName;
@@ -573,32 +552,45 @@ void SystemManager::loadScene()
 	m_loadSceneRequest.clear();
 }
 
-void SystemManager::addStaticModel(const std::string& filepath, const std::string& materialFolder, const glm::mat4& transform) const
+void SystemManager::addEntity(const std::string& filepath) const
 {
-	ObjectModel* model = new ObjectModel(transform, filepath, materialFolder, true, m_wolfInstance->getBindlessDescriptor()->getCurrentCounter() / 5);
-	m_modelsContainer->addModel(model);
-	std::vector<Image*> modelImages;
-	model->getImages(modelImages);
-	addImagesToBindlessDescriptor(modelImages);
+	Entity* newEntity = new Entity(filepath, [this](Entity*)
+		{
+			m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
+			const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+			for (const ResourceUniqueOwner<Entity>& entity : allEntities)
+			{
+				m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\")");
+			}
+		},
+		[this](const std::string& componentId)
+		{
+			return m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getBindlessDescriptor());
+		}
+		);
+	m_entityContainer->addEntity(newEntity);
 
-	const std::string scriptToAddModelToList = "addModelToList(\"" + model->getName() + "\")";
+	const std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
 }
 
-void SystemManager::addBuildingModel(const std::string& filepath, const glm::mat4& transform) const
+void SystemManager::addComponent(const std::string& componentId) const
 {
-	BuildingModel* model = new BuildingModel(transform, filepath, m_wolfInstance->getBindlessDescriptor());
-	m_modelsContainer->addModel(model);
-
-	const std::string scriptToAddModelToList = "addModelToList(\"" + model->getName() + "\")";
-	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
+	if (!m_selectedEntity)
+	{
+		Debug::sendError("No entity selected, can't add component");
+		return;
+	}
+		
+	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getBindlessDescriptor()));
+	updateUISelectedEntity();
 }
 
-void SystemManager::updateUISelectedModel() const
+void SystemManager::updateUISelectedEntity() const
 {
-	m_selectedModel->activateParams();
+	(*m_selectedEntity)->activateParams();
 	std::string jsonParams;
-	m_selectedModel->fillJSONForParams(jsonParams);
+	(*m_selectedEntity)->fillJSONForParams(jsonParams);
 
 	std::string jsFunctionCall = "setNewParams(\"";
 	std::string escapedJSON;
@@ -618,4 +610,5 @@ void SystemManager::updateUISelectedModel() const
 	jsFunctionCall += escapedJSON;
 	jsFunctionCall += "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(jsFunctionCall);
+	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
 }

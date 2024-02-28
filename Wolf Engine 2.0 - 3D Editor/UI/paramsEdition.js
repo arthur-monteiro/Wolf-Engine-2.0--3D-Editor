@@ -7,8 +7,8 @@ function setNewParams(inputJSON)
         tabLink.classList.remove("tabSelected");
         tabLink.style.display = "none";
     }
-    document.getElementById("tabLinkModel").classList.add("tabSelected");
-    document.getElementById("modelInfos").style.display = "block";
+    document.getElementById("tabLinkEntity").classList.add("tabSelected");
+    document.getElementById("entityInfos").style.display = "block";
 
     const jsonObject = JSON.parse(inputJSON);
 
@@ -84,6 +84,25 @@ function setNewParams(inputJSON)
         }
 
         let tabId = tab[0].charAt(0).toLowerCase() + tab[0].slice(1) + "Infos";
+        if (!document.getElementById(tabId))
+        {
+            var newTabDiv = document.createElement('div');
+            newTabDiv.id = tabId;
+            newTabDiv.className = 'info';
+            newTabDiv.style = "display: none; overflow-x: scroll;";
+            document.getElementById("staticElements").appendChild(newTabDiv);
+
+            var newTabLinkButton = document.createElement('button');
+            newTabLinkButton.className = 'tabLink';
+            newTabLinkButton.id = "tabLink" + tab[0];
+            newTabLinkButton.addEventListener('click', function(){
+                eval("selectTabInfo('" + newTabLinkButton.id + "', '" + tabId + "')")
+            });
+            
+            newTabLinkButton.innerHTML = tab[0];
+            document.getElementById("infoTabs").appendChild(newTabLinkButton);
+        }
+
         document.getElementById("tabLink" + tab[0]).style.display = "block";
         document.getElementById(tabId).innerHTML = htmlToAdd;
     });
@@ -115,7 +134,7 @@ function computeInput(param, isLast)
     let htmlToAdd = "<div style='width: 100%; overflow: auto;" + (!addBottomBorder && !isLast ? "padding-bottom: 5px;" : "") + "'>";
 
     if (param.type == "String")
-        htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + param.value + "\"/>";
+        htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + param.value + "\" oninput=\"change" + nameForCallback + "(this.value)\"/>";
     else if (param.type == "Vector2" || param.type == "Vector3" || param.type == "UInt" || param.type == "Float") {
         htmlToAdd += addBottomBorder ? "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom:1px solid white;'>" : "" ;
         htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";

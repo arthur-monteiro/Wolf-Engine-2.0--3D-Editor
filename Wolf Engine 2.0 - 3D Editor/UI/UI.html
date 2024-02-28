@@ -6,7 +6,7 @@
   <body>
 	<div id="staticElements">
 		<div id="actionButtons">
-			<button class="actionButton" onclick="openModelAdd()">Add model</button>
+			<button class="actionButton" onclick="openEntityAdd()">Add entity</button>
 			<button class="actionButton" onclick="selectFileAndLoadScene()">Load</button>
 			<button class="actionButton" onclick="openSaveSceneWindow()">Save</button>
 			<div id="sceneName" style="display: inline-block;">Unknown scene</div>
@@ -17,63 +17,47 @@
 		<div class="logs" id="logs"></div>
 
 		<div id="infoTabs">
-			<button class="tabLink tabSelected" id="tabLinkModel" onclick="selectTabInfo('tabLinkModel', 'modelInfos')" >Model</button>
-			  <button class="tabLink" id="tabLinkBuilding"onclick="selectTabInfo('tabLinkBuilding', 'buildingInfos')" style="display: none;">Building</button>
+			<button class="tabLink tabSelected" id="tabLinkEntity" onclick="selectTabInfo('tabLinkEntity', 'entityInfos')" >Entity</button>
+			<button id="addComponentButton" onclick="openComponentAdd()" ><p style="position: relative; margin: -5px -3px;">+</p></button>
 		</div>
 	
-		<div id="modelInfos" class="info">
-			<span>No model selected</span>
+		<div id="entityInfos" class="info">
+			<span>No entity selected</span>
 		</div>
-
-		<div id="buildingInfos" class="info" style="display: none; overflow-x: scroll;">
-			Building info placeholder
-		</div>
-
 		<div id="sliderInfo" onmousedown="resizeInfo()"></div>
 		<div id="sliderList" onmousedown="resizeList()"></div>
 
-		<div id="modelList"></div>
+		<div id="entityList"></div>
 	</div>
 
-	<div id="addModelWindow" class="modalWindow" style="display: none">
-		<div id="closeButton" onclick="closeModelAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
+	<div id="addEntityWindow" class="modalWindow" style="display: none;">
+		<div id="closeButton" onclick="closeEntityAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
+		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
+			<li class="table-row" id="addEntityPathTR">
+				<div class="col col-1" data-label="infoType">Path</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue">
+					<button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('addEntityPath', 'save', 'save')">Select file</button>
+					<div id="addEntityPath" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No file selected</div>
+				</div>
+			</li>
+		</ul>
+		<button class="validationButton" onclick="finishAddEntity()">Add entity</button>
+	</div>
+
+	<div id="addComponentWindow" class="modalWindow" style="display: none;">
+		<div id="closeButton" onclick="closeComponentAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
 		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
 			<li class="table-row">
 				<div class="col col-1" data-label="infoType">Type</div>
 				<div class="columnDivider"></div>
 				<div class="col col-2" data-label="infoValue" style="display: block;">
-					<select id="modelTypeSelect" onchange="modelTypeSelectChanged()">
-						<option value="staticMesh">Static mesh</option>
-						<option value="building">Building</option>
+					<select id="componentTypeSelect">
 					</select>
 				</div>
 			</li>
-			<li class="table-row" id="addModelPathTR">
-				<div class="col col-1" data-label="infoType">Path</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue">
-					<button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('addModelPath', 'open', 'obj')">Select file</button>
-					<div id="addModelPath" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No file selected</div>
-				</div>
-			</li>
-			<li class="table-row" id="addModelMaterialPathTR">
-				<div class="col col-1" data-label="infoType">Material path</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue">
-					<button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('addModelMaterialPath', 'open', 'folder')">Select folder</button>
-					<div id="addModelMaterialPath" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No folder selected</div>
-				</div>
-			</li>
-			<li class="table-row" id="addBuildingPathTR" style="display: none;">
-				<div class="col col-1" data-label="infoType">Building path</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue" id="addBuildingPath" style="display: block;">
-					<button class="actionButton" onclick="pickFileAndSetValue('addBuildingPath', 'save', 'building')">Create</button>
-					<button class="actionButton" onclick="pickFileAndSetValue('addBuildingPath', 'open', 'building')">Open</button>
-				</div>
-			</li>
 		</ul>
-		<button class="validationButton" onclick="finishAddModel()">Add model</button>
+		<button class="validationButton" onclick="finishAddComponent()">Add component</button>
 	</div>
 
 	<div id="saveSceneWindow" class="modalWindow" style="display: none">
@@ -178,8 +162,8 @@
 			document.getElementsByClassName('info')[i].style.height = String(infosHeight) + "px";
 			document.getElementsByClassName('info')[i].style.width = String(parseInt(getRenderOffsetLeft())) + "px";
 		}
-		document.getElementById('modelList').style.height = getRenderHeight() + "px";
-		document.getElementById('modelList').style.left = parseInt(getRenderOffsetLeft()) + parseInt(getRenderWidth());
+		document.getElementById('entityList').style.height = getRenderHeight() + "px";
+		document.getElementById('entityList').style.left = parseInt(getRenderOffsetLeft()) + parseInt(getRenderWidth());
 		document.getElementById('infoTabs').style.width = String(parseInt(getRenderOffsetLeft())) + "px";
 
 		document.getElementById('sliderInfo').style.left = String(parseInt(getRenderOffsetLeft()) - 2) + "px";
@@ -194,32 +178,50 @@
 
 	function closeModalWindow() {
 	}
-	
-	function openModelAdd() {
-		document.getElementById('addModelWindow').style.display = "block";
+
+	function openEntityAdd() {
+		document.getElementById('addEntityWindow').style.display = "block";
 		openModalWindow();
 	}
 
-	function closeModelAdd() {
-		document.getElementById('addModelWindow').style.display = "none";
+	function closeEntityAdd() {
+		document.getElementById('addEntityWindow').style.display = "none";
 		closeModalWindow();
 	}
 
-	function finishAddModel() {
-		document.getElementById('addModelWindow').style.display = "none";
+	function finishAddEntity() {
+		closeEntityAdd();
 
-		let type = document.getElementById("modelTypeSelect").options[document.getElementById("modelTypeSelect").selectedIndex].value;
-		let filepath = "";
-		if (type == "staticMesh")
-			filepath = document.getElementById("addModelPath").innerHTML;
-		else if (type == "building")
-			filepath = document.getElementById("addBuildingPath").innerHTML;
+		filepath = document.getElementById("addEntityPath").innerHTML;
+		addEntity(filepath);
+	}
 
-		addModel(filepath, document.getElementById("addModelMaterialPath").innerHTML, type);
+	function openComponentAdd() {
+		document.getElementById('addComponentWindow').style.display = "block";
+		openModalWindow();
 
-		document.getElementById("addModelPath").innerHTML = "No file selected";
-		document.getElementById("addModelMaterialPath").innerHTML = "No folder selected";
-		document.getElementById("addBuildingPath").innerHTML = "<button onclick=\"pickFileAndSetValue('addBuildingPath', 'save', 'building')\">Create</button><button onclick=\"pickFileAndSetValue('addBuildingPath', 'open', 'building')\">Open</button>";
+		let componentOptions = getAllComponentTypes();
+		const componentOptionsJSON = JSON.parse(componentOptions);
+		let componentOptionsHTML = "";
+
+		for (let i = 0; i < componentOptionsJSON.components.length; ++i)
+		{
+			componentOptionsHTML += "<option value=\"" + componentOptionsJSON.components[i].value + "\">" + componentOptionsJSON.components[i].name + "</option>";
+		}
+
+		document.getElementById("componentTypeSelect").innerHTML = componentOptionsHTML;
+	}
+
+	function closeComponentAdd() {
+		document.getElementById('addComponentWindow').style.display = "none";
+		closeModalWindow();
+	}
+
+	function finishAddComponent() {
+		closeComponentAdd();
+
+		filepath = document.getElementById("componentTypeSelect").value;
+		addComponent(filepath);
 	}
 
 	function finishSaveScene() {
@@ -249,25 +251,26 @@
 
 		if (callback != undefined)
 			callback(filepath);
+	}
 
-		if (id == "addModelPath") {
-			let materialFolder = filepath.substr(0, filepath.lastIndexOf("\\"));
-			document.getElementById("addModelMaterialPath").innerHTML = materialFolder;
+	function resetSelectedEntity() {
+		document.getElementById('entityInfos').innerHTML = "No entity selected";
+		let tabLinks = document.getElementsByClassName("tabLink");
+		for (var i = 0; i < tabLinks.length; ++i) {
+			var tabLink = tabLinks[i];  
+			if (tabLink.id != "tabLinkEntity")
+				tabLink.style.display = "none";
 		}
+
+		selectTabInfo("tabLinkEntity", "entityInfos");
 	}
 
-	function resetSelectedModel() {
-		document.getElementById('modelInfos').innerHTML = "No model selected";
-		document.getElementById("tabLinkBuilding").style.display = "none";
-		document.getElementById("buildingInfos").style.display = "none";
+	function addEntityToList(name) {
+		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\">" + name + "</div><br/>";
 	}
 
-	function addModelToList(name) {
-		document.getElementById('modelList').innerHTML += "<div class='modelListItem' onclick=\"selectModelByName('" + name + "')\">" + name + "</div><br/>";
-	}
-
-	function resetModelList() {
-		document.getElementById('modelList').innerHTML = "";
+	function resetEntityList() {
+		document.getElementById('entityList').innerHTML = "";
 	}
 
 	function makeID(length) {
@@ -334,21 +337,6 @@
 		document.getElementById('sceneName').innerHTML = name;
 	}
 
-	function modelTypeSelectChanged() {
-		let selectedOption = document.getElementById("modelTypeSelect").options[document.getElementById("modelTypeSelect").selectedIndex].value;
-
-		if (selectedOption == "staticMesh") {
-			document.getElementById("addModelPathTR").style.display = "inline-flex";
-			document.getElementById("addModelMaterialPathTR").style.display = "inline-flex";
-			document.getElementById("addBuildingPathTR").style.display = "none";
-		}
-		else {
-			document.getElementById("addModelPathTR").style.display = "none";
-			document.getElementById("addModelMaterialPathTR").style.display = "none";
-			document.getElementById("addBuildingPathTR").style.display = "inline-flex";
-		}
-	}
-
 	function selectTabInfo(tabID, infoID) {
 		let tabLinks = document.getElementsByClassName("tabLink");
 		for (var i = 0; i < tabLinks.length; ++i) {
@@ -403,10 +391,10 @@
 
 	function resizeList(e) {
 		let dragX = undefined;
-		let modelListLeft = parseInt(document.getElementById("modelList").style.left);
-		let modelListWidth = parseInt(document.getElementById("modelList").offsetWidth);
+		let entityListLeft = parseInt(document.getElementById("entityList").style.left);
+		let entityListWidth = parseInt(document.getElementById("entityList").offsetWidth);
 		document.onmousemove = function onMouseMove(e) {
-			let offsetWidth = document.getElementById('modelList').offsetWidth;
+			let offsetWidth = document.getElementById('entityList').offsetWidth;
 
 			if (dragX == undefined)
 				dragX = e.clientX;
@@ -417,10 +405,10 @@
 			if (newWidth > 1000)
 				newWidth = 1000;
 
-			document.getElementById("modelList").style.width = newWidth + "px";
+			document.getElementById("entityList").style.width = newWidth + "px";
 
-			let newLeft = modelListLeft - (newWidth - modelListWidth);
-			document.getElementById("modelList").style.left = newLeft + "px";
+			let newLeft = entityListLeft - (newWidth - entityListWidth);
+			document.getElementById("entityList").style.left = newLeft + "px";
 			document.getElementById("sliderList").style.left = newLeft + "px";
 
 			setRenderOffsetRight(newWidth + 5);

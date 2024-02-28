@@ -205,7 +205,7 @@ span {
     padding: 10px;
 }
 
-#modelList {
+#entityList {
     border: 1px solid white;
     position: absolute;
     width: 290px;
@@ -258,6 +258,22 @@ span {
 
 .tabLink:hover {
     background-color: #ececec;
+}
+
+#addComponentButton {
+    background-color: #e1e1e1;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+    margin: -1;
+    border-radius: 25px;
+    color: #535353;
+    margin-left: 5px;
+    margin-top: 2px;
+    font-size: 30px;
+    height: 25px;
+    width: 25px;
+    position: relative;
 }
 
 .tabSelected {
@@ -457,6 +473,6 @@ li {
     margin-bottom: -15px;
 }
 
-.modelListItem {
+.entityListItem {
     cursor: pointer;
 }

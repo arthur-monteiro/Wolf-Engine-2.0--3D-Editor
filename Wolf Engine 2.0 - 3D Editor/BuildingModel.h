@@ -41,23 +41,25 @@ public:
 		}
 	};
 
-	BuildingModel(const glm::mat4& transform, const std::string& filepath, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor);
+	BuildingModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor);
+
+	static inline std::string ID = "buildingModel";
+	std::string getId() const override { return ID; }
+
+	void loadParams(Wolf::JSONReader& jsonReader) override;
 
 	void updateGraphic() override;
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const override;
 
 	void activateParams() override;
-	void fillJSONForParams(std::string& outJSON) override;
+	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 	
 	const Wolf::AABB& getAABB() const override { return Wolf::AABB(); }
-	const std::string& getLoadingPath() const override { return  m_filepath; }
 
 	enum class PieceType { WINDOW, WALL };
 
-	ModelType getType() override { return ModelType::BUILDING; }
+	std::string getTypeString() override { return "building"; }
 	const std::string& getWindowMeshLoadingPath(uint32_t meshIdx) const { return m_window.getMeshWithMaterials().getLoadingPath(); }
-
-	void save() const;
 
 private:
 	struct MeshInfo
@@ -140,8 +142,7 @@ private:
 	float computeFloorSize() const;
 	float computeWindowCountOnSide(const glm::vec3& sideDir) const;
 	void rebuildRenderingInfos();
-
-	std::string m_filepath;
+	
 	float m_fullSizeY;
 	bool m_needRebuild = false;
 

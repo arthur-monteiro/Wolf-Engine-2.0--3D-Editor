@@ -20,15 +20,15 @@ function getRenderWidth() {
 }
 
 let modelAddCounter = 0;
-function addModel(filepath, materialPath, type) {
-    addModelToList(type + modelAddCounter);
+function addEntity(filepath, materialPath, type) {
+    addEntityToList(type + modelAddCounter);
 }
 
 function pickFile(inputOption) {
     return "F:\\Code\\Wolf Engine 2.0 - 3D Editor\\Wolf Engine 2.0 - 3D Editor\\UI\\UI.html";
 }
 
-function selectModelByName(name) {
+function selectEntityByName(name) {
     let json = "{ \
         \"params\": [ \
             { \

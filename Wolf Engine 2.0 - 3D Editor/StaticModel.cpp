@@ -1,0 +1,136 @@
+#include "StaticModel.h"
+
+#include <AABB.h>
+#include <DescriptorSetGenerator.h>
+#include <Timer.h>
+#include <Pipeline.h>
+
+#include "CommonDescriptorLayouts.h"
+#include "EditorParamsHelper.h"
+
+using namespace Wolf;
+
+StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor)
+: EditorModelInterface(transform), m_bindlessDescriptor(bindlessDescriptor)
+{
+	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, StaticModel>([this](std::unique_ptr<PipelineSet>& pipelineSet)
+		{
+			pipelineSet.reset(new PipelineSet);
+
+			PipelineSet::PipelineInfo pipelineInfo;
+
+			pipelineInfo.shaderInfos.resize(2);
+			pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/defaultPipeline/shader.vert";
+			pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
+			pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			// IA
+			Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+
+			pipelineInfo.vertexInputBindingDescriptions.resize(1);
+			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+
+			// Resources
+			pipelineInfo.descriptorSetLayouts = { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), CommonDescriptorLayouts::g_commonDescriptorSetLayout };
+			pipelineInfo.bindlessDescriptorSlot = 0;
+			pipelineInfo.cameraDescriptorSlot = 3;
+
+			// Color Blend
+			pipelineInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
+
+			// Dynamic states
+			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+
+			const uint32_t pipelineIdx = pipelineSet->addPipeline(pipelineInfo);
+			if (pipelineIdx != 0)
+				Debug::sendError("Unexpected pipeline idx");
+		}));
+}
+
+void StaticModel::loadParams(JSONReader& jsonReader)
+{
+	std::vector<EditorParamInterface*> params = { &m_loadingPathParam };
+	::loadParams(jsonReader, ID, params);
+	::loadParams(jsonReader, ID, m_modelParams);
+}
+
+void StaticModel::updateGraphic()
+{
+	EditorModelInterface::updateGraphic();
+
+	if (m_modelLoadingRequested)
+	{
+		loadModel();
+		m_modelLoadingRequested = false;
+	}
+}
+
+void StaticModel::addMeshesToRenderList(RenderMeshList& renderMeshList) const
+{
+	if (!m_modelData.mesh)
+		return;
+
+	RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_modelData.mesh.get(), m_defaultPipelineSet->getResource());
+	meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.get(), 1 });
+
+	renderMeshList.addMeshToRender(meshToRenderInfo);
+}
+
+void StaticModel::activateParams()
+{
+	EditorModelInterface::activateParams();
+
+	m_loadingPathParam.activate();
+}
+
+void StaticModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
+{
+	EditorModelInterface::addParamsToJSON(outJSON, tabCount);
+
+	std::vector<EditorParamInterface*> params = { &m_loadingPathParam };
+	::addParamsToJSON(outJSON, params, true, tabCount);
+}
+
+const AABB& StaticModel::getAABB() const
+{
+	return m_modelData.mesh->getAABB() * m_transform;
+}
+
+void StaticModel::loadModel()
+{
+	std::string& filename = m_loadingPathParam;
+
+	Timer timer(filename + " loading");
+
+	ModelLoadingInfo modelLoadingInfo;
+	modelLoadingInfo.filename = filename;
+	modelLoadingInfo.mtlFolder = filename.substr(0, filename.find_last_of('\\'));
+	modelLoadingInfo.vulkanQueueLock = nullptr;
+	modelLoadingInfo.loadMaterials = true;
+	modelLoadingInfo.materialIdOffset = m_bindlessDescriptor->getCurrentCounter() / 5;
+	ModelLoader::loadObject(m_modelData, modelLoadingInfo);
+
+	m_descriptorSet.reset(new DescriptorSet(m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
+
+	DescriptorSetGenerator descriptorSetGenerator(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts());
+	descriptorSetGenerator.setBuffer(0, *m_matricesUniformBuffer);
+	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+
+	std::vector<Image*> images;
+	m_modelData.getImages(images);
+	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(images.size());
+	for (uint32_t i = 0; i < images.size(); ++i)
+	{
+		imageDescriptions[i].imageView = images[i]->getDefaultImageView();
+		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+
+	m_bindlessDescriptor->addImages(imageDescriptions);
+}
+
+void StaticModel::requestModelLoading()
+{
+	if (!std::string(m_loadingPathParam).empty()) 
+		m_modelLoadingRequested = true;
+}

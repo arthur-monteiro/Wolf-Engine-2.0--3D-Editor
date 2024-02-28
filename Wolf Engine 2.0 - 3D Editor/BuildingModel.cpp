@@ -8,17 +8,17 @@
 #include <ModelLoader.h>
 
 #include "CommonDescriptorLayouts.h"
+#include "EditorParamsHelper.h"
+#include "Entity.h"
 #include "Timer.h"
 
 using namespace Wolf;
 
-BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& filepath, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor)
+BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<BindlessDescriptor>& bindlessDescriptor)
 : EditorModelInterface(transform),
   m_window("Window", [this] { m_needRebuild = true; }, bindlessDescriptor),
   m_wall("Wall", [this] { m_needRebuild = true; }, bindlessDescriptor)
 {
-	m_filepath = filepath;
-	m_nameParam = "Building";
 	m_floorCountParam = 8;
 	m_floorHeightInMeter = 2.0f;
 	m_sizeXZParam = glm::vec2(10.0f, 20.0f);
@@ -75,39 +75,8 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 				Debug::sendError("Unexpected pipeline idx");
 		}));
 
-	if (std::filesystem::exists(m_filepath))
-	{
-		JSONReader jsonReader(m_filepath);
-
-		m_sizeXZParam.getValue().x = jsonReader.getRoot()->getPropertyFloat("fullSizeX");
-		m_sizeXZParam.getValue().y = jsonReader.getRoot()->getPropertyFloat("fullSizeZ");
-
-		const std::string& meshLoadingPath = jsonReader.getRoot()->getPropertyString("windowMeshLoadingPath");
-		if (meshLoadingPath.empty())
-		{
-			m_window.getMeshWithMaterials().loadDefaultMesh(glm::vec3(1.0f, 0.0f, 0.4f));
-		}
-		else
-		{
-			m_window.getMeshWithMaterials().setLoadingPath(meshLoadingPath);
-			m_window.getMeshWithMaterials().loadMesh();
-		}
-
-		m_wall.getMeshWithMaterials().loadDefaultMesh(glm::vec3(0.5f, 0.25f, 0.0f));
-
-		*m_window.getSideSizeInMeterParam() = jsonReader.getRoot()->getPropertyFloat("windowSideSizeInMeter");
-		m_window.setHeightInMeter(jsonReader.getRoot()->getPropertyFloat("windowHeightInMeter"));
-		m_floorCountParam = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("floorCount"));
-
-		m_fullSizeY = m_floorHeightInMeter * static_cast<float>(m_floorCountParam);
-	}
-	else
-	{
-		m_window.getMeshWithMaterials().loadDefaultMesh(glm::vec3(1.0f, 0.0f, 0.4f));
-		m_wall.getMeshWithMaterials().loadDefaultMesh(glm::vec3(0.5f, 0.25f, 0.0f));
-
-		save();
-	}
+	m_window.getMeshWithMaterials().loadDefaultMesh(glm::vec3(1.0f, 0.0f, 0.4f));
+	m_wall.getMeshWithMaterials().loadDefaultMesh(glm::vec3(0.5f, 0.25f, 0.0f));
 
 	// Model descriptor set
 	m_descriptorSet.reset(new DescriptorSet(m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
@@ -132,6 +101,12 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const std::string& file
 	m_wall.subscribe(this, [this] { m_needRebuild = true; });
 
 	rebuildRenderingInfos();
+}
+
+void BuildingModel::loadParams(Wolf::JSONReader& jsonReader)
+{
+	::loadParams(jsonReader, ID, m_buildingParams);
+	::loadParams(jsonReader, ID, m_modelParams);
 }
 
 void BuildingModel::updateGraphic()
@@ -173,46 +148,10 @@ void BuildingModel::activateParams()
 	}
 }
 
-void BuildingModel::fillJSONForParams(std::string& outJSON)
+void BuildingModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
-	outJSON += "{\n";
-	outJSON += "\t" R"("params": [)" "\n";
-	addParamsToJSON(outJSON, m_modelParams, false);
-	addParamsToJSON(outJSON, m_buildingParams, true);
-	outJSON += "\t]\n";
-	outJSON += "}";
-}
-
-void BuildingModel::save() const
-{
-	std::ofstream outputFile(m_filepath);
-
-	// Header comments
-	const time_t now = time(nullptr);
-	tm newTime;
-	localtime_s(&newTime, &now);
-	outputFile << "// Save scene: " << newTime.tm_mday << "/" << 1 + newTime.tm_mon << "/" << 1900 + newTime.tm_year << " " << newTime.tm_hour << ":" << newTime.tm_min << "\n\n";
-
-	outputFile << "{\n";
-
-	outputFile << "\t\"fullSizeX\":" << m_sizeXZParam.getValue().x << ",\n";
-	outputFile << "\t\"fullSizeZ\":" << m_sizeXZParam.getValue().y << ",\n";
-
-	auto savePiece = [&](const BuildingPiece& piece, const std::string& name)
-	{
-		outputFile << "\t\"" + name + "MeshLoadingPath\":\"" << piece.getMeshWithMaterials().getLoadingPath() << "\",\n";
-		outputFile << "\t\"" + name + "SideSizeInMeter\":" << *piece.getSideSizeInMeterParam() << ",\n";
-		outputFile << "\t\"" + name + "HeightInMeter\":" << piece.getHeightInMeter() << ",\n";
-	};
-	savePiece(m_window, "window");
-	savePiece(m_wall, "wall");
-
-	// Floors
-	outputFile << "\t\"floorCount\":" << m_floorCountParam << "\n";
-
-	outputFile << "}\n";
-
-	outputFile.close();
+	EditorModelInterface::addParamsToJSON(outJSON, tabCount);
+	::addParamsToJSON(outJSON, m_buildingParams, true, tabCount);
 }
 
 void BuildingModel::MeshWithMaterials::updateBeforeFrame()
@@ -352,7 +291,8 @@ void BuildingModel::MeshWithMaterials::addImagesToBindlessDescriptor() const
 
 void BuildingModel::MeshWithMaterials::requestMeshLoading()
 {
-	m_meshLoadingRequested = true;
+	if (!std::string(m_loadingPathParam).empty())
+		m_meshLoadingRequested = true;
 }
 
 float BuildingModel::computeFloorSize() const
