@@ -36,7 +36,7 @@ void SystemManager::run()
 		const long long durationInMs = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - m_startTimeFPSCounter).count();
 		if (durationInMs > 1000)
 		{
-			m_stableFPS = std::round((1000.0f * m_currentFramesAccumulated) / static_cast<float>(durationInMs));
+			m_stableFPS = static_cast<uint32_t>(std::round((1000.0f * m_currentFramesAccumulated) / static_cast<float>(durationInMs)));
 
 			m_currentFramesAccumulated = 0;
 			m_startTimeFPSCounter = currentTime;
@@ -149,6 +149,8 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openUIInBrowser"] = std::bind(&SystemManager::openUIInBrowserJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["getAllComponentTypes"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getAllComponentTypesJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["enableEntityPicking"] = std::bind(&SystemManager::enableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["disableEntityPicking"] = std::bind(&SystemManager::disableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -173,7 +175,7 @@ std::string exec(const char* cmd)
 	if (!pipe) 
 		Debug::sendError("Can't open " + std::string(cmd));
 	
-	while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) 
+	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) 
 	{
 		result += buffer.data();
 	}
@@ -412,7 +414,18 @@ ultralight::JSValue SystemManager::getAllComponentTypesJSCallback(const ultralig
 	const ultralight::JSArgs& args)
 {
 	return { m_componentInstancier->getAllComponentTypes().c_str() };
-	return R"({ "components": [ { "name":"Static model", "value":"staticModel" }, { "name":"Building model", "value":"buildingModel" } ] })";
+}
+
+void SystemManager::enableEntityPickingJSCallback(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args)
+{
+	m_entityPickingEnabled = true;
+}
+
+void SystemManager::disableEntityPickingJSCallback(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args)
+{
+	m_entityPickingEnabled = false;
 }
 
 void SystemManager::updateBeforeFrame()
@@ -458,7 +471,7 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	// Select object by click
-	if (false && m_wolfInstance->getInputHandler()->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	if (m_entityPickingEnabled && m_wolfInstance->getInputHandler()->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
 	{
 		const glm::vec3 rayOrigin = m_camera->getPosition();
 
@@ -468,31 +481,31 @@ void SystemManager::updateBeforeFrame()
 		const float renderPosX = currentMousePosX - m_editorParams->getRenderOffsetLeft();
 		const float renderPosY = currentMousePosY - m_editorParams->getRenderOffsetBot();
 
-		if (renderPosX < 0.0f || renderPosX > m_editorParams->getRenderWidth() || renderPosY < 0.0f || renderPosY > m_editorParams->getRenderHeight())
-			return;
-
-		const float renderPosClipSpaceX = (renderPosX / static_cast<float>(m_editorParams->getRenderWidth())) * 2.0f - 1.0f;
-		const float renderPosClipSpaceY = (renderPosY / static_cast<float>(m_editorParams->getRenderHeight())) * 2.0f - 1.0f;
-
-		const glm::vec3 clipTarget = glm::vec3(glm::inverse(m_camera->getProjectionMatrix()) * glm::vec4(renderPosClipSpaceX, renderPosClipSpaceY, 1.0f, 1.0f));
-		const glm::vec3 rayDirection = glm::vec3(glm::inverse(m_camera->getViewMatrix()) * glm::vec4(clipTarget, 0.0f));
-		
-		float minDistance = 2'000.0f;
-		for (const std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>& model : allModels)
+		if (renderPosX >= 0.0f && renderPosX < m_editorParams->getRenderWidth() && renderPosY >= 0.0f && renderPosY < m_editorParams->getRenderHeight())
 		{
-			if(float intersectionDistance = model.first->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
+			const float renderPosClipSpaceX = (renderPosX / static_cast<float>(m_editorParams->getRenderWidth())) * 2.0f - 1.0f;
+			const float renderPosClipSpaceY = (renderPosY / static_cast<float>(m_editorParams->getRenderHeight())) * 2.0f - 1.0f;
+
+			const glm::vec3 clipTarget = glm::vec3(glm::inverse(m_camera->getProjectionMatrix()) * glm::vec4(renderPosClipSpaceX, renderPosClipSpaceY, 1.0f, 1.0f));
+			const glm::vec3 rayDirection = glm::vec3(glm::inverse(m_camera->getViewMatrix()) * glm::vec4(clipTarget, 0.0f));
+
+			float minDistance = 2'000.0f;
+			for (const std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>& model : allModels)
 			{
-				intersectionDistance = intersectionDistance > 0.0f ? intersectionDistance : 1'000.0f;
-				if(intersectionDistance < minDistance)
+				if (float intersectionDistance = model.first->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
 				{
-					minDistance = intersectionDistance;
-					m_selectedEntity.reset(new ResourceNonOwner<Entity>(model.second));
+					intersectionDistance = intersectionDistance > 0.0f ? intersectionDistance : 1'000.0f;
+					if (intersectionDistance < minDistance)
+					{
+						minDistance = intersectionDistance;
+						m_selectedEntity.reset(new ResourceNonOwner<Entity>(model.second));
+					}
 				}
 			}
-		}
 
-		if(m_selectedEntity)
-			updateUISelectedEntity();
+			if (m_selectedEntity)
+				updateUISelectedEntity();
+		}
 	}
 
 	const glm::vec3 cameraPosition = m_camera->getPosition();

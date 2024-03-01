@@ -21,7 +21,7 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
-	const Wolf::AABB& getAABB() const override;
+	Wolf::AABB getAABB() const override;
 
 	std::string getTypeString() override { return "staticMesh"; }
 	void getImages(std::vector<Wolf::Image*>& outputImages) const { m_modelData.getImages(outputImages); }

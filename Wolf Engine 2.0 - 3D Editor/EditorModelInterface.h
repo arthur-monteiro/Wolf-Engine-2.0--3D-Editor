@@ -25,7 +25,7 @@ public:
 	virtual void updateGraphic();
 	virtual void addMeshesToRenderList(Wolf::RenderMeshList&) const = 0;
 
-	virtual const Wolf::AABB& getAABB() const = 0;
+	virtual Wolf::AABB getAABB() const = 0;
 	virtual const glm::mat4& getTransform() const { return m_transform; }
 	
 	virtual std::string getTypeString() = 0;

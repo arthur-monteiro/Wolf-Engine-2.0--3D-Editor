@@ -26,7 +26,7 @@ public:
 
 		static void getAttributeDescriptions(std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, uint32_t binding, uint32_t startLocation)
 		{
-			const uint32_t attributeDescriptionCountBefore = attributeDescriptions.size();
+			const uint32_t attributeDescriptionCountBefore = static_cast<uint32_t>(attributeDescriptions.size());
 			attributeDescriptions.resize(attributeDescriptionCountBefore + 2);
 
 			attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
@@ -54,7 +54,7 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 	
-	const Wolf::AABB& getAABB() const override { return Wolf::AABB(); }
+	Wolf::AABB getAABB() const override { return Wolf::AABB(); }
 
 	enum class PieceType { WINDOW, WALL };
 

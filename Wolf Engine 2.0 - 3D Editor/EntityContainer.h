@@ -8,6 +8,7 @@
 class EntityContainer
 {
 public:
+	EntityContainer();
 	~EntityContainer();
 
 	void addEntity(Entity* entity);
@@ -18,6 +19,8 @@ public:
 	std::vector<Wolf::ResourceUniqueOwner<Entity>>& getEntities() { return m_currentEntities; }
 
 private:
+	static constexpr uint32_t MAX_ENTITY_COUNT = 1024;
+
 	std::vector<Wolf::ResourceUniqueOwner<Entity>> m_currentEntities;
 	std::vector<Wolf::ResourceUniqueOwner<Entity>> m_newEntities;
 };

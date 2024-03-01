@@ -1,5 +1,10 @@
 #include "EntityContainer.h"
 
+EntityContainer::EntityContainer()
+{
+	m_currentEntities.reserve(MAX_ENTITY_COUNT);
+}
+
 EntityContainer::~EntityContainer()
 {
 	clear();
@@ -15,6 +20,10 @@ void EntityContainer::moveToNextFrame()
 	for (Wolf::ResourceUniqueOwner<Entity>& entity : m_newEntities)
 	{
 		m_currentEntities.emplace_back(entity.release());
+	}
+	if (m_currentEntities.size() > MAX_ENTITY_COUNT)
+	{
+		Wolf::Debug::sendCriticalError("There are more entities than supported. All unique owner pointers has been changed resulting in garbage references for non owners");
 	}
 	m_newEntities.clear();
 }

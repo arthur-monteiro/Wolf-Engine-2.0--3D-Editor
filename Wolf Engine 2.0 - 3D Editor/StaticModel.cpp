@@ -92,7 +92,7 @@ void StaticModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	::addParamsToJSON(outJSON, params, true, tabCount);
 }
 
-const AABB& StaticModel::getAABB() const
+AABB StaticModel::getAABB() const
 {
 	return m_modelData.mesh->getAABB() * m_transform;
 }

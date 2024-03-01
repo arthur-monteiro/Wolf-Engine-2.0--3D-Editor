@@ -25,7 +25,7 @@ private:
 
 	void loadScene();
 	void addEntity(const std::string& filepath) const;
-	void addComponent(const std::string& filepath) const;
+	void addComponent(const std::string& componentId) const;
 
 	void debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const;
 	void bindUltralightCallbacks();
@@ -49,6 +49,8 @@ private:
 	void displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void enableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void disableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void updateUISelectedEntity() const;
 
@@ -63,6 +65,7 @@ private:
 	std::string m_currentSceneName = "Unknown scene";
 
 	std::vector<GameContext> m_gameContexts;
+	bool m_entityPickingEnabled = true;
 	Wolf::ResourceUniqueOwner<EntityContainer> m_entityContainer;
 	Wolf::ResourceUniqueOwner<ComponentInstancier> m_componentInstancier;
 	std::unique_ptr<Wolf::FirstPersonCamera> m_camera;
