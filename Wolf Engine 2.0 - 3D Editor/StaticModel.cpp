@@ -6,6 +6,7 @@
 #include <Pipeline.h>
 
 #include "CommonDescriptorLayouts.h"
+#include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 
 using namespace Wolf;
@@ -99,13 +100,13 @@ AABB StaticModel::getAABB() const
 
 void StaticModel::loadModel()
 {
-	std::string& filename = m_loadingPathParam;
+	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPathParam);
 
-	Timer timer(filename + " loading");
+	Timer timer(std::string(m_loadingPathParam) + " loading");
 
 	ModelLoadingInfo modelLoadingInfo;
-	modelLoadingInfo.filename = filename;
-	modelLoadingInfo.mtlFolder = filename.substr(0, filename.find_last_of('\\'));
+	modelLoadingInfo.filename = fullFilePath;
+	modelLoadingInfo.mtlFolder = fullFilePath.substr(0, fullFilePath.find_last_of('\\'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.loadMaterials = true;
 	modelLoadingInfo.materialIdOffset = m_bindlessDescriptor->getCurrentCounter() / 5;

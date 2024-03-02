@@ -42,14 +42,12 @@ protected:
 	std::string m_tab;
 	std::string m_category;
 	std::function<void()> m_callbackValueChanged;
+	Type m_type;
 
 	void addCommonInfoToJSON(std::string& out, uint32_t tabCount);
 	std::string getTypeAsString();
 
 	static std::string removeSpaces(const std::string& in);
-
-private:
-	Type m_type;
 };
 
 template <typename T>

@@ -193,6 +193,7 @@
     <ClCompile Include="CommonDescriptorLayouts.cpp" />
     <ClCompile Include="ComponentInstancier.cpp" />
     <ClCompile Include="ComponentInterface.cpp" />
+    <ClCompile Include="EditorConfiguration.cpp" />
     <ClCompile Include="EditorParams.cpp" />
     <ClCompile Include="EditorTypes.cpp" />
     <ClCompile Include="Entity.cpp" />
@@ -212,6 +213,7 @@
     <ClInclude Include="CommonDescriptorLayouts.h" />
     <ClInclude Include="ComponentInstancier.h" />
     <ClInclude Include="ComponentInterface.h" />
+    <ClInclude Include="EditorConfiguration.h" />
     <ClInclude Include="EditorParams.h" />
     <ClInclude Include="EditorParamsHelper.h" />
     <ClInclude Include="EditorTypes.h" />

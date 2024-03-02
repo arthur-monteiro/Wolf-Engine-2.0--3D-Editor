@@ -4,6 +4,7 @@
 #include <WolfEngine.h>
 
 #include "ComponentInstancier.h"
+#include "EditorConfiguration.h"
 #include "EditorParams.h"
 #include "EntityContainer.h"
 #include "GameContext.h"
@@ -24,7 +25,7 @@ private:
 	void addImagesToBindlessDescriptor(const std::vector<Wolf::Image*>& images) const;
 
 	void loadScene();
-	void addEntity(const std::string& filepath) const;
+	void addEntity(const std::string& filePath) const;
 	void addComponent(const std::string& componentId) const;
 
 	void debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const;
@@ -56,6 +57,7 @@ private:
 
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
 	std::unique_ptr<MainRenderingPipeline> m_mainRenderer;
+	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
 
 	/* FPS counter */
 	uint32_t m_currentFramesAccumulated = 0;

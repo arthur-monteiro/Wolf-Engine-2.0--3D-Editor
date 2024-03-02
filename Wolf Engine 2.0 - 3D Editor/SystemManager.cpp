@@ -15,12 +15,18 @@ SystemManager::SystemManager()
 {
 	createWolfInstance();
 	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
+	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 
 	createMainRenderer();
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier);
 	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
+
+	if (!m_configuration->getDefaultScene().empty())
+	{
+		m_loadSceneRequest = m_configuration->getDefaultScene();
+	}
 }
 
 void SystemManager::run()
@@ -169,7 +175,7 @@ ultralight::JSValue SystemManager::getFrameRateJSCallback(const ultralight::JSOb
 
 std::string exec(const char* cmd)
 {
-	std::array<char, 128> buffer;
+	std::array<char, 128> buffer{};
 	std::string result;
 	FILE* pipe = _popen(cmd, "r");
 	if (!pipe) 
@@ -194,15 +200,17 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 	const std::string inputOption = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 	const std::string inputFilter = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
 
-	std::string filename;
+	std::string fullFilePath;
 #ifdef _WIN32
-	const std::string cmd = "BrowseToFile.exe " + inputOption + " " + inputFilter + " F:\\Code\\Wolf Engine 2.0 - 3D Editor\\Wolf Engine 2.0 - 3D Editor";
-	filename = exec(cmd.c_str());
+	const std::string cmd = "BrowseToFile.exe " + inputOption + " " + inputFilter + ' ' + m_configuration->getDataFolderPath();
+	fullFilePath = exec(cmd.c_str());
 #else
 	Debug::sendError("Pick file not implemented for this platform");
 #endif
 
-	return filename.c_str();
+	fullFilePath = m_configuration->computeLocalPathFromFullPath(fullFilePath);
+
+	return fullFilePath.c_str();
 }
 
 ultralight::JSValue SystemManager::pickFolderJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
@@ -219,22 +227,19 @@ ultralight::JSValue SystemManager::getRenderHeightJSCallback(const ultralight::J
 	return r.c_str();
 }
 
-ultralight::JSValue SystemManager::getRenderWidthJSCallback(const ultralight::JSObject& thisObject,
-                                                                        const ultralight::JSArgs& args) const
+ultralight::JSValue SystemManager::getRenderWidthJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
 {
 	const std::string r = std::to_string(m_editorParams->getRenderWidth());
 	return r.c_str();
 }
 
-ultralight::JSValue SystemManager::getRenderOffsetRightJSCallback(const ultralight::JSObject& thisObject,
-                                                                              const ultralight::JSArgs& args) const
+ultralight::JSValue SystemManager::getRenderOffsetRightJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
 {
 	const std::string r = std::to_string(m_editorParams->getRenderOffsetRight());
 	return r.c_str();
 }
 
-ultralight::JSValue SystemManager::getRenderOffsetLeftJSCallback(const ultralight::JSObject& thisObject,
-                                                                             const ultralight::JSArgs& args) const
+ultralight::JSValue SystemManager::getRenderOffsetLeftJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
 {
 	const std::string r = std::to_string(m_editorParams->getRenderOffsetLeft());
 	return r.c_str();
@@ -282,12 +287,12 @@ void SystemManager::selectEntityByNameJSCallback(const ultralight::JSObject& thi
 
 void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const std::string& outputFilename = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	const std::string& outputFilePath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 	const std::string& sceneName = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
 	m_currentSceneName = sceneName;
 	m_wolfInstance->evaluateUserInterfaceScript("setSceneName(\"" + m_currentSceneName + "\")");
 
-	std::ofstream outputFile(outputFilename);
+	std::ofstream outputFile(m_configuration->computeFullPathFromLocalPath(outputFilePath));
 
 	// Header comments
 	const time_t now = time(nullptr);
@@ -340,12 +345,11 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 void SystemManager::loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const std::string filename = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
-	m_loadSceneRequest = filename;
+	const std::string filePath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	m_loadSceneRequest = filePath;
 }
 
-void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject,
-                                                                   const ultralight::JSArgs& args)
+void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const uint32_t contextId = m_wolfInstance->getCurrentFrame() % g_configuration->getMaxCachedFrames();
 	const std::string displayType = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
@@ -478,10 +482,10 @@ void SystemManager::updateBeforeFrame()
 		float currentMousePosX, currentMousePosY;
 		m_wolfInstance->getInputHandler()->getMousePosition(currentMousePosX, currentMousePosY);
 
-		const float renderPosX = currentMousePosX - m_editorParams->getRenderOffsetLeft();
-		const float renderPosY = currentMousePosY - m_editorParams->getRenderOffsetBot();
+		const float renderPosX = currentMousePosX - static_cast<float>(m_editorParams->getRenderOffsetLeft());
+		const float renderPosY = currentMousePosY - static_cast<float>(m_editorParams->getRenderOffsetBot());
 
-		if (renderPosX >= 0.0f && renderPosX < m_editorParams->getRenderWidth() && renderPosY >= 0.0f && renderPosY < m_editorParams->getRenderHeight())
+		if (renderPosX >= 0.0f && renderPosX < static_cast<float>(m_editorParams->getRenderWidth()) && renderPosY >= 0.0f && renderPosY < static_cast<float>(m_editorParams->getRenderHeight()))
 		{
 			const float renderPosClipSpaceX = (renderPosX / static_cast<float>(m_editorParams->getRenderWidth())) * 2.0f - 1.0f;
 			const float renderPosClipSpaceY = (renderPosY / static_cast<float>(m_editorParams->getRenderHeight())) * 2.0f - 1.0f;
@@ -532,7 +536,7 @@ void SystemManager::loadScene()
 	m_wolfInstance->evaluateUserInterfaceScript("resetModelList()");
 	m_wolfInstance->evaluateUserInterfaceScript("resetSelectedEntity()");
 
-	JSONReader jsonReader(m_loadSceneRequest);
+	JSONReader jsonReader(m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest));
 
 	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
 	const std::string& sceneName = jsonReader.getRoot()->getPropertyString("sceneName");
@@ -565,9 +569,9 @@ void SystemManager::loadScene()
 	m_loadSceneRequest.clear();
 }
 
-void SystemManager::addEntity(const std::string& filepath) const
+void SystemManager::addEntity(const std::string& filePath) const
 {
-	Entity* newEntity = new Entity(filepath, [this](Entity*)
+	Entity* newEntity = new Entity(filePath, [this](Entity*)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
 			const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
@@ -579,8 +583,7 @@ void SystemManager::addEntity(const std::string& filepath) const
 		[this](const std::string& componentId)
 		{
 			return m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getBindlessDescriptor());
-		}
-		);
+		});
 	m_entityContainer->addEntity(newEntity);
 
 	const std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\")";

@@ -6,12 +6,13 @@
 #include "EditorTypes.h"
 #include "ResourceUniqueOwner.h"
 
+class EditorConfiguration;
 class ComponentInstancier;
 
 class Entity
 {
 public:
-	Entity(const std::string& filepath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<ComponentInterface*(const std::string&)>&& instanciateComponent);
+	Entity(const std::string& filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<ComponentInterface*(const std::string&)>&& instanciateComponent);
 
 	void addComponent(ComponentInterface* component);
 

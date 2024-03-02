@@ -243,6 +243,7 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 void EditorParamString::setValue(const std::string& value)
 {
 	m_value = value;
+
 	if (m_callbackValueChanged)
 		m_callbackValueChanged();
 }

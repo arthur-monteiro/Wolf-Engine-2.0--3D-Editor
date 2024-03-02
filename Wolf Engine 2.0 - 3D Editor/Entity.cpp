@@ -1,16 +1,17 @@
 #include "Entity.h"
 
 #include "ComponentInstancier.h"
+#include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 
-Entity::Entity(const std::string& filepath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<ComponentInterface* (const std::string&)>&& instanciateComponent) : m_filepath(filepath), m_onChangeCallback(onChangeCallback)
+Entity::Entity(const std::string& filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<ComponentInterface* (const std::string&)>&& instanciateComponent) : m_filepath(filePath), m_onChangeCallback(onChangeCallback)
 {
 	m_nameParam = "Undefined";
 
-	const std::ifstream inFile(filepath.c_str());
+	const std::ifstream inFile(g_editorConfiguration->computeFullPathFromLocalPath(filePath));
 	if (inFile.good())
 	{
-		Wolf::JSONReader jsonReader(filepath);
+		Wolf::JSONReader jsonReader(g_editorConfiguration->computeFullPathFromLocalPath(filePath));
 		loadParams(jsonReader, "entity", m_entityParams);
 
 		const uint32_t componentCount = jsonReader.getRoot()->getPropertyCount();
@@ -59,7 +60,7 @@ void Entity::fillJSONForParams(std::string& outJSON)
 
 void Entity::save()
 {
-	std::ofstream outFile(m_filepath);
+	std::ofstream outFile(g_editorConfiguration->computeFullPathFromLocalPath(m_filepath));
 
 	std::string outJSON;
 	outJSON += "{\n";
