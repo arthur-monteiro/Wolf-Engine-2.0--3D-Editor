@@ -35,7 +35,7 @@ void main()
 
     gl_Position = getProjectionMatrix() * viewPos;
 
-	mat3 usedModelMatrix = transpose(inverse(mat3(getViewMatrix() * ubMVP.model)));
+	mat3 usedModelMatrix = transpose(inverse(mat3(ubMVP.model)));
     vec3 n = normalize(usedModelMatrix * inNormal);
 	vec3 t = normalize(usedModelMatrix * inTangent);
 	t = normalize(t - dot(t, n) * n);
