@@ -14,7 +14,7 @@
 
 using namespace Wolf;
 
-BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<BindlessDescriptor>& bindlessDescriptor)
+BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<MaterialsGPUManager>& bindlessDescriptor)
 : EditorModelInterface(transform),
   m_window("Window", [this] { m_needRebuild = true; }, bindlessDescriptor),
   m_wall("Wall", [this] { m_needRebuild = true; }, bindlessDescriptor)
@@ -173,7 +173,7 @@ void BuildingModel::MeshWithMaterials::loadMesh()
 	modelLoadingInfo.mtlFolder = materialFolder;
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.loadMaterials = true;
-	modelLoadingInfo.materialIdOffset = m_bindlessDescriptor->getCurrentCounter() / 5;
+	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 	ModelData windowMeshData;
 	ModelLoader::loadObject(windowMeshData, modelLoadingInfo);
 
@@ -189,13 +189,13 @@ void BuildingModel::MeshWithMaterials::loadMesh()
 	const glm::vec3 meshCenter = m_mesh->getAABB().getCenter();
 	m_center = glm::vec2(meshCenter.x, meshCenter.y);
 
-	addImagesToBindlessDescriptor();
+	addMaterialsToGPU();
 	notifySubscribers();
 }
 
 void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 {
-	const uint32_t materialIdOffset = m_bindlessDescriptor->getCurrentCounter() / 5;
+	const uint32_t materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 
 	const std::vector<Vertex3D> vertices =
 	{
@@ -274,10 +274,10 @@ void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 		createImage(image);
 	}
 
-	addImagesToBindlessDescriptor();
+	addMaterialsToGPU();
 }
 
-void BuildingModel::MeshWithMaterials::addImagesToBindlessDescriptor() const
+void BuildingModel::MeshWithMaterials::addMaterialsToGPU() const
 {
 	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(m_images.size());
 	for (uint32_t i = 0; i < m_images.size(); ++i)
@@ -286,7 +286,7 @@ void BuildingModel::MeshWithMaterials::addImagesToBindlessDescriptor() const
 		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
-	m_bindlessDescriptor->addImages(imageDescriptions);
+	m_materialsGPUManager->addNewMaterials(imageDescriptions);
 }
 
 void BuildingModel::MeshWithMaterials::requestMeshLoading()

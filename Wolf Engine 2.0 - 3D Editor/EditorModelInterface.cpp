@@ -52,9 +52,9 @@ void EditorModelInterface::addParamsToJSON(std::string& outJSON, uint32_t tabCou
 
 void EditorModelInterface::recomputeTransform()
 {
-	m_transform = glm::scale(glm::mat4(1.0f), static_cast<glm::vec3>(m_scaleParam));
+	m_transform = glm::translate(glm::mat4(1.0f), static_cast<glm::vec3>(m_translationParam));
 	m_transform = glm::rotate(m_transform, static_cast<glm::vec3>(m_rotationParam).x, glm::vec3(1.0f, 0.0f, 0.0f));
 	m_transform = glm::rotate(m_transform, static_cast<glm::vec3>(m_rotationParam).y, glm::vec3(0.0f, 1.0f, 0.0f));
 	m_transform = glm::rotate(m_transform, static_cast<glm::vec3>(m_rotationParam).z, glm::vec3(0.0f, 0.0f, 1.0f));
-	m_transform = glm::translate(m_transform, static_cast<glm::vec3>(m_translationParam));
+	m_transform = glm::scale(m_transform, static_cast<glm::vec3>(m_scaleParam));
 }

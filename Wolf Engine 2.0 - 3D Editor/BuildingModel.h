@@ -41,7 +41,7 @@ public:
 		}
 	};
 
-	BuildingModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor);
+	BuildingModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor);
 
 	static inline std::string ID = "buildingModel";
 	std::string getId() const override { return ID; }
@@ -71,8 +71,8 @@ private:
 	class MeshWithMaterials : public Notifier
 	{
 	public:
-		MeshWithMaterials(const std::string& category, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor) :
-			m_bindlessDescriptor(bindlessDescriptor), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, true) {}
+		MeshWithMaterials(const std::string& category, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor) :
+			m_materialsGPUManager(bindlessDescriptor), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, true) {}
 
 		void updateBeforeFrame();
 		void loadMesh();
@@ -88,8 +88,8 @@ private:
 		EditorParamString* getLoadingPathParam() { return &m_loadingPathParam; }
 
 	private:
-		Wolf::ResourceNonOwner<Wolf::BindlessDescriptor> m_bindlessDescriptor;
-		void addImagesToBindlessDescriptor() const;
+		Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
+		void addMaterialsToGPU() const;
 
 		EditorParamString m_loadingPathParam;
 		std::unique_ptr<Wolf::Mesh> m_mesh;
@@ -104,7 +104,7 @@ private:
 	class BuildingPiece : public Notifier
 	{
 	public:
-		BuildingPiece(const std::string& name, const std::function<void()>& callbackValueChanged, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor) :
+		BuildingPiece(const std::string& name, const std::function<void()>& callbackValueChanged, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor) :
 			m_sideSizeInMeterParam("Side size in meter", "Building", name, 0.1f, 5.0f, callbackValueChanged),
 			m_meshWithMaterials(name, bindlessDescriptor)
 		{

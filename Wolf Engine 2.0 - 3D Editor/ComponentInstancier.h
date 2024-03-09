@@ -13,7 +13,7 @@
 class ComponentInstancier
 {
 public:
-	ComponentInterface* instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor);
+	ComponentInterface* instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
 
 	std::string getAllComponentTypes() const;
 
@@ -22,7 +22,7 @@ private:
 	{
 		std::string name;
 		std::string id;
-		std::function<ComponentInterface*(const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor) > instancingFunction;
+		std::function<ComponentInterface*(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor) > instancingFunction;
 	};
 
 	std::array<ComponentInfo, 2> m_componentsInfo =
@@ -31,18 +31,18 @@ private:
 		{
 			"Static model",
 			StaticModel::ID,
-			[](const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor)
+			[](const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
 			{
-				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), bindlessDescriptor));
+				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), materialsGPUManager));
 			}
 		},
 		ComponentInfo
 		{
 			"Building model",
 			BuildingModel::ID,
-			[](const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor)
+			[](const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
 			{
-				return static_cast<ComponentInterface*>(new BuildingModel(glm::mat4(1.0f), bindlessDescriptor));
+				return static_cast<ComponentInterface*>(new BuildingModel(glm::mat4(1.0f), materialsGPUManager));
 			}
 		}
 	};

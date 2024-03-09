@@ -1,11 +1,11 @@
 #include "ComponentInstancier.h"
 
-ComponentInterface* ComponentInstancier::instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor)
+ComponentInterface* ComponentInstancier::instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
 {
 	for (const ComponentInfo& componentInfo : m_componentsInfo)
 	{
 		if (componentInfo.id == componentId)
-			return componentInfo.instancingFunction(bindlessDescriptor);
+			return componentInfo.instancingFunction(materialsGPUManager);
 	}
 
 	return nullptr;

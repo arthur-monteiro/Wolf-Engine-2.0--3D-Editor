@@ -27,6 +27,8 @@ SystemManager::SystemManager()
 	{
 		m_loadSceneRequest = m_configuration->getDefaultScene();
 	}
+
+	m_debugRenderingManager.reset(new DebugRenderingManager);
 }
 
 void SystemManager::run()
@@ -122,6 +124,7 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 		switch (severity)
 		{
 		case Debug::Severity::ERROR:
+			__debugbreak();
 			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + "\", \"logError\")");
 			break;
 		case Debug::Severity::WARNING:
@@ -394,6 +397,16 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 			outHTML << "<script type=\"text/javascript\">\n";
 			outHTML << "\twindow.addEventListener('DOMContentLoaded', (event) => {\n";
 
+			outHTML << "if (navigator.userAgent.indexOf('Ultralight') != -1) {\n";
+			outHTML << "}\n";
+			outHTML << "else {\n";
+			outHTML << "document.getElementsByTagName(\"body\")[0].style.backgroundColor = \"#191919\"; \n";
+
+			outHTML << "let script = document.createElement(\"script\");\n";
+			outHTML << "script.src = \"./fakeEngine.js\"; \n";
+			outHTML << "document.head.appendChild(script); \n";
+			outHTML << "}\n";
+
 			for (const std::string& command : m_wolfInstance->getSavedUICommands())
 			{
 				if (command.find("setCameraPosition") != std::string::npos)
@@ -441,6 +454,19 @@ void SystemManager::updateBeforeFrame()
 
 	m_entityContainer->moveToNextFrame();
 
+	m_entityChangedMutex.lock();
+	if (m_entityChanged)
+	{
+		m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
+		const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+		for (const ResourceUniqueOwner<Entity>& entity : allEntities)
+		{
+			m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\")");
+		}
+		m_entityChanged = false;
+	}
+	m_entityChangedMutex.unlock();
+
 	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 	std::vector<std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>> allModels;
 
@@ -460,6 +486,8 @@ void SystemManager::updateBeforeFrame()
 			}
 		}
 	}
+	m_debugRenderingManager->updateGraphic();
+	m_debugRenderingManager->addMeshesToRenderList(renderList);
 
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
 
@@ -516,24 +544,12 @@ void SystemManager::updateBeforeFrame()
 	m_wolfInstance->evaluateUserInterfaceScript("setCameraPosition(\"" + std::to_string(cameraPosition.x) + ", " + std::to_string(cameraPosition.y) + ", " + std::to_string(cameraPosition.z) + "\")");
 }
 
-void SystemManager::addImagesToBindlessDescriptor(const std::vector<Wolf::Image*>& images) const
-{
-	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(images.size());
-	for (uint32_t i = 0; i < images.size(); ++i)
-	{
-		imageDescriptions[i].imageView = images[i]->getDefaultImageView();
-		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	}
-
-	m_wolfInstance->getBindlessDescriptor()->addImages(imageDescriptions);
-}
-
 void SystemManager::loadScene()
 {
 	m_selectedEntity.reset(nullptr);
 	m_entityContainer->clear();
 
-	m_wolfInstance->evaluateUserInterfaceScript("resetModelList()");
+	m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
 	m_wolfInstance->evaluateUserInterfaceScript("resetSelectedEntity()");
 
 	JSONReader jsonReader(m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest));
@@ -569,20 +585,17 @@ void SystemManager::loadScene()
 	m_loadSceneRequest.clear();
 }
 
-void SystemManager::addEntity(const std::string& filePath) const
+void SystemManager::addEntity(const std::string& filePath)
 {
 	Entity* newEntity = new Entity(filePath, [this](Entity*)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
-			const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
-			for (const ResourceUniqueOwner<Entity>& entity : allEntities)
-			{
-				m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\")");
-			}
+			m_entityChangedMutex.lock();
+			m_entityChanged = true;
+			m_entityChangedMutex.unlock();
 		},
 		[this](const std::string& componentId)
 		{
-			return m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getBindlessDescriptor());
+			return m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager());
 		});
 	m_entityContainer->addEntity(newEntity);
 
@@ -598,7 +611,7 @@ void SystemManager::addComponent(const std::string& componentId) const
 		return;
 	}
 		
-	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getBindlessDescriptor()));
+	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager()));
 	updateUISelectedEntity();
 }
 
@@ -627,4 +640,6 @@ void SystemManager::updateUISelectedEntity() const
 	jsFunctionCall += "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(jsFunctionCall);
 	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
+
+	m_debugRenderingManager->setSelectedEntity(*m_selectedEntity);
 }

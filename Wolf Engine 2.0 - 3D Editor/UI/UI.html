@@ -133,16 +133,6 @@
 			refreshWindowSize();
       	}, 1000);
 
-		if(navigator.userAgent.indexOf('Ultralight') != -1) {
-		}
-		else {
-			document.getElementsByTagName("body")[0].style.backgroundColor = "#191919";
-
-			let script = document.createElement("script"); 
-			script.src = "./fakeEngine.js";
-			document.head.appendChild(script);
-		}
-
 		// Remove focus of inputs when pressing "enter"
 		addEventListener("keypress", (event) => {
 			if (event.which == 13) {

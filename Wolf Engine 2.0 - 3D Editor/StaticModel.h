@@ -8,7 +8,7 @@
 class StaticModel : public EditorModelInterface
 {
 public:
-	StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor);
+	StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
@@ -36,6 +36,6 @@ private:
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>> m_defaultPipelineSet;
 	
 	Wolf::ModelData m_modelData;
-	Wolf::ResourceNonOwner<Wolf::BindlessDescriptor> m_bindlessDescriptor;
+	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 };
 

@@ -92,3 +92,16 @@ void Entity::removeAllComponents()
 {
 	m_components.clear();
 }
+
+Wolf::AABB Entity::getAABB()
+{
+	for (Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+	{
+		if (const Wolf::ResourceNonOwner<EditorModelInterface> componentAsModel = component.createNonOwnerResource<EditorModelInterface>())
+		{
+			return componentAsModel->getAABB();
+		}
+	}
+
+	return {};
+}

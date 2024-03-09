@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "AABB.h"
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
 #include "ResourceUniqueOwner.h"
@@ -27,6 +28,8 @@ public:
 	void save();
 
 	void removeAllComponents();
+
+	Wolf::AABB getAABB();
 
 private:
 	std::string m_filepath;

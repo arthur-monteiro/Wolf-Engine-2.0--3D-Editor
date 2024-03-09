@@ -11,8 +11,8 @@
 
 using namespace Wolf;
 
-StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::BindlessDescriptor>& bindlessDescriptor)
-: EditorModelInterface(transform), m_bindlessDescriptor(bindlessDescriptor)
+StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
+: EditorModelInterface(transform), m_materialsGPUManager(materialsGPUManager)
 {
 	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, StaticModel>([this](std::unique_ptr<PipelineSet>& pipelineSet)
 		{
@@ -109,7 +109,7 @@ void StaticModel::loadModel()
 	modelLoadingInfo.mtlFolder = fullFilePath.substr(0, fullFilePath.find_last_of('\\'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.loadMaterials = true;
-	modelLoadingInfo.materialIdOffset = m_bindlessDescriptor->getCurrentCounter() / 5;
+	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 	ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
 	m_descriptorSet.reset(new DescriptorSet(m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
@@ -127,7 +127,7 @@ void StaticModel::loadModel()
 		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
-	m_bindlessDescriptor->addImages(imageDescriptions);
+	m_materialsGPUManager->addNewMaterials(imageDescriptions);
 }
 
 void StaticModel::requestModelLoading()

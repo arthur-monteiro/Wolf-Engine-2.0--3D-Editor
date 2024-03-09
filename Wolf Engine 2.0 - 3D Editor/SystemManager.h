@@ -4,6 +4,7 @@
 #include <WolfEngine.h>
 
 #include "ComponentInstancier.h"
+#include "DebugRenderingManager.h"
 #include "EditorConfiguration.h"
 #include "EditorParams.h"
 #include "EntityContainer.h"
@@ -22,10 +23,8 @@ private:
 	void createMainRenderer();
 	void updateBeforeFrame();
 
-	void addImagesToBindlessDescriptor(const std::vector<Wolf::Image*>& images) const;
-
 	void loadScene();
-	void addEntity(const std::string& filePath) const;
+	void addEntity(const std::string& filePath);
 	void addComponent(const std::string& componentId) const;
 
 	void debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const;
@@ -75,7 +74,11 @@ private:
 	std::unique_ptr<EditorParams> m_editorParams;
 
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_selectedEntity;
+	std::mutex m_entityChangedMutex;
+	bool m_entityChanged = false;
 	bool m_isCameraLocked = false;
+
+	Wolf::ResourceUniqueOwner<DebugRenderingManager> m_debugRenderingManager;
 
 	std::string m_loadSceneRequest;
 };
