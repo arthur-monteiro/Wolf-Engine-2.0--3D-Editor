@@ -47,17 +47,22 @@
 
 	<div id="addComponentWindow" class="modalWindow" style="display: none;">
 		<div id="closeButton" onclick="closeComponentAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
-		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-			<li class="table-row">
-				<div class="col col-1" data-label="infoType">Type</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue" style="display: block;">
-					<select id="componentTypeSelect">
-					</select>
-				</div>
-			</li>
-		</ul>
-		<button class="validationButton" onclick="finishAddComponent()">Add component</button>
+		<div id="addComponentWindowContent">
+			<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
+				<li class="table-row">
+					<div class="col col-1" data-label="infoType">Type</div>
+					<div class="columnDivider"></div>
+					<div class="col col-2" data-label="infoValue" style="display: block;">
+						<select id="componentTypeSelect">
+						</select>
+					</div>
+				</li>
+			</ul>
+			<button class="validationButton" onclick="finishAddComponent()">Add component</button>
+		</div>
+		<div id="addComponentWindowContentNoComponent" style="display: none">
+			<p>No component available for the selected entity</p>
+		</div>
 	</div>
 
 	<div id="saveSceneWindow" class="modalWindow" style="display: none">
@@ -196,12 +201,20 @@
 		const componentOptionsJSON = JSON.parse(componentOptions);
 		let componentOptionsHTML = "";
 
-		for (let i = 0; i < componentOptionsJSON.components.length; ++i)
-		{
+		for (let i = 0; i < componentOptionsJSON.components.length; ++i) {
 			componentOptionsHTML += "<option value=\"" + componentOptionsJSON.components[i].value + "\">" + componentOptionsJSON.components[i].name + "</option>";
 		}
 
-		document.getElementById("componentTypeSelect").innerHTML = componentOptionsHTML;
+		if (componentOptionsJSON.components.length == 0) {
+			document.getElementById("addComponentWindowContent").style.display = "none";
+			document.getElementById("addComponentWindowContentNoComponent").style.display = "block";
+		}
+		else {
+			document.getElementById("addComponentWindowContent").style.display = "block";
+			document.getElementById("addComponentWindowContentNoComponent").style.display = "none";
+
+			document.getElementById("componentTypeSelect").innerHTML = componentOptionsHTML;
+		}
 	}
 
 	function closeComponentAdd() {

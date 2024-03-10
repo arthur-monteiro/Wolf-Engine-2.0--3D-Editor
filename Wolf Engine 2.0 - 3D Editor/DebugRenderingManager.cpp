@@ -132,5 +132,7 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 void DebugRenderingManager::setSelectedEntity(const Wolf::ResourceNonOwner<Entity>& entity)
 {
 	m_entitiesForAABBDraw.clear();
-	m_entitiesForAABBDraw.push_back(entity);
+
+	if (entity->hasModelComponent())
+		m_entitiesForAABBDraw.push_back(entity);
 }

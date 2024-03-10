@@ -430,7 +430,10 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 ultralight::JSValue SystemManager::getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject,
 	const ultralight::JSArgs& args)
 {
-	return { m_componentInstancier->getAllComponentTypes().c_str() };
+	if (m_selectedEntity)
+		return { m_componentInstancier->getAllComponentTypes(*m_selectedEntity).c_str() };
+	else
+		return R"({ "components": [ ] })";
 }
 
 void SystemManager::enableEntityPickingJSCallback(const ultralight::JSObject& thisObject,

@@ -5,6 +5,7 @@
 #include "AABB.h"
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
+#include "GameContext.h"
 #include "ResourceUniqueOwner.h"
 
 class EditorConfiguration;
@@ -21,6 +22,7 @@ public:
 	const std::string& getLoadingPath() const { return m_filepath; }
 
 	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>>& getAllComponents() { return m_components; }
+	bool hasModelComponent() const { return m_modelComponent.get(); }
 
 	void activateParams() const;
 	void fillJSONForParams(std::string& outJSON);
@@ -29,12 +31,14 @@ public:
 
 	void removeAllComponents();
 
-	Wolf::AABB getAABB();
+	Wolf::AABB getAABB() const;
 
 private:
 	std::string m_filepath;
 	std::function<void(Entity*)> m_onChangeCallback;
 	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>> m_components;
+
+	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });
 	std::array<EditorParamInterface*, 1> m_entityParams =

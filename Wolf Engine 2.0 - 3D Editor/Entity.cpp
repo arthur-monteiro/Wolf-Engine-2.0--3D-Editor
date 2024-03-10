@@ -30,6 +30,13 @@ Entity::Entity(const std::string& filePath, const std::function<void(Entity*)>&&
 void Entity::addComponent(ComponentInterface* component)
 {
 	m_components.emplace_back(component);
+
+	if (const Wolf::ResourceNonOwner<EditorModelInterface> componentAsModel = m_components.back().createNonOwnerResource<EditorModelInterface>())
+	{
+		if (hasModelComponent())
+			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
+		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
+	}
 }
 
 void Entity::activateParams() const
@@ -90,18 +97,16 @@ void Entity::save()
 
 void Entity::removeAllComponents()
 {
+	m_modelComponent.reset();
 	m_components.clear();
 }
 
-Wolf::AABB Entity::getAABB()
+Wolf::AABB Entity::getAABB() const
 {
-	for (Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+	if (m_modelComponent)
 	{
-		if (const Wolf::ResourceNonOwner<EditorModelInterface> componentAsModel = component.createNonOwnerResource<EditorModelInterface>())
-		{
-			return componentAsModel->getAABB();
-		}
+		return (*m_modelComponent)->getAABB();
 	}
-
+	Wolf::Debug::sendWarning("Getting AABB of entity which doesn't contain a model component");
 	return {};
 }

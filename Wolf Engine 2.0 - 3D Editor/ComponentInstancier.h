@@ -15,14 +15,14 @@ class ComponentInstancier
 public:
 	ComponentInterface* instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
 
-	std::string getAllComponentTypes() const;
+	std::string getAllComponentTypes(const Wolf::ResourceNonOwner<Entity>& selectedEntity) const;
 
 private:
 	struct ComponentInfo
 	{
 		std::string name;
 		std::string id;
-		std::function<ComponentInterface*(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor) > instancingFunction;
+		std::function<ComponentInterface*(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager) > instancingFunction;
 	};
 
 	std::array<ComponentInfo, 2> m_componentsInfo =
