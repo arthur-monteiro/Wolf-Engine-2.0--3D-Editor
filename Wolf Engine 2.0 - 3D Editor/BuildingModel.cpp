@@ -151,7 +151,7 @@ void BuildingModel::activateParams()
 void BuildingModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
 	EditorModelInterface::addParamsToJSON(outJSON, tabCount);
-	::addParamsToJSON(outJSON, m_buildingParams, true, tabCount);
+	::addParamsToJSON(outJSON, m_buildingParams, false, tabCount);
 }
 
 void BuildingModel::MeshWithMaterials::updateBeforeFrame()
@@ -172,7 +172,7 @@ void BuildingModel::MeshWithMaterials::loadMesh()
 	std::string materialFolder = static_cast<std::string>(m_loadingPathParam).substr(0, static_cast<std::string>(m_loadingPathParam).find_last_of("\\"));
 	modelLoadingInfo.mtlFolder = materialFolder;
 	modelLoadingInfo.vulkanQueueLock = nullptr;
-	modelLoadingInfo.loadMaterials = true;
+	modelLoadingInfo.materialLayout = ModelLoadingInfo::InputMaterialLayout::EACH_TEXTURE_A_FILE;
 	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 	ModelData windowMeshData;
 	ModelLoader::loadObject(windowMeshData, modelLoadingInfo);

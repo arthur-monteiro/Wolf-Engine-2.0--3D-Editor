@@ -1,5 +1,7 @@
 #include "Entity.h"
 
+#include <fstream>
+
 #include "ComponentInstancier.h"
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
@@ -7,6 +9,7 @@
 Entity::Entity(const std::string& filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<ComponentInterface* (const std::string&)>&& instanciateComponent) : m_filepath(filePath), m_onChangeCallback(onChangeCallback)
 {
 	m_nameParam = "Undefined";
+	m_components.reserve(MAX_COMPONENT_COUNT);
 
 	const std::ifstream inFile(g_editorConfiguration->computeFullPathFromLocalPath(filePath));
 	if (inFile.good())
@@ -30,6 +33,10 @@ Entity::Entity(const std::string& filePath, const std::function<void(Entity*)>&&
 void Entity::addComponent(ComponentInterface* component)
 {
 	m_components.emplace_back(component);
+	if (m_components.size() > MAX_COMPONENT_COUNT)
+	{
+		Wolf::Debug::sendCriticalError("There are more components than supported. All unique owner pointers has been changed resulting in garbage references for non owners");
+	}
 
 	if (const Wolf::ResourceNonOwner<EditorModelInterface> componentAsModel = m_components.back().createNonOwnerResource<EditorModelInterface>())
 	{
@@ -61,6 +68,10 @@ void Entity::fillJSONForParams(std::string& outJSON)
 	{
 		component->addParamsToJSON(outJSON);
 	}
+	if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
+	{
+		outJSON.erase(commaPos + outJSON.size() - 3);
+	}
 	outJSON += "\t]\n";
 	outJSON += "}";
 }
@@ -81,13 +92,20 @@ void Entity::save()
 		outJSON += ",";
 	outJSON += "\n";
 
-	for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+	for (uint32_t i = 0; i < m_components.size(); ++i)
 	{
+		const Wolf::ResourceUniqueOwner<ComponentInterface>& component = m_components[i];
+
 		outJSON += "\t" R"(")" + component->getId() + R"(": {)" "\n";
 		outJSON += "\t\t" R"("params": [)" "\n";
 		component->addParamsToJSON(outJSON, 3);
+		if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
+		{
+			outJSON.erase(commaPos + outJSON.size() - 3);
+		}
 		outJSON += "\t\t]\n";
 		outJSON += "\t}";
+		outJSON += i == m_components.size() - 1 ? "\n" : ",\n";
 	}
 
 	outJSON += "}";

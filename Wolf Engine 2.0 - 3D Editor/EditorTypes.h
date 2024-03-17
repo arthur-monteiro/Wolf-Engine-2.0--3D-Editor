@@ -4,6 +4,8 @@
 #include <string>
 #include <glm/glm.hpp>
 
+#include <WolfEngine.h>
+
 namespace ultralight
 {
 	class JSArgs;
@@ -19,17 +21,15 @@ class EditorParamInterface
 {
 public:
 	virtual ~EditorParamInterface() = default;
-	EditorParamInterface(EditorParamInterface&) = delete;
-	EditorParamInterface(EditorParamInterface&&) = delete;
-	EditorParamInterface& operator=(EditorParamInterface& other) = delete;
-	EditorParamInterface& operator=(EditorParamInterface&& other) = delete;
 
 	static void setGlobalWolfInstance(Wolf::WolfEngine* wolfInstance);
 
 	virtual void activate() = 0;
-	virtual void addToJSON(std::string& out, uint32_t tabCount, bool isLast) = 0;
+	virtual void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const = 0;
 
-	enum class Type { Float, Vector2, Vector3, String, UInt, File };
+	void setCategory(const std::string& category) { m_category = category; }
+
+	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 
@@ -44,8 +44,8 @@ protected:
 	std::function<void()> m_callbackValueChanged;
 	Type m_type;
 
-	void addCommonInfoToJSON(std::string& out, uint32_t tabCount);
-	std::string getTypeAsString();
+	void addCommonInfoToJSON(std::string& out, uint32_t tabCount) const;
+	std::string getTypeAsString() const;
 
 	static std::string removeSpaces(const std::string& in);
 };
@@ -62,7 +62,7 @@ public:
 	T& getValue() { return m_value; }
 
 	void activate() override;
-	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
 
 protected:
 	EditorParamsVector(Type type, const std::string& name, const std::string& tab, const std::string& category, float min, float max) : EditorParamInterface(type, name, tab, category)
@@ -76,8 +76,8 @@ protected:
 		m_callbackValueChanged = callbackValueChanged;
 	}
 
-	float m_min;
-	float m_max;
+	float m_min = 0.0f;
+	float m_max = 1.0f;
 
 	T m_value;
 	void setValue(const T& value);
@@ -124,7 +124,7 @@ public:
 	}
 
 	void activate() override;
-	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
 
 	EditorParamUInt& operator=(uint32_t value) { setValue(value); return *this; }
 	operator uint32_t() const { return m_value; }
@@ -152,7 +152,7 @@ public:
 	}
 
 	void activate() override;
-	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
 
 	EditorParamFloat& operator=(float value) { setValue(value); return *this; }
 	operator float() const { return m_value; }
@@ -169,14 +169,22 @@ private:
 class EditorParamString : public EditorParamInterface
 {
 public:
-	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, bool isFile = false) : EditorParamInterface(isFile? Type::File : Type::String, name, tab, category) {}
-	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, bool isFile = false) : EditorParamString(name, tab, category, isFile)
+	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, bool isFile = false, bool drivesCategoryName = false)
+		: EditorParamInterface(isFile? Type::File : Type::String, name, tab, category), m_drivesCategoryName(drivesCategoryName) {}
+	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, bool isFile = false, bool drivesCategoryName = false)
+		: EditorParamString(name, tab, category, isFile, drivesCategoryName)
 	{
 		m_callbackValueChanged = callbackValueChanged;
 	}
+	EditorParamString(const EditorParamString& other) : EditorParamInterface(other.m_type, other.m_name, other.m_tab, other.m_category)
+	{
+		m_callbackValueChanged = other.m_callbackValueChanged;
+		m_drivesCategoryName = other.m_drivesCategoryName;
+		m_value = other.m_value;
+	}
 
 	void activate() override;
-	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
 
 	EditorParamString& operator=(const std::string& value) { setValue(value); return *this; }
 	operator std::string& () { return m_value; }
@@ -186,5 +194,6 @@ private:
 	void setValue(const std::string& value);
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
+	bool m_drivesCategoryName;
 	std::string m_value;
 };

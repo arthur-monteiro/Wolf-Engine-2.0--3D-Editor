@@ -2,12 +2,12 @@
 
 #include "Entity.h"
 
-ComponentInterface* ComponentInstancier::instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
+ComponentInterface* ComponentInstancier::instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const std::function<void(ComponentInterface*)>& requestReloadCallback)
 {
 	for (const ComponentInfo& componentInfo : m_componentsInfo)
 	{
 		if (componentInfo.id == componentId)
-			return componentInfo.instancingFunction(materialsGPUManager);
+			return componentInfo.instancingFunction(materialsGPUManager, requestReloadCallback);
 	}
 
 	return nullptr;

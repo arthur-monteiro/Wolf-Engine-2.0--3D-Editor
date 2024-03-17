@@ -276,6 +276,45 @@ span {
     position: relative;
 }
 
+.addButton {
+    position: relative;
+    border-width: 2px;
+    border-style: solid;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: 0.3s all;
+    margin-right: 0;
+    margin-left: auto;
+}
+
+.addButton:before {
+    border-bottom-width: 2px;
+    border-bottom-style: solid;
+    border-left-width: 2px;
+    border-left-style: solid;
+    left: 9px;
+    top: 5px;
+    content: "";
+    position: absolute;
+    height: 4px;
+    width: 4px;
+}
+
+.addButton:after {
+    border-top-width: 2px;
+    border-top-style: solid;
+    border-right-width: 2px;
+    border-right-style: solid;
+    left: 5px;
+    top: 9px;
+    content: "";
+    position: absolute;
+    height: 4px;
+    width: 4px;
+}
+
 .tabSelected {
     background-color: #ececec;
 }

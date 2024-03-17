@@ -1,7 +1,5 @@
 #include "EditorTypes.h"
 
-#include <WolfEngine.h>
-
 Wolf::WolfEngine* EditorParamInterface::ms_wolfInstance = nullptr;
 
 void EditorParamInterface::setGlobalWolfInstance(Wolf::WolfEngine* wolfInstance)
@@ -9,7 +7,7 @@ void EditorParamInterface::setGlobalWolfInstance(Wolf::WolfEngine* wolfInstance)
 	ms_wolfInstance = wolfInstance;
 }
 
-void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCount)
+void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCount) const
 {
 	std::string tabs;
 	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
@@ -20,7 +18,7 @@ void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCou
 	out += tabs + R"("type" : ")" + getTypeAsString() + "\",\n";
 }
 
-std::string EditorParamInterface::getTypeAsString()
+std::string EditorParamInterface::getTypeAsString() const
 {
 	switch (m_type)
 	{
@@ -41,6 +39,9 @@ std::string EditorParamInterface::getTypeAsString()
 			break;
 		case Type::File:
 			return "File";
+			break;
+		case Type::Array:
+			return "Array";
 			break;
 		default:
 			Wolf::Debug::sendError("Undefined type");
@@ -90,11 +91,11 @@ void EditorParamsVector<T>::activate()
 	}
 }
 
-template void EditorParamsVector<glm::vec2>::addToJSON(std::string& out, uint32_t tabCount, bool isLast);
-template void EditorParamsVector<glm::vec3>::addToJSON(std::string& out, uint32_t tabCount, bool isLast);
+template void EditorParamsVector<glm::vec2>::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const;
+template void EditorParamsVector<glm::vec3>::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const;
 
 template <typename T>
-void EditorParamsVector<T>::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+void EditorParamsVector<T>::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
 {
 	std::string tabs;
 	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
@@ -159,7 +160,7 @@ void EditorParamUInt::activate()
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamUInt::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
-void EditorParamUInt::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+void EditorParamUInt::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
 {
 	std::string tabs;
 	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
@@ -194,7 +195,7 @@ void EditorParamFloat::activate()
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamFloat::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
-void EditorParamFloat::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+void EditorParamFloat::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
 {
 	std::string tabs;
 	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
@@ -225,18 +226,19 @@ void EditorParamString::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 	
-	const std::string functionChangeName = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamString::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
-void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLast)
+void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
 {
 	std::string tabs;
 	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
 
 	out += tabs + +"{\n";
 	addCommonInfoToJSON(out, tabCount + 1);
-	out += tabs + '\t' + R"("value" : ")" + m_value + "\"\n";
+	out += tabs + '\t' + R"("value" : ")" + m_value + "\",\n";
+	out += tabs + '\t' + R"("drivesCategoryName" : )" + (m_drivesCategoryName ? "true" : "false") + "\n";
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
 }
 

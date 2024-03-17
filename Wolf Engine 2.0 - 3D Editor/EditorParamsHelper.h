@@ -1,25 +1,40 @@
 #pragma once
 
-#include <fstream>
 #include <span>
 
+#include <Debug.h>
 #include <JSONReader.h>
 
+#include "EditorParamArray.h"
 #include "EditorTypes.h"
 
-inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId, std::span<EditorParamInterface*> params)
+class DummyParameterGroup : public ParameterGroupInterface
+{
+public:
+	DummyParameterGroup() : ParameterGroupInterface("Dummy") {}
+	DummyParameterGroup(const DummyParameterGroup&) = default;
+	std::span<EditorParamInterface*> getAllParams() override { return {}; }
+	std::span<EditorParamInterface* const> getAllConstParams() const override { return {}; }
+	bool hasDefaultName() const override { return false; }
+};
+
+template <typename ArrayItemType = DummyParameterGroup>
+inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId, std::span<EditorParamInterface*> params, uint32_t arrayIdx = 0)
 {
 	Wolf::JSONReader::JSONObjectInterface* root = jsonReader.getRoot()->getPropertyObject(objectId);
 	const uint32_t paramCount = root->getArraySize("params");
 
-	auto findParamObject = [&root, paramCount](const std::string& paramName)
+	auto findParamObject = [&root, paramCount, arrayIdx](const std::string& paramName)
 		{
+			uint32_t paramFoundCount = 0;
 			for (uint32_t i = 0; i < paramCount; ++i)
 			{
 				Wolf::JSONReader::JSONObjectInterface* paramObject = root->getArrayObjectItem("params", i);
 				if (paramObject->getPropertyString("name") == paramName)
 				{
-					return paramObject;
+					if (paramFoundCount == arrayIdx)
+						return paramObject;
+					paramFoundCount++;
 				}
 			}
 
@@ -47,6 +62,19 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			case EditorParamInterface::Type::File:
 				*static_cast<EditorParamString*>(param) = findParamObject(param->getName())->getPropertyString("value");
 				break;
+			case EditorParamInterface::Type::Array:
+			{
+				const uint32_t count = static_cast<uint32_t>(findParamObject(param->getName())->getPropertyFloat("count"));
+				for (uint32_t itemArrayIdx = 0; itemArrayIdx < count; ++itemArrayIdx)
+				{
+					ArrayItemType& item = static_cast<EditorParamArray<ArrayItemType>*>(param)->emplace_back();
+					std::vector<EditorParamInterface*> arrayItemParams;
+					arrayItemParams.assign(item.getAllParams().begin(), item.getAllParams().end());
+					arrayItemParams.push_back(item.getNameParam());
+					loadParams(jsonReader, objectId, arrayItemParams, itemArrayIdx);
+				}
+				break;
+			}
 			default:
 				Wolf::Debug::sendError("Unsupported type");
 				break;
@@ -54,11 +82,11 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 	}
 }
 
-inline void addParamsToJSON(std::string& outJSON, std::span<EditorParamInterface*> params, bool isLast, uint32_t tabCount = 2)
+inline void addParamsToJSON(std::string& outJSON, std::span<EditorParamInterface* const> params, bool isLast, uint32_t tabCount = 2)
 {
 	for (uint32_t i = 0; i < params.size(); ++i)
 	{
-		EditorParamInterface* param = params[i];
+		const EditorParamInterface* param = params[i];
 		param->addToJSON(outJSON, tabCount, isLast && i == params.size() - 1);
 	}
 }

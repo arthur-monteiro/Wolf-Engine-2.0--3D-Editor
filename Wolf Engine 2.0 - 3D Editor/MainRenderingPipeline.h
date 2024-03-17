@@ -3,7 +3,6 @@
 #include <WolfEngine.h>
 
 #include "ForwardPass.h"
-#include "ModelsContainer.h"
 
 class BindlessDescriptor;
 class EditorParams;

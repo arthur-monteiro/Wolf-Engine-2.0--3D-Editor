@@ -10,7 +10,6 @@
 #include "EntityContainer.h"
 #include "GameContext.h"
 #include "MainRenderingPipeline.h"
-#include "ModelsContainer.h"
 
 class SystemManager
 {
@@ -25,7 +24,7 @@ private:
 
 	void loadScene();
 	void addEntity(const std::string& filePath);
-	void addComponent(const std::string& componentId) const;
+	void addComponent(const std::string& componentId);
 
 	void debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const;
 	void bindUltralightCallbacks();
@@ -76,6 +75,7 @@ private:
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_selectedEntity;
 	std::mutex m_entityChangedMutex;
 	bool m_entityChanged = false;
+	bool m_entityReloadRequested = false;
 	bool m_isCameraLocked = false;
 
 	Wolf::ResourceUniqueOwner<DebugRenderingManager> m_debugRenderingManager;

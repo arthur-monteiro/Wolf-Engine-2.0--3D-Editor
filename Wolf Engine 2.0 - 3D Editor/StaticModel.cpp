@@ -90,7 +90,7 @@ void StaticModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	EditorModelInterface::addParamsToJSON(outJSON, tabCount);
 
 	std::vector<EditorParamInterface*> params = { &m_loadingPathParam };
-	::addParamsToJSON(outJSON, params, true, tabCount);
+	::addParamsToJSON(outJSON, params, false, tabCount);
 }
 
 AABB StaticModel::getAABB() const
@@ -108,7 +108,7 @@ void StaticModel::loadModel()
 	modelLoadingInfo.filename = fullFilePath;
 	modelLoadingInfo.mtlFolder = fullFilePath.substr(0, fullFilePath.find_last_of('\\'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
-	modelLoadingInfo.loadMaterials = true;
+	modelLoadingInfo.materialLayout = ModelLoadingInfo::InputMaterialLayout::EACH_TEXTURE_A_FILE;
 	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 	ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 

@@ -124,13 +124,12 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 		switch (severity)
 		{
 		case Debug::Severity::ERROR:
-			__debugbreak();
-			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + "\", \"logError\")");
+			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logError"))");
 			break;
 		case Debug::Severity::WARNING:
 			break;
 		case Debug::Severity::INFO:
-			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + "\", \"logInfo\")");
+			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logInfo"))");
 			break;
 		case Debug::Severity::VERBOSE:
 			return;
@@ -405,18 +404,19 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 			outHTML << "let script = document.createElement(\"script\");\n";
 			outHTML << "script.src = \"./fakeEngine.js\"; \n";
 			outHTML << "document.head.appendChild(script); \n";
-			outHTML << "}\n";
 
 			for (const std::string& command : m_wolfInstance->getSavedUICommands())
 			{
-				if (command.find("setCameraPosition") != std::string::npos)
+				if (command.find("setCameraPosition") != std::string::npos || command.find("refreshWindowSize") != std::string::npos)
 					continue;
 
 				outHTML << "\n// STEP\n";
 				outHTML << command << "\n";
 			}
 
-			outHTML << "\t});";
+			outHTML << "}\n";
+
+			outHTML << "\t});\n";
 			outHTML << "</script>";
 		}
 	}
@@ -469,6 +469,13 @@ void SystemManager::updateBeforeFrame()
 		m_entityChanged = false;
 	}
 	m_entityChangedMutex.unlock();
+
+	if (m_entityReloadRequested)
+	{
+		if (m_selectedEntity)
+			updateUISelectedEntity();
+		m_entityReloadRequested = false;
+	}
 
 	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 	std::vector<std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>> allModels;
@@ -598,7 +605,10 @@ void SystemManager::addEntity(const std::string& filePath)
 		},
 		[this](const std::string& componentId)
 		{
-			return m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager());
+			return m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager(), [this](ComponentInterface*)
+			{
+				m_entityReloadRequested = true;
+			});
 		});
 	m_entityContainer->addEntity(newEntity);
 
@@ -606,7 +616,7 @@ void SystemManager::addEntity(const std::string& filePath)
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
 }
 
-void SystemManager::addComponent(const std::string& componentId) const
+void SystemManager::addComponent(const std::string& componentId)
 {
 	if (!m_selectedEntity)
 	{
@@ -614,7 +624,10 @@ void SystemManager::addComponent(const std::string& componentId) const
 		return;
 	}
 		
-	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager()));
+	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager(), [this](ComponentInterface*)
+		{
+			m_entityReloadRequested = true;
+		}));
 	updateUISelectedEntity();
 }
 

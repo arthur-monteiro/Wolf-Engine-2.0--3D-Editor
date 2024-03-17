@@ -193,8 +193,11 @@
     <ClCompile Include="CommonDescriptorLayouts.cpp" />
     <ClCompile Include="ComponentInstancier.cpp" />
     <ClCompile Include="ComponentInterface.cpp" />
+    <ClCompile Include="ContaminationEmitter.cpp" />
+    <ClCompile Include="ContaminationReceiver.cpp" />
     <ClCompile Include="DebugRenderingManager.cpp" />
     <ClCompile Include="EditorConfiguration.cpp" />
+    <ClCompile Include="EditorParamArray.cpp" />
     <ClCompile Include="EditorParams.cpp" />
     <ClCompile Include="EditorTypes.cpp" />
     <ClCompile Include="Entity.cpp" />
@@ -204,8 +207,9 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainRenderingPipeline.cpp" />
     <ClCompile Include="EditorModelInterface.cpp" />
-    <ClCompile Include="ModelsContainer.cpp" />
+    <ClCompile Include="MaterialEditor.cpp" />
     <ClCompile Include="Notifier.cpp" />
+    <ClCompile Include="ParameterGroupInterface.cpp" />
     <ClCompile Include="StaticModel.cpp" />
     <ClCompile Include="SystemManager.cpp" />
   </ItemGroup>
@@ -214,8 +218,11 @@
     <ClInclude Include="CommonDescriptorLayouts.h" />
     <ClInclude Include="ComponentInstancier.h" />
     <ClInclude Include="ComponentInterface.h" />
+    <ClInclude Include="ContaminationEmitter.h" />
+    <ClInclude Include="ContaminationReceiver.h" />
     <ClInclude Include="DebugRenderingManager.h" />
     <ClInclude Include="EditorConfiguration.h" />
+    <ClInclude Include="EditorParamArray.h" />
     <ClInclude Include="EditorParams.h" />
     <ClInclude Include="EditorParamsHelper.h" />
     <ClInclude Include="EditorTypes.h" />
@@ -225,8 +232,9 @@
     <ClInclude Include="GameContext.h" />
     <ClInclude Include="MainRenderingPipeline.h" />
     <ClInclude Include="EditorModelInterface.h" />
-    <ClInclude Include="ModelsContainer.h" />
+    <ClInclude Include="MaterialEditor.h" />
     <ClInclude Include="Notifier.h" />
+    <ClInclude Include="ParameterGroupInterface.h" />
     <ClInclude Include="StaticModel.h" />
     <ClInclude Include="SystemManager.h" />
     <ClInclude Include="Vertex2DTextured.h" />

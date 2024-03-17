@@ -36,8 +36,9 @@ public:
 private:
 	std::string m_filepath;
 	std::function<void(Entity*)> m_onChangeCallback;
-	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>> m_components;
 
+	static constexpr uint32_t MAX_COMPONENT_COUNT = 8;
+	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>> m_components;
 	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });
@@ -46,4 +47,3 @@ private:
 		&m_nameParam
 	};
 };
-

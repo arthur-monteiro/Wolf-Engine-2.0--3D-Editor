@@ -1,5 +1,23 @@
-function setNewParams(inputJSON)
-{
+function removeSpaces(input) {
+    let out = "";
+    let nextCharIsUpper = false;
+
+    for (let i = 0; i < input.length; ++i) {
+        let character = input[i];
+
+        if (character == ' ') {
+            nextCharIsUpper = true;
+        }
+        else {
+            out += nextCharIsUpper ? character.toUpperCase() : character;
+            nextCharIsUpper = false;
+        }
+    }
+
+    return out;
+}
+
+function setNewParams(inputJSON) {
     // Hide all tab links
     let tabLinks = document.getElementsByClassName("tabLink");
     for (var i = 0; i < tabLinks.length; ++i) {
@@ -40,7 +58,7 @@ function setNewParams(inputJSON)
 
         if (categoryIdx == -1) {
             let initialHTML = "<div class='blockParameters'>";
-            initialHTML += "<div class='blockParametersTitle'>" + param.category + "</div>";
+            initialHTML += "<div class='blockParametersTitle' id='" + removeSpaces(param.category) + "'>" + param.category + "</div>";
 		    initialHTML += "<div class='blockParametersContent'>";
             categories.push([param.category, 0, initialHTML]);
             categoryIdx = categories.length - 1;
@@ -78,14 +96,13 @@ function setNewParams(inputJSON)
         let htmlToAdd = "";
 
         let categories = tab[1];
-        for (let i = 0; i < categories.length; ++i){
+        for (let i = 0; i < categories.length; ++i) {
             categories[i][2] += "</div></div>";
             htmlToAdd += categories[i][2];        
         }
 
         let tabId = tab[0].charAt(0).toLowerCase() + tab[0].slice(1) + "Infos";
-        if (!document.getElementById(tabId))
-        {
+        if (!document.getElementById(tabId)) {
             var newTabDiv = document.createElement('div');
             newTabDiv.id = tabId;
             newTabDiv.className = 'info';
@@ -108,33 +125,17 @@ function setNewParams(inputJSON)
     });
 }
 
-function computeInput(param, isLast)
-{
-    function removeSpaces(input){
-        let out = "";
-        let nextCharIsUpper = false;
-
-        for (let i = 0; i < input.length; ++i) {
-            let character = input[i];
-
-            if (character == ' ') {
-                nextCharIsUpper = true;
-            }
-            else {
-                out += nextCharIsUpper ? character.toUpperCase() : character;
-                nextCharIsUpper = false;
-            }
-        }
-
-        return out;
-    }
-
+function computeInput(param, isLast) {
     let addBottomBorder = !(isLast || (param.type != "Vector2" && param.type != "Vector3"));
-    let nameForCallback = param.tab + removeSpaces(param.name) + removeSpaces(param.category);
+    let nameForCallback = removeSpaces(param.tab) + removeSpaces(param.name) + removeSpaces(param.category);
     let htmlToAdd = "<div style='width: 100%; overflow: auto;" + (!addBottomBorder && !isLast ? "padding-bottom: 5px;" : "") + "'>";
 
     if (param.type == "String")
-        htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput\" name=\"name\" value=\"" + param.value + "\" oninput=\"change" + nameForCallback + "(this.value)\"/>";
+        htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput" + nameForCallback + "\" name=\"name\" value=\"" + param.value + "\" oninput=\"(function() { "
+            + "let value = document.getElementById('nameInput" + nameForCallback + "').value;"
+            + "change" + nameForCallback + "(value); " 
+            + (param.drivesCategoryName ? "document.getElementById('" + removeSpaces(param.category) + "').innerHTML = value;" : "")
+            + "})()\"/>";
     else if (param.type == "Vector2" || param.type == "Vector3" || param.type == "UInt" || param.type == "Float") {
         htmlToAdd += addBottomBorder ? "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom:1px solid white;'>" : "" ;
         htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
@@ -160,6 +161,10 @@ function computeInput(param, isLast)
         let id = param.tab + removeSpaces(param.name) + removeSpaces(param.category);
         htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', 'obj', change" + nameForCallback + ")\">Select file</button></td></tr>";
         htmlToAdd += "</table>";
+    }
+    else if (param.type == "Array")
+    {
+        htmlToAdd += "<span style='display: inline-block; float: left; padding-top: 2px;'>" + param.name + ": " + param.count + "</span> <div class='addButton' onclick='addTo" + nameForCallback + "()'></div>";
     }
 
     htmlToAdd += "</div>"
