@@ -270,8 +270,8 @@
 		selectTabInfo("tabLinkEntity", "entityInfos");
 	}
 
-	function addEntityToList(name) {
-		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\">" + name + "</div><br/>";
+	function addEntityToList(name, path) {
+		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\" id='" + path + "'>" + name + "</div><br/>";
 	}
 
 	function resetEntityList() {

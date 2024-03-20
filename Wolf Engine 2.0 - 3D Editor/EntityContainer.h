@@ -12,7 +12,7 @@ public:
 	~EntityContainer();
 
 	void addEntity(Entity* entity);
-	void moveToNextFrame();
+	void moveToNextFrame(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent);
 
 	void clear();
 

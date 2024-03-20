@@ -2,12 +2,18 @@
 
 #include "Entity.h"
 
-ComponentInterface* ComponentInstancier::instanciateComponent(const std::string& componentId, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const std::function<void(ComponentInterface*)>& requestReloadCallback)
+ComponentInstancier::ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, std::function<void(ComponentInterface*)> requestReloadCallback,
+	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback)
+	: m_materialsGPUManager(materialsGPUManager), m_requestReloadCallback(std::move(requestReloadCallback)), m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback))
+{
+}
+
+ComponentInterface* ComponentInstancier::instanciateComponent(const std::string& componentId) const
 {
 	for (const ComponentInfo& componentInfo : m_componentsInfo)
 	{
 		if (componentInfo.id == componentId)
-			return componentInfo.instancingFunction(materialsGPUManager, requestReloadCallback);
+			return componentInfo.instancingFunction();
 	}
 
 	return nullptr;

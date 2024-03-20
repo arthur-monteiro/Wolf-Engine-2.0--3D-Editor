@@ -2,7 +2,8 @@
 
 #include "EditorParamsHelper.h"
 
-ParameterGroupInterface::ParameterGroupInterface(const std::string& tab) : m_name("Name", tab, "Placeholder category", [this]() { onNameChanged(); }, false, true)
+ParameterGroupInterface::ParameterGroupInterface(const std::string& tab) : m_name("Name", tab, "Placeholder category", [this]() { onNameChanged(); }, 
+																				  EditorParamString::ParamStringType::STRING, true)
 {
 	m_currentCategory = m_name;
 }

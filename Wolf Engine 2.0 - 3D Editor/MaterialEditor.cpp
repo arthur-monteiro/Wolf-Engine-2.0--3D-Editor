@@ -3,9 +3,9 @@
 #include "EditorParamsHelper.h"
 
 MaterialEditor::MaterialEditor(const std::string& tab, const std::string& category)
-	: m_albedoPathParam("Albedo file", tab, category, true),
-      m_normalPathParam("Normal file", tab, category, true),
-      m_roughnessMetalnessAOPathParam("Roughness Metalness AO file", tab, category, true)
+	: m_albedoPathParam("Albedo file", tab, category, EditorParamString::ParamStringType::FILE),
+      m_normalPathParam("Normal file", tab, category, EditorParamString::ParamStringType::FILE),
+      m_roughnessMetalnessAOPathParam("Roughness Metalness AO file", tab, category, EditorParamString::ParamStringType::FILE)
 {
 }
 

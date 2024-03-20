@@ -43,6 +43,9 @@ std::string EditorParamInterface::getTypeAsString() const
 		case Type::Array:
 			return "Array";
 			break;
+		case Type::Entity:
+			return "Entity";
+			break;
 		default:
 			Wolf::Debug::sendError("Undefined type");
 			return "Undefined_type";
@@ -240,6 +243,25 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 	out += tabs + '\t' + R"("value" : ")" + m_value + "\",\n";
 	out += tabs + '\t' + R"("drivesCategoryName" : )" + (m_drivesCategoryName ? "true" : "false") + "\n";
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+EditorParamInterface::Type EditorParamString::stringTypeToParamType(ParamStringType stringType)
+{
+	switch (stringType) 
+	{
+		case ParamStringType::STRING: 
+			return Type::String;
+			break;
+		case ParamStringType::FILE: 
+			return Type::File;
+			break;
+		case ParamStringType::ENTITY: 
+			return Type::Entity;
+			break;
+		default: 
+			Wolf::Debug::sendError("Unhandled string type");
+			return Type::String;
+	}
 }
 
 void EditorParamString::setValue(const std::string& value)

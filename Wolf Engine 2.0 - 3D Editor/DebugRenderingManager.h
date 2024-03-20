@@ -21,7 +21,7 @@ public:
 	DebugRenderingManager();
 
 	void updateGraphic();
-	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
+	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList);
 
 	void setSelectedEntity(const Wolf::ResourceNonOwner<Entity>& entity);
 
@@ -72,7 +72,7 @@ private:
 
 	struct PerGroupOfLines
 	{
-		std::unique_ptr<Wolf::DescriptorSet> linesDescriptorSet;
+		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> linesDescriptorSet;
 		std::unique_ptr<Wolf::Buffer> linesUniformBuffer;
 	};
 	std::vector<PerGroupOfLines> m_perGroupOfLinesInfoArray;

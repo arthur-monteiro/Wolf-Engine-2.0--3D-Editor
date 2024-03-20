@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <ResourceNonOwner.h>
+#include "RenderMeshList.h"
 
 namespace Wolf
 {
@@ -23,7 +23,9 @@ public:
 	
 	virtual std::string getId() const = 0;
 
+	virtual void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) = 0;
+
 protected:
-	ComponentInterface() {}
+	ComponentInterface() = default;
 };
 

@@ -20,7 +20,20 @@ SystemManager::SystemManager()
 	createMainRenderer();
 	
 	m_entityContainer.reset(new EntityContainer);
-	m_componentInstancier.reset(new ComponentInstancier);
+	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), [this](ComponentInterface*)
+		{
+			m_entityReloadRequested = true;
+		}, [this](const std::string& entityLoadingPath)
+		{
+			std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+			for (ResourceUniqueOwner<Entity>& entity : allEntities)
+			{
+				if (entity->getLoadingPath() == entityLoadingPath)
+					return entity.createNonOwnerResource();
+			}
+			Debug::sendCriticalError("Entity not found");
+			return allEntities[0].createNonOwnerResource();
+		}));
 	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
 
 	if (!m_configuration->getDefaultScene().empty())
@@ -51,6 +64,7 @@ void SystemManager::run()
 		}
 	}
 
+	m_wolfInstance->getRenderMeshList().clear();
 	m_wolfInstance->waitIdle();
 }
 
@@ -318,16 +332,7 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 		outputFile << "\t\t{\n";
 
-		const std::string& loadingPath = entity->getLoadingPath();
-		std::string escapedLoadingPath;
-		for(const char character : loadingPath)
-		{
-			if (character == '\\')
-				escapedLoadingPath += "\\\\";
-			else
-				escapedLoadingPath += character;
-		}
-		outputFile << "\t\t\t\"loadingPath\":\"" << escapedLoadingPath << "\"\n";
+		outputFile << "\t\t\t\"loadingPath\":\"" << entity->computeEscapedLoadingPath() << "\"\n";
 
 		outputFile << "\t\t}";
 		if (i != allEntities.size() - 1)
@@ -455,7 +460,10 @@ void SystemManager::updateBeforeFrame()
 		loadScene();
 	}
 
-	m_entityContainer->moveToNextFrame();
+	m_entityContainer->moveToNextFrame([this](const std::string& componentId)
+		{
+			return m_componentInstancier->instanciateComponent(componentId);
+		});
 
 	m_entityChangedMutex.lock();
 	if (m_entityChanged)
@@ -464,7 +472,7 @@ void SystemManager::updateBeforeFrame()
 		const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 		for (const ResourceUniqueOwner<Entity>& entity : allEntities)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\")");
+			m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\")");
 		}
 		m_entityChanged = false;
 	}
@@ -484,14 +492,13 @@ void SystemManager::updateBeforeFrame()
 
 	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
+		entity->addMeshesToRenderList(renderList);
+
 		std::vector<ResourceUniqueOwner<ComponentInterface>>& components = entity->getAllComponents();
 		for (ResourceUniqueOwner<ComponentInterface>& component : components)
 		{
 			if (const ResourceNonOwner<EditorModelInterface> componentAsModel = component.createNonOwnerResource<EditorModelInterface>())
 			{
-				componentAsModel->updateGraphic();
-				componentAsModel->addMeshesToRenderList(renderList);
-
 				allModels.emplace_back(componentAsModel, entity.createNonOwnerResource());
 			}
 		}
@@ -589,6 +596,7 @@ void SystemManager::loadScene()
 
 		addEntity(deduplicatedLoadingPath);
 	}
+
 	m_wolfInstance->evaluateUserInterfaceScript("setSceneName(\"" + sceneName + "\")");
 	m_currentSceneName = sceneName;
 
@@ -602,17 +610,10 @@ void SystemManager::addEntity(const std::string& filePath)
 			m_entityChangedMutex.lock();
 			m_entityChanged = true;
 			m_entityChangedMutex.unlock();
-		},
-		[this](const std::string& componentId)
-		{
-			return m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager(), [this](ComponentInterface*)
-			{
-				m_entityReloadRequested = true;
-			});
 		});
 	m_entityContainer->addEntity(newEntity);
 
-	const std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\")";
+	const std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\", \"" + newEntity->computeEscapedLoadingPath() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
 }
 
@@ -624,10 +625,7 @@ void SystemManager::addComponent(const std::string& componentId)
 		return;
 	}
 		
-	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId, m_wolfInstance->getMaterialsManager(), [this](ComponentInterface*)
-		{
-			m_entityReloadRequested = true;
-		}));
+	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId));
 	updateUISelectedEntity();
 }
 

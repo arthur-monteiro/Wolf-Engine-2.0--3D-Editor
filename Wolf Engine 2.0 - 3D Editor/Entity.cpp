@@ -6,16 +6,19 @@
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 
-Entity::Entity(const std::string& filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<ComponentInterface* (const std::string&)>&& instanciateComponent) : m_filepath(filePath), m_onChangeCallback(onChangeCallback)
+Entity::Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback) : m_filepath(std::move(filePath)), m_onChangeCallback(onChangeCallback)
 {
 	m_nameParam = "Undefined";
 	m_components.reserve(MAX_COMPONENT_COUNT);
+}
 
-	const std::ifstream inFile(g_editorConfiguration->computeFullPathFromLocalPath(filePath));
+void Entity::loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent)
+{
+	const std::ifstream inFile(g_editorConfiguration->computeFullPathFromLocalPath(m_filepath));
 	if (inFile.good())
 	{
-		Wolf::JSONReader jsonReader(g_editorConfiguration->computeFullPathFromLocalPath(filePath));
-		loadParams(jsonReader, "entity", m_entityParams);
+		Wolf::JSONReader jsonReader(g_editorConfiguration->computeFullPathFromLocalPath(m_filepath));
+		::loadParams(jsonReader, "entity", m_entityParams);
 
 		const uint32_t componentCount = jsonReader.getRoot()->getPropertyCount();
 		for (uint32_t i = 0; i < componentCount; ++i)
@@ -43,6 +46,41 @@ void Entity::addComponent(ComponentInterface* component)
 		if (hasModelComponent())
 			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
 		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
+	}
+}
+
+std::string Entity::computeEscapedLoadingPath() const
+{
+	std::string escapedLoadingPath;
+	for (const char character : getLoadingPath())
+	{
+		if (character == '\\')
+			escapedLoadingPath += "\\\\";
+		else
+			escapedLoadingPath += character;
+	}
+
+	return escapedLoadingPath;
+}
+
+void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
+{
+	if (m_modelComponent)
+	{
+		(*m_modelComponent)->updateGraphic();
+
+		std::vector<Wolf::RenderMeshList::MeshToRenderInfo> meshesToRender;
+		(*m_modelComponent)->getMeshesToRender(meshesToRender);
+
+		for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+		{
+			component->alterMeshesToRender(meshesToRender);
+		}
+
+		for (Wolf::RenderMeshList::MeshToRenderInfo& meshToRender : meshesToRender)
+		{
+			renderMeshList.addMeshToRender(meshToRender);
+		}
 	}
 }
 

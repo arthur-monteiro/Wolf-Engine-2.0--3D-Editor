@@ -33,7 +33,7 @@ StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwne
 			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
 			// Resources
-			pipelineInfo.descriptorSetLayouts = { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), CommonDescriptorLayouts::g_commonDescriptorSetLayout };
+			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), 1 }, { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
 			pipelineInfo.bindlessDescriptorSlot = 0;
 			pipelineInfo.cameraDescriptorSlot = 3;
 
@@ -67,15 +67,15 @@ void StaticModel::updateGraphic()
 	}
 }
 
-void StaticModel::addMeshesToRenderList(RenderMeshList& renderMeshList) const
+void StaticModel::getMeshesToRender(std::vector<RenderMeshList::MeshToRenderInfo>& outList)
 {
 	if (!m_modelData.mesh)
 		return;
 
 	RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_modelData.mesh.get(), m_defaultPipelineSet->getResource());
-	meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.get(), 1 });
+	meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.createConstNonOwnerResource(), 1 });
 
-	renderMeshList.addMeshToRender(meshToRenderInfo);
+	outList.push_back(meshToRenderInfo);
 }
 
 void StaticModel::activateParams()

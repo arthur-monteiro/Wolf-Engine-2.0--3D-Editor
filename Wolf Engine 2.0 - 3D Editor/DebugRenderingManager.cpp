@@ -35,7 +35,7 @@ DebugRenderingManager::DebugRenderingManager()
 	pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
 	// Resources
-	pipelineInfo.descriptorSetLayouts = { m_linesDescriptorSetLayout->getDescriptorSetLayout(), CommonDescriptorLayouts::g_commonDescriptorSetLayout };
+	pipelineInfo.descriptorSetLayouts = { { m_linesDescriptorSetLayout->getDescriptorSetLayout(), 1 } , { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
 	pipelineInfo.cameraDescriptorSlot = 0;
 
 	// Color Blend
@@ -118,12 +118,12 @@ void DebugRenderingManager::updateGraphic()
 	}
 }
 
-void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
+void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList)
 {
-	for (const auto& perGroupOfLinesInfo : m_perGroupOfLinesInfoArray)
+	for (auto& perGroupOfLinesInfo : m_perGroupOfLinesInfoArray)
 	{
 		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_AABBMesh.get(), m_linesPipelineSet.get());
-		meshToRenderInfo.descriptorSets.push_back({ perGroupOfLinesInfo.linesDescriptorSet.get(), 1 });
+		meshToRenderInfo.descriptorSets.push_back({ perGroupOfLinesInfo.linesDescriptorSet.createConstNonOwnerResource(), 1});
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}

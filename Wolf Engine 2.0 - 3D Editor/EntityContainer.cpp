@@ -15,8 +15,9 @@ void EntityContainer::addEntity(Entity* entity)
 	m_newEntities.emplace_back(entity);
 }
 
-void EntityContainer::moveToNextFrame()
+void EntityContainer::moveToNextFrame(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent)
 {
+	const uint32_t sizeBeforePush = static_cast<uint32_t>(m_currentEntities.size());
 	for (Wolf::ResourceUniqueOwner<Entity>& entity : m_newEntities)
 	{
 		m_currentEntities.emplace_back(entity.release());
@@ -26,6 +27,11 @@ void EntityContainer::moveToNextFrame()
 		Wolf::Debug::sendCriticalError("There are more entities than supported. All unique owner pointers has been changed resulting in garbage references for non owners");
 	}
 	m_newEntities.clear();
+
+	for (uint32_t i = sizeBeforePush; i < m_currentEntities.size(); ++i)
+	{
+		m_currentEntities[i]->loadParams(instanciateComponent);
+	}
 }
 
 void EntityContainer::clear()

@@ -5,6 +5,25 @@
 ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInterface*)>& requestReloadCallback)
 {
 	m_requestReloadCallback = requestReloadCallback;
+
+	Wolf::CreateImageInfo createImageInfo{};
+	createImageInfo.extent = { CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE };
+	createImageInfo.format = VK_FORMAT_R8_UINT;
+	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	createImageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+	createImageInfo.mipLevelCount = 1;
+	m_contaminationIdsImage.reset(new Wolf::Image(createImageInfo));
+	m_contaminationIdsImage->setImageLayout(Wolf::Image::SampledInFragmentShader());
+
+	m_descriptorSetLayoutGenerator.addCombinedImageSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+	m_descriptorSetLayout.reset(new Wolf::DescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
+
+	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
+	m_sampler.reset(new Wolf::Sampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1, VK_FILTER_NEAREST));
+	descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_contaminationIdsImage->getDefaultImageView(), *m_sampler);
+
+	m_descriptorSet.reset(new Wolf::DescriptorSet(m_descriptorSetLayout->getDescriptorSetLayout(), Wolf::UpdateRate::NEVER));
+	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }
 
 void ContaminationEmitter::loadParams(Wolf::JSONReader& jsonReader)

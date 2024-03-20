@@ -56,8 +56,8 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<
 			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
 
 			// Resources
-			pipelineInfo.descriptorSetLayouts = { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(),
-				CommonDescriptorLayouts::g_commonDescriptorSetLayout, m_buildingDescriptorSetLayout->getResource()->getDescriptorSetLayout() };
+			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), 1 },
+				{ CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 }, { m_buildingDescriptorSetLayout->getResource()->getDescriptorSetLayout(), 3 } };
 			pipelineInfo.bindlessDescriptorSlot = 0;
 			pipelineInfo.cameraDescriptorSlot = 4;
 
@@ -122,16 +122,16 @@ void BuildingModel::updateGraphic()
 	m_wall.getMeshWithMaterials().updateBeforeFrame();
 }
 
-void BuildingModel::addMeshesToRenderList(RenderMeshList& renderMeshList) const
+void BuildingModel::getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList)
 {
-	auto addPiece = [&](const BuildingPiece& piece)
+	auto addPiece = [&](BuildingPiece& piece)
 		{
 			RenderMeshList::MeshToRenderInfo meshToRenderInfo(piece.getMeshWithMaterials().getMesh(), m_defaultPipelineSet->getResource());
-			meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.get(), 1 });
-			meshToRenderInfo.descriptorSets.push_back({ piece.getDescriptorSet().get(), 3 });
+			meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.createConstNonOwnerResource(), 1 });
+			meshToRenderInfo.descriptorSets.push_back({ piece.getDescriptorSet().createConstNonOwnerResource(), 3 });
 			meshToRenderInfo.instanceInfos = { piece.getInstanceBuffer().get(), piece.getInstanceCount() };
 
-			renderMeshList.addMeshToRender(meshToRenderInfo);
+			outList.push_back(meshToRenderInfo);
 		};
 
 	addPiece(m_window);

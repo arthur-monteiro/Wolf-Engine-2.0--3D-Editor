@@ -60,6 +60,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				break;
 			case EditorParamInterface::Type::String:
 			case EditorParamInterface::Type::File:
+			case EditorParamInterface::Type::Entity:
 				*static_cast<EditorParamString*>(param) = findParamObject(param->getName())->getPropertyString("value");
 				break;
 			case EditorParamInterface::Type::Array:

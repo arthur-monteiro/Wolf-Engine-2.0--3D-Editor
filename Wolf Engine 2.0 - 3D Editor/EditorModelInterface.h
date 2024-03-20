@@ -23,7 +23,7 @@ public:
 	EditorModelInterface(const glm::mat4& transform);
 
 	virtual void updateGraphic();
-	virtual void addMeshesToRenderList(Wolf::RenderMeshList&) const = 0;
+	virtual void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) = 0;
 
 	virtual Wolf::AABB getAABB() const = 0;
 	virtual const glm::mat4& getTransform() const { return m_transform; }
@@ -54,7 +54,7 @@ protected:
 		glm::mat4 model;
 	};
 
-	std::unique_ptr<Wolf::DescriptorSet> m_descriptorSet;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
 	std::unique_ptr<Wolf::Buffer> m_matricesUniformBuffer;
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayoutGenerator, EditorModelInterface>> m_modelDescriptorSetLayoutGenerator;

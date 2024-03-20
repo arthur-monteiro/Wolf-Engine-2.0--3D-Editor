@@ -29,7 +29,7 @@ public:
 
 	void setCategory(const std::string& category) { m_category = category; }
 
-	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array };
+	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array, Entity };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 
@@ -169,18 +169,13 @@ private:
 class EditorParamString : public EditorParamInterface
 {
 public:
-	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, bool isFile = false, bool drivesCategoryName = false)
-		: EditorParamInterface(isFile? Type::File : Type::String, name, tab, category), m_drivesCategoryName(drivesCategoryName) {}
-	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, bool isFile = false, bool drivesCategoryName = false)
-		: EditorParamString(name, tab, category, isFile, drivesCategoryName)
+	enum class ParamStringType { STRING, FILE, ENTITY };
+	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false)
+		: EditorParamInterface(stringTypeToParamType(stringType), name, tab, category), m_drivesCategoryName(drivesCategoryName) {}
+	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false)
+		: EditorParamString(name, tab, category, stringType, drivesCategoryName)
 	{
 		m_callbackValueChanged = callbackValueChanged;
-	}
-	EditorParamString(const EditorParamString& other) : EditorParamInterface(other.m_type, other.m_name, other.m_tab, other.m_category)
-	{
-		m_callbackValueChanged = other.m_callbackValueChanged;
-		m_drivesCategoryName = other.m_drivesCategoryName;
-		m_value = other.m_value;
 	}
 
 	void activate() override;
@@ -191,6 +186,7 @@ public:
 	operator const std::string& () const { return m_value; }
 
 private:
+	static Type stringTypeToParamType(ParamStringType stringType);
 	void setValue(const std::string& value);
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 

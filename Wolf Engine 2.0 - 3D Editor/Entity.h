@@ -14,24 +14,39 @@ class ComponentInstancier;
 class Entity
 {
 public:
-	Entity(const std::string& filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<ComponentInterface*(const std::string&)>&& instanciateComponent);
+	Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback);
+	void loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent);
 
 	void addComponent(ComponentInterface* component);
+	void removeAllComponents();
 
-	const std::string& getName() const { return m_nameParam; }
-	const std::string& getLoadingPath() const { return m_filepath; }
-
-	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>>& getAllComponents() { return m_components; }
-	bool hasModelComponent() const { return m_modelComponent.get(); }
-
+	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
 	void activateParams() const;
 	void fillJSONForParams(std::string& outJSON);
 
 	void save();
 
-	void removeAllComponents();
+	const std::string& getName() const { return m_nameParam; }
+	const std::string& getLoadingPath() const { return m_filepath; }
+	std::string computeEscapedLoadingPath() const;
 
+	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>>& getAllComponents() { return m_components; }
 	Wolf::AABB getAABB() const;
+	bool hasModelComponent() const { return m_modelComponent.get(); }
+
+	template <typename T>
+	Wolf::ResourceNonOwner<T> getComponent()
+	{
+		for (Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+		{
+			if (const Wolf::ResourceNonOwner<T> componentAsRequestedType = component.createNonOwnerResource<T>())
+			{
+				return componentAsRequestedType;
+			}
+		}
+
+		return m_components[0].createNonOwnerResource<T>();
+	}
 
 private:
 	std::string m_filepath;

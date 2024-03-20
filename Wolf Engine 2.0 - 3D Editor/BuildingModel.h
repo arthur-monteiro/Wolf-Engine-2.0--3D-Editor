@@ -49,7 +49,8 @@ public:
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
 	void updateGraphic() override;
-	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const override;
+	void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) override;
+	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
@@ -72,7 +73,7 @@ private:
 	{
 	public:
 		MeshWithMaterials(const std::string& category, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor) :
-			m_materialsGPUManager(bindlessDescriptor), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, true) {}
+			m_materialsGPUManager(bindlessDescriptor), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, EditorParamString::ParamStringType::FILE) {}
 
 		void updateBeforeFrame();
 		void loadMesh();
@@ -119,8 +120,7 @@ private:
 		float getSideSizeInMeter() const { return m_sideSizeInMeterParam; }
 		float getHeightInMeter() const { return m_heightInMeter; }
 		std::unique_ptr<Wolf::Buffer>& getInfoUniformBuffer() { return m_infoUniformBuffer; }
-		std::unique_ptr<Wolf::DescriptorSet>& getDescriptorSet() { return m_descriptorSet; }
-		const std::unique_ptr<Wolf::DescriptorSet>& getDescriptorSet() const { return m_descriptorSet; }
+		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet>& getDescriptorSet() { return m_descriptorSet; }
 		std::unique_ptr<Wolf::Buffer>& getInstanceBuffer() { return m_instanceBuffer; }
 		const std::unique_ptr<Wolf::Buffer>& getInstanceBuffer() const { return m_instanceBuffer; }
 		uint32_t getInstanceCount() const { return m_instanceCount; }
@@ -133,7 +133,7 @@ private:
 		float m_heightInMeter = 2.0f;
 		MeshWithMaterials m_meshWithMaterials;
 
-		std::unique_ptr<Wolf::DescriptorSet> m_descriptorSet;
+		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
 		std::unique_ptr<Wolf::Buffer> m_instanceBuffer;
 		uint32_t m_instanceCount = 0;
 		std::unique_ptr<Wolf::Buffer> m_infoUniformBuffer;

@@ -16,7 +16,8 @@ public:
 	std::string getId() const override { return ID; }
 
 	void updateGraphic() override;
-	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const override;
+	void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) override;
+	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
@@ -31,7 +32,7 @@ private:
 
 	bool m_modelLoadingRequested = false;
 	void requestModelLoading();
-	EditorParamString m_loadingPathParam = EditorParamString("Mesh", "Model", "Loading", [this] { requestModelLoading(); }, true);
+	EditorParamString m_loadingPathParam = EditorParamString("Mesh", "Model", "Loading", [this] { requestModelLoading(); }, EditorParamString::ParamStringType::FILE);
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>> m_defaultPipelineSet;
 	

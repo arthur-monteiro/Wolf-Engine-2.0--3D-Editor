@@ -3,18 +3,32 @@
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
 
+class ContaminationEmitter;
+
 class ContaminationReceiver : public ComponentInterface
 {
 public:
 	static inline std::string ID = "contaminationReceiver";
 	std::string getId() const override { return ID; }
 
+	ContaminationReceiver(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback);
+
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
+	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override;
+
 private:
+	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+
 	inline static const std::string TAB = "Contamination receiver";
-	EditorParamString m_dummy = EditorParamString("Dummy", TAB, "General");
+
+	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_contaminationEmitterEntity;
+	void onContaminationEmitterChanged();
+	EditorParamString m_contaminationEmitterParam = EditorParamString("Contamination Emitter", TAB, "General", [this]() { onContaminationEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
+
+
+	std::unordered_map<Wolf::PipelineSet*, std::unique_ptr<Wolf::PipelineSet>> m_pipelineSetMapping;
 };

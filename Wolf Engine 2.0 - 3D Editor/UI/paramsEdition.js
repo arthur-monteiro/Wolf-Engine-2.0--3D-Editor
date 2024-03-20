@@ -166,6 +166,16 @@ function computeInput(param, isLast) {
     {
         htmlToAdd += "<span style='display: inline-block; float: left; padding-top: 2px;'>" + param.name + ": " + param.count + "</span> <div class='addButton' onclick='addTo" + nameForCallback + "()'></div>";
     }
+    else if (param.type == "Entity")
+    {
+        var entityDivs = document.getElementById('entityList').getElementsByTagName('div');
+        htmlToAdd += param.name + ": <select name='entity' id='entitySelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'><option value=''>No entity selected</option>";
+        for(let i = 0; i< entityDivs.length; i++) {
+            var entityDiv = entityDivs[i];
+            htmlToAdd += "<option value='" + entityDiv.id + "'" + (param.value == entityDiv.id ? "selected" : "") + ">" + entityDiv.innerHTML + "</option>";
+        }
+        htmlToAdd += "</select>";
+    }
 
     htmlToAdd += "</div>"
     return htmlToAdd;
