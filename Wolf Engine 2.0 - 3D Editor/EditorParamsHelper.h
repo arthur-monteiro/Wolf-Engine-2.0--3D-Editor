@@ -49,7 +49,12 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				*static_cast<EditorParamFloat*>(param) = findParamObject(param->getName())->getPropertyFloat("value");
 				break;
 			case EditorParamInterface::Type::UInt:
-				*static_cast<EditorParamUInt*>(param) = static_cast<uint32_t>(findParamObject(param->getName())->getPropertyFloat("value"));
+				{
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					{
+						*dynamic_cast<EditorParamUInt*>(param) = static_cast<uint32_t>(object->getPropertyFloat("value"));
+					}
+				}
 				break;
 			case EditorParamInterface::Type::Vector2:
 				*static_cast<EditorParamVector2*>(param) = glm::vec2(findParamObject(param->getName())->getPropertyFloat("valueX"), findParamObject(param->getName())->getPropertyFloat("valueY"));

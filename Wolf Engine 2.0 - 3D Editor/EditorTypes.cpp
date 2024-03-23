@@ -7,6 +7,21 @@ void EditorParamInterface::setGlobalWolfInstance(Wolf::WolfEngine* wolfInstance)
 	ms_wolfInstance = wolfInstance;
 }
 
+void EditorParamInterface::activate()
+{
+	if (m_isActivable)
+	{
+		ultralight::JSObject jsObject;
+		ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+		const std::string functionDisableName = "disable" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+		jsObject[functionDisableName.c_str()] = std::bind(&EditorParamInterface::disableParamJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+
+		const std::string functionEnableName = "enable" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+		jsObject[functionEnableName.c_str()] = std::bind(&EditorParamInterface::enabledParamJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	}
+}
+
 void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCount) const
 {
 	std::string tabs;
@@ -16,6 +31,7 @@ void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCou
 	out += tabs + R"("tab" : ")" + m_tab + "\",\n";
 	out += tabs + R"("category" : ")" + m_category + "\",\n";
 	out += tabs + R"("type" : ")" + getTypeAsString() + "\",\n";
+	out += tabs + R"("isActivable" : )" + (m_isActivable ? "true" : "false") + ",\n";
 }
 
 std::string EditorParamInterface::getTypeAsString() const
@@ -70,12 +86,41 @@ std::string EditorParamInterface::removeSpaces(const std::string& in)
 	return out;
 }
 
+void EditorParamInterface::disableParamJSCallback(const ultralight::JSObject& thisObject,const ultralight::JSArgs& args)
+{
+	if (!m_isActivable)
+		Wolf::Debug::sendError("Deactivating a param which is not activable");
+
+	if (m_isEnabled)
+	{
+		m_isEnabled = false;
+		if (m_callbackValueChanged)
+			m_callbackValueChanged();
+	}
+}
+
+void EditorParamInterface::enabledParamJSCallback(const ultralight::JSObject& thisObject,
+	const ultralight::JSArgs& args)
+{
+	if (!m_isActivable)
+		Wolf::Debug::sendError("Deactivating a param which is not activable");
+
+	if (!m_isEnabled)
+	{
+		m_isEnabled = true;
+		if (m_callbackValueChanged)
+			m_callbackValueChanged();
+	}
+}
+
 template void EditorParamsVector<glm::vec2>::activate();
 template void EditorParamsVector<glm::vec3>::activate();
 
 template <typename T>
 void EditorParamsVector<T>::activate()
 {
+	EditorParamInterface::activate();
+
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
@@ -156,10 +201,12 @@ void EditorParamsVector<T>::setValueZJSCallback(const ultralight::JSObject& this
 
 void EditorParamUInt::activate()
 {
+	EditorParamInterface::activate();
+
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamUInt::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -191,6 +238,8 @@ void EditorParamUInt::setValueJSCallback(const ultralight::JSObject& thisObject,
 
 void EditorParamFloat::activate()
 {
+	EditorParamInterface::activate();
+
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
@@ -226,6 +275,8 @@ void EditorParamFloat::setValueJSCallback(const ultralight::JSObject& thisObject
 
 void EditorParamString::activate()
 {
+	EditorParamInterface::activate();
+
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 	

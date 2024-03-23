@@ -12,6 +12,7 @@ class WolfSlider extends HTMLElement {
         this.max = this.getAttribute('max')?this.getAttribute('max'):"100";
         this.step = this.getAttribute('step')?this.getAttribute('step'): (this.min + this.max)/100;
         this.values = this.getAttribute("value")? this.getAttribute("value").split(";").map((str)=>Number(str)) : [(this.min + this.max)/2];
+        this.disabled = this.getAttribute("disabled")? this.getAttribute("disabled") : false;
         var div = document.createElement('input');
         div.style = "margin: auto 0 auto 1rem; width: 50px; border-color: transparent; background: inherit; color: inherit;";
         div.value =`${this.values}`;
@@ -40,15 +41,20 @@ class WolfSlider extends HTMLElement {
     }
 
     input({ key, value, ...props }) {
-        const el = document.createElement("input");
-        Object.assign(el, props);
-        el.setAttribute("value", value);
-        el.addEventListener('input', () => {
-            this.values[key] = Number(el.value);
+        this.el = document.createElement("input");
+        Object.assign(this.el, props);
+        this.el.setAttribute("value", value);
+        this.el.addEventListener('input', () => {
+            this.values[key] = Number(this.el.value);
             this.querySelector('.textInput').value =`${this.values}`;
             window[this.getAttribute('oninput')](this.values.length == 1 ? this.values[0] : this.values);
         })
-        return el;
+        this.el.disabled = this.disabled;
+        return this.el;
+    }
+
+    toggleDisabled() {
+        this.el.disabled = !this.el.disabled;
     }
 
     disconnectedCallback() {

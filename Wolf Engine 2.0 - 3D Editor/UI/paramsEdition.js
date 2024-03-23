@@ -130,6 +130,21 @@ function computeInput(param, isLast) {
     let nameForCallback = removeSpaces(param.tab) + removeSpaces(param.name) + removeSpaces(param.category);
     let htmlToAdd = "<div style='width: 100%; overflow: auto;" + (!addBottomBorder && !isLast ? "padding-bottom: 5px;" : "") + "'>";
 
+    let classForElements = "inputClass" + nameForCallback;
+
+    if (param.isActivable)
+    {
+        htmlToAdd += "<input id='checkBox" + nameForCallback + "' type='checkbox' style='margin-top: 11px' onchange='(function() { "
+            + "let elements = document.getElementsByClassName(\"" + classForElements + "\");"
+            + "for (let i = 0; i < elements.length; ++i)"
+            + "  elements[i].toggleDisabled();"
+            + "if (!document.getElementById(\"checkBox" + nameForCallback + "\").checked)"
+            + "  disable" + nameForCallback + "();"
+            + "else"
+            + "  enable" + nameForCallback + "();"
+            + "})()'/>"
+    }
+
     if (param.type == "String")
         htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput" + nameForCallback + "\" name=\"name\" value=\"" + param.value + "\" oninput=\"(function() { "
             + "let value = document.getElementById('nameInput" + nameForCallback + "').value;"
@@ -139,9 +154,12 @@ function computeInput(param, isLast) {
     else if (param.type == "Vector2" || param.type == "Vector3" || param.type == "UInt" || param.type == "Float") {
         htmlToAdd += addBottomBorder ? "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom:1px solid white;'>" : "" ;
         htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
-        htmlToAdd += "<div style='display: inline-block; width: 70%'>";
+        if (param.isActivable)
+            htmlToAdd += "<div style='display: inline-block; width: 65%; float: right'>";
+        else
+            htmlToAdd += "<div style='display: inline-block; width: 70%'>";
         if (param.type == "UInt")
-            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"></wolf-slider>";
+            htmlToAdd += "<wolf-slider id='uintSlider" + nameForCallback + "' class='" + classForElements + "' max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\" disabled=" + (param.isActivable ? 'true' : 'false') + "></wolf-slider>";
         else if (param.type == "Float")
             htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"></wolf-slider>";
         else {

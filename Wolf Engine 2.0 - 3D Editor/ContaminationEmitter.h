@@ -13,6 +13,7 @@ public:
 	std::string getId() const override { return ID; }
 
 	ContaminationEmitter(const std::function<void(ComponentInterface*)>& requestReloadCallback);
+	ContaminationEmitter(const ContaminationEmitter&) = delete;
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
@@ -44,7 +45,16 @@ private:
 	};
 
 	void onMaterialAdded();
+	void onFillSceneWithValueChanged() const;
+
 	EditorParamArray<ContaminationMaterial> m_contaminationMaterials = EditorParamArray<ContaminationMaterial>("Contamination materials", TAB, "Materials", 8, [this] { onMaterialAdded(); });
+	EditorParamUInt m_fillSceneWithValue = EditorParamUInt("Fill scene with value", TAB, "Tool", 0, 255, [this] { onFillSceneWithValueChanged(); }, true);
+
+	std::array<EditorParamInterface*, 2> m_editorParams =
+	{
+		&m_contaminationMaterials,
+		&m_fillSceneWithValue
+	};
 
 	// Graphic resources
 	const uint32_t CONTAMINATION_IDS_IMAGE_SIZE = 64;

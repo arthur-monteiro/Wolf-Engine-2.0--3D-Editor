@@ -7,12 +7,13 @@ template <typename T>
 class EditorParamArray : public EditorParamInterface
 {
 public:
-	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize) : EditorParamInterface(Type::Array, name, tab, category)
+	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, bool isActivable = false) : EditorParamInterface(Type::Array, name, tab, category, isActivable)
 	{
 		m_maxSize = maxSize;
 		m_value.reserve(maxSize);
 	}
-	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, const std::function<void()>& callbackValueChanged) : EditorParamArray(name, tab, category, maxSize)
+	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, const std::function<void()>& callbackValueChanged, bool isActivable = false)
+		: EditorParamArray(name, tab, category, maxSize, isActivable)
 	{
 		m_callbackValueChanged = callbackValueChanged;
 	}
@@ -24,7 +25,9 @@ public:
 	}
 
 	void activate() override
-	{		
+	{
+		EditorParamInterface::activate();
+
 		ultralight::JSObject jsObject;
 		ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
