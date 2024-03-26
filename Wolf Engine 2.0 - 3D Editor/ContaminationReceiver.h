@@ -18,7 +18,9 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
+	void updateBeforeFrame() override {}
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override;
+	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
 private:
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;

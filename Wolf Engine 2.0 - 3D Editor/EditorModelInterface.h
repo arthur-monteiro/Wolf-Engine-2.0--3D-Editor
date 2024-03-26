@@ -22,7 +22,7 @@ class EditorModelInterface : public ComponentInterface
 public:
 	EditorModelInterface(const glm::mat4& transform);
 
-	virtual void updateGraphic();
+	void updateBeforeFrame() override;
 	virtual void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) = 0;
 
 	virtual Wolf::AABB getAABB() const = 0;

@@ -48,9 +48,10 @@ public:
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
-	void updateGraphic() override;
+	void updateBeforeFrame() override;
 	void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) override;
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
+	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
@@ -82,7 +83,7 @@ private:
 		void setLoadingPath(const std::string& loadingPath) { m_loadingPathParam = loadingPath; }
 
 		const std::string& getLoadingPath() const { return m_loadingPathParam; }
-		Wolf::Mesh* getMesh() const { return m_mesh.get(); }
+		Wolf::ResourceNonOwner<Wolf::Mesh> getMesh() { return m_mesh.createNonOwnerResource(); }
 		const glm::vec2& getSizeInMeter() const { return m_sizeInMeter; }
 		const glm::vec2& getCenter() const { return m_center; }
 
@@ -93,7 +94,7 @@ private:
 		void addMaterialsToGPU() const;
 
 		EditorParamString m_loadingPathParam;
-		std::unique_ptr<Wolf::Mesh> m_mesh;
+		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
 		std::vector<std::unique_ptr<Wolf::Image>> m_images;
 		glm::vec2 m_sizeInMeter;
 		glm::vec2 m_center;

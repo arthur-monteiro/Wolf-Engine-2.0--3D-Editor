@@ -20,7 +20,9 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
+	void updateBeforeFrame() override {}
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
+	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override;
 
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet>& getDescriptorSet() { return m_descriptorSet; }
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& getDescriptorSetLayout() { return m_descriptorSetLayout; }
@@ -46,14 +48,31 @@ private:
 
 	void onMaterialAdded();
 	void onFillSceneWithValueChanged() const;
+	void requestDebugMeshRebuild();
+	void buildDebugMesh();
 
 	EditorParamArray<ContaminationMaterial> m_contaminationMaterials = EditorParamArray<ContaminationMaterial>("Contamination materials", TAB, "Materials", 8, [this] { onMaterialAdded(); });
-	EditorParamUInt m_fillSceneWithValue = EditorParamUInt("Fill scene with value", TAB, "Tool", 0, 255, [this] { onFillSceneWithValueChanged(); }, true);
 
-	std::array<EditorParamInterface*, 2> m_editorParams =
+	EditorParamFloat m_size = EditorParamFloat("Size", TAB, "General", 1.0f, 64.0f, [this]() { requestDebugMeshRebuild(); });
+	EditorParamVector3 m_offset = EditorParamVector3("Offset", TAB, "General", -64.0f, 64.0f, [this]() { requestDebugMeshRebuild(); });
+
+	EditorParamUInt m_fillSceneWithValue = EditorParamUInt("Fill scene with value", TAB, "Tool", 0, 255, [this] { onFillSceneWithValueChanged(); }, true);
+	EditorParamBool m_drawDebug = EditorParamBool("Draw debug", TAB, "Tool");
+
+	std::array<EditorParamInterface*, 5> m_editorParams =
 	{
 		&m_contaminationMaterials,
-		&m_fillSceneWithValue
+		&m_size,
+		&m_offset,
+		&m_fillSceneWithValue,
+		&m_drawDebug
+	};
+
+	std::array<EditorParamInterface*, 3> m_savedEditorParams =
+	{
+		&m_contaminationMaterials,
+		& m_size,
+		& m_offset
 	};
 
 	// Graphic resources
@@ -63,4 +82,9 @@ private:
 	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
+
+	// Debug
+	bool m_debugMeshRebuildRequested = false;
+	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_debugMesh;
+	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_newDebugMesh; // new mesh kept here until the debug mesh is no more used
 };

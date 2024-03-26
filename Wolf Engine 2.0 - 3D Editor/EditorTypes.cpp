@@ -62,6 +62,9 @@ std::string EditorParamInterface::getTypeAsString() const
 		case Type::Entity:
 			return "Entity";
 			break;
+		case Type::Bool:
+			return "Bool";
+			break;
 		default:
 			Wolf::Debug::sendError("Undefined type");
 			return "Undefined_type";
@@ -124,7 +127,7 @@ void EditorParamsVector<T>::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionPrefix = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionPrefix = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
 
 	const std::string functionChangeXName = functionPrefix + "X";
 	jsObject[functionChangeXName.c_str()] = std::bind(&EditorParamsVector::setValueXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -243,7 +246,7 @@ void EditorParamFloat::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + m_tab + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamFloat::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -327,4 +330,40 @@ void EditorParamString::setValueJSCallback(const ultralight::JSObject& thisObjec
 {
 	const std::string value = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 	setValue(value);
+}
+
+void EditorParamBool::activate()
+{
+	EditorParamInterface::activate();
+
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamBool::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void EditorParamBool::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	out += tabs + '\t' + R"("value" : )" + (m_value ? "true" : "false") + "\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamBool::setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const bool value = args[0].ToBoolean();
+	setValue(value);
+}
+
+void EditorParamBool::setValue(bool value)
+{
+	m_value = value;
+
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
 }

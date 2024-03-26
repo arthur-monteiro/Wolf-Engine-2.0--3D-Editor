@@ -15,9 +15,10 @@ public:
 	static inline std::string ID = "staticModel";
 	std::string getId() const override { return ID; }
 
-	void updateGraphic() override;
+	void updateBeforeFrame() override;
 	void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) override;
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
+	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;

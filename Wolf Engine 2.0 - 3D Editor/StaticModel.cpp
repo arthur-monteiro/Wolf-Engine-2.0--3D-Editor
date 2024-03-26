@@ -56,9 +56,9 @@ void StaticModel::loadParams(JSONReader& jsonReader)
 	::loadParams(jsonReader, ID, m_modelParams);
 }
 
-void StaticModel::updateGraphic()
+void StaticModel::updateBeforeFrame()
 {
-	EditorModelInterface::updateGraphic();
+	EditorModelInterface::updateBeforeFrame();
 
 	if (m_modelLoadingRequested)
 	{
@@ -72,7 +72,7 @@ void StaticModel::getMeshesToRender(std::vector<RenderMeshList::MeshToRenderInfo
 	if (!m_modelData.mesh)
 		return;
 
-	RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_modelData.mesh.get(), m_defaultPipelineSet->getResource());
+	RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_modelData.mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource());
 	meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.createConstNonOwnerResource(), 1 });
 
 	outList.push_back(meshToRenderInfo);

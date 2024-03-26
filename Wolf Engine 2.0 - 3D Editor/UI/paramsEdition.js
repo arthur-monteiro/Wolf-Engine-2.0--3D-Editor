@@ -194,6 +194,12 @@ function computeInput(param, isLast) {
         }
         htmlToAdd += "</select>";
     }
+    else if(param.type == "Bool")
+    {
+        htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
+        htmlToAdd += "<div style='display: inline-block; width: 70%'><input id='checkBox" + nameForCallback + "' type='checkbox' style='margin-top: 9px' onchange='(function() { "
+            + "change" + nameForCallback + "(document.getElementById(\"checkBox" + nameForCallback + "\").checked) })()'/></div>";
+    }
 
     htmlToAdd += "</div>"
     return htmlToAdd;

@@ -460,6 +460,8 @@ void SystemManager::updateBeforeFrame()
 		loadScene();
 	}
 
+	m_debugRenderingManager->clearBeforeFrame();
+
 	m_entityContainer->moveToNextFrame([this](const std::string& componentId)
 		{
 			return m_componentInstancier->instanciateComponent(componentId);
@@ -485,25 +487,18 @@ void SystemManager::updateBeforeFrame()
 		m_entityReloadRequested = false;
 	}
 
+	if (m_selectedEntity && (*m_selectedEntity)->hasModelComponent())
+		m_debugRenderingManager->addAABB((*m_selectedEntity)->getAABB());
+
 	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
-	std::vector<std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>> allModels;
 
 	RenderMeshList& renderList = m_wolfInstance->getRenderMeshList();
 
-	for (ResourceUniqueOwner<Entity>& entity : allEntities)
+	for (const ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
 		entity->addMeshesToRenderList(renderList);
-
-		std::vector<ResourceUniqueOwner<ComponentInterface>>& components = entity->getAllComponents();
-		for (ResourceUniqueOwner<ComponentInterface>& component : components)
-		{
-			if (const ResourceNonOwner<EditorModelInterface> componentAsModel = component.createNonOwnerResource<EditorModelInterface>())
-			{
-				allModels.emplace_back(componentAsModel, entity.createNonOwnerResource());
-			}
-		}
+		entity->addDebugInfo(*m_debugRenderingManager);
 	}
-	m_debugRenderingManager->updateGraphic();
 	m_debugRenderingManager->addMeshesToRenderList(renderList);
 
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
@@ -539,15 +534,18 @@ void SystemManager::updateBeforeFrame()
 			const glm::vec3 rayDirection = glm::vec3(glm::inverse(m_camera->getViewMatrix()) * glm::vec4(clipTarget, 0.0f));
 
 			float minDistance = 2'000.0f;
-			for (const std::pair<ResourceNonOwner<EditorModelInterface>, ResourceNonOwner<Entity>>& model : allModels)
+			for (ResourceUniqueOwner<Entity>& entity : allEntities)
 			{
-				if (float intersectionDistance = model.first->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
+				if (entity->hasModelComponent())
 				{
-					intersectionDistance = intersectionDistance > 0.0f ? intersectionDistance : 1'000.0f;
-					if (intersectionDistance < minDistance)
+					if (float intersectionDistance = entity->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
 					{
-						minDistance = intersectionDistance;
-						m_selectedEntity.reset(new ResourceNonOwner<Entity>(model.second));
+						intersectionDistance = intersectionDistance > 0.0f ? intersectionDistance : 1'000.0f;
+						if (intersectionDistance < minDistance)
+						{
+							minDistance = intersectionDistance;
+							m_selectedEntity.reset(new ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
+						}
 					}
 				}
 			}
@@ -654,6 +652,4 @@ void SystemManager::updateUISelectedEntity() const
 	jsFunctionCall += "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(jsFunctionCall);
 	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
-
-	m_debugRenderingManager->setSelectedEntity(*m_selectedEntity);
 }

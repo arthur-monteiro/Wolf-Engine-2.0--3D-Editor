@@ -4,6 +4,7 @@
 
 #include "AABB.h"
 #include "ComponentInterface.h"
+#include "DebugRenderingManager.h"
 #include "EditorTypes.h"
 #include "GameContext.h"
 #include "ResourceUniqueOwner.h"
@@ -21,6 +22,7 @@ public:
 	void removeAllComponents();
 
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
+	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	void activateParams() const;
 	void fillJSONForParams(std::string& outJSON);
 

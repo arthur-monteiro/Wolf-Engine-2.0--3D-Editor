@@ -2,11 +2,13 @@
 
 #include <glm/glm.hpp>
 
+#include <DescriptorSet.h>
 #include <DescriptorSetLayout.h>
 #include <DescriptorSetLayoutGenerator.h>
 #include <Mesh.h>
 #include <PipelineSet.h>
 #include <ResourceNonOwner.h>
+#include <ResourceUniqueOwner.h>
 
 #include "Entity.h"
 
@@ -18,14 +20,6 @@ namespace Wolf
 class DebugRenderingManager
 {
 public:
-	DebugRenderingManager();
-
-	void updateGraphic();
-	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList);
-
-	void setSelectedEntity(const Wolf::ResourceNonOwner<Entity>& entity);
-
-private:
 	// Lines
 	struct LineVertex
 	{
@@ -61,11 +55,20 @@ private:
 		}
 	};
 
+	DebugRenderingManager();
+
+	void clearBeforeFrame();
+
 	struct LinesUBData
 	{
 		glm::mat4 transform;
 	};
+	void addAABB(const Wolf::AABB& box);
+	void addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data);
 
+	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList);
+
+private:
 	std::unique_ptr<Wolf::PipelineSet> m_linesPipelineSet;
 	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_linesDescriptorSetLayoutGenerator;
 	std::unique_ptr<Wolf::DescriptorSetLayout> m_linesDescriptorSetLayout;
@@ -73,14 +76,23 @@ private:
 	struct PerGroupOfLines
 	{
 		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> linesDescriptorSet;
-		std::unique_ptr<Wolf::Buffer> linesUniformBuffer;
+		Wolf::ResourceUniqueOwner<Wolf::Buffer> linesUniformBuffer;
+		Wolf::ResourceNonOwner<Wolf::Mesh> mesh;
+
+		PerGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, 
+			const std::unique_ptr<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout, 
+			const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator);
 	};
-	std::vector<PerGroupOfLines> m_perGroupOfLinesInfoArray;
 
 	// AABBs
 	std::unique_ptr<Wolf::Buffer> m_AABBVertexBuffer;
 	std::unique_ptr<Wolf::Buffer> m_AABBIndexBuffer;
-	std::unique_ptr<Wolf::Mesh> m_AABBMesh;
+	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_AABBMesh;
 
-	std::vector<Wolf::ResourceNonOwner<Entity>> m_entitiesForAABBDraw;
+	uint32_t m_AABBInfoArrayCount = 0;
+	std::vector<PerGroupOfLines> m_AABBInfoArray;
+
+	// Custom
+	uint32_t m_customInfoArrayCount = 0;
+	std::vector<PerGroupOfLines> m_customInfoArray;
 };

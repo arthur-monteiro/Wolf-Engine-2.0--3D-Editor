@@ -46,7 +46,12 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 		switch (param->getType()) 
 		{
 			case EditorParamInterface::Type::Float:
-				*static_cast<EditorParamFloat*>(param) = findParamObject(param->getName())->getPropertyFloat("value");
+				{
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					{
+						*dynamic_cast<EditorParamFloat*>(param) = object->getPropertyFloat("value");
+					}
+				}
 				break;
 			case EditorParamInterface::Type::UInt:
 				{
@@ -59,9 +64,13 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			case EditorParamInterface::Type::Vector2:
 				*static_cast<EditorParamVector2*>(param) = glm::vec2(findParamObject(param->getName())->getPropertyFloat("valueX"), findParamObject(param->getName())->getPropertyFloat("valueY"));
 				break;
-			case EditorParamInterface::Type::Vector3: 
-				*static_cast<EditorParamVector3*>(param) = glm::vec3(findParamObject(param->getName())->getPropertyFloat("valueX"), findParamObject(param->getName())->getPropertyFloat("valueY"),
-					findParamObject(param->getName())->getPropertyFloat("valueZ"));
+			case EditorParamInterface::Type::Vector3:
+				{
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					{
+						*dynamic_cast<EditorParamVector3*>(param) = glm::vec3(object->getPropertyFloat("valueX"), object->getPropertyFloat("valueY"), object->getPropertyFloat("valueZ"));
+					}
+				}
 				break;
 			case EditorParamInterface::Type::String:
 			case EditorParamInterface::Type::File:
@@ -81,6 +90,14 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				}
 				break;
 			}
+			case EditorParamInterface::Type::Bool:
+				{
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					{
+						*dynamic_cast<EditorParamBool*>(param) = object->getPropertyBool("value");
+					}
+				}
+				break;
 			default:
 				Wolf::Debug::sendError("Unsupported type");
 				break;

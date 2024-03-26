@@ -30,7 +30,7 @@ EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
 		}));
 }
 
-void EditorModelInterface::updateGraphic()
+void EditorModelInterface::updateBeforeFrame()
 {
 	MatricesUBData mvp;
 	mvp.model = m_transform;

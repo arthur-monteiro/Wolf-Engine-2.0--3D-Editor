@@ -3,11 +3,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <Debug.h>
+#include <DescriptorSetGenerator.h>
 #include <DescriptorSetLayoutGenerator.h>
 #include <RenderMeshList.h>
 
 #include "CommonDescriptorLayouts.h"
-#include "DescriptorSetGenerator.h"
 
 DebugRenderingManager::DebugRenderingManager()
 {
@@ -88,51 +88,73 @@ DebugRenderingManager::DebugRenderingManager()
 	m_AABBMesh.reset(new Wolf::Mesh(AABBVertices, AABBIndices));
 }
 
-void DebugRenderingManager::updateGraphic()
+void DebugRenderingManager::clearBeforeFrame()
 {
-	if (m_perGroupOfLinesInfoArray.size() < m_entitiesForAABBDraw.size())
+	m_AABBInfoArrayCount = 0;
+	for (uint32_t i = 0; i < m_customInfoArrayCount; ++i)
+		m_customInfoArray[i].mesh = m_AABBMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
+	m_customInfoArrayCount = 0;
+}
+
+void DebugRenderingManager::addAABB(const Wolf::AABB& box)
+{
+	if (m_AABBInfoArrayCount >= m_AABBInfoArray.size())
 	{
-		const uint32_t previousPerGroupOfLinesInfoArraySize = static_cast<uint32_t>(m_perGroupOfLinesInfoArray.size());
-		m_perGroupOfLinesInfoArray.resize(m_entitiesForAABBDraw.size());
-
-		for (uint32_t i = previousPerGroupOfLinesInfoArraySize; i < m_perGroupOfLinesInfoArray.size(); ++i)
-		{
-			m_perGroupOfLinesInfoArray[i].linesUniformBuffer.reset(new Wolf::Buffer(sizeof(LinesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Wolf::UpdateRate::NEVER));
-			m_perGroupOfLinesInfoArray[i].linesDescriptorSet.reset(new Wolf::DescriptorSet(m_linesDescriptorSetLayout->getDescriptorSetLayout(), Wolf::UpdateRate::NEVER));
-
-			Wolf::DescriptorSetGenerator descriptorSetGenerator(m_linesDescriptorSetLayoutGenerator->getDescriptorLayouts());
-			descriptorSetGenerator.setBuffer(0, *m_perGroupOfLinesInfoArray[i].linesUniformBuffer);
-			m_perGroupOfLinesInfoArray[i].linesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
-		}
+		m_AABBInfoArray.emplace_back(m_AABBMesh.createNonOwnerResource(), m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
 	}
 
-	for (uint32_t i = 0; i < m_entitiesForAABBDraw.size(); ++i)
-	{
-		const PerGroupOfLines& perGroupOfLinesInfo = m_perGroupOfLinesInfoArray[i];
-		Wolf::AABB entityAABB = m_entitiesForAABBDraw[i]->getAABB();
+	const PerGroupOfLines& perGroupOfLinesInfo = m_AABBInfoArray[m_AABBInfoArrayCount];
 
-		LinesUBData data{};
-		data.transform = glm::translate(glm::mat4(glm::mat4(1.0f)), glm::vec3(entityAABB.getCenter()));
-		data.transform = glm::scale(data.transform, glm::vec3(entityAABB.getSize()));
-		perGroupOfLinesInfo.linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
+	LinesUBData data{};
+	data.transform = glm::translate(glm::mat4(glm::mat4(1.0f)), glm::vec3(box.getCenter()));
+	data.transform = glm::scale(data.transform, glm::vec3(box.getSize()));
+	perGroupOfLinesInfo.linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
+
+	m_AABBInfoArrayCount++;
+}
+
+void DebugRenderingManager::addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data)
+{
+	if (m_customInfoArrayCount >= m_customInfoArray.size())
+	{
+		m_customInfoArray.emplace_back(mesh, m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
 	}
+	m_customInfoArray[m_customInfoArrayCount].mesh = mesh;
+	m_customInfoArray[m_customInfoArrayCount].linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
+	m_customInfoArrayCount++;
 }
 
 void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList)
 {
-	for (auto& perGroupOfLinesInfo : m_perGroupOfLinesInfoArray)
+	for (uint32_t i = 0; i < m_AABBInfoArrayCount; ++i)
 	{
-		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_AABBMesh.get(), m_linesPipelineSet.get());
-		meshToRenderInfo.descriptorSets.push_back({ perGroupOfLinesInfo.linesDescriptorSet.createConstNonOwnerResource(), 1});
+		PerGroupOfLines& AABBInfo = m_AABBInfoArray[i];
+
+		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(AABBInfo.mesh, m_linesPipelineSet.get());
+		meshToRenderInfo.descriptorSets.push_back({ AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), 1});
+
+		renderMeshList.addMeshToRender(meshToRenderInfo);
+	}
+
+	for (uint32_t i = 0; i < m_customInfoArrayCount; ++i)
+	{
+		PerGroupOfLines& customInfo = m_customInfoArray[i];
+
+		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(customInfo.mesh, m_linesPipelineSet.get());
+		meshToRenderInfo.descriptorSets.push_back({ customInfo.linesDescriptorSet.createConstNonOwnerResource(), 1 });
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}
 }
 
-void DebugRenderingManager::setSelectedEntity(const Wolf::ResourceNonOwner<Entity>& entity)
+DebugRenderingManager::PerGroupOfLines::PerGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh,
+	const std::unique_ptr<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout,
+	const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator) : mesh(mesh)
 {
-	m_entitiesForAABBDraw.clear();
+	linesUniformBuffer.reset(new Wolf::Buffer(sizeof(LinesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Wolf::UpdateRate::NEVER));
+	linesDescriptorSet.reset(new Wolf::DescriptorSet(linesDescriptorSetLayout->getDescriptorSetLayout(), Wolf::UpdateRate::NEVER));
 
-	if (entity->hasModelComponent())
-		m_entitiesForAABBDraw.push_back(entity);
+	Wolf::DescriptorSetGenerator descriptorSetGenerator(linesDescriptorSetLayoutGenerator->getDescriptorLayouts());
+	descriptorSetGenerator.setBuffer(0, *linesUniformBuffer);
+	linesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }

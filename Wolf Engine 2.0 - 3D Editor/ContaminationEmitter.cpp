@@ -1,5 +1,6 @@
 #include "ContaminationEmitter.h"
 
+#include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
 
 ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInterface*)>& requestReloadCallback)
@@ -24,11 +25,14 @@ ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInt
 
 	m_descriptorSet.reset(new Wolf::DescriptorSet(m_descriptorSetLayout->getDescriptorSetLayout(), Wolf::UpdateRate::NEVER));
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+
+	buildDebugMesh();
+	m_debugMesh.reset(m_newDebugMesh.release());
 }
 
 void ContaminationEmitter::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams<ContaminationMaterial>(jsonReader, ID, m_editorParams);
+	::loadParams<ContaminationMaterial>(jsonReader, ID, m_savedEditorParams);
 }
 
 void ContaminationEmitter::activateParams()
@@ -44,6 +48,23 @@ void ContaminationEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCou
 	for (const EditorParamInterface* editorParam : m_editorParams)
 	{
 		editorParam->addToJSON(outJSON, tabCount, false);
+	}
+}
+
+void ContaminationEmitter::addDebugInfo(DebugRenderingManager& debugRenderingManager)
+{
+	if (static_cast<bool>(m_drawDebug))
+	{
+		if (m_newDebugMesh)
+			m_debugMesh.reset(m_newDebugMesh.release());
+
+		const bool useNewMesh = m_debugMeshRebuildRequested;
+		if (m_debugMeshRebuildRequested)
+			buildDebugMesh();
+
+		DebugRenderingManager::LinesUBData uniformData{};
+		uniformData.transform = glm::mat4(1.0f);
+		debugRenderingManager.addCustomGroupOfLines(useNewMesh ? m_newDebugMesh.createNonOwnerResource() : m_debugMesh.createNonOwnerResource(), uniformData);
 	}
 }
 
@@ -82,4 +103,59 @@ void ContaminationEmitter::onFillSceneWithValueChanged() const
 
 		m_contaminationIdsImage->copyCPUBuffer(bufferWithValue.data(), Wolf::Image::SampledInFragmentShader());
 	}
+}
+
+void ContaminationEmitter::requestDebugMeshRebuild()
+{
+	m_debugMeshRebuildRequested = true;
+}
+
+void ContaminationEmitter::buildDebugMesh()
+{
+	const glm::vec3 cellSize = glm::vec3(static_cast<float>(CONTAMINATION_IDS_IMAGE_SIZE) / static_cast<float>(m_size));
+
+	std::vector<DebugRenderingManager::LineVertex> vertices;
+	std::vector<uint32_t> indices;
+
+	// Normal X
+	for (uint32_t y = 0; y < CONTAMINATION_IDS_IMAGE_SIZE; ++y)
+	{
+		for (uint32_t z = 0; z < CONTAMINATION_IDS_IMAGE_SIZE; ++z)
+		{
+			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(0, y, z) * cellSize;
+			vertices.emplace_back(firstPos);
+			vertices.emplace_back(firstPos + glm::vec3(m_size, 0, 0));
+		}
+	}
+
+	// Normal Y
+	for (uint32_t x = 0; x < CONTAMINATION_IDS_IMAGE_SIZE; ++x)
+	{
+		for (uint32_t z = 0; z < CONTAMINATION_IDS_IMAGE_SIZE; ++z)
+		{
+			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, 0, z) * cellSize;
+			vertices.emplace_back(firstPos);
+			vertices.emplace_back(firstPos + glm::vec3(0, m_size, 0));
+		}
+	}
+
+	// Normal Z
+	for (uint32_t x = 0; x < CONTAMINATION_IDS_IMAGE_SIZE; ++x)
+	{
+		for (uint32_t y = 0; y < CONTAMINATION_IDS_IMAGE_SIZE; ++y)
+		{
+			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, y, 0) * cellSize;
+			vertices.emplace_back(firstPos);
+			vertices.emplace_back(firstPos + glm::vec3(0, 0, m_size));
+		}
+	}
+
+	for (uint32_t i = 0; i < vertices.size(); ++i)
+	{
+		indices.push_back(i);
+	}
+
+	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices));
+
+	m_debugMeshRebuildRequested = false;
 }

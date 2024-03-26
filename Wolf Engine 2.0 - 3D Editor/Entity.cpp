@@ -67,7 +67,7 @@ void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
 {
 	if (m_modelComponent)
 	{
-		(*m_modelComponent)->updateGraphic();
+		(*m_modelComponent)->updateBeforeFrame();
 
 		std::vector<Wolf::RenderMeshList::MeshToRenderInfo> meshesToRender;
 		(*m_modelComponent)->getMeshesToRender(meshesToRender);
@@ -81,6 +81,14 @@ void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
 		{
 			renderMeshList.addMeshToRender(meshToRender);
 		}
+	}
+}
+
+void Entity::addDebugInfo(DebugRenderingManager& debugRenderingManager) const
+{
+	for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+	{
+		component->addDebugInfo(debugRenderingManager);
 	}
 }
 

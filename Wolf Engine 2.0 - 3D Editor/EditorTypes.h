@@ -29,7 +29,7 @@ public:
 
 	void setCategory(const std::string& category) { m_category = category; }
 
-	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array, Entity };
+	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array, Entity, Bool };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 	bool isEnabled() const { return !m_isActivable || m_isEnabled; }
@@ -118,6 +118,7 @@ public:
 
 	EditorParamVector3& operator=(const glm::vec3& value) { setValue(value); return *this; }
 	operator glm::vec3& () { return m_value; }
+	operator glm::vec3 () const { return m_value; }
 };
 
 class EditorParamUInt : public EditorParamInterface
@@ -204,4 +205,26 @@ private:
 
 	bool m_drivesCategoryName;
 	std::string m_value;
+};
+
+class EditorParamBool : public EditorParamInterface
+{
+public:
+	EditorParamBool(const std::string& name, const std::string& tab, const std::string& category) : EditorParamInterface(Type::Bool, name, tab, category, false) {}
+	EditorParamBool(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged) : EditorParamInterface(Type::Bool, name, tab, category, false)
+	{
+		m_callbackValueChanged = callbackValueChanged;
+	}
+
+	void activate() override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
+
+	EditorParamBool& operator=(bool value) { setValue(value); return *this; }
+	operator bool() const { return m_value; }
+
+private:
+	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void setValue(bool value);
+
+	bool m_value = false;
 };
