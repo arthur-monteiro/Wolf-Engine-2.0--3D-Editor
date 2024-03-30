@@ -108,7 +108,7 @@ void StaticModel::loadModel()
 	modelLoadingInfo.filename = fullFilePath;
 	modelLoadingInfo.mtlFolder = fullFilePath.substr(0, fullFilePath.find_last_of('\\'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
-	modelLoadingInfo.materialLayout = ModelLoadingInfo::InputMaterialLayout::EACH_TEXTURE_A_FILE;
+	modelLoadingInfo.materialLayout = MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE;
 	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 	ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
@@ -118,12 +118,10 @@ void StaticModel::loadModel()
 	descriptorSetGenerator.setBuffer(0, *m_matricesUniformBuffer);
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
-	std::vector<Image*> images;
-	m_modelData.getImages(images);
-	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(images.size());
-	for (uint32_t i = 0; i < images.size(); ++i)
+	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(m_modelData.images.size());
+	for (uint32_t i = 0; i < m_modelData.images.size(); ++i)
 	{
-		imageDescriptions[i].imageView = images[i]->getDefaultImageView();
+		imageDescriptions[i].imageView = m_modelData.images[i]->getDefaultImageView();
 		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 

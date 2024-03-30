@@ -26,14 +26,13 @@ public:
 	Wolf::AABB getAABB() const override;
 
 	std::string getTypeString() override { return "staticMesh"; }
-	void getImages(std::vector<Wolf::Image*>& outputImages) const { m_modelData.getImages(outputImages); }
 
 private:
 	void loadModel();
 
 	bool m_modelLoadingRequested = false;
 	void requestModelLoading();
-	EditorParamString m_loadingPathParam = EditorParamString("Mesh", "Model", "Loading", [this] { requestModelLoading(); }, EditorParamString::ParamStringType::FILE);
+	EditorParamString m_loadingPathParam = EditorParamString("Mesh", "Model", "Loading", [this] { requestModelLoading(); }, EditorParamString::ParamStringType::FILE_OBJ);
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>> m_defaultPipelineSet;
 	

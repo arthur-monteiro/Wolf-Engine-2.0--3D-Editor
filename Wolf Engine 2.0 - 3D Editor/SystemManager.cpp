@@ -33,7 +33,8 @@ SystemManager::SystemManager()
 			}
 			Debug::sendCriticalError("Entity not found");
 			return allEntities[0].createNonOwnerResource();
-		}));
+		},
+		m_configuration.createNonOwnerResource()));
 	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
 
 	if (!m_configuration->getDefaultScene().empty())
@@ -496,6 +497,7 @@ void SystemManager::updateBeforeFrame()
 
 	for (const ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
+		entity->updateBeforeFrame();
 		entity->addMeshesToRenderList(renderList);
 		entity->addDebugInfo(*m_debugRenderingManager);
 	}

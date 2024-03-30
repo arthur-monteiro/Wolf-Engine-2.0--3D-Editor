@@ -1,9 +1,13 @@
 #include "ContaminationEmitter.h"
 
+#include <random>
+
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
 
-ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInterface*)>& requestReloadCallback)
+ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, 
+	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration)
 {
 	m_requestReloadCallback = requestReloadCallback;
 
@@ -17,11 +21,16 @@ ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInt
 	m_contaminationIdsImage->setImageLayout(Wolf::Image::SampledInFragmentShader());
 
 	m_descriptorSetLayoutGenerator.addCombinedImageSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 	m_descriptorSetLayout.reset(new Wolf::DescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
+
 	m_sampler.reset(new Wolf::Sampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1, VK_FILTER_NEAREST));
 	descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_contaminationIdsImage->getDefaultImageView(), *m_sampler);
+
+	m_contaminationInfoBuffer.reset(new Wolf::Buffer(sizeof(ContaminationInfo), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, Wolf::UpdateRate::NEVER));
+	descriptorSetGenerator.setBuffer(1, *m_contaminationInfoBuffer);
 
 	m_descriptorSet.reset(new Wolf::DescriptorSet(m_descriptorSetLayout->getDescriptorSetLayout(), Wolf::UpdateRate::NEVER));
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -51,6 +60,17 @@ void ContaminationEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCou
 	}
 }
 
+void ContaminationEmitter::updateBeforeFrame()
+{
+	if (m_transferInfoToBufferRequested)
+		transferInfoToBuffer();
+
+	for (ContaminationMaterial& materialEditor : m_contaminationMaterials)
+	{
+		materialEditor.updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
+	}
+}
+
 void ContaminationEmitter::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 {
 	if (static_cast<bool>(m_drawDebug))
@@ -68,9 +88,17 @@ void ContaminationEmitter::addDebugInfo(DebugRenderingManager& debugRenderingMan
 	}
 }
 
-ContaminationEmitter::ContaminationMaterial::ContaminationMaterial() : ParameterGroupInterface(ContaminationEmitter::TAB), m_material(ContaminationEmitter::TAB, "")
+ContaminationEmitter::ContaminationMaterial::ContaminationMaterial()
+	: ParameterGroupInterface(ContaminationEmitter::TAB), m_material(ContaminationEmitter::TAB, "")
 {
 	m_name = DEFAULT_NAME;
+
+	m_material.subscribe(this, [this]() { notifySubscribers(); });
+}
+
+void ContaminationEmitter::ContaminationMaterial::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+{
+	m_material.updateBeforeFrame(materialGPUManager, editorConfiguration);
 }
 
 std::span<EditorParamInterface*> ContaminationEmitter::ContaminationMaterial::getAllParams()
@@ -90,13 +118,28 @@ bool ContaminationEmitter::ContaminationMaterial::hasDefaultName() const
 
 void ContaminationEmitter::onMaterialAdded()
 {
-	m_contaminationMaterials.back().subscribe(this, [this]() { /* nothing to do */ });
+	m_contaminationMaterials.back().subscribe(this, [this]() { onParamChanged(); });
 	m_requestReloadCallback(this);
 }
 
 void ContaminationEmitter::onFillSceneWithValueChanged() const
 {
-	if (m_fillSceneWithValue.isEnabled())
+	if (m_fillWithRandom)
+	{
+		std::vector<uint8_t> bufferWithValues(static_cast<size_t>(CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE));
+
+		std::random_device dev;
+		std::mt19937 rng(dev());
+		std::uniform_int_distribution<std::mt19937::result_type> dist(0, static_cast<uint32_t>(m_contaminationMaterials.size()));
+
+		for (uint8_t& bufferValue : bufferWithValues)
+		{
+			bufferValue = static_cast<uint8_t>(dist(rng));
+		}
+
+		m_contaminationIdsImage->copyCPUBuffer(bufferWithValues.data(), Wolf::Image::SampledInFragmentShader());
+	}
+	else if (m_fillSceneWithValue.isEnabled())
 	{
 		const uint8_t value = static_cast<uint8_t>(m_fillSceneWithValue);
 		const std::vector<uint8_t> bufferWithValue(static_cast<size_t>(CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE), value);
@@ -105,22 +148,23 @@ void ContaminationEmitter::onFillSceneWithValueChanged() const
 	}
 }
 
-void ContaminationEmitter::requestDebugMeshRebuild()
+void ContaminationEmitter::onParamChanged()
 {
 	m_debugMeshRebuildRequested = true;
+	m_transferInfoToBufferRequested = true;
 }
 
 void ContaminationEmitter::buildDebugMesh()
 {
-	const glm::vec3 cellSize = glm::vec3(static_cast<float>(CONTAMINATION_IDS_IMAGE_SIZE) / static_cast<float>(m_size));
+	const glm::vec3 cellSize = glm::vec3(static_cast<float>(m_size) / static_cast<float>(CONTAMINATION_IDS_IMAGE_SIZE));
 
 	std::vector<DebugRenderingManager::LineVertex> vertices;
 	std::vector<uint32_t> indices;
 
 	// Normal X
-	for (uint32_t y = 0; y < CONTAMINATION_IDS_IMAGE_SIZE; ++y)
+	for (uint32_t y = 0; y <= CONTAMINATION_IDS_IMAGE_SIZE; ++y)
 	{
-		for (uint32_t z = 0; z < CONTAMINATION_IDS_IMAGE_SIZE; ++z)
+		for (uint32_t z = 0; z <= CONTAMINATION_IDS_IMAGE_SIZE; ++z)
 		{
 			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(0, y, z) * cellSize;
 			vertices.emplace_back(firstPos);
@@ -129,9 +173,9 @@ void ContaminationEmitter::buildDebugMesh()
 	}
 
 	// Normal Y
-	for (uint32_t x = 0; x < CONTAMINATION_IDS_IMAGE_SIZE; ++x)
+	for (uint32_t x = 0; x <= CONTAMINATION_IDS_IMAGE_SIZE; ++x)
 	{
-		for (uint32_t z = 0; z < CONTAMINATION_IDS_IMAGE_SIZE; ++z)
+		for (uint32_t z = 0; z <= CONTAMINATION_IDS_IMAGE_SIZE; ++z)
 		{
 			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, 0, z) * cellSize;
 			vertices.emplace_back(firstPos);
@@ -140,9 +184,9 @@ void ContaminationEmitter::buildDebugMesh()
 	}
 
 	// Normal Z
-	for (uint32_t x = 0; x < CONTAMINATION_IDS_IMAGE_SIZE; ++x)
+	for (uint32_t x = 0; x <= CONTAMINATION_IDS_IMAGE_SIZE; ++x)
 	{
-		for (uint32_t y = 0; y < CONTAMINATION_IDS_IMAGE_SIZE; ++y)
+		for (uint32_t y = 0; y <= CONTAMINATION_IDS_IMAGE_SIZE; ++y)
 		{
 			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, y, 0) * cellSize;
 			vertices.emplace_back(firstPos);
@@ -158,4 +202,16 @@ void ContaminationEmitter::buildDebugMesh()
 	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices));
 
 	m_debugMeshRebuildRequested = false;
+}
+
+void ContaminationEmitter::transferInfoToBuffer()
+{
+	ContaminationInfo contaminationInfo{ m_offset, m_size };
+	for (uint32_t i = 0; i < m_contaminationMaterials.size(); ++i)
+	{
+		contaminationInfo.materialOffsets[i] = m_contaminationMaterials[i].getMaterialId();
+	}
+	m_contaminationInfoBuffer->transferCPUMemoryWithStagingBuffer(&contaminationInfo, sizeof(ContaminationInfo));
+
+	m_transferInfoToBufferRequested = false;
 }

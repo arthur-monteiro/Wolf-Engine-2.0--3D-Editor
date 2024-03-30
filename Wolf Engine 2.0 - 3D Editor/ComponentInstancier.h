@@ -10,13 +10,14 @@
 #include "ComponentInterface.h"
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
+#include "EditorConfiguration.h"
 #include "StaticModel.h"
 
 class ComponentInstancier
 {
 public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, std::function<void(ComponentInterface*)> requestReloadCallback, 
-		std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback);
+		std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -26,6 +27,7 @@ private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 
 	struct ComponentInfo
 	{
@@ -60,7 +62,7 @@ private:
 			ContaminationEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_requestReloadCallback));
+				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration));
 			}
 		},
 		ComponentInfo

@@ -182,9 +182,9 @@ private:
 class EditorParamString : public EditorParamInterface
 {
 public:
-	enum class ParamStringType { STRING, FILE, ENTITY };
+	enum class ParamStringType { STRING, FILE_OBJ, FILE_IMG, ENTITY };
 	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false)
-		: EditorParamInterface(stringTypeToParamType(stringType), name, tab, category, isActivable), m_drivesCategoryName(drivesCategoryName) {}
+		: EditorParamInterface(stringTypeToParamType(stringType), name, tab, category, isActivable), m_stringType(stringType), m_drivesCategoryName(drivesCategoryName) {}
 	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false)
 		: EditorParamString(name, tab, category, stringType, drivesCategoryName, isActivable)
 	{
@@ -203,6 +203,7 @@ private:
 	void setValue(const std::string& value);
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
+	ParamStringType m_stringType;
 	bool m_drivesCategoryName;
 	std::string m_value;
 };

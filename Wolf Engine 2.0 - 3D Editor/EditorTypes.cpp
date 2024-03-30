@@ -295,7 +295,21 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 	out += tabs + +"{\n";
 	addCommonInfoToJSON(out, tabCount + 1);
 	out += tabs + '\t' + R"("value" : ")" + m_value + "\",\n";
-	out += tabs + '\t' + R"("drivesCategoryName" : )" + (m_drivesCategoryName ? "true" : "false") + "\n";
+	out += tabs + '\t' + R"("drivesCategoryName" : )" + (m_drivesCategoryName ? "true" : "false") + ",\n";
+	out += tabs + '\t' + R"("fileFilter" : ")";
+	switch (m_stringType)
+	{
+		case ParamStringType::STRING:
+			break;
+		case ParamStringType::FILE_OBJ: 
+			out += "obj";
+			break;
+		case ParamStringType::FILE_IMG: 
+			out += "img";
+			break;
+		case ParamStringType::ENTITY: break;
+	}
+	out += "\"\n";
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
 }
 
@@ -303,16 +317,17 @@ EditorParamInterface::Type EditorParamString::stringTypeToParamType(ParamStringT
 {
 	switch (stringType) 
 	{
-		case ParamStringType::STRING: 
+		case ParamStringType::STRING:
 			return Type::String;
 			break;
-		case ParamStringType::FILE: 
+		case ParamStringType::FILE_OBJ:
+		case ParamStringType::FILE_IMG:
 			return Type::File;
 			break;
-		case ParamStringType::ENTITY: 
+		case ParamStringType::ENTITY:
 			return Type::Entity;
 			break;
-		default: 
+		default:
 			Wolf::Debug::sendError("Unhandled string type");
 			return Type::String;
 	}

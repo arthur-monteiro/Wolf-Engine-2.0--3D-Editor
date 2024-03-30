@@ -14,10 +14,10 @@
 
 using namespace Wolf;
 
-BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<MaterialsGPUManager>& bindlessDescriptor)
-: EditorModelInterface(transform),
-  m_window("Window", [this] { m_needRebuild = true; }, bindlessDescriptor),
-  m_wall("Wall", [this] { m_needRebuild = true; }, bindlessDescriptor)
+BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<MaterialsGPUManager>& materialsGPUManage)
+	: EditorModelInterface(transform),
+	  m_window("Window", [this] { m_needRebuild = true; }, materialsGPUManage),
+	  m_wall("Wall", [this] { m_needRebuild = true; }, materialsGPUManage)
 {
 	m_floorCountParam = 8;
 	m_floorHeightInMeter = 2.0f;
@@ -172,7 +172,7 @@ void BuildingModel::MeshWithMaterials::loadMesh()
 	std::string materialFolder = static_cast<std::string>(m_loadingPathParam).substr(0, static_cast<std::string>(m_loadingPathParam).find_last_of("\\"));
 	modelLoadingInfo.mtlFolder = materialFolder;
 	modelLoadingInfo.vulkanQueueLock = nullptr;
-	modelLoadingInfo.materialLayout = ModelLoadingInfo::InputMaterialLayout::EACH_TEXTURE_A_FILE;
+	modelLoadingInfo.materialLayout = MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE;
 	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 	ModelData windowMeshData;
 	ModelLoader::loadObject(windowMeshData, modelLoadingInfo);
@@ -215,7 +215,7 @@ void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 
 	m_images.resize(5);
 	constexpr uint32_t DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE = 32;
-	auto createImage = [](std::unique_ptr<Image>& image)
+	auto createImage = [](ResourceUniqueOwner<Image>& image)
 		{
 			CreateImageInfo createImageInfo;
 			createImageInfo.extent = { DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE, DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE, 1 };
@@ -233,10 +233,10 @@ void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 
 	// Albedo
 	{
-		std::unique_ptr<Image>& image = m_images[0];
+		ResourceUniqueOwner<Image>& image = m_images[0];
 		createImage(image);
 
-		std::array<Pixel, DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE* DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE> pixels;
+		std::array<Pixel, DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE * DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE> pixels{};
 		for (uint32_t pixelX = 0; pixelX < DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE; ++pixelX)
 		{
 			for (uint32_t pixelY = 0; pixelY < DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE; ++pixelY)
@@ -252,25 +252,25 @@ void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 
 	// Normal
 	{
-		std::unique_ptr<Image>& image = m_images[1];
+		ResourceUniqueOwner<Image>& image = m_images[1];
 		createImage(image);
 	}
 
 	// Roughness
 	{
-		std::unique_ptr<Image>& image = m_images[2];
+		ResourceUniqueOwner<Image>& image = m_images[2];
 		createImage(image);
 	}
 
 	// Metalness
 	{
-		std::unique_ptr<Image>& image = m_images[3];
+		ResourceUniqueOwner<Image>& image = m_images[3];
 		createImage(image);
 	}
 
 	// AO
 	{
-		std::unique_ptr<Image>& image = m_images[4];
+		ResourceUniqueOwner<Image>& image = m_images[4];
 		createImage(image);
 	}
 

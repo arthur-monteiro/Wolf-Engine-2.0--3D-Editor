@@ -21,6 +21,7 @@ public:
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
 
+	void updateBeforeFrame() const;
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	void activateParams() const;

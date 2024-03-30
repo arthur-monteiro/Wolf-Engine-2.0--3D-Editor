@@ -22,7 +22,7 @@ const uint DISPLAY_TYPE_MAT_AO = 4;
 
 void main() 
 {
-    MaterialInfo materialInfo = fetchMaterial(inTexCoords, inMaterialID, inTBN);
+    MaterialInfo materialInfo = fetchMaterial(inTexCoords, inMaterialID, inTBN, computeWorldPosFromViewPos(inViewPos));
 
     if (ub.displayType == DISPLAY_TYPE_ALBEDO)
         outColor = vec4(materialInfo.albedo, 1.0);

@@ -63,12 +63,18 @@ std::string Entity::computeEscapedLoadingPath() const
 	return escapedLoadingPath;
 }
 
+void Entity::updateBeforeFrame() const
+{
+	for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+	{
+		component->updateBeforeFrame();
+	}
+}
+
 void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
 {
 	if (m_modelComponent)
 	{
-		(*m_modelComponent)->updateBeforeFrame();
-
 		std::vector<Wolf::RenderMeshList::MeshToRenderInfo> meshesToRender;
 		(*m_modelComponent)->getMeshesToRender(meshesToRender);
 

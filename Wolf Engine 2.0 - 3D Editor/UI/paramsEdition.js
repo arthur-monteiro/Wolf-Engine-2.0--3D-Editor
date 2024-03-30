@@ -177,7 +177,7 @@ function computeInput(param, isLast) {
         htmlToAdd += "<table style='width: 70%; border-collapse: collapse; border-radius: 5px'>"
 
         let id = param.tab + removeSpaces(param.name) + removeSpaces(param.category);
-        htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', 'obj', change" + nameForCallback + ")\">Select file</button></td></tr>";
+        htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', '" + param.fileFilter + "', change" + nameForCallback + ")\">Select file</button></td></tr>";
         htmlToAdd += "</table>";
     }
     else if (param.type == "Array")

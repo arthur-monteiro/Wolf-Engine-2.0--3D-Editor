@@ -2,7 +2,7 @@
 #include <string>
 
 enum class BrowseToFileOption { FILE_OPEN, FILE_SAVE };
-enum class BrowseToFileFilter { SAVE, OBJ, BUILDING };
+enum class BrowseToFileFilter { SAVE, OBJ, BUILDING, IMG };
 #include <shtypes.h>
 #include <ShlObj_core.h>
 #include <codecvt>
@@ -26,6 +26,9 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
 		break;
 	case BrowseToFileFilter::BUILDING:
 		ofn.lpstrFilter = "Building (JSON)\0*.json\0";
+		break;
+	case BrowseToFileFilter::IMG:
+		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga\0";
 		break;
 	}
 	ofn.nFilterIndex = 0;
@@ -71,6 +74,8 @@ int main(int argc, char** argv)
 		browseToFileFilter = BrowseToFileFilter::SAVE;
 	else if (inputFilter == "building")
 		browseToFileFilter = BrowseToFileFilter::BUILDING;
+	else if (inputFilter == "img")
+		browseToFileFilter = BrowseToFileFilter::IMG;
 	else
 	{
 		std::cout << "Unsupported pick file filter \"" + inputFilter + "\"\n";

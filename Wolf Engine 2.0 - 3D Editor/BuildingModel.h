@@ -41,7 +41,7 @@ public:
 		}
 	};
 
-	BuildingModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor);
+	BuildingModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManage);
 
 	static inline std::string ID = "buildingModel";
 	std::string getId() const override { return ID; }
@@ -73,8 +73,8 @@ private:
 	class MeshWithMaterials : public Notifier
 	{
 	public:
-		MeshWithMaterials(const std::string& category, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor) :
-			m_materialsGPUManager(bindlessDescriptor), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, EditorParamString::ParamStringType::FILE) {}
+		MeshWithMaterials(const std::string& category, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManage) :
+			m_materialsGPUManager(materialsGPUManage), m_loadingPathParam("Mesh", "Building", category, [this] { requestMeshLoading(); }, EditorParamString::ParamStringType::FILE_OBJ) {}
 
 		void updateBeforeFrame();
 		void loadMesh();
@@ -95,7 +95,7 @@ private:
 
 		EditorParamString m_loadingPathParam;
 		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
-		std::vector<std::unique_ptr<Wolf::Image>> m_images;
+		std::vector<Wolf::ResourceUniqueOwner<Wolf::Image>> m_images;
 		glm::vec2 m_sizeInMeter;
 		glm::vec2 m_center;
 
@@ -106,9 +106,9 @@ private:
 	class BuildingPiece : public Notifier
 	{
 	public:
-		BuildingPiece(const std::string& name, const std::function<void()>& callbackValueChanged, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& bindlessDescriptor) :
+		BuildingPiece(const std::string& name, const std::function<void()>& callbackValueChanged, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManage) :
 			m_sideSizeInMeterParam("Side size in meter", "Building", name, 0.1f, 5.0f, callbackValueChanged),
-			m_meshWithMaterials(name, bindlessDescriptor)
+			m_meshWithMaterials(name, materialsGPUManage)
 		{
 			m_sideSizeInMeterParam = 2.0f;
 			m_meshWithMaterials.subscribe(this, [this] { notifySubscribers(); });
