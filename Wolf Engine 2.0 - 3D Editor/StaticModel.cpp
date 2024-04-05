@@ -95,7 +95,10 @@ void StaticModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 AABB StaticModel::getAABB() const
 {
-	return m_modelData.mesh->getAABB() * m_transform;
+	if (m_modelData.mesh)
+		return m_modelData.mesh->getAABB() * m_transform;
+
+	return AABB();
 }
 
 void StaticModel::loadModel()

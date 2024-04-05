@@ -34,6 +34,8 @@ void Entity::loadParams(const std::function<ComponentInterface* (const std::stri
 
 void Entity::addComponent(ComponentInterface* component)
 {
+	component->registerEntity(this);
+
 	m_components.emplace_back(component);
 	if (m_components.size() > MAX_COMPONENT_COUNT)
 	{
@@ -46,6 +48,9 @@ void Entity::addComponent(ComponentInterface* component)
 			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
 		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
 	}
+
+	if (m_components.back()->requiresInputs())
+		m_requiresInputs = true;
 }
 
 std::string Entity::computeEscapedLoadingPath() const
@@ -62,8 +67,15 @@ std::string Entity::computeEscapedLoadingPath() const
 	return escapedLoadingPath;
 }
 
-void Entity::updateBeforeFrame() const
+void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const
 {
+	if (m_requiresInputs)
+	{
+		inputHandler->lockCache(this);
+		inputHandler->pushDataToCache(this);
+		inputHandler->unlockCache(this);
+	}
+
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame();)
 }
 
@@ -110,6 +122,20 @@ void Entity::fillJSONForParams(std::string& outJSON)
 	}
 	outJSON += "\t]\n";
 	outJSON += "}";
+}
+
+void Entity::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const
+{
+	if (m_requiresInputs)
+		inputHandler->lockCache(this);
+
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateDuringFrame(inputHandler);)
+
+	if (m_requiresInputs)
+	{
+		inputHandler->clearCache(this);
+		inputHandler->unlockCache(this);
+	}
 }
 
 void Entity::save()
@@ -160,4 +186,24 @@ Wolf::AABB Entity::getAABB() const
 	}
 	Wolf::Debug::sendWarning("Getting AABB of entity which doesn't contain a model component");
 	return {};
+}
+
+glm::vec3 Entity::getPosition() const
+{
+	if (m_modelComponent)
+		return (*m_modelComponent)->getPosition();
+
+	Wolf::Debug::sendWarning("Getting position of entity which doesn't contain a model component");
+	return glm::vec3(0.0);
+}
+
+void Entity::setPosition(const glm::vec3& newPosition) const
+{
+	if (m_modelComponent)
+	{
+		(*m_modelComponent)->setPosition(newPosition);
+		return;
+	}
+
+	Wolf::Debug::sendWarning("Trying to set position of entity which doesn't contain a model component");
 }

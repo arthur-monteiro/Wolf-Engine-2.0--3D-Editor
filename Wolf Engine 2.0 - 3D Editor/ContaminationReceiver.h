@@ -22,6 +22,8 @@ public:
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
+	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
+
 private:
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 

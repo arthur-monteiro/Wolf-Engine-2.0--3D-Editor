@@ -25,8 +25,12 @@ public:
 	void updateBeforeFrame() override;
 	virtual void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) = 0;
 
+	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
+
 	virtual Wolf::AABB getAABB() const = 0;
 	virtual const glm::mat4& getTransform() const { return m_transform; }
+	glm::vec3 getPosition() const { return m_translationParam; }
+	void setPosition(const glm::vec3& newPosition) { m_translationParam = newPosition; }
 	
 	virtual std::string getTypeString() = 0;
 

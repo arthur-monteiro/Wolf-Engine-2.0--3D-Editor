@@ -210,6 +210,7 @@
     <ClCompile Include="MaterialEditor.cpp" />
     <ClCompile Include="Notifier.cpp" />
     <ClCompile Include="ParameterGroupInterface.cpp" />
+    <ClCompile Include="PlayerComponent.cpp" />
     <ClCompile Include="StaticModel.cpp" />
     <ClCompile Include="SystemManager.cpp" />
   </ItemGroup>
@@ -235,6 +236,7 @@
     <ClInclude Include="MaterialEditor.h" />
     <ClInclude Include="Notifier.h" />
     <ClInclude Include="ParameterGroupInterface.h" />
+    <ClInclude Include="PlayerComponent.h" />
     <ClInclude Include="StaticModel.h" />
     <ClInclude Include="SystemManager.h" />
     <ClInclude Include="Vertex2DTextured.h" />

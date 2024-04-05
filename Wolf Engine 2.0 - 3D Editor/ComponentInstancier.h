@@ -4,13 +4,12 @@
 #include <functional>
 #include <string>
 
-#include <AppCore/JSHelpers.h>
-
 #include "BuildingModel.h"
 #include "ComponentInterface.h"
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
+#include "PlayerComponent.h"
 #include "StaticModel.h"
 
 class ComponentInstancier
@@ -36,7 +35,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 4> m_componentsInfo =
+	std::array<ComponentInfo, 5> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -72,6 +71,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new ContaminationReceiver(m_getEntityFromLoadingPathCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Player component",
+			PlayerComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new PlayerComponent());
 			}
 		}
 	};

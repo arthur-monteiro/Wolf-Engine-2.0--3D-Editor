@@ -22,11 +22,13 @@ public:
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
 
-	void updateBeforeFrame() const;
+	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const;
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	void activateParams() const;
 	void fillJSONForParams(std::string& outJSON);
+
+	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const;
 
 	void save();
 
@@ -35,8 +37,11 @@ public:
 	std::string computeEscapedLoadingPath() const;
 
 	Wolf::DynamicStableArray<Wolf::ResourceUniqueOwner<ComponentInterface>, 8>& getAllComponents() { return m_components; }
+
 	Wolf::AABB getAABB() const;
 	bool hasModelComponent() const { return m_modelComponent.get(); }
+	glm::vec3 getPosition() const;
+	void setPosition(const glm::vec3& newPosition) const;
 
 	template <typename T>
 	Wolf::ResourceNonOwner<T> getComponent()
@@ -52,6 +57,7 @@ public:
 		return m_components[0].createNonOwnerResource<T>();
 	}
 
+
 private:
 	std::string m_filepath;
 	std::function<void(Entity*)> m_onChangeCallback;
@@ -59,6 +65,7 @@ private:
 	static constexpr uint32_t MAX_COMPONENT_COUNT = 8;
 	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface> m_components;
 	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
+	bool m_requiresInputs = false;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });
 	std::array<EditorParamInterface*, 1> m_entityParams =

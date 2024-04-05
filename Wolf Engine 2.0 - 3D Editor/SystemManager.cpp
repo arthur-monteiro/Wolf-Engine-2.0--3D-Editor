@@ -497,7 +497,8 @@ void SystemManager::updateBeforeFrame()
 
 	for (const ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		entity->updateBeforeFrame();
+		entity->updateBeforeFrame(m_wolfInstance->getInputHandler());
+		entity->updateDuringFrame(m_wolfInstance->getInputHandler()); // TODO: send this to another thread
 		entity->addMeshesToRenderList(renderList);
 		entity->addDebugInfo(*m_debugRenderingManager);
 	}
