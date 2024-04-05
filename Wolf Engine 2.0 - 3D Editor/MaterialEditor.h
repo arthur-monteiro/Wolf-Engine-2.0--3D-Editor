@@ -10,7 +10,7 @@ class MaterialEditor : public Notifier
 {
 public:
 	MaterialEditor(const std::string& tab, const std::string& category);
-	MaterialEditor(const MaterialEditor&);
+	MaterialEditor(const MaterialEditor&) = delete;
 
 	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 

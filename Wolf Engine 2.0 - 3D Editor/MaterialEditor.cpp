@@ -14,22 +14,6 @@ MaterialEditor::MaterialEditor(const std::string& tab, const std::string& catego
 {
 }
 
-MaterialEditor::MaterialEditor(const MaterialEditor& other)
-	: m_albedoPathParam(other.m_albedoPathParam),
-	  m_normalPathParam(other.m_normalPathParam),
-	  m_roughnessParam(other.m_roughnessParam),
-	  m_metalnessParam(other.m_metalnessParam),
-	  m_aoParam(other.m_aoParam)
-{
-	m_materialParams = {
-		&m_albedoPathParam,
-		&m_normalPathParam,
-		&m_roughnessParam,
-		&m_metalnessParam,
-		&m_aoParam
-	};
-}
-
 void MaterialEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
 {
 	if (m_updateNeeded)

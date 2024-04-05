@@ -41,12 +41,8 @@ uint fetchContamination(in const vec3 worldPos)
     return uint(texture(contaminationIds, sampleUV).r);
 }
 
-MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const mat3 matrixTBN, in const vec3 worldPos)
+MaterialInfo internalFectch(in const vec2 texCoords, in uint materialId, in const mat3 matrixTBN)
 {
-    uint contaminationId = fetchContamination(worldPos);
-    if (contaminationId > 0)
-        materialId = materialOffsets[contaminationId - 1];
-
     MaterialInfo materialInfo;
 
     materialInfo.albedo = texture(sampler2D(textures[materialsInfo[materialId].albedoIdx], textureSampler), texCoords).rgb;
@@ -57,4 +53,37 @@ MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const
     materialInfo.matAO = combinedRoughnessMetalnessAO.b;
 
     return materialInfo;
+}
+
+MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const mat3 matrixTBN, in const vec3 worldPos)
+{
+    uint contaminationId = fetchContamination(worldPos);
+    if (contaminationId > 0)
+    {
+        materialId = materialOffsets[contaminationId - 1];
+
+        vec3 normal = abs(vec3(matrixTBN[0][2], matrixTBN[1][2], matrixTBN[2][2]));
+
+        // normalized total value to 1.0
+        float b = (normal.x + normal.y + normal.z);
+        normal /= b;
+
+        MaterialInfo xAxis = internalFectch(worldPos.yz, materialId, matrixTBN);
+        MaterialInfo yAxis = internalFectch(worldPos.xz, materialId, matrixTBN);
+        MaterialInfo zAxis = internalFectch(worldPos.xy, materialId, matrixTBN);
+
+        MaterialInfo finalMaterialInfo;
+#define LERP_INFO(name) (xAxis.name * normal.x + yAxis.name * normal.y + zAxis.name * normal.z);
+        finalMaterialInfo.albedo = LERP_INFO(albedo);
+        finalMaterialInfo.normal = LERP_INFO(normal);
+        finalMaterialInfo.roughness = LERP_INFO(roughness);
+        finalMaterialInfo.metalness = LERP_INFO(metalness);
+        finalMaterialInfo.matAO = LERP_INFO(matAO);
+
+        return finalMaterialInfo;
+    }
+    else
+    {
+        return internalFectch(texCoords, materialId, matrixTBN);
+    }
 }

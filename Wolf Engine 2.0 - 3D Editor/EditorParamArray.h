@@ -1,5 +1,7 @@
 #pragma once
 
+#include <DynamicStableArray.h>
+
 #include "EditorTypes.h"
 #include "ParameterGroupInterface.h"
 
@@ -10,7 +12,6 @@ public:
 	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, bool isActivable = false) : EditorParamInterface(Type::Array, name, tab, category, isActivable)
 	{
 		m_maxSize = maxSize;
-		m_value.reserve(maxSize);
 	}
 	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, const std::function<void()>& callbackValueChanged, bool isActivable = false)
 		: EditorParamArray(name, tab, category, maxSize, isActivable)
@@ -34,8 +35,10 @@ public:
 		const std::string functionChangeName = "addTo" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
 		jsObject[functionChangeName.c_str()] = std::bind(&EditorParamArray<T>::addValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 
-		for (T& value : m_value)
+		for (uint32_t i = 0; i < m_value.size(); ++i)
 		{
+			T& value = m_value[i];
+
 			ParameterGroupInterface* valueAsParameterGroup = static_cast<ParameterGroupInterface*>(&value);
 			valueAsParameterGroup->activateParams();
 		}
@@ -61,14 +64,12 @@ public:
 	size_t size() const { return m_value.size(); }
 	bool empty() const { return m_value.empty(); }
 	T& operator[](size_t idx) { return m_value[idx]; }
-	typename std::vector<T>::iterator begin() { return m_value.begin(); }
-	typename std::vector<T>::iterator end() { return m_value.end(); }
 	T& back() { return m_value.back(); }
 	T& emplace_back() { addValueNoCheck(); return back(); }
 
 private:
 	uint32_t m_maxSize;
-	std::vector<T> m_value;
+	Wolf::DynamicStableArray<T, 8> m_value;
 
 	void addValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 	{

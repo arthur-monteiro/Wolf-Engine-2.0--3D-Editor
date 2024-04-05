@@ -9,7 +9,6 @@
 Entity::Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback) : m_filepath(std::move(filePath)), m_onChangeCallback(onChangeCallback)
 {
 	m_nameParam = "Undefined";
-	m_components.reserve(MAX_COMPONENT_COUNT);
 }
 
 void Entity::loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent)
@@ -38,7 +37,7 @@ void Entity::addComponent(ComponentInterface* component)
 	m_components.emplace_back(component);
 	if (m_components.size() > MAX_COMPONENT_COUNT)
 	{
-		Wolf::Debug::sendCriticalError("There are more components than supported. All unique owner pointers has been changed resulting in garbage references for non owners");
+		Wolf::Debug::sendError("There are more components than supported, please remove components");
 	}
 
 	if (const Wolf::ResourceNonOwner<EditorModelInterface> componentAsModel = m_components.back().createNonOwnerResource<EditorModelInterface>())
@@ -65,10 +64,7 @@ std::string Entity::computeEscapedLoadingPath() const
 
 void Entity::updateBeforeFrame() const
 {
-	for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
-	{
-		component->updateBeforeFrame();
-	}
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame();)
 }
 
 void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
@@ -78,10 +74,7 @@ void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
 		std::vector<Wolf::RenderMeshList::MeshToRenderInfo> meshesToRender;
 		(*m_modelComponent)->getMeshesToRender(meshesToRender);
 
-		for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
-		{
-			component->alterMeshesToRender(meshesToRender);
-		}
+		DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->alterMeshesToRender(meshesToRender);)
 
 		for (Wolf::RenderMeshList::MeshToRenderInfo& meshToRender : meshesToRender)
 		{
@@ -92,10 +85,7 @@ void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
 
 void Entity::addDebugInfo(DebugRenderingManager& debugRenderingManager) const
 {
-	for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
-	{
-		component->addDebugInfo(debugRenderingManager);
-	}
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->addDebugInfo(debugRenderingManager);)
 }
 
 void Entity::activateParams() const
@@ -105,10 +95,7 @@ void Entity::activateParams() const
 		param->activate();
 	}
 
-	for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
-	{
-		component->activateParams();
-	}
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->activateParams();)
 }
 
 void Entity::fillJSONForParams(std::string& outJSON)
@@ -116,10 +103,7 @@ void Entity::fillJSONForParams(std::string& outJSON)
 	outJSON += "{\n";
 	outJSON += "\t" R"("params": [)" "\n";
 	addParamsToJSON(outJSON, m_entityParams, m_components.empty());
-	for (const Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
-	{
-		component->addParamsToJSON(outJSON);
-	}
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_CONST_RANGE_LOOP(m_components, component, component->addParamsToJSON(outJSON);)
 	if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
 	{
 		outJSON.erase(commaPos + outJSON.size() - 3);
@@ -144,21 +128,18 @@ void Entity::save()
 		outJSON += ",";
 	outJSON += "\n";
 
-	for (uint32_t i = 0; i < m_components.size(); ++i)
-	{
-		const Wolf::ResourceUniqueOwner<ComponentInterface>& component = m_components[i];
-
-		outJSON += "\t" R"(")" + component->getId() + R"(": {)" "\n";
-		outJSON += "\t\t" R"("params": [)" "\n";
-		component->addParamsToJSON(outJSON, 3);
-		if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
-		{
-			outJSON.erase(commaPos + outJSON.size() - 3);
-		}
-		outJSON += "\t\t]\n";
-		outJSON += "\t}";
-		outJSON += i == m_components.size() - 1 ? "\n" : ",\n";
-	}
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component,
+			outJSON += "\t" R"(")" + component->getId() + R"(": {)" "\n";
+			outJSON += "\t\t" R"("params": [)" "\n";
+			component->addParamsToJSON(outJSON, 3);
+			if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
+			{
+				outJSON.erase(commaPos + outJSON.size() - 3);
+			}
+			outJSON += "\t\t]\n";
+			outJSON += "\t}";
+			outJSON += i == m_components.size() - 1 ? "\n" : ",\n";
+		)
 
 	outJSON += "}";
 

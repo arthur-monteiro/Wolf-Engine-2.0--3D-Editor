@@ -2,12 +2,13 @@
 
 #include <array>
 
-#include "AABB.h"
+#include <AABB.h>
+#include <DynamicStableArray.h>
+#include <DynamicResourceUniqueOwnerArray.h>
+
 #include "ComponentInterface.h"
-#include "DebugRenderingManager.h"
 #include "EditorTypes.h"
 #include "GameContext.h"
-#include "ResourceUniqueOwner.h"
 
 class EditorConfiguration;
 class ComponentInstancier;
@@ -33,16 +34,16 @@ public:
 	const std::string& getLoadingPath() const { return m_filepath; }
 	std::string computeEscapedLoadingPath() const;
 
-	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>>& getAllComponents() { return m_components; }
+	Wolf::DynamicStableArray<Wolf::ResourceUniqueOwner<ComponentInterface>, 8>& getAllComponents() { return m_components; }
 	Wolf::AABB getAABB() const;
 	bool hasModelComponent() const { return m_modelComponent.get(); }
 
 	template <typename T>
 	Wolf::ResourceNonOwner<T> getComponent()
 	{
-		for (Wolf::ResourceUniqueOwner<ComponentInterface>& component : m_components)
+		for (uint32_t i = 0; i < m_components.size(); ++i)
 		{
-			if (const Wolf::ResourceNonOwner<T> componentAsRequestedType = component.createNonOwnerResource<T>())
+			if (const Wolf::ResourceNonOwner<T> componentAsRequestedType = m_components[i].createNonOwnerResource<T>())
 			{
 				return componentAsRequestedType;
 			}
@@ -56,7 +57,7 @@ private:
 	std::function<void(Entity*)> m_onChangeCallback;
 
 	static constexpr uint32_t MAX_COMPONENT_COUNT = 8;
-	std::vector<Wolf::ResourceUniqueOwner<ComponentInterface>> m_components;
+	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface> m_components;
 	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });

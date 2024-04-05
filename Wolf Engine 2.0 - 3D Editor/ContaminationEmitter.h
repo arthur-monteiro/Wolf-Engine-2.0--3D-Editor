@@ -39,7 +39,7 @@ private:
 	{
 	public:
 		ContaminationMaterial();
-		ContaminationMaterial(const ContaminationMaterial&) = default;
+		ContaminationMaterial(const ContaminationMaterial&) = delete;
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 		

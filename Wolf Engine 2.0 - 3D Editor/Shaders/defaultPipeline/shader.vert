@@ -40,7 +40,7 @@ void main()
 	vec3 t = normalize(usedModelMatrix * inTangent);
 	t = normalize(t - dot(t, n) * n);
 	vec3 b = normalize(cross(t, n));
-	outTBN = inverse(mat3(t, b, n));
+	outTBN = transpose(mat3(t, b, n));
 
 	outViewPos = viewPos.xyz;
     outTexCoord = inTexCoord;

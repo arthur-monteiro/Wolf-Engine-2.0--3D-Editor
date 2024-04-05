@@ -65,8 +65,9 @@ void ContaminationEmitter::updateBeforeFrame()
 	if (m_transferInfoToBufferRequested)
 		transferInfoToBuffer();
 
-	for (ContaminationMaterial& materialEditor : m_contaminationMaterials)
+	for (uint32_t i = 0; i < m_contaminationMaterials.size(); ++i)
 	{
+		ContaminationMaterial& materialEditor = m_contaminationMaterials[i];
 		materialEditor.updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
 	}
 }
