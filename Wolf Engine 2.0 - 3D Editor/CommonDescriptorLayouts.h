@@ -4,5 +4,5 @@
 
 namespace CommonDescriptorLayouts
 {
-	extern VkDescriptorSetLayout g_commonDescriptorSetLayout;
+	extern const Wolf::DescriptorSetLayout* g_commonDescriptorSetLayout;
 }

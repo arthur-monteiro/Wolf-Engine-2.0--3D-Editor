@@ -33,7 +33,7 @@ StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwne
 			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
 			// Resources
-			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), 1 }, { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
+			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource(), 1 }, { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
 			pipelineInfo.bindlessDescriptorSlot = 0;
 			pipelineInfo.cameraDescriptorSlot = 3;
 
@@ -115,7 +115,7 @@ void StaticModel::loadModel()
 	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
 	ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
-	m_descriptorSet.reset(new DescriptorSet(m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
+	m_descriptorSet.reset(DescriptorSet::createDescriptorSet(*m_modelDescriptorSetLayout->getResource()));
 
 	DescriptorSetGenerator descriptorSetGenerator(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts());
 	descriptorSetGenerator.setBuffer(0, *m_matricesUniformBuffer);

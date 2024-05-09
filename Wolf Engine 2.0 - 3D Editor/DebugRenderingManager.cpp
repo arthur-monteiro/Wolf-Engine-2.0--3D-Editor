@@ -14,7 +14,7 @@ DebugRenderingManager::DebugRenderingManager()
 	m_linesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
 	m_linesDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // transform
 
-	m_linesDescriptorSetLayout.reset(new Wolf::DescriptorSetLayout(m_linesDescriptorSetLayoutGenerator->getDescriptorLayouts()));
+	m_linesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_linesDescriptorSetLayoutGenerator->getDescriptorLayouts()));
 
 	m_linesPipelineSet.reset(new Wolf::PipelineSet);
 
@@ -35,7 +35,7 @@ DebugRenderingManager::DebugRenderingManager()
 	pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
 	// Resources
-	pipelineInfo.descriptorSetLayouts = { { m_linesDescriptorSetLayout->getDescriptorSetLayout(), 1 } , { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
+	pipelineInfo.descriptorSetLayouts = { { m_linesDescriptorSetLayout.get(), 1 } , { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
 	pipelineInfo.cameraDescriptorSlot = 0;
 
 	// Color Blend
@@ -151,8 +151,8 @@ DebugRenderingManager::PerGroupOfLines::PerGroupOfLines(const Wolf::ResourceNonO
 	const std::unique_ptr<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout,
 	const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator) : mesh(mesh)
 {
-	linesUniformBuffer.reset(new Wolf::Buffer(sizeof(LinesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Wolf::UpdateRate::NEVER));
-	linesDescriptorSet.reset(new Wolf::DescriptorSet(linesDescriptorSetLayout->getDescriptorSetLayout(), Wolf::UpdateRate::NEVER));
+	linesUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(LinesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	linesDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*linesDescriptorSetLayout));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(linesDescriptorSetLayoutGenerator->getDescriptorLayouts());
 	descriptorSetGenerator.setBuffer(0, *linesUniformBuffer);

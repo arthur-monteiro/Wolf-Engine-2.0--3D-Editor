@@ -46,7 +46,7 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<Wolf::RenderMeshList
 						Wolf::PipelineSet::PipelineInfo newPipelineInfo = *pipelineInfo;
 						if (newPipelineInfo.bindlessDescriptorSlot != static_cast<uint32_t>(-1))
 						{
-							newPipelineInfo.descriptorSetLayouts.emplace_back(contaminationEmitterComponent->getDescriptorSetLayout()->getDescriptorSetLayout(), 4);
+							newPipelineInfo.descriptorSetLayouts.emplace_back(contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), 4);
 						}
 						for (Wolf::PipelineSet::PipelineInfo::ShaderInfo& shaderInfo : newPipelineInfo.shaderInfos)
 						{

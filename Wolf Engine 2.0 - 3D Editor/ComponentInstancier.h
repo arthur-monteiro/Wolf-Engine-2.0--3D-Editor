@@ -12,11 +12,14 @@
 #include "PlayerComponent.h"
 #include "StaticModel.h"
 
+class MainRenderingPipeline;
+
 class ComponentInstancier
 {
 public:
-	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, std::function<void(ComponentInterface*)> requestReloadCallback, 
-		std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<MainRenderingPipeline>& mainRenderingPipeline, 
+		std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -24,6 +27,7 @@ public:
 
 private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
+	Wolf::ResourceNonOwner<MainRenderingPipeline> m_mainRenderingPipeline;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
@@ -61,7 +65,7 @@ private:
 			ContaminationEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration));
+				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_mainRenderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration));
 			}
 		},
 		ComponentInfo
@@ -79,7 +83,7 @@ private:
 			PlayerComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new PlayerComponent());
+				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback));
 			}
 		}
 	};

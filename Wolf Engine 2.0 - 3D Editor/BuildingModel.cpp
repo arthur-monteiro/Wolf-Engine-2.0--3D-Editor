@@ -32,7 +32,7 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<
 
 	m_buildingDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, BuildingModel>([this](std::unique_ptr<DescriptorSetLayout>& descriptorSetLayout)
 		{
-			descriptorSetLayout.reset(new DescriptorSetLayout(m_buildingDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
+			descriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_buildingDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
 		}));
 
 	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, BuildingModel>([this](std::unique_ptr<PipelineSet>& pipelineSet)
@@ -56,8 +56,8 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<
 			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
 
 			// Resources
-			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), 1 },
-				{ CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 }, { m_buildingDescriptorSetLayout->getResource()->getDescriptorSetLayout(), 3 } };
+			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource(), 1 },
+				{ CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 }, { m_buildingDescriptorSetLayout->getResource(), 3 } };
 			pipelineInfo.bindlessDescriptorSlot = 0;
 			pipelineInfo.cameraDescriptorSlot = 4;
 
@@ -79,7 +79,7 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<
 	m_wall.getMeshWithMaterials().loadDefaultMesh(glm::vec3(0.5f, 0.25f, 0.0f));
 
 	// Model descriptor set
-	m_descriptorSet.reset(new DescriptorSet(m_modelDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
+	m_descriptorSet.reset(DescriptorSet::createDescriptorSet(*m_modelDescriptorSetLayout->getResource()));
 
 	DescriptorSetGenerator descriptorSetGenerator(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts());
 	descriptorSetGenerator.setBuffer(0, *m_matricesUniformBuffer);
@@ -88,8 +88,8 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<
 	// Building descriptor set
 	auto initBufferAndDescriptorSet = [&](BuildingPiece& piece)
 	{
-		piece.getInfoUniformBuffer().reset(new Buffer(sizeof(MeshInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
-		piece.getDescriptorSet().reset(new DescriptorSet(m_buildingDescriptorSetLayout->getResource()->getDescriptorSetLayout(), UpdateRate::NEVER));
+		piece.getInfoUniformBuffer().reset(Buffer::createBuffer(sizeof(MeshInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+		piece.getDescriptorSet().reset(DescriptorSet::createDescriptorSet(*m_buildingDescriptorSetLayout->getResource()));
 		DescriptorSetGenerator buildingDescriptorSetGenerator(m_buildingDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts());
 		buildingDescriptorSetGenerator.setBuffer(0, *piece.getInfoUniformBuffer());
 		piece.getDescriptorSet()->update(buildingDescriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -223,7 +223,7 @@ void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 			createImageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
 			createImageInfo.mipLevelCount = 1;
 			createImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-			image.reset(new Image(createImageInfo));
+			image.reset(Image::createImage(createImageInfo));
 		};
 
 	struct Pixel
@@ -312,7 +312,7 @@ void BuildingModel::rebuildRenderingInfos()
 
 	for (uint32_t floorIdx = 0; floorIdx < m_floorCountParam; ++floorIdx)
 	{
-		const float floorHeight = computeFloorSize() * floorIdx;
+		const float floorHeight = computeFloorSize() * static_cast<float>(floorIdx);
 
 		struct SideInfo
 		{
@@ -364,7 +364,7 @@ void BuildingModel::rebuildRenderingInfos()
 
 	auto updateBuffers = [](BuildingPiece& piece, const std::vector<InstanceData>& data)
 	{
-		piece.getInstanceBuffer().reset(new Buffer(data.size() * sizeof(InstanceData), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, UpdateRate::NEVER));
+		piece.getInstanceBuffer().reset(Buffer::createBuffer(data.size() * sizeof(InstanceData), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 		piece.getInstanceBuffer()->transferCPUMemoryWithStagingBuffer(data.data(), sizeof(InstanceData) * data.size());
 		piece.setInstanceCount(static_cast<uint32_t>(data.size()));
 

@@ -1,13 +1,14 @@
 #include "EditorParams.h"
 
+
 float EditorParams::getAspect()
 {
 	return static_cast<float>(getRenderWidth()) / static_cast<float>(getRenderHeight());
 }
 
-VkViewport EditorParams::getRenderViewport()
+Wolf::Viewport EditorParams::getRenderViewport()
 {
-	VkViewport viewport{};
+	Wolf::Viewport viewport{};
 	viewport.height = static_cast<float>(getRenderHeight());
 	viewport.width = static_cast<float>(getRenderWidth());
 	viewport.x = static_cast<float>(getRenderOffsetLeft());

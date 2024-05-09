@@ -17,7 +17,7 @@
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPass(EditorParams* editorParams) : m_editorParams(editorParams) {}
+	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore) : m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -32,7 +32,7 @@ private:
 	void createPipelines();
 
 	std::unique_ptr<Wolf::RenderPass> m_renderPass;
-	std::vector<std::unique_ptr<Wolf::Framebuffer>> m_frameBuffers;
+	std::vector<std::unique_ptr<Wolf::FrameBuffer>> m_frameBuffers;
 	std::unique_ptr<Wolf::Image> m_depthImage;
 
 	uint32_t m_renderWidth;
@@ -61,5 +61,6 @@ private:
 	std::unique_ptr<Wolf::Pipeline> m_userInterfacePipeline;
 
 	EditorParams* m_editorParams;
+	const Wolf::Semaphore* m_contaminationUpdateSemaphore;
 };
 

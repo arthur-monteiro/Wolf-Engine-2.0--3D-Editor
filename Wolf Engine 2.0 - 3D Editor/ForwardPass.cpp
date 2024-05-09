@@ -13,45 +13,45 @@
 
 using namespace Wolf;
 
-VkDescriptorSetLayout CommonDescriptorLayouts::g_commonDescriptorSetLayout;
+const DescriptorSetLayout* CommonDescriptorLayouts::g_commonDescriptorSetLayout;
 
 void ForwardPass::initializeResources(const InitializationContext& context)
 {
 	Attachment color = setupColorAttachment(context);
 	Attachment depth = setupDepthAttachment(context);
 
-	m_renderPass.reset(new RenderPass({ color, depth }));
-	m_commandBuffer.reset(new CommandBuffer(QueueType::GRAPHIC, false /* isTransient */));
+	m_renderPass.reset(RenderPass::createRenderPass({ color, depth }));
+	m_commandBuffer.reset(CommandBuffer::createCommandBuffer(QueueType::GRAPHIC, false /* isTransient */));
 	initializeFramesBuffers(context, color, depth);
 	
-	m_semaphore.reset(new Semaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
+	m_semaphore.reset(Semaphore::createSemaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
 
 	// Shared resources
 	{
-		m_displayOptionsUniformBuffer.reset(new Buffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
+		m_displayOptionsUniformBuffer.reset(Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-		m_commonDescriptorSetLayout.reset(new DescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+		m_commonDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
-		CommonDescriptorLayouts::g_commonDescriptorSetLayout = m_commonDescriptorSetLayout->getDescriptorSetLayout();
+		CommonDescriptorLayouts::g_commonDescriptorSetLayout = m_commonDescriptorSetLayout.get();
 
 		DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, *m_displayOptionsUniformBuffer);
 
-		m_commonDescriptorSet.reset(new DescriptorSet(m_commonDescriptorSetLayout->getDescriptorSetLayout(), UpdateRate::NEVER));
+		m_commonDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_commonDescriptorSetLayout));
 		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 	}
 
 	// UI resources
 	{
 		m_userInterfaceDescriptorSetLayoutGenerator.addCombinedImageSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-		m_userInterfaceDescriptorSetLayout.reset(new DescriptorSetLayout(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+		m_userInterfaceDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
-		m_userInterfaceSampler.reset(new Sampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 11, VK_FILTER_LINEAR));
+		m_userInterfaceSampler.reset(Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 11, VK_FILTER_LINEAR));
 		descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, context.userInterfaceImage->getDefaultImageView(), *m_userInterfaceSampler);
 
-		m_userInterfaceDescriptorSet.reset(new DescriptorSet(m_userInterfaceDescriptorSetLayout->getDescriptorSetLayout(), UpdateRate::NEVER));
+		m_userInterfaceDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_userInterfaceDescriptorSetLayout));
 		m_userInterfaceDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 		// Load fullscreen rect
@@ -102,48 +102,47 @@ void ForwardPass::record(const RecordContext& context)
 	/* Command buffer record */
 	const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
 	const uint32_t frameBufferIdx = context.swapChainImageIdx;
-	const VkCommandBuffer commandBuffer = m_commandBuffer->getCommandBuffer(context.commandBufferIdx);
 
-	m_commandBuffer->beginCommandBuffer(context.commandBufferIdx);
+	m_commandBuffer->beginCommandBuffer();
 
-	DebugMarker::beginRegion(commandBuffer, DebugMarker::renderPassDebugColor, "Forward pass");
+	DebugMarker::beginRegion(m_commandBuffer.get(), DebugMarker::renderPassDebugColor, "Forward pass");
 
 	std::vector<VkClearValue> clearValues(2);
 	clearValues[0] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	clearValues[1] = { 1.0f };
-	m_renderPass->beginRenderPass(m_frameBuffers[frameBufferIdx]->getFramebuffer(), clearValues, commandBuffer);
+	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffers[frameBufferIdx], clearValues);
 
 	/* Shared resources */
 	DisplayOptionsUBData displayOptions{};
 	displayOptions.displayType = static_cast<uint32_t>(gameContext->displayType);
 	m_displayOptionsUniformBuffer->transferCPUMemory(&displayOptions, sizeof(displayOptions), 0);
 
-	const VkViewport renderViewport = m_editorParams->getRenderViewport();
-	vkCmdSetViewport(commandBuffer, 0, 1, &renderViewport);
+	const Viewport renderViewport = m_editorParams->getRenderViewport();
+	m_commandBuffer->setViewport(renderViewport);
 
-	context.renderMeshList->draw(context, commandBuffer, m_renderPass.get(), 0, 0,
+	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), 0, 0,
 		{
 			{ COMMON_DESCRIPTOR_SET_SLOT, m_commonDescriptorSet.get() }
 		});
 
 	/* UI */
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_userInterfacePipeline->getPipeline());
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_userInterfacePipeline->getPipelineLayout(), 0, 1,
-		m_userInterfaceDescriptorSet->getDescriptorSet(), 0, nullptr);
-	m_fullscreenRect->draw(commandBuffer, RenderMeshList::NO_CAMERA_IDX);
+	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
+	m_commandBuffer->bindDescriptorSet(m_userInterfaceDescriptorSet.get(), 0, *m_userInterfacePipeline);
 
-	m_renderPass->endRenderPass(commandBuffer);
+	m_fullscreenRect->draw(*m_commandBuffer, RenderMeshList::NO_CAMERA_IDX);
 
-	DebugMarker::endRegion(commandBuffer);
+	m_commandBuffer->endRenderPass();
 
-	m_commandBuffer->endCommandBuffer(context.commandBufferIdx);
+	DebugMarker::endRegion(m_commandBuffer.get());
+
+	m_commandBuffer->endCommandBuffer();
 }
 
 void ForwardPass::submit(const SubmitContext& context)
 {
-	const std::vector waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
-	const std::vector signalSemaphores{ m_semaphore->getSemaphore() };
-	m_commandBuffer->submit(context.commandBufferIdx, waitSemaphores, signalSemaphores, context.frameFence);
+	const std::vector waitSemaphores{ m_contaminationUpdateSemaphore, context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
+	const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
+	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
 
 	bool anyShaderModified = m_userInterfaceVertexShaderParser->compileIfFileHasBeenModified();
 	if (m_userInterfaceFragmentShaderParser->compileIfFileHasBeenModified())
@@ -151,7 +150,7 @@ void ForwardPass::submit(const SubmitContext& context)
 
 	if (anyShaderModified)
 	{
-		vkDeviceWaitIdle(context.device);
+		context.graphicAPIManager->waitIdle();
 		createPipelines();
 	}
 }
@@ -172,7 +171,7 @@ Attachment ForwardPass::setupDepthAttachment(const InitializationContext& contex
 	depthImageCreateInfo.mipLevelCount = 1;
 	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
 	depthImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	m_depthImage.reset(new Image(depthImageCreateInfo));
+	m_depthImage.reset(Image::createImage(depthImageCreateInfo));
 
 	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, m_depthImage->getDefaultImageView());
@@ -185,7 +184,7 @@ void ForwardPass::initializeFramesBuffers(const InitializationContext& context, 
 	for (uint32_t i = 0; i < context.swapChainImageCount; ++i)
 	{
 		colorAttachment.imageView = context.swapChainImages[i]->getDefaultImageView();
-		m_frameBuffers[i].reset(new Framebuffer(m_renderPass->getRenderPass(), { colorAttachment,  depthAttachment }));
+		m_frameBuffers[i].reset(FrameBuffer::createFrameBuffer(*m_renderPass, { colorAttachment,  depthAttachment }));
 	}
 }
 
@@ -194,7 +193,7 @@ void ForwardPass::createPipelines()
 	// UI
 	{
 		RenderingPipelineCreateInfo pipelineCreateInfo;
-		pipelineCreateInfo.renderPass = m_renderPass->getRenderPass();
+		pipelineCreateInfo.renderPass = m_renderPass.get();
 
 		// Programming stages
 		pipelineCreateInfo.shaderCreateInfos.resize(2);
@@ -217,13 +216,11 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
 
 		// Resources
-		std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_userInterfaceDescriptorSetLayout->getDescriptorSetLayout() };
-		pipelineCreateInfo.descriptorSetLayouts = descriptorSetLayouts;
+		pipelineCreateInfo.descriptorSetLayouts = { m_userInterfaceDescriptorSetLayout.get() };
 
 		// Color Blend
-		std::vector<RenderingPipelineCreateInfo::BLEND_MODE> blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
-		pipelineCreateInfo.blendModes = blendModes;
+		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
 
-		m_userInterfacePipeline.reset(new Pipeline(pipelineCreateInfo));
+		m_userInterfacePipeline.reset(Pipeline::createRenderingPipeline(pipelineCreateInfo));
 	}
 }

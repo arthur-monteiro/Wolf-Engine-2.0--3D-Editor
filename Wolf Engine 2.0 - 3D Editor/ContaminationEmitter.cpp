@@ -4,10 +4,11 @@
 
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
+#include "MainRenderingPipeline.h"
 
-ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, 
-	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
-	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration)
+ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<MainRenderingPipeline>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+                                           const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass())
 {
 	m_requestReloadCallback = requestReloadCallback;
 
@@ -17,26 +18,33 @@ ContaminationEmitter::ContaminationEmitter(const std::function<void(ComponentInt
 	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 	createImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	createImageInfo.mipLevelCount = 1;
-	m_contaminationIdsImage.reset(new Wolf::Image(createImageInfo));
+	m_contaminationIdsImage.reset(Wolf::Image::createImage(createImageInfo));
 	m_contaminationIdsImage->setImageLayout(Wolf::Image::SampledInFragmentShader());
 
 	m_descriptorSetLayoutGenerator.addCombinedImageSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
 	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
-	m_descriptorSetLayout.reset(new Wolf::DescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
+	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 
-	m_sampler.reset(new Wolf::Sampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1, VK_FILTER_NEAREST));
+	m_sampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1, VK_FILTER_NEAREST));
 	descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_contaminationIdsImage->getDefaultImageView(), *m_sampler);
 
-	m_contaminationInfoBuffer.reset(new Wolf::Buffer(sizeof(ContaminationInfo), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, Wolf::UpdateRate::NEVER));
+	m_contaminationInfoBuffer.reset(Wolf::Buffer::createBuffer(sizeof(ContaminationInfo), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 	descriptorSetGenerator.setBuffer(1, *m_contaminationInfoBuffer);
 
-	m_descriptorSet.reset(new Wolf::DescriptorSet(m_descriptorSetLayout->getDescriptorSetLayout(), Wolf::UpdateRate::NEVER));
+	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 	buildDebugMesh();
 	m_debugMesh.reset(m_newDebugMesh.release());
+
+	m_contaminationUpdatePass->registerEmitter(this);
+}
+
+ContaminationEmitter::~ContaminationEmitter()
+{
+	m_contaminationUpdatePass->unregisterEmitter(this);
 }
 
 void ContaminationEmitter::loadParams(Wolf::JSONReader& jsonReader)
@@ -70,6 +78,10 @@ void ContaminationEmitter::updateBeforeFrame()
 		ContaminationMaterial& materialEditor = m_contaminationMaterials[i];
 		materialEditor.updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
 	}
+
+	m_shootRequestLock.lock();
+	m_contaminationUpdatePass->swapShootRequests(m_shootRequests);
+	m_shootRequestLock.unlock();
 }
 
 void ContaminationEmitter::addDebugInfo(DebugRenderingManager& debugRenderingManager)
@@ -87,6 +99,13 @@ void ContaminationEmitter::addDebugInfo(DebugRenderingManager& debugRenderingMan
 		uniformData.transform = glm::mat4(1.0f);
 		debugRenderingManager.addCustomGroupOfLines(useNewMesh ? m_newDebugMesh.createNonOwnerResource() : m_debugMesh.createNonOwnerResource(), uniformData);
 	}
+}
+
+void ContaminationEmitter::addShootRequest(ShootRequest shootRequest)
+{
+	m_shootRequestLock.lock();
+	m_shootRequests.emplace_back(shootRequest);
+	m_shootRequestLock.unlock();
 }
 
 ContaminationEmitter::ContaminationMaterial::ContaminationMaterial()

@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <Structs.h>
+
 class EditorParams
 {
 public:
@@ -11,7 +13,7 @@ public:
 	void setWindowHeight(uint32_t height) { m_height = height; }
 
 	float getAspect();
-	VkViewport getRenderViewport();
+	Wolf::Viewport getRenderViewport();
 
 	uint32_t getRenderOffsetLeft() const;
 	uint32_t getRenderOffsetRight() const;

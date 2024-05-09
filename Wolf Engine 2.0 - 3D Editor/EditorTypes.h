@@ -157,6 +157,8 @@ public:
 	{
 		m_min = min;
 		m_max = max;
+
+		m_value = min;
 	}
 	EditorParamFloat(const std::string& name, const std::string& tab, const std::string& category, float min, float max, const std::function<void()>& callbackValueChanged, bool isActivable = false)
 		: EditorParamFloat(name, tab, category, min, max, isActivable)

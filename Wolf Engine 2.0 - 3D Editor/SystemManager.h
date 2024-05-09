@@ -54,7 +54,7 @@ private:
 	void updateUISelectedEntity() const;
 
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
-	std::unique_ptr<MainRenderingPipeline> m_mainRenderer;
+	Wolf::ResourceUniqueOwner<MainRenderingPipeline> m_mainRenderer;
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
 
 	/* FPS counter */

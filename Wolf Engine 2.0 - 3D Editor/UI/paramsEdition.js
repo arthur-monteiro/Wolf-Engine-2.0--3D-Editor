@@ -159,7 +159,7 @@ function computeInput(param, isLast) {
         else
             htmlToAdd += "<div style='display: inline-block; width: 70%'>";
         if (param.type == "UInt")
-            htmlToAdd += "<wolf-slider id='uintSlider" + nameForCallback + "' class='" + classForElements + "' max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\" disabled=" + (param.isActivable ? 'true' : 'false') + "></wolf-slider>";
+            htmlToAdd += "<wolf-slider id='uintSlider" + nameForCallback + "' class='" + classForElements + "' max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"" + (param.isActivable ? "disabled='true'" : "") + "></wolf-slider>";
         else if (param.type == "Float")
             htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"></wolf-slider>";
         else {

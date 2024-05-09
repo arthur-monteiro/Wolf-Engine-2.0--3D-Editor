@@ -2,9 +2,11 @@
 
 #include "Entity.h"
 
-ComponentInstancier::ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, std::function<void(ComponentInterface*)> requestReloadCallback,
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+ComponentInstancier::ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<MainRenderingPipeline>& mainRenderingPipeline,
+	std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
+	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
 	: m_materialsGPUManager(materialsGPUManager),
+      m_mainRenderingPipeline(mainRenderingPipeline),
       m_requestReloadCallback(std::move(requestReloadCallback)),
 	  m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)),
 	  m_editorConfiguration(editorConfiguration)

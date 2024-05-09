@@ -6,16 +6,22 @@
 #include "EditorParamArray.h"
 #include "MaterialEditor.h"
 #include "Notifier.h"
+#include "ShootInfo.h"
+
+class ContaminationUpdatePass;
+class MainRenderingPipeline;
 
 class ContaminationEmitter : public ComponentInterface
 {
 public:
 	static inline std::string ID = "contaminationEmitter";
 	std::string getId() const override { return ID; }
+	static constexpr uint32_t CONTAMINATION_IDS_IMAGE_SIZE = 64;
 
-	ContaminationEmitter(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+	ContaminationEmitter(const Wolf::ResourceNonOwner<MainRenderingPipeline>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 	ContaminationEmitter(const ContaminationEmitter&) = delete;
+	~ContaminationEmitter() override;
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
@@ -28,6 +34,8 @@ public:
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 
+	void addShootRequest(ShootRequest shootRequest);
+
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet>& getDescriptorSet() { return m_descriptorSet; }
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& getDescriptorSetLayout() { return m_descriptorSetLayout; }
 
@@ -36,6 +44,7 @@ private:
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
+	Wolf::ResourceNonOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
 
 	class ContaminationMaterial : public ParameterGroupInterface, public Notifier
 	{
@@ -90,8 +99,6 @@ private:
 	};
 
 	// Graphic resources
-	const uint32_t CONTAMINATION_IDS_IMAGE_SIZE = 64;
-
 	Wolf::ResourceUniqueOwner<Wolf::Image> m_contaminationIdsImage;
 	Wolf::ResourceUniqueOwner<Wolf::Sampler> m_sampler;
 
@@ -107,6 +114,10 @@ private:
 	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
+
+	// Shoot
+	std::vector<ShootRequest> m_shootRequests;
+	std::mutex m_shootRequestLock;
 
 	// Debug
 	bool m_debugMeshRebuildRequested = false;

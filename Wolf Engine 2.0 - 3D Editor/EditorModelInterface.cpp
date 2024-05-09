@@ -16,7 +16,7 @@ EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
 	glm::decompose(m_transform, m_scaleParam.getValue(), quatRotation, m_translationParam.getValue(), skew, perspective);
 	m_rotationParam = glm::eulerAngles(quatRotation) * 3.14159f / 180.f;
 
-	m_matricesUniformBuffer.reset(new Buffer(sizeof(MatricesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, UpdateRate::NEVER));
+	m_matricesUniformBuffer.reset(Buffer::createBuffer(sizeof(MatricesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
 	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, EditorModelInterface>([this](std::unique_ptr<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
 		{
@@ -26,7 +26,7 @@ EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
 
 	m_modelDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, EditorModelInterface>([this](std::unique_ptr<DescriptorSetLayout>& descriptorSetLayout)
 		{
-			descriptorSetLayout.reset(new DescriptorSetLayout(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
+			descriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
 		}));
 }
 

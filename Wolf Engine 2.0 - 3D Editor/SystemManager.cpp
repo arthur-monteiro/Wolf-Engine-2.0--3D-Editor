@@ -20,7 +20,8 @@ SystemManager::SystemManager()
 	createMainRenderer();
 	
 	m_entityContainer.reset(new EntityContainer);
-	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), [this](ComponentInterface*)
+	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_mainRenderer.createNonOwnerResource(), 
+		[this](ComponentInterface*)
 		{
 			m_entityReloadRequested = true;
 		}, [this](const std::string& entityLoadingPath)
