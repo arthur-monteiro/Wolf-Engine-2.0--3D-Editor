@@ -11,89 +11,99 @@
 
 DebugRenderingManager::DebugRenderingManager()
 {
-	m_linesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
-	m_linesDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // transform
+	// Lines
+	{
+		m_linesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
+		m_linesDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // transform
 
-	m_linesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_linesDescriptorSetLayoutGenerator->getDescriptorLayouts()));
+		m_linesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_linesDescriptorSetLayoutGenerator->getDescriptorLayouts()));
 
-	m_linesPipelineSet.reset(new Wolf::PipelineSet);
+		m_linesPipelineSet.reset(new Wolf::PipelineSet);
 
-	Wolf::PipelineSet::PipelineInfo pipelineInfo;
+		Wolf::PipelineSet::PipelineInfo pipelineInfo;
 
-	pipelineInfo.shaderInfos.resize(2);
-	pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/debug/lines.vert";
-	pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/debug/lines.frag";
-	pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		pipelineInfo.shaderInfos.resize(2);
+		pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/debug/lines.vert";
+		pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/debug/lines.frag";
+		pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	// IA
-	LineVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+		// IA
+		LineVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
 
-	pipelineInfo.vertexInputBindingDescriptions.resize(1);
-	LineVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+		pipelineInfo.vertexInputBindingDescriptions.resize(1);
+		LineVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
-	pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
-	// Resources
-	pipelineInfo.descriptorSetLayouts = { { m_linesDescriptorSetLayout.get(), 1 } , { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
-	pipelineInfo.cameraDescriptorSlot = 0;
+		// Resources
+		pipelineInfo.descriptorSetLayouts = { { m_linesDescriptorSetLayout.get(), 1 } , { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
+		pipelineInfo.cameraDescriptorSlot = 0;
 
-	// Color Blend
-	pipelineInfo.blendModes = {Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
+		// Color Blend
+		pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
-	// Dynamic states
-	pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+		// Dynamic states
+		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 
-	const uint32_t pipelineIdx = m_linesPipelineSet->addPipeline(pipelineInfo);
-	if (pipelineIdx != 0)
-		Wolf::Debug::sendError("Unexpected pipeline idx");
+		const uint32_t pipelineIdx = m_linesPipelineSet->addPipeline(pipelineInfo);
+		if (pipelineIdx != 0)
+			Wolf::Debug::sendError("Unexpected pipeline idx");
+	}
 
 	// AABB
-	std::vector<LineVertex> AABBVertices =
 	{
-		// Top
-		{ glm::vec3(-0.5, 0.5f, -0.5f) }, // back left
-		{ glm::vec3(0.5f, 0.5f, -0.5f) }, // back right
-		{ glm::vec3(-0.5f, 0.5f, 0.5f) }, // front left
-		{ glm::vec3(0.5f, 0.5f, 0.5f) }, // front right
+		std::vector<LineVertex> AABBVertices =
+		{
+			// Top
+			{ glm::vec3(-0.5, 0.5f, -0.5f) }, // back left
+			{ glm::vec3(0.5f, 0.5f, -0.5f) }, // back right
+			{ glm::vec3(-0.5f, 0.5f, 0.5f) }, // front left
+			{ glm::vec3(0.5f, 0.5f, 0.5f) }, // front right
 
-		// Bot
-		{ glm::vec3(-0.5, -0.5f, -0.5f) }, // back left
-		{ glm::vec3(0.5f, -0.5f, -0.5f) }, // back right
-		{ glm::vec3(-0.5f, -0.5f, 0.5f) }, // front left
-		{ glm::vec3(0.5f, -0.5f, 0.5f) } // front right
-	};
+			// Bot
+			{ glm::vec3(-0.5, -0.5f, -0.5f) }, // back left
+			{ glm::vec3(0.5f, -0.5f, -0.5f) }, // back right
+			{ glm::vec3(-0.5f, -0.5f, 0.5f) }, // front left
+			{ glm::vec3(0.5f, -0.5f, 0.5f) } // front right
+		};
 
-	std::vector<uint32_t> AABBIndices =
+		std::vector<uint32_t> AABBIndices =
+		{
+			// Top
+			0, 1, // back line
+			2, 3, // front line
+			0, 2, // left line
+			1, 3, // right line
+
+			// Bot
+			4, 5, // back line
+			6, 7, // front line
+			4, 6, // left line
+			5, 7, // right line
+
+			// Top to bot
+			0, 4, // back left
+			1, 5, // back right
+			2, 6, // front left
+			3, 7 // front right
+		};
+
+		m_AABBMesh.reset(new Wolf::Mesh(AABBVertices, AABBIndices));
+	}
+
+	// Spheres
 	{
-		// Top
-		0, 1, // back line
-		2, 3, // front line
-		0, 2, // left line
-		1, 3, // right line
-
-		// Bot
-		4, 5, // back line
-		6, 7, // front line
-		4, 6, // left line
-		5, 7, // right line
-
-		// Top to bot
-		0, 4, // back left
-		1, 5, // back right
-		2, 6, // front left
-		3, 7 // front right
-	};
-
-	m_AABBMesh.reset(new Wolf::Mesh(AABBVertices, AABBIndices));
+		// TODO
+	}
 }
 
 void DebugRenderingManager::clearBeforeFrame()
 {
 	m_AABBInfoArrayCount = 0;
-	for (uint32_t i = 0; i < m_customInfoArrayCount; ++i)
-		m_customInfoArray[i].mesh = m_AABBMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
-	m_customInfoArrayCount = 0;
+	for (uint32_t i = 0; i < m_customLinesInfoArrayCount; ++i)
+		m_customLinesInfoArray[i].mesh = m_AABBMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
+	m_customLinesInfoArrayCount = 0;
 }
 
 void DebugRenderingManager::addAABB(const Wolf::AABB& box)
@@ -115,13 +125,18 @@ void DebugRenderingManager::addAABB(const Wolf::AABB& box)
 
 void DebugRenderingManager::addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data)
 {
-	if (m_customInfoArrayCount >= m_customInfoArray.size())
+	if (m_customLinesInfoArrayCount >= m_customLinesInfoArray.size())
 	{
-		m_customInfoArray.emplace_back(mesh, m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
+		m_customLinesInfoArray.emplace_back(mesh, m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
 	}
-	m_customInfoArray[m_customInfoArrayCount].mesh = mesh;
-	m_customInfoArray[m_customInfoArrayCount].linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
-	m_customInfoArrayCount++;
+	m_customLinesInfoArray[m_customLinesInfoArrayCount].mesh = mesh;
+	m_customLinesInfoArray[m_customLinesInfoArrayCount].linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
+	m_customLinesInfoArrayCount++;
+}
+
+void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius)
+{
+	// TODO
 }
 
 void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList)
@@ -136,9 +151,9 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}
 
-	for (uint32_t i = 0; i < m_customInfoArrayCount; ++i)
+	for (uint32_t i = 0; i < m_customLinesInfoArrayCount; ++i)
 	{
-		PerGroupOfLines& customInfo = m_customInfoArray[i];
+		PerGroupOfLines& customInfo = m_customLinesInfoArray[i];
 
 		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(customInfo.mesh, m_linesPipelineSet.get());
 		meshToRenderInfo.descriptorSets.push_back({ customInfo.linesDescriptorSet.createConstNonOwnerResource(), 1 });

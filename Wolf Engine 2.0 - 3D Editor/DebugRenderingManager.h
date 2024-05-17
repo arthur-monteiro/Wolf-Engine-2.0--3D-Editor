@@ -65,6 +65,7 @@ public:
 	};
 	void addAABB(const Wolf::AABB& box);
 	void addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data);
+	void addSphere(const glm::vec3& worldPos, float radius);
 
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList);
 
@@ -93,6 +94,6 @@ private:
 	std::vector<PerGroupOfLines> m_AABBInfoArray;
 
 	// Custom
-	uint32_t m_customInfoArrayCount = 0;
-	std::vector<PerGroupOfLines> m_customInfoArray;
+	uint32_t m_customLinesInfoArrayCount = 0;
+	std::vector<PerGroupOfLines> m_customLinesInfoArray;
 };

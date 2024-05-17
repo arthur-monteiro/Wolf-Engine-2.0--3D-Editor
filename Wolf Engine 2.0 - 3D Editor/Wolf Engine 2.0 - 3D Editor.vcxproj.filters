@@ -21,10 +21,10 @@
     <ClCompile Include="SystemManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MainRenderingPipeline.cpp">
+    <ClCompile Include="CheapRenderingPipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ForwardPass.cpp">
+    <ClCompile Include="ForwardPassForCheapRenderingPipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EditorModelInterface.cpp">
@@ -90,6 +90,12 @@
     <ClCompile Include="ContaminationUpdatePass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PointLight.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderingPipelineInterface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vertex2DTextured.h">
@@ -98,10 +104,10 @@
     <ClInclude Include="SystemManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MainRenderingPipeline.h">
+    <ClInclude Include="CheapRenderingPipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ForwardPass.h">
+    <ClInclude Include="ForwardPassForCheapRenderingPipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorModelInterface.h">
@@ -171,6 +177,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ShootInfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PointLight.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderingPipelineInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

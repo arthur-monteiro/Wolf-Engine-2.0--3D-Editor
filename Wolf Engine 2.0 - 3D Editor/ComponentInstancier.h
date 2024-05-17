@@ -10,14 +10,15 @@
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
 #include "PlayerComponent.h"
+#include "PointLight.h"
 #include "StaticModel.h"
 
-class MainRenderingPipeline;
+class RenderingPipelineInterface;
 
 class ComponentInstancier
 {
 public:
-	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<MainRenderingPipeline>& mainRenderingPipeline, 
+	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 
@@ -27,7 +28,7 @@ public:
 
 private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-	Wolf::ResourceNonOwner<MainRenderingPipeline> m_mainRenderingPipeline;
+	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
@@ -39,7 +40,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 5> m_componentsInfo =
+	std::array<ComponentInfo, 6> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -65,7 +66,7 @@ private:
 			ContaminationEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_mainRenderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration));
+				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration));
 			}
 		},
 		ComponentInfo
@@ -84,6 +85,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Point light",
+			PointLight::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new PointLight());
 			}
 		}
 	};

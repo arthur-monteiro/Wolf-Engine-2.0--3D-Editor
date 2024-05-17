@@ -2,11 +2,12 @@
 
 #include <random>
 
+#include "ContaminationUpdatePass.h"
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
-#include "MainRenderingPipeline.h"
+#include "RenderingPipelineInterface.h"
 
-ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<MainRenderingPipeline>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
                                            const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
 	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass())
 {

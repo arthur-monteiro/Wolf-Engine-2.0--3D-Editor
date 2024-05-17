@@ -9,7 +9,7 @@
 #include "ShootInfo.h"
 
 class ContaminationUpdatePass;
-class MainRenderingPipeline;
+class RenderingPipelineInterface;
 
 class ContaminationEmitter : public ComponentInterface
 {
@@ -18,7 +18,7 @@ public:
 	std::string getId() const override { return ID; }
 	static constexpr uint32_t CONTAMINATION_IDS_IMAGE_SIZE = 64;
 
-	ContaminationEmitter(const Wolf::ResourceNonOwner<MainRenderingPipeline>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 	ContaminationEmitter(const ContaminationEmitter&) = delete;
 	~ContaminationEmitter() override;

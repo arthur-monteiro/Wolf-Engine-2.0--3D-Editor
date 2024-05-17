@@ -40,6 +40,7 @@ public:
 
 	Wolf::AABB getAABB() const;
 	bool hasModelComponent() const { return m_modelComponent.get(); }
+	bool hasComponent(const std::string& componentId) const;
 	glm::vec3 getPosition() const;
 	void setPosition(const glm::vec3& newPosition) const;
 

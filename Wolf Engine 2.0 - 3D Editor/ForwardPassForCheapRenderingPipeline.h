@@ -14,10 +14,10 @@
 #include "BindlessDescriptor.h"
 #include "EditorParams.h"
 
-class ForwardPass : public Wolf::CommandRecordBase
+class ForwardPassForCheapRenderingPipeline : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore) : m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore) {}
+	ForwardPassForCheapRenderingPipeline(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore) : m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;

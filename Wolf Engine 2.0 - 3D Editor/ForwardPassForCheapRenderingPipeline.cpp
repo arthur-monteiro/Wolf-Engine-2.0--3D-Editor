@@ -1,4 +1,4 @@
-#include "ForwardPass.h"
+#include "ForwardPassForCheapRenderingPipeline.h"
 
 #include <DebugMarker.h>
 #include <DescriptorSet.h>
@@ -15,7 +15,7 @@ using namespace Wolf;
 
 const DescriptorSetLayout* CommonDescriptorLayouts::g_commonDescriptorSetLayout;
 
-void ForwardPass::initializeResources(const InitializationContext& context)
+void ForwardPassForCheapRenderingPipeline::initializeResources(const InitializationContext& context)
 {
 	Attachment color = setupColorAttachment(context);
 	Attachment depth = setupDepthAttachment(context);
@@ -80,7 +80,7 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 	createPipelines();
 }
 
-void ForwardPass::resize(const InitializationContext& context)
+void ForwardPassForCheapRenderingPipeline::resize(const InitializationContext& context)
 {
 	m_renderPass->setExtent({ context.swapChainWidth, context.swapChainHeight });
 
@@ -97,7 +97,7 @@ void ForwardPass::resize(const InitializationContext& context)
 	createPipelines(); // may be overkill but resets the viewport for UI
 }
 
-void ForwardPass::record(const RecordContext& context)
+void ForwardPassForCheapRenderingPipeline::record(const RecordContext& context)
 {
 	/* Command buffer record */
 	const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
@@ -138,7 +138,7 @@ void ForwardPass::record(const RecordContext& context)
 	m_commandBuffer->endCommandBuffer();
 }
 
-void ForwardPass::submit(const SubmitContext& context)
+void ForwardPassForCheapRenderingPipeline::submit(const SubmitContext& context)
 {
 	const std::vector waitSemaphores{ m_contaminationUpdateSemaphore, context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
 	const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
@@ -155,13 +155,13 @@ void ForwardPass::submit(const SubmitContext& context)
 	}
 }
 
-Attachment ForwardPass::setupColorAttachment(const InitializationContext& context)
+Attachment ForwardPassForCheapRenderingPipeline::setupColorAttachment(const InitializationContext& context)
 {
 	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		nullptr);
 }
 
-Attachment ForwardPass::setupDepthAttachment(const InitializationContext& context)
+Attachment ForwardPassForCheapRenderingPipeline::setupDepthAttachment(const InitializationContext& context)
 {
 	CreateImageInfo depthImageCreateInfo;
 	depthImageCreateInfo.format = context.depthFormat;
@@ -177,7 +177,7 @@ Attachment ForwardPass::setupDepthAttachment(const InitializationContext& contex
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, m_depthImage->getDefaultImageView());
 }
 
-void ForwardPass::initializeFramesBuffers(const InitializationContext& context, Attachment& colorAttachment, Attachment& depthAttachment)
+void ForwardPassForCheapRenderingPipeline::initializeFramesBuffers(const InitializationContext& context, Attachment& colorAttachment, Attachment& depthAttachment)
 {
 	m_frameBuffers.clear();
 	m_frameBuffers.resize(context.swapChainImageCount);
@@ -188,7 +188,7 @@ void ForwardPass::initializeFramesBuffers(const InitializationContext& context, 
 	}
 }
 
-void ForwardPass::createPipelines()
+void ForwardPassForCheapRenderingPipeline::createPipelines()
 {
 	// UI
 	{

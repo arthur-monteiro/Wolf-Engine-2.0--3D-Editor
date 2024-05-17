@@ -9,7 +9,7 @@
 #include "EditorParams.h"
 #include "EntityContainer.h"
 #include "GameContext.h"
-#include "MainRenderingPipeline.h"
+#include "CheapRenderingPipeline.h"
 
 class SystemManager
 {
@@ -19,7 +19,7 @@ public:
 
 private:
 	void createWolfInstance();
-	void createMainRenderer();
+	void createCheapRenderer();
 	void updateBeforeFrame();
 
 	void loadScene();
@@ -54,7 +54,7 @@ private:
 	void updateUISelectedEntity() const;
 
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
-	Wolf::ResourceUniqueOwner<MainRenderingPipeline> m_mainRenderer;
+	Wolf::ResourceUniqueOwner<CheapRenderingPipeline> m_cheapRenderer;
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
 
 	/* FPS counter */

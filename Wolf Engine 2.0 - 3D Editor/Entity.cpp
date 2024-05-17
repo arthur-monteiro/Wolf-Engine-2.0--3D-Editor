@@ -188,6 +188,15 @@ Wolf::AABB Entity::getAABB() const
 	return {};
 }
 
+bool Entity::hasComponent(const std::string& componentId) const
+{
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component,
+		if (component->getId() == componentId)
+			return true;
+		);
+	return false;
+}
+
 glm::vec3 Entity::getPosition() const
 {
 	if (m_modelComponent)

@@ -17,10 +17,10 @@ SystemManager::SystemManager()
 	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 
-	createMainRenderer();
+	createCheapRenderer();
 	
 	m_entityContainer.reset(new EntityContainer);
-	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_mainRenderer.createNonOwnerResource(), 
+	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_cheapRenderer.createNonOwnerResource<RenderingPipelineInterface>(), 
 		[this](ComponentInterface*)
 		{
 			m_entityReloadRequested = true;
@@ -51,7 +51,7 @@ void SystemManager::run()
 	while (!m_wolfInstance->windowShouldClose() /* check if the window should close (for example if the user pressed alt+f4)*/)
 	{
 		updateBeforeFrame();
-		m_mainRenderer->frame(m_wolfInstance.get());
+		m_cheapRenderer->frame(m_wolfInstance.get());
 
 		/* Update FPS counter */
 		const auto currentTime = std::chrono::steady_clock::now();
@@ -98,9 +98,9 @@ void SystemManager::createWolfInstance()
 	EditorParamInterface::setGlobalWolfInstance(m_wolfInstance.get());
 }
 
-void SystemManager::createMainRenderer()
+void SystemManager::createCheapRenderer()
 {
-	m_mainRenderer.reset(new MainRenderingPipeline(m_wolfInstance.get(), m_editorParams.get()));
+	m_cheapRenderer.reset(new CheapRenderingPipeline(m_wolfInstance.get(), m_editorParams.get()));
 }
 
 void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const
@@ -510,7 +510,7 @@ void SystemManager::updateBeforeFrame()
 	m_camera->setAspect(m_editorParams->getAspect());
 
 	m_wolfInstance->updateBeforeFrame();
-	m_mainRenderer->update(m_wolfInstance.get());
+	m_cheapRenderer->update(m_wolfInstance.get());
 
 	if (m_wolfInstance->getInputHandler()->keyPressedThisFrame(GLFW_KEY_ESCAPE))
 	{
@@ -565,6 +565,9 @@ void SystemManager::updateBeforeFrame()
 
 void SystemManager::loadScene()
 {
+	m_wolfInstance->getRenderMeshList().clear();
+	m_wolfInstance->waitIdle();
+
 	m_selectedEntity.reset(nullptr);
 	m_entityContainer->clear();
 
