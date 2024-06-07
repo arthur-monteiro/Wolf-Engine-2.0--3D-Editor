@@ -179,7 +179,7 @@ void ContaminationEmitter::buildDebugMesh()
 {
 	const glm::vec3 cellSize = glm::vec3(static_cast<float>(m_size) / static_cast<float>(CONTAMINATION_IDS_IMAGE_SIZE));
 
-	std::vector<DebugRenderingManager::LineVertex> vertices;
+	std::vector<DebugRenderingManager::DebugVertex> vertices;
 	std::vector<uint32_t> indices;
 
 	// Normal X

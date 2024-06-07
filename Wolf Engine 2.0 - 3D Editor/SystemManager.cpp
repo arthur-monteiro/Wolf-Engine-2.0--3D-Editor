@@ -17,10 +17,10 @@ SystemManager::SystemManager()
 	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 
-	createCheapRenderer();
+	createRenderer();
 	
 	m_entityContainer.reset(new EntityContainer);
-	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_cheapRenderer.createNonOwnerResource<RenderingPipelineInterface>(), 
+	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), 
 		[this](ComponentInterface*)
 		{
 			m_entityReloadRequested = true;
@@ -44,6 +44,7 @@ SystemManager::SystemManager()
 	}
 
 	m_debugRenderingManager.reset(new DebugRenderingManager);
+	m_lightManager.reset(new LightManager);
 }
 
 void SystemManager::run()
@@ -51,7 +52,7 @@ void SystemManager::run()
 	while (!m_wolfInstance->windowShouldClose() /* check if the window should close (for example if the user pressed alt+f4)*/)
 	{
 		updateBeforeFrame();
-		m_cheapRenderer->frame(m_wolfInstance.get());
+		m_renderer->frame(m_wolfInstance.get());
 
 		/* Update FPS counter */
 		const auto currentTime = std::chrono::steady_clock::now();
@@ -98,9 +99,9 @@ void SystemManager::createWolfInstance()
 	EditorParamInterface::setGlobalWolfInstance(m_wolfInstance.get());
 }
 
-void SystemManager::createCheapRenderer()
+void SystemManager::createRenderer()
 {
-	m_cheapRenderer.reset(new CheapRenderingPipeline(m_wolfInstance.get(), m_editorParams.get()));
+	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get()));
 }
 
 void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const
@@ -374,6 +375,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_gameContexts[contextId].displayType = GameContext::DisplayType::METALNESS;
 	else if (displayType == "matAO")
 		m_gameContexts[contextId].displayType = GameContext::DisplayType::MAT_AO;
+	else if (displayType == "lighting")
+		m_gameContexts[contextId].displayType = GameContext::DisplayType::LIGHTING;
 	else
 		Debug::sendError("Unsupported display type: " + displayType);
 }
@@ -501,6 +504,7 @@ void SystemManager::updateBeforeFrame()
 		entity->updateBeforeFrame(m_wolfInstance->getInputHandler());
 		entity->updateDuringFrame(m_wolfInstance->getInputHandler()); // TODO: send this to another thread
 		entity->addMeshesToRenderList(renderList);
+		entity->addLightToLightManager(m_lightManager.createNonOwnerResource());
 		entity->addDebugInfo(*m_debugRenderingManager);
 	}
 	m_debugRenderingManager->addMeshesToRenderList(renderList);
@@ -510,7 +514,8 @@ void SystemManager::updateBeforeFrame()
 	m_camera->setAspect(m_editorParams->getAspect());
 
 	m_wolfInstance->updateBeforeFrame();
-	m_cheapRenderer->update(m_wolfInstance.get());
+	m_lightManager->updateBeforeFrame();
+	m_renderer->update(m_wolfInstance.get(), m_lightManager.createNonOwnerResource());
 
 	if (m_wolfInstance->getInputHandler()->keyPressedThisFrame(GLFW_KEY_ESCAPE))
 	{

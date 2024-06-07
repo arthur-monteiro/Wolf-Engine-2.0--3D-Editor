@@ -48,6 +48,10 @@ void Entity::addComponent(ComponentInterface* component)
 			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
 		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
 	}
+	else if (const Wolf::ResourceNonOwner<EditorLightInterface> componentAsLight = m_components.back().createNonOwnerResource<EditorLightInterface>())
+	{
+		m_lightComponents.push_back(componentAsLight);
+	}
 
 	if (m_components.back()->requiresInputs())
 		m_requiresInputs = true;
@@ -92,6 +96,14 @@ void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
 		{
 			renderMeshList.addMeshToRender(meshToRender);
 		}
+	}
+}
+
+void Entity::addLightToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
+{
+	for (const Wolf::ResourceNonOwner<EditorLightInterface>& lightComponent : m_lightComponents)
+	{
+		lightComponent->addLightsToLightManager(lightManager);
 	}
 }
 
@@ -175,6 +187,7 @@ void Entity::save()
 void Entity::removeAllComponents()
 {
 	m_modelComponent.reset();
+	m_lightComponents.clear();
 	m_components.clear();
 }
 

@@ -1,6 +1,13 @@
 #include "PointLight.h"
 
+#include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
+
+PointLight::PointLight()
+{
+	m_sphereRadius = 0.1f;
+	m_color = glm::vec3(1.0f, 1.0f, 1.0f);
+}
 
 void PointLight::loadParams(Wolf::JSONReader& jsonReader)
 {
@@ -23,3 +30,12 @@ void PointLight::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	}
 }
 
+void PointLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
+{
+	debugRenderingManager.addSphere(m_position, m_sphereRadius);
+}
+
+void PointLight::addLightsToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
+{
+	lightManager->addPointLightForNextFrame({ m_position, m_color, m_intensity });
+}

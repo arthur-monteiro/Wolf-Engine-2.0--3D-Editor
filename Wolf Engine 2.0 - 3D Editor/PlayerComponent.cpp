@@ -114,7 +114,7 @@ void PlayerComponent::buildShootDebugMesh()
 	const glm::vec3 gunPosition = getGunPosition();
 	const glm::vec3 shootDirection = glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY));
 
-	std::vector<DebugRenderingManager::LineVertex> vertices;
+	std::vector<DebugRenderingManager::DebugVertex> vertices;
 	std::vector<uint32_t> indices;
 
 	// Shoot direction

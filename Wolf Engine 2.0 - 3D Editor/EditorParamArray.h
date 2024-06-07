@@ -32,7 +32,7 @@ public:
 		ultralight::JSObject jsObject;
 		ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-		const std::string functionChangeName = "addTo" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+		const std::string functionChangeName = "addTo" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 		jsObject[functionChangeName.c_str()] = std::bind(&EditorParamArray<T>::addValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 
 		for (uint32_t i = 0; i < m_value.size(); ++i)

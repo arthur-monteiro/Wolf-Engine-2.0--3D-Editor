@@ -7,8 +7,10 @@
 #include <DynamicResourceUniqueOwnerArray.h>
 
 #include "ComponentInterface.h"
+#include "EditorLightInterface.h"
 #include "EditorTypes.h"
 #include "GameContext.h"
+#include "LightManager.h"
 
 class EditorConfiguration;
 class ComponentInstancier;
@@ -24,6 +26,7 @@ public:
 
 	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const;
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
+	void addLightToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	void activateParams() const;
 	void fillJSONForParams(std::string& outJSON);
@@ -66,6 +69,7 @@ private:
 	static constexpr uint32_t MAX_COMPONENT_COUNT = 8;
 	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface> m_components;
 	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
+	std::vector<Wolf::ResourceNonOwner<EditorLightInterface>> m_lightComponents;
 	bool m_requiresInputs = false;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });

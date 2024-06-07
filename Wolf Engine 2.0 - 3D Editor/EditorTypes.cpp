@@ -14,10 +14,10 @@ void EditorParamInterface::activate()
 		ultralight::JSObject jsObject;
 		ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-		const std::string functionDisableName = "disable" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+		const std::string functionDisableName = "disable" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 		jsObject[functionDisableName.c_str()] = std::bind(&EditorParamInterface::disableParamJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 
-		const std::string functionEnableName = "enable" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+		const std::string functionEnableName = "enable" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 		jsObject[functionEnableName.c_str()] = std::bind(&EditorParamInterface::enabledParamJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	}
 }
@@ -71,13 +71,13 @@ std::string EditorParamInterface::getTypeAsString() const
 	}
 }
 
-std::string EditorParamInterface::removeSpaces(const std::string& in)
+std::string EditorParamInterface::formatStringForFunctionName(const std::string& in)
 {
 	std::string out;
 	bool nextCharIsUpper = false;
 	for (const char character : in)
 	{
-		if (character == ' ')
+		if (character == ' ' || character == '(' || character == ')')
 		{
 			nextCharIsUpper = true;
 			continue;
@@ -127,7 +127,7 @@ void EditorParamsVector<T>::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionPrefix = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionPrefix = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 
 	const std::string functionChangeXName = functionPrefix + "X";
 	jsObject[functionChangeXName.c_str()] = std::bind(&EditorParamsVector::setValueXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -209,7 +209,7 @@ void EditorParamUInt::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamUInt::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -246,7 +246,7 @@ void EditorParamFloat::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamFloat::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -283,7 +283,7 @@ void EditorParamString::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 	
-	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamString::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -354,7 +354,7 @@ void EditorParamBool::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + removeSpaces(m_tab) + removeSpaces(m_name) + removeSpaces(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamBool::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 

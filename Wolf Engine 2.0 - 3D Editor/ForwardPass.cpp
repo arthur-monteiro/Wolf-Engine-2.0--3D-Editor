@@ -1,4 +1,4 @@
-#include "ForwardPassForCheapRenderingPipeline.h"
+#include "ForwardPass.h"
 
 #include <DebugMarker.h>
 #include <DescriptorSet.h>
@@ -9,13 +9,14 @@
 #include "CommonDescriptorLayouts.h"
 #include "GameContext.h"
 #include "EditorModelInterface.h"
+#include "LightManager.h"
 #include "Vertex2DTextured.h"
 
 using namespace Wolf;
 
 const DescriptorSetLayout* CommonDescriptorLayouts::g_commonDescriptorSetLayout;
 
-void ForwardPassForCheapRenderingPipeline::initializeResources(const InitializationContext& context)
+void ForwardPass::initializeResources(const InitializationContext& context)
 {
 	Attachment color = setupColorAttachment(context);
 	Attachment depth = setupDepthAttachment(context);
@@ -29,14 +30,17 @@ void ForwardPassForCheapRenderingPipeline::initializeResources(const Initializat
 	// Shared resources
 	{
 		m_displayOptionsUniformBuffer.reset(Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+		m_pointLightsUniformBuffer.reset(Buffer::createBuffer(sizeof(PointLightsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 		m_commonDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		CommonDescriptorLayouts::g_commonDescriptorSetLayout = m_commonDescriptorSetLayout.get();
 
 		DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, *m_displayOptionsUniformBuffer);
+		descriptorSetGenerator.setBuffer(1, *m_pointLightsUniformBuffer);
 
 		m_commonDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_commonDescriptorSetLayout));
 		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -80,7 +84,7 @@ void ForwardPassForCheapRenderingPipeline::initializeResources(const Initializat
 	createPipelines();
 }
 
-void ForwardPassForCheapRenderingPipeline::resize(const InitializationContext& context)
+void ForwardPass::resize(const InitializationContext& context)
 {
 	m_renderPass->setExtent({ context.swapChainWidth, context.swapChainHeight });
 
@@ -97,7 +101,7 @@ void ForwardPassForCheapRenderingPipeline::resize(const InitializationContext& c
 	createPipelines(); // may be overkill but resets the viewport for UI
 }
 
-void ForwardPassForCheapRenderingPipeline::record(const RecordContext& context)
+void ForwardPass::record(const RecordContext& context)
 {
 	/* Command buffer record */
 	const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
@@ -138,7 +142,7 @@ void ForwardPassForCheapRenderingPipeline::record(const RecordContext& context)
 	m_commandBuffer->endCommandBuffer();
 }
 
-void ForwardPassForCheapRenderingPipeline::submit(const SubmitContext& context)
+void ForwardPass::submit(const SubmitContext& context)
 {
 	const std::vector waitSemaphores{ m_contaminationUpdateSemaphore, context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
 	const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
@@ -155,13 +159,36 @@ void ForwardPassForCheapRenderingPipeline::submit(const SubmitContext& context)
 	}
 }
 
-Attachment ForwardPassForCheapRenderingPipeline::setupColorAttachment(const InitializationContext& context)
+void ForwardPass::updateLights(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
+{
+	PointLightsUBData pointLightsUBData{};
+
+	uint32_t pointLightIdx = 0;
+	for (const LightManager::PointLightInfo& pointLightInfo : lightManager->getCurrentLights())
+	{
+		pointLightsUBData.lights[pointLightIdx].lightPos = glm::vec4(pointLightInfo.worldPos, 1.0f);
+		pointLightsUBData.lights[pointLightIdx].lightColor = glm::vec4(pointLightInfo.color * pointLightInfo.intensity * 0.01f, 1.0f);
+
+		pointLightIdx++;
+
+		if (pointLightIdx == MAX_POINT_LIGHTS)
+		{
+			Debug::sendMessageOnce("Max point lights reached, next will be ignored", Debug::Severity::WARNING, this);
+			break;
+		}
+	}
+	pointLightsUBData.count = pointLightIdx;
+
+	m_pointLightsUniformBuffer->transferCPUMemory(&pointLightsUBData, sizeof(PointLightsUBData));
+}
+
+Attachment ForwardPass::setupColorAttachment(const InitializationContext& context)
 {
 	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		nullptr);
 }
 
-Attachment ForwardPassForCheapRenderingPipeline::setupDepthAttachment(const InitializationContext& context)
+Attachment ForwardPass::setupDepthAttachment(const InitializationContext& context)
 {
 	CreateImageInfo depthImageCreateInfo;
 	depthImageCreateInfo.format = context.depthFormat;
@@ -177,7 +204,7 @@ Attachment ForwardPassForCheapRenderingPipeline::setupDepthAttachment(const Init
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, m_depthImage->getDefaultImageView());
 }
 
-void ForwardPassForCheapRenderingPipeline::initializeFramesBuffers(const InitializationContext& context, Attachment& colorAttachment, Attachment& depthAttachment)
+void ForwardPass::initializeFramesBuffers(const InitializationContext& context, Attachment& colorAttachment, Attachment& depthAttachment)
 {
 	m_frameBuffers.clear();
 	m_frameBuffers.resize(context.swapChainImageCount);
@@ -188,7 +215,7 @@ void ForwardPassForCheapRenderingPipeline::initializeFramesBuffers(const Initial
 	}
 }
 
-void ForwardPassForCheapRenderingPipeline::createPipelines()
+void ForwardPass::createPipelines()
 {
 	// UI
 	{

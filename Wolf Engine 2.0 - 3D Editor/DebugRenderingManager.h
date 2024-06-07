@@ -21,7 +21,7 @@ class DebugRenderingManager
 {
 public:
 	// Lines
-	struct LineVertex
+	struct DebugVertex
 	{
 		glm::vec3 pos;
 		glm::vec3 color;
@@ -29,7 +29,7 @@ public:
 		static void getBindingDescription(VkVertexInputBindingDescription& bindingDescription, uint32_t binding)
 		{
 			bindingDescription.binding = binding;
-			bindingDescription.stride = sizeof(LineVertex);
+			bindingDescription.stride = sizeof(DebugVertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 		}
 
@@ -41,15 +41,15 @@ public:
 			attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
 			attributeDescriptions[attributeDescriptionCountBefore + 0].location = 0;
 			attributeDescriptions[attributeDescriptionCountBefore + 0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[attributeDescriptionCountBefore + 0].offset = offsetof(LineVertex, pos);
+			attributeDescriptions[attributeDescriptionCountBefore + 0].offset = offsetof(DebugVertex, pos);
 
 			attributeDescriptions[attributeDescriptionCountBefore + 1].binding = binding;
 			attributeDescriptions[attributeDescriptionCountBefore + 1].location = 1;
 			attributeDescriptions[attributeDescriptionCountBefore + 1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[attributeDescriptionCountBefore + 1].offset = offsetof(LineVertex, color);
+			attributeDescriptions[attributeDescriptionCountBefore + 1].offset = offsetof(DebugVertex, color);
 		}
 
-		bool operator==(const LineVertex& other) const
+		bool operator==(const DebugVertex& other) const
 		{
 			return pos == other.pos && color == other.color;
 		}
@@ -88,12 +88,27 @@ private:
 	// AABBs
 	std::unique_ptr<Wolf::Buffer> m_AABBVertexBuffer;
 	std::unique_ptr<Wolf::Buffer> m_AABBIndexBuffer;
-	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_AABBMesh;
+	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_cubeLineMesh;
+	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_cubeLQuadMesh;
 
 	uint32_t m_AABBInfoArrayCount = 0;
 	std::vector<PerGroupOfLines> m_AABBInfoArray;
 
-	// Custom
+	// Custom lines
 	uint32_t m_customLinesInfoArrayCount = 0;
 	std::vector<PerGroupOfLines> m_customLinesInfoArray;
+
+	// Spheres
+	std::unique_ptr<Wolf::PipelineSet> m_spheresPipelineSet;
+	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_spheresDescriptorSetLayoutGenerator;
+	std::unique_ptr<Wolf::DescriptorSetLayout> m_spheresDescriptorSetLayout;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_spheresDescriptorSet;
+	static constexpr uint32_t MAX_SPHERE_COUNT = 16;
+	struct SpheresUBData
+	{
+		glm::vec4 worldPosAndRadius[MAX_SPHERE_COUNT];
+	};
+	SpheresUBData m_spheresData;
+	uint32_t m_sphereCount = 0;
+	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_spheresUniformBuffer;
 };

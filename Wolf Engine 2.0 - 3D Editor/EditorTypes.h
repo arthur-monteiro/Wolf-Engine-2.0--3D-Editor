@@ -50,7 +50,7 @@ protected:
 	void addCommonInfoToJSON(std::string& out, uint32_t tabCount) const;
 	std::string getTypeAsString() const;
 
-	static std::string removeSpaces(const std::string& in);
+	static std::string formatStringForFunctionName(const std::string& in);
 
 private:
 	void disableParamJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);

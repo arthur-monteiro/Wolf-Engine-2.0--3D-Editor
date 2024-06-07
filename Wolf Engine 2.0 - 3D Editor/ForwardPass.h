@@ -14,15 +14,19 @@
 #include "BindlessDescriptor.h"
 #include "EditorParams.h"
 
-class ForwardPassForCheapRenderingPipeline : public Wolf::CommandRecordBase
+class LightManager;
+
+class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPassForCheapRenderingPipeline(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore) : m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore) {}
+	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore) : m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
+
+	void updateLights(const Wolf::ResourceNonOwner<LightManager>& lightManager) const;
 
 private:
 	static Wolf::Attachment setupColorAttachment(const Wolf::InitializationContext& context);
@@ -39,15 +43,31 @@ private:
 	uint32_t m_renderHeight;
 
 	/* Shared resources */
-	struct DisplayOptionsUBData
-	{
-		uint32_t displayType;
-	};
 	Wolf::DescriptorSetLayoutGenerator m_commonDescriptorSetLayoutGenerator;
 	static constexpr uint32_t COMMON_DESCRIPTOR_SET_SLOT = 2;
 	std::unique_ptr<Wolf::DescriptorSet> m_commonDescriptorSet;
 	std::unique_ptr<Wolf::DescriptorSetLayout> m_commonDescriptorSetLayout;
+
+	// Display options
+	struct DisplayOptionsUBData
+	{
+		uint32_t displayType;
+	};
 	std::unique_ptr<Wolf::Buffer> m_displayOptionsUniformBuffer;
+
+	// Lights
+	struct PointLightInfo
+	{
+		glm::vec4 lightPos;
+		glm::vec4 lightColor;
+	};
+	static constexpr uint32_t MAX_POINT_LIGHTS = 16;
+	struct PointLightsUBData
+	{
+		PointLightInfo lights[MAX_POINT_LIGHTS];
+		uint32_t count;
+	};
+	std::unique_ptr<Wolf::Buffer> m_pointLightsUniformBuffer;
 
 	/* UI resources */
 	Wolf::DescriptorSetLayoutGenerator m_userInterfaceDescriptorSetLayoutGenerator;

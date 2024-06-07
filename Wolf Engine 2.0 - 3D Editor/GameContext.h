@@ -10,7 +10,8 @@ struct GameContext
 		NORMAL = 1,
 		ROUGHNESS = 2,
 		METALNESS = 3,
-		MAT_AO = 4
+		MAT_AO = 4,
+		LIGHTING = 5
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 };

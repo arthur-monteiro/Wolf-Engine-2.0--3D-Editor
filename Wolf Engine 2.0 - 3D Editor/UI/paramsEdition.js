@@ -1,11 +1,11 @@
-function removeSpaces(input) {
+function formatStringForFunctionName(input) {
     let out = "";
     let nextCharIsUpper = false;
 
     for (let i = 0; i < input.length; ++i) {
         let character = input[i];
 
-        if (character == ' ') {
+        if (character == ' ' || character == '(' || character == ')') {
             nextCharIsUpper = true;
         }
         else {
@@ -58,7 +58,7 @@ function setNewParams(inputJSON) {
 
         if (categoryIdx == -1) {
             let initialHTML = "<div class='blockParameters'>";
-            initialHTML += "<div class='blockParametersTitle' id='" + removeSpaces(param.category) + "'>" + param.category + "</div>";
+            initialHTML += "<div class='blockParametersTitle' id='" + formatStringForFunctionName(param.category) + "'>" + param.category + "</div>";
 		    initialHTML += "<div class='blockParametersContent'>";
             categories.push([param.category, 0, initialHTML]);
             categoryIdx = categories.length - 1;
@@ -127,7 +127,7 @@ function setNewParams(inputJSON) {
 
 function computeInput(param, isLast) {
     let addBottomBorder = !(isLast || (param.type != "Vector2" && param.type != "Vector3"));
-    let nameForCallback = removeSpaces(param.tab) + removeSpaces(param.name) + removeSpaces(param.category);
+    let nameForCallback = formatStringForFunctionName(param.tab) + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category);
     let htmlToAdd = "<div style='width: 100%; overflow: auto;" + (!addBottomBorder && !isLast ? "padding-bottom: 5px;" : "") + "'>";
 
     let classForElements = "inputClass" + nameForCallback;
@@ -149,7 +149,7 @@ function computeInput(param, isLast) {
         htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput" + nameForCallback + "\" name=\"name\" value=\"" + param.value + "\" oninput=\"(function() { "
             + "let value = document.getElementById('nameInput" + nameForCallback + "').value;"
             + "change" + nameForCallback + "(value); " 
-            + (param.drivesCategoryName ? "document.getElementById('" + removeSpaces(param.category) + "').innerHTML = value;" : "")
+            + (param.drivesCategoryName ? "document.getElementById('" + formatStringForFunctionName(param.category) + "').innerHTML = value;" : "")
             + "})()\"/>";
     else if (param.type == "Vector2" || param.type == "Vector3" || param.type == "UInt" || param.type == "Float") {
         htmlToAdd += addBottomBorder ? "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom:1px solid white;'>" : "" ;
@@ -176,7 +176,7 @@ function computeInput(param, isLast) {
         htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
         htmlToAdd += "<table style='width: 70%; border-collapse: collapse; border-radius: 5px'>"
 
-        let id = param.tab + removeSpaces(param.name) + removeSpaces(param.category);
+        let id = param.tab + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category);
         htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', '" + param.fileFilter + "', change" + nameForCallback + ")\">Select file</button></td></tr>";
         htmlToAdd += "</table>";
     }
