@@ -159,7 +159,8 @@ function computeInput(param, isLast) {
         else
             htmlToAdd += "<div style='display: inline-block; width: 70%'>";
         if (param.type == "UInt")
-            htmlToAdd += "<wolf-slider id='uintSlider" + nameForCallback + "' class='" + classForElements + "' max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"" + (param.isActivable ? "disabled='true'" : "") + "></wolf-slider>";
+            htmlToAdd += "<wolf-slider id='uintSlider" + nameForCallback + "' class='" + classForElements + "' max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"" + 
+                (param.isActivable || param.isReadOnly ? "disabled='true'" : "") + "></wolf-slider>";
         else if (param.type == "Float")
             htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"></wolf-slider>";
         else {
@@ -182,23 +183,33 @@ function computeInput(param, isLast) {
     }
     else if (param.type == "Array")
     {
-        htmlToAdd += "<span style='display: inline-block; float: left; padding-top: 2px;'>" + param.name + ": " + param.count + "</span> <div class='addButton' onclick='addTo" + nameForCallback + "()'></div>";
+        htmlToAdd += "<span style='display: inline-block; float: left; padding-top: 2px;'>" + param.name + ": " + param.count + "</span>";
+        if (!param.isReadOnly) 
+            htmlToAdd += "<div class='addButton' onclick='addTo" + nameForCallback + "()'></div>";
     }
     else if (param.type == "Entity")
     {
         var entityDivs = document.getElementById('entityList').getElementsByTagName('div');
         htmlToAdd += param.name + ": <select name='entity' id='entitySelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'><option value=''>No entity selected</option>";
-        for(let i = 0; i< entityDivs.length; i++) {
+        for (let i = 0; i < entityDivs.length; i++) {
             var entityDiv = entityDivs[i];
             htmlToAdd += "<option value='" + entityDiv.id + "'" + (param.value == entityDiv.id ? "selected" : "") + ">" + entityDiv.innerHTML + "</option>";
         }
         htmlToAdd += "</select>";
     }
-    else if(param.type == "Bool")
+    else if (param.type == "Bool")
     {
         htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
         htmlToAdd += "<div style='display: inline-block; width: 70%'><input id='checkBox" + nameForCallback + "' type='checkbox' style='margin-top: 9px' onchange='(function() { "
             + "change" + nameForCallback + "(document.getElementById(\"checkBox" + nameForCallback + "\").checked) })()'/></div>";
+    }
+    else if (param.type == "Enum")
+    {
+        htmlToAdd += param.name + ": <select name='enum' id='enumSelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'>";
+        for (let i = 0; i < param.options.length; ++i) {
+            htmlToAdd += "<option value='" + param.options[i] + "'" + (param.value == i ? "selected" : "") + ">" + param.options[i] + "</option>";
+        }
+		htmlToAdd += "</select>";
     }
 
     htmlToAdd += "</div>"

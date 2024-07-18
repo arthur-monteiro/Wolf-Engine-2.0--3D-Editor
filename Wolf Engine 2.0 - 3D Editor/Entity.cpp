@@ -71,7 +71,7 @@ std::string Entity::computeEscapedLoadingPath() const
 	return escapedLoadingPath;
 }
 
-void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const
+void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	if (m_requiresInputs)
 	{

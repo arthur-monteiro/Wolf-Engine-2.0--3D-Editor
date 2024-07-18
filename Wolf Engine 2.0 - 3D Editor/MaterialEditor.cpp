@@ -5,18 +5,26 @@
 #include "MaterialLoader.h"
 #include "MipMapGenerator.h"
 
-MaterialEditor::MaterialEditor(const std::string& tab, const std::string& category)
-	: m_albedoPathParam("Albedo file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-      m_normalPathParam("Normal file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-      m_roughnessParam("Roughness file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-      m_metalnessParam("Metalness file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-      m_aoParam("AO file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG)
+MaterialEditor::MaterialEditor(const std::string& tab, const std::string& category, Wolf::MaterialsGPUManager::MaterialCacheInfo& materialCacheInfo)
+	: m_albedoPathParam("Albedo file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_normalPathParam("Normal file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_roughnessParam("Roughness file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_metalnessParam("Metalness file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_aoParam("AO file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_anisoStrengthParam("Aniso Strength file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_shadingMode({ "GGX", "Anisotropic GGX" }, "Shading Mode", tab, category, [this]() { onShadingModeChanged(); }),
+	m_materialCacheInfo(materialCacheInfo)
 {
 }
 
 void MaterialEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
 {
-	if (m_updateNeeded)
+	if (m_shadingModeChanged)
+	{
+		materialGPUManager->changeMaterialShadingModeBeforeFrame(m_materialId, m_shadingMode);
+	}
+
+	if (m_textureChanged)
 	{
 		Wolf::MaterialLoader::MaterialFileInfo materialFileInfo{};
 		materialFileInfo.name = "Custom material";
@@ -26,26 +34,20 @@ void MaterialEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Materi
 		materialFileInfo.metalness = static_cast<std::string>(m_metalnessParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_metalnessParam);
 		materialFileInfo.ao = static_cast<std::string>(m_aoParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_aoParam);
 
-		Wolf::MaterialLoader materialLoader(materialFileInfo, Wolf::MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE, false);
-		m_albedoImage.reset(materialLoader.releaseImage(0));
-
-		std::vector<Wolf::DescriptorSetGenerator::ImageDescription> images(Wolf::MaterialsGPUManager::TEXTURE_COUNT_PER_MATERIAL);
-		for (Wolf::DescriptorSetGenerator::ImageDescription& image : images)
+		if (m_materialCacheInfo.materialInfo->imageNames.empty() || m_materialCacheInfo.materialInfo->imageNames[0] != materialFileInfo.albedo.substr(materialFileInfo.albedo.size() - m_materialCacheInfo.materialInfo->imageNames[0].size()))
 		{
-			image.imageView = nullptr;
+			Wolf::MaterialLoader materialLoader(materialFileInfo, Wolf::MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE, false);
+			m_materialCacheInfo.materialInfo->images[0].reset(materialLoader.releaseImage(0));
+
+			if (m_materialId != 0)
+			{
+				materialGPUManager->changeExistingMaterialBeforeFrame(m_materialId, m_materialCacheInfo);
+			}
+
+			notifySubscribers();
 		}
 
-		if (m_albedoImage)
-		{
-			images[0].imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-			images[0].imageView = m_albedoImage->getDefaultImageView();
-		}
-
-		m_materialId = materialGPUManager->getCurrentMaterialCount();
-		materialGPUManager->addNewMaterials(images);
-
-		m_updateNeeded = false;
-		notifySubscribers();
+		m_textureChanged = false;
 	}
 }
 
@@ -62,7 +64,12 @@ void MaterialEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount, bo
 	::addParamsToJSON(outJSON, m_materialParams, isLast, tabCount);
 }
 
-void MaterialEditor::onTextureChanged()
+void MaterialEditor::onAlbedoChanged()
 {
-	m_updateNeeded = true;
+	m_textureChanged = true;
+}
+
+void MaterialEditor::onShadingModeChanged()
+{
+	m_shadingModeChanged = true;
 }

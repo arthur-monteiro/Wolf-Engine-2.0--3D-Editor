@@ -8,6 +8,8 @@ struct InputMaterialInfo
     uint albedoIdx;
 	uint normalIdx;
 	uint roughnessMetalnessAOIdx;
+
+    uint shadingMode;
 };
 
 layout(std430, binding = 2, set = £BINDLESS_DESCRIPTOR_SLOT) readonly restrict buffer MaterialBufferLayout
@@ -31,6 +33,9 @@ struct MaterialInfo
     float roughness;
     float metalness;
     float matAO;
+    float anisoStrength;
+	
+	uint shadingMode;
 };
 
 uint fetchContamination(in const vec3 worldPos)
@@ -41,16 +46,18 @@ uint fetchContamination(in const vec3 worldPos)
     return uint(texture(contaminationIds, sampleUV).r);
 }
 
-MaterialInfo internalFectch(in const vec2 texCoords, in uint materialId, in const mat3 matrixTBN)
+MaterialInfo internalFetch(in const vec2 texCoords, in uint materialId, in const mat3 matrixTBN)
 {
     MaterialInfo materialInfo;
 
     materialInfo.albedo = texture(sampler2D(textures[materialsInfo[materialId].albedoIdx], textureSampler), texCoords).rgb;
     materialInfo.normal = (texture(sampler2D(textures[materialsInfo[materialId].normalIdx], textureSampler), texCoords).rgb * 2.0 - vec3(1.0)) * matrixTBN;
-    vec3 combinedRoughnessMetalnessAO = texture(sampler2D(textures[materialsInfo[materialId].roughnessMetalnessAOIdx], textureSampler), texCoords).rgb;
-	materialInfo.roughness = combinedRoughnessMetalnessAO.r;
-	materialInfo.metalness = combinedRoughnessMetalnessAO.g;
-    materialInfo.matAO = combinedRoughnessMetalnessAO.b;
+    vec4 combinedRoughnessMetalnessAOAniso = texture(sampler2D(textures[materialsInfo[materialId].roughnessMetalnessAOIdx], textureSampler), texCoords).rgba;
+	materialInfo.roughness = combinedRoughnessMetalnessAOAniso.r;
+	materialInfo.metalness = combinedRoughnessMetalnessAOAniso.g;
+    materialInfo.matAO = combinedRoughnessMetalnessAOAniso.b;
+    materialInfo.anisoStrength = combinedRoughnessMetalnessAOAniso.a;
+	materialInfo.shadingMode = materialsInfo[materialId].shadingMode;
 
     return materialInfo;
 }
@@ -68,9 +75,9 @@ MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const
         float b = (normal.x + normal.y + normal.z);
         normal /= b;
 
-        MaterialInfo xAxis = internalFectch(worldPos.yz, materialId, matrixTBN);
-        MaterialInfo yAxis = internalFectch(worldPos.xz, materialId, matrixTBN);
-        MaterialInfo zAxis = internalFectch(worldPos.xy, materialId, matrixTBN);
+        MaterialInfo xAxis = internalFetch(worldPos.yz, materialId, matrixTBN);
+        MaterialInfo yAxis = internalFetch(worldPos.xz, materialId, matrixTBN);
+        MaterialInfo zAxis = internalFetch(worldPos.xy, materialId, matrixTBN);
 
         MaterialInfo finalMaterialInfo;
 #define LERP_INFO(name) (xAxis.name * normal.x + yAxis.name * normal.y + zAxis.name * normal.z);
@@ -79,11 +86,12 @@ MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const
         finalMaterialInfo.roughness = LERP_INFO(roughness);
         finalMaterialInfo.metalness = LERP_INFO(metalness);
         finalMaterialInfo.matAO = LERP_INFO(matAO);
+		finalMaterialInfo.shadingMode = xAxis.shadingMode;
 
         return finalMaterialInfo;
     }
     else
     {
-        return internalFectch(texCoords, materialId, matrixTBN);
+        return internalFetch(texCoords, materialId, matrixTBN);
     }
 }

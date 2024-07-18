@@ -15,6 +15,7 @@ public:
 	virtual bool hasDefaultName() const = 0;
 
 	EditorParamInterface* getNameParam() { return &m_name; }
+	void setName(const std::string& name) { m_name = name; }
 
 protected:
 	std::string m_currentCategory;

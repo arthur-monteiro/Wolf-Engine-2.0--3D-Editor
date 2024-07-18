@@ -110,26 +110,38 @@ void ContaminationEmitter::addShootRequest(ShootRequest shootRequest)
 }
 
 ContaminationEmitter::ContaminationMaterial::ContaminationMaterial()
-	: ParameterGroupInterface(ContaminationEmitter::TAB), m_material(ContaminationEmitter::TAB, "")
+	: ParameterGroupInterface(ContaminationEmitter::TAB), m_materialsInfo(1), m_materialEditor(ContaminationEmitter::TAB, "", m_materialCacheInfo)
 {
 	m_name = DEFAULT_NAME;
 
-	m_material.subscribe(this, [this]() { notifySubscribers(); });
+	m_materialCacheInfo.materialInfo = m_materialsInfo.data();
+	m_materialEditor.subscribe(this, [this]() { notifySubscribers(); });
 }
 
 void ContaminationEmitter::ContaminationMaterial::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
 {
-	m_material.updateBeforeFrame(materialGPUManager, editorConfiguration);
+	m_materialEditor.updateBeforeFrame(materialGPUManager, editorConfiguration);
+
+	if (m_materialId == 0)
+	{
+		m_materialId = materialGPUManager->getCurrentMaterialCount();
+		materialGPUManager->addNewMaterials(m_materialsInfo);
+		m_materialCacheInfo = materialGPUManager->getMaterialsCacheInfo().back();
+
+		m_materialEditor.setMaterialId(m_materialId);
+
+		notifySubscribers();
+	}
 }
 
 std::span<EditorParamInterface*> ContaminationEmitter::ContaminationMaterial::getAllParams()
 {
-	return m_material.getAllParams();
+	return m_materialEditor.getAllParams();
 }
 
 std::span<EditorParamInterface* const> ContaminationEmitter::ContaminationMaterial::getAllConstParams() const
 {
-	return m_material.getAllConstParams();
+	return m_materialEditor.getAllConstParams();
 }
 
 bool ContaminationEmitter::ContaminationMaterial::hasDefaultName() const

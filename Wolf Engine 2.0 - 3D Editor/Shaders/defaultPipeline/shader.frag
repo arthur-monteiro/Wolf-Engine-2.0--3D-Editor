@@ -31,60 +31,68 @@ const uint DISPLAY_TYPE_NORMAL = 1;
 const uint DISPLAY_TYPE_ROUGHNESS = 2;
 const uint DISPLAY_TYPE_METALNESS = 3;
 const uint DISPLAY_TYPE_MAT_AO = 4;
-const uint DISPLAY_TYPE_LIGHTING = 5;
+const uint DISPLAY_TYPE_MAT_ANISO_STRENGTH = 5;
+const uint DISPLAY_TYPE_LIGHTING = 6;
 
 const float PI = 3.14159265359;
 
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
+vec3 fresnelSchlick(float cosTheta, vec3 F0);
 
 vec4 computeLighting(MaterialInfo materialInfo)
 {
-    vec3 albedo = materialInfo.albedo;
-	vec3 normal = materialInfo.normal;
-	float roughness = materialInfo.roughness;
-	float metalness = materialInfo.metalness;
-    normal = normalize(normal);
-    vec3 worldPos = (getInvViewMatrix() * vec4(inViewPos, 1.0f)).xyz;
-
-    vec3 camPos = getInvViewMatrix()[3].xyz;
-    vec3 V = normalize(camPos - worldPos);
-
-    vec3 F0 = vec3(0.04);
-    F0 = mix(F0,albedo, metalness);
-
-    vec3 Lo = vec3(0.0);
-
-    // calculate per-light radiance
-    for (uint i = 0; i < ubPointLights.count; ++i)
+    if (materialInfo.shadingMode == 0)
     {
-        vec3 L = normalize(ubPointLights.lights[i].lightPos.xyz - worldPos);
-        vec3 H = normalize(V + L);
-        float distance    = length(ubPointLights.lights[i].lightPos.xyz - worldPos);
-        float attenuation = 1.0 / (distance * distance); // candela to lux -> lx = cd / (d*d)
-        vec3 radiance = ubPointLights.lights[i].lightColor.xyz * attenuation;
+        vec3 albedo = materialInfo.albedo;
+        vec3 normal = materialInfo.normal;
+        float roughness = materialInfo.roughness;
+        float metalness = materialInfo.metalness;
+        normal = normalize(normal);
+        vec3 worldPos = (getInvViewMatrix() * vec4(inViewPos, 1.0f)).xyz;
 
-        // cook-torrance brdf
-        float NDF = DistributionGGX(normal, H, roughness);
-        float G   = GeometrySmith(normal, V, L, roughness);
-        vec3 F    = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0, roughness);
+        vec3 camPos = getInvViewMatrix()[3].xyz;
+        vec3 V = normalize(camPos - worldPos);
 
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metalness;
+        vec3 F0 = vec3(0.04);
+        F0 = mix(F0,albedo, metalness);
 
-        vec3 nominator    = NDF * G * F;
-        float denominator = 4 * max(dot(normal, V), 0.0) * max(dot(normal, L), 0.0);
-        vec3 specular     = nominator / max(denominator, 0.001);
+        vec3 Lo = vec3(0.0);
 
-        // add to outgoing radiance Lo
-        float NdotL = max(dot(normal, L), 0.0);
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        // calculate per-light radiance
+        for (uint i = 0; i < ubPointLights.count; ++i)
+        {
+            vec3 L = normalize(ubPointLights.lights[i].lightPos.xyz - worldPos);
+            vec3 H = normalize(V + L);
+            float distance    = length(ubPointLights.lights[i].lightPos.xyz - worldPos);
+            float attenuation = 1.0 / (distance * distance); // candela to lux -> lx = cd / (d*d)
+            vec3 radiance = ubPointLights.lights[i].lightColor.xyz * attenuation;
+
+            // cook-torrance brdf
+            float NDF = DistributionGGX(normal, H, roughness);
+            float G   = GeometrySmith(normal, V, L, roughness);
+            vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+            vec3 kS = F;
+            vec3 kD = vec3(1.0) - kS;
+            kD *= 1.0 - metalness;
+
+            vec3 nominator    = NDF * G * F;
+            float denominator = 4 * max(dot(normal, V), 0.0) * max(dot(normal, L), 0.0);
+            vec3 specular     = nominator / max(denominator, 0.001);
+
+            // add to outgoing radiance Lo
+            float NdotL = max(dot(normal, L), 0.0);
+            Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        }
+
+        return vec4(Lo, 1.0);
     }
-
-    return vec4(Lo, 1.0);
+    else 
+    {
+        return vec4(1, 0, 0, 1);
+    }
 }
 
 void main() 
@@ -101,6 +109,8 @@ void main()
         outColor = vec4(materialInfo.metalness.rrr, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_MAT_AO)
         outColor = vec4(materialInfo.matAO.rrr, 1.0);
+    else if (ubDisplay.displayType == DISPLAY_TYPE_MAT_ANISO_STRENGTH)
+        outColor = vec4(materialInfo.anisoStrength.rrr, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_LIGHTING)
         outColor = computeLighting(materialInfo);
     else
@@ -143,7 +153,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
-	return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+	return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }

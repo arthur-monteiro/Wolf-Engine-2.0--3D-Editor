@@ -19,25 +19,27 @@ class Entity
 {
 public:
 	Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback);
+	virtual ~Entity() = default;
 	void loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent);
 
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
 
-	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const;
+	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler);
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
 	void addLightToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
-	void activateParams() const;
-	void fillJSONForParams(std::string& outJSON);
+	virtual void activateParams() const;
+	virtual void fillJSONForParams(std::string& outJSON);
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const;
 
-	void save();
+	virtual void save();
 
-	const std::string& getName() const { return m_nameParam; }
+	virtual const std::string& getName() const { return m_nameParam; }
 	const std::string& getLoadingPath() const { return m_filepath; }
-	std::string computeEscapedLoadingPath() const;
+	virtual std::string computeEscapedLoadingPath() const;
+	virtual bool isFake() const { return false; }
 
 	Wolf::DynamicStableArray<Wolf::ResourceUniqueOwner<ComponentInterface>, 8>& getAllComponents() { return m_components; }
 

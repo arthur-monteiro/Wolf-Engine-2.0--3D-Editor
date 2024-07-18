@@ -7,6 +7,7 @@
 #include <PipelineSet.h>
 
 #include "EditorModelInterface.h"
+#include "ModelLoader.h"
 #include "Notifier.h"
 
 class BuildingModel : public EditorModelInterface
@@ -83,7 +84,7 @@ private:
 		void setLoadingPath(const std::string& loadingPath) { m_loadingPathParam = loadingPath; }
 
 		const std::string& getLoadingPath() const { return m_loadingPathParam; }
-		Wolf::ResourceNonOwner<Wolf::Mesh> getMesh() { return m_mesh.createNonOwnerResource(); }
+		Wolf::ResourceNonOwner<Wolf::Mesh> getMesh() { return m_modelData.mesh.createNonOwnerResource(); }
 		const glm::vec2& getSizeInMeter() const { return m_sizeInMeter; }
 		const glm::vec2& getCenter() const { return m_center; }
 
@@ -94,8 +95,7 @@ private:
 		void addMaterialsToGPU() const;
 
 		EditorParamString m_loadingPathParam;
-		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
-		std::vector<Wolf::ResourceUniqueOwner<Wolf::Image>> m_images;
+		Wolf::ModelData m_modelData;
 		glm::vec2 m_sizeInMeter;
 		glm::vec2 m_center;
 

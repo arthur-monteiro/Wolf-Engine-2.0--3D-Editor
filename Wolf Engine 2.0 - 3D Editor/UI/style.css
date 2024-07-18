@@ -241,6 +241,10 @@ span {
     color: #0066ff;
 }
 
+.logWarning {
+    color: #b9b600;
+}
+
 .logError {
     color: #b10101;
 }

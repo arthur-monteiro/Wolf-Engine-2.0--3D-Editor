@@ -121,14 +121,7 @@ void StaticModel::loadModel()
 	descriptorSetGenerator.setBuffer(0, *m_matricesUniformBuffer);
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
-	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(m_modelData.images.size());
-	for (uint32_t i = 0; i < m_modelData.images.size(); ++i)
-	{
-		imageDescriptions[i].imageView = m_modelData.images[i]->getDefaultImageView();
-		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	}
-
-	m_materialsGPUManager->addNewMaterials(imageDescriptions);
+	m_materialsGPUManager->addNewMaterials(m_modelData.materials);
 }
 
 void StaticModel::requestModelLoading()

@@ -8,6 +8,8 @@
 
 #include <JSONReader.h>
 
+#include "MaterialListFakeEntity.h"
+
 enum class BrowseToFileOption;
 using namespace Wolf;
 
@@ -45,6 +47,8 @@ SystemManager::SystemManager()
 
 	m_debugRenderingManager.reset(new DebugRenderingManager);
 	m_lightManager.reset(new LightManager);
+
+	addFakeEntities();	
 }
 
 void SystemManager::run()
@@ -121,7 +125,7 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 		return;
 	}
 
-	std::cout << message << std::endl;
+	std::cout << message << '\n';
 
 	std::string escapedMessage;
 	for (const char character : message)
@@ -144,6 +148,7 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logError"))");
 			break;
 		case Debug::Severity::WARNING:
+			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logWarning"))");
 			break;
 		case Debug::Severity::INFO:
 			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logInfo"))");
@@ -375,6 +380,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_gameContexts[contextId].displayType = GameContext::DisplayType::METALNESS;
 	else if (displayType == "matAO")
 		m_gameContexts[contextId].displayType = GameContext::DisplayType::MAT_AO;
+	else if (displayType == "anisoStrength")
+		m_gameContexts[contextId].displayType = GameContext::DisplayType::ANISO_STRENGTH;
 	else if (displayType == "lighting")
 		m_gameContexts[contextId].displayType = GameContext::DisplayType::LIGHTING;
 	else
@@ -479,7 +486,7 @@ void SystemManager::updateBeforeFrame()
 		const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 		for (const ResourceUniqueOwner<Entity>& entity : allEntities)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\")");
+			m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\"," + std::to_string(entity->isFake()) + ")");
 		}
 		m_entityChanged = false;
 	}
@@ -579,6 +586,8 @@ void SystemManager::loadScene()
 	m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
 	m_wolfInstance->evaluateUserInterfaceScript("resetSelectedEntity()");
 
+	addFakeEntities();
+
 	JSONReader jsonReader(m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest));
 
 	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
@@ -637,6 +646,13 @@ void SystemManager::addComponent(const std::string& componentId)
 		
 	(*m_selectedEntity)->addComponent(m_componentInstancier->instanciateComponent(componentId));
 	updateUISelectedEntity();
+}
+
+void SystemManager::addFakeEntities()
+{
+	MaterialListFakeEntity* materialListFakeEntity = new MaterialListFakeEntity(m_wolfInstance->getMaterialsManager(), m_configuration.createNonOwnerResource());
+	m_entityContainer->addEntity(materialListFakeEntity);
+	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + materialListFakeEntity->getName() + "\", \"" + materialListFakeEntity->computeEscapedLoadingPath() + "\", true)");
 }
 
 void SystemManager::updateUISelectedEntity() const

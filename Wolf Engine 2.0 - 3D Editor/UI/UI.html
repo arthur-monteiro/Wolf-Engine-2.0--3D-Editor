@@ -97,6 +97,7 @@
 						<option value="roughness">Rougness</option>
 						<option value="metalness">Metalness</option>
 						<option value="matAO">Material AO</option>
+						<option value="anisoStrength">Anisotropy Strength</option>
 						<option value="lighting">Lighting</option>
 					</select>
 				</div>
@@ -271,8 +272,8 @@
 		selectTabInfo("tabLinkEntity", "entityInfos");
 	}
 
-	function addEntityToList(name, path) {
-		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\" id='" + path + "'>" + name + "</div><br/>";
+	function addEntityToList(name, path, isFake = false) {
+		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\" id='" + path + "' style='" + (isFake ? "font-style: italic;" : "") + "'>" + name + "</div><br/>";
 	}
 
 	function resetEntityList() {

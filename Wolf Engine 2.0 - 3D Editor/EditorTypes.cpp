@@ -32,6 +32,7 @@ void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCou
 	out += tabs + R"("category" : ")" + m_category + "\",\n";
 	out += tabs + R"("type" : ")" + getTypeAsString() + "\",\n";
 	out += tabs + R"("isActivable" : )" + (m_isActivable ? "true" : "false") + ",\n";
+	out += tabs + R"("isReadOnly" : )" + (m_isReadOnly ? "true" : "false") + ",\n";
 }
 
 std::string EditorParamInterface::getTypeAsString() const
@@ -64,6 +65,9 @@ std::string EditorParamInterface::getTypeAsString() const
 			break;
 		case Type::Bool:
 			return "Bool";
+			break;
+		case Type::Enum:
+			return "Enum";
 			break;
 		default:
 			Wolf::Debug::sendError("Undefined type");
@@ -376,6 +380,59 @@ void EditorParamBool::setValueJSCallback(const ultralight::JSObject& thisObject,
 }
 
 void EditorParamBool::setValue(bool value)
+{
+	m_value = value;
+
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
+}
+
+void EditorParamEnum::activate()
+{
+	EditorParamInterface::activate();
+
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamEnum::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void EditorParamEnum::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	out += tabs + '\t' + R"("options" : [)";
+	for (uint32_t i = 0; i < m_options.size(); ++i)
+	{
+		out += "\"" + m_options[i] + "\"";
+		if (i != m_options.size() - 1)
+			out += ", ";
+	}
+	out += "],\n";
+	out += tabs + '\t' + R"("value" : )" + std::to_string(m_value) + "\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamEnum::setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string value = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	for (uint32_t i = 0; i < m_options.size(); ++i)
+	{
+		if (m_options[i] == value)
+		{
+			setValue(i);
+			return;
+		}
+	}
+
+	Wolf::Debug::sendError("Value not found in options");
+}
+
+void EditorParamEnum::setValue(uint32_t value)
 {
 	m_value = value;
 

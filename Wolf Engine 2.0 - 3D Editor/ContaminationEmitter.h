@@ -57,11 +57,15 @@ private:
 		std::span<EditorParamInterface*> getAllParams() override;
 		std::span<EditorParamInterface* const> getAllConstParams() const override;
 		bool hasDefaultName() const override;
-		uint32_t getMaterialId() const { return m_material.getMaterialId(); }
+		uint32_t getMaterialId() const { return m_materialId; }
 
 	private:
 		inline static const std::string DEFAULT_NAME = "New material";
-		MaterialEditor m_material;
+
+		std::vector<Wolf::MaterialsGPUManager::MaterialInfo> m_materialsInfo;
+		Wolf::MaterialsGPUManager::MaterialCacheInfo m_materialCacheInfo;
+		uint32_t m_materialId = 0;
+		MaterialEditor m_materialEditor;
 	};
 
 	void onMaterialAdded();

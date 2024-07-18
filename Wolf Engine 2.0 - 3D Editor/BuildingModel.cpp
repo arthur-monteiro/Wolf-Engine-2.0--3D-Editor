@@ -174,19 +174,12 @@ void BuildingModel::MeshWithMaterials::loadMesh()
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.materialLayout = MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE;
 	modelLoadingInfo.materialIdOffset = m_materialsGPUManager->getCurrentMaterialCount();
-	ModelData windowMeshData;
-	ModelLoader::loadObject(windowMeshData, modelLoadingInfo);
+	ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
-	m_mesh = std::move(windowMeshData.mesh);
-	m_images.resize(windowMeshData.images.size());
-	for (uint32_t i = 0; i < windowMeshData.images.size(); ++i)
-	{
-		m_images[i] = std::move(windowMeshData.images[i]);
-	}
-	const glm::vec3 meshSize = m_mesh->getAABB().getSize();
+	const glm::vec3 meshSize = m_modelData.mesh->getAABB().getSize();
 	m_sizeInMeter = glm::vec2(meshSize.x, meshSize.y);
 
-	const glm::vec3 meshCenter = m_mesh->getAABB().getCenter();
+	const glm::vec3 meshCenter = m_modelData.mesh->getAABB().getCenter();
 	m_center = glm::vec2(meshCenter.x, meshCenter.y);
 
 	addMaterialsToGPU();
@@ -209,11 +202,11 @@ void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 		0, 2, 1,
 		2, 3, 1
 	};
-	m_mesh.reset(new Mesh(vertices, indices));
+	m_modelData.mesh.reset(new Mesh(vertices, indices));
 	m_sizeInMeter = glm::vec2(2.0f, 2.0f);
 	m_center = glm::vec2(0.0f, 0.0f);
 
-	m_images.resize(5);
+	/*m_images.resize(5);
 	constexpr uint32_t DEFAULT_IMAGE_PIXEL_COUNT_PER_SIDE = 32;
 	auto createImage = [](ResourceUniqueOwner<Image>& image)
 		{
@@ -274,19 +267,19 @@ void BuildingModel::MeshWithMaterials::loadDefaultMesh(const glm::vec3& color)
 		createImage(image);
 	}
 
-	addMaterialsToGPU();
+	addMaterialsToGPU();*/
 }
 
 void BuildingModel::MeshWithMaterials::addMaterialsToGPU() const
 {
-	std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(m_images.size());
+	/*std::vector<DescriptorSetGenerator::ImageDescription> imageDescriptions(m_images.size());
 	for (uint32_t i = 0; i < m_images.size(); ++i)
 	{
 		imageDescriptions[i].imageView = m_images[i]->getDefaultImageView();
 		imageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
-	m_materialsGPUManager->addNewMaterials(imageDescriptions);
+	m_materialsGPUManager->addNewMaterials(imageDescriptions);*/
 }
 
 void BuildingModel::MeshWithMaterials::requestMeshLoading()

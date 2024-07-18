@@ -27,6 +27,8 @@ private:
 	void addEntity(const std::string& filePath);
 	void addComponent(const std::string& componentId);
 
+	void addFakeEntities();
+
 	void debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const;
 	void bindUltralightCallbacks();
 	void resizeCallback(uint32_t width, uint32_t height) const;

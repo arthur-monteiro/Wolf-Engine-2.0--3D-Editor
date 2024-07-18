@@ -9,7 +9,8 @@ template <typename T>
 class EditorParamArray : public EditorParamInterface
 {
 public:
-	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, bool isActivable = false) : EditorParamInterface(Type::Array, name, tab, category, isActivable)
+	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, bool isActivable = false, bool isReadOnly = false)
+		: EditorParamInterface(Type::Array, name, tab, category, isActivable, isReadOnly)
 	{
 		m_maxSize = maxSize;
 	}
@@ -61,11 +62,15 @@ public:
 		}
 	}
 
+	void clear() { m_value.clear(); }
 	size_t size() const { return m_value.size(); }
 	bool empty() const { return m_value.empty(); }
 	T& operator[](size_t idx) { return m_value[idx]; }
 	T& back() { return m_value.back(); }
 	T& emplace_back() { addValueNoCheck(); return back(); }
+
+	void lockAccessElements() { m_value.lockAccessElements(); }
+	void unlockAccessElements() { m_value.unlockAccessElements(); }
 
 private:
 	uint32_t m_maxSize;
