@@ -25,7 +25,7 @@ public:
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
 
-	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler);
+	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer);
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
 	void addLightToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
@@ -34,7 +34,7 @@ public:
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const;
 
-	virtual void save();
+	virtual void save() const;
 
 	virtual const std::string& getName() const { return m_nameParam; }
 	const std::string& getLoadingPath() const { return m_filepath; }

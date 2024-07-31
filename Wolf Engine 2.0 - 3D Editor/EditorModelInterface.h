@@ -22,7 +22,7 @@ class EditorModelInterface : public ComponentInterface
 public:
 	EditorModelInterface(const glm::mat4& transform);
 
-	void updateBeforeFrame() override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
 	virtual void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) = 0;
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}

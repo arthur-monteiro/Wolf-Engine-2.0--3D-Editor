@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EditorParamArray.h"
+#include "EditorTypesTemplated.h"
 #include "Entity.h"
 #include "MaterialEditor.h"
 #include "Notifier.h"
@@ -14,9 +14,9 @@ public:
 	void activateParams() const override;
 	void fillJSONForParams(std::string& outJSON) override;
 
-	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
+	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer) override;
 
-	void save() override;
+	void save() const override;
 
 	const std::string& getName() const override { return m_name; }
 	std::string computeEscapedLoadingPath() const override { return "materialsListId"; }

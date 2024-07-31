@@ -15,7 +15,7 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount) override;
 
-	void updateBeforeFrame() override {}
+	void updateBeforeFrame(const Wolf::Timer& globalTimer) override {}
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override;
 

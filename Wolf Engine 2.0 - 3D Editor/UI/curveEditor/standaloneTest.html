@@ -1,0 +1,32 @@
+<html>
+  <head>
+  </head>
+  <body oncontextmenu="return false;">
+    <div style="display: none;">
+        <img id='editCurveIcon' src='editCurveIcon.png' width='225' height='225'/>
+    </div>
+    <div id="curveEditorPlaceholder"></div>
+    <input id="curveEditorCustomYInput" type="text" style="display: none;"/>
+
+    <button id="finishEditButton">Finish edit</button>
+
+    <script>
+      function openModalWindow() {}
+      function closeModalWindow() {}
+    </script>
+    <script src="./curveEditor.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", (event) => {
+            let curveEditor = new CurveEditor(256, 256, 50, 50, "curveEditorPlaceholder", "finishEditButton", "curveEditorCustomYInput");
+            curveEditor.addLineExternal(0, curveEditor.getHeight() * 0.05, curveEditor.getWidth() / 2, curveEditor.getHeight() * 0.05, 0);
+            curveEditor.addLineExternal(curveEditor.getWidth() / 2, curveEditor.getHeight() * 0.05, curveEditor.getWidth(), curveEditor.getHeight() * 0.95, 1);
+
+            /*function setToPreview() {
+                curveEditor.setToPreview();
+            }
+
+            document.getElementById("finishEditButton").addEventListener("click", setToPreview.bind(this));*/
+        });
+    </script>
+  </body>
+</html>

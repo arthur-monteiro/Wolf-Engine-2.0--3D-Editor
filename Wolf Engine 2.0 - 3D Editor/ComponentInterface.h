@@ -4,6 +4,7 @@
 
 #include <Debug.h>
 #include <RenderMeshList.h>
+#include <Timer.h>
 
 namespace Wolf
 {
@@ -32,7 +33,7 @@ public:
 	
 	virtual std::string getId() const = 0;
 
-	virtual void updateBeforeFrame() = 0;
+	virtual void updateBeforeFrame(const Wolf::Timer& globalTimer) = 0;
 	virtual void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) = 0;
 	virtual void addDebugInfo(DebugRenderingManager& debugRenderingManager) = 0;
 

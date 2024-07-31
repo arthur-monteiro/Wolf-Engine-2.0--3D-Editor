@@ -30,7 +30,7 @@ EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
 		}));
 }
 
-void EditorModelInterface::updateBeforeFrame()
+void EditorModelInterface::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
 	MatricesUBData mvp;
 	mvp.model = m_transform;

@@ -15,7 +15,7 @@ public:
 	static inline std::string ID = "staticModel";
 	std::string getId() const override { return ID; }
 
-	void updateBeforeFrame() override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
 	void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) override;
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}

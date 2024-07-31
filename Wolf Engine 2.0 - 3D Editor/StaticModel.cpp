@@ -56,9 +56,9 @@ void StaticModel::loadParams(JSONReader& jsonReader)
 	::loadParams(jsonReader, ID, m_modelParams);
 }
 
-void StaticModel::updateBeforeFrame()
+void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
-	EditorModelInterface::updateBeforeFrame();
+	EditorModelInterface::updateBeforeFrame(globalTimer);
 
 	if (m_modelLoadingRequested)
 	{

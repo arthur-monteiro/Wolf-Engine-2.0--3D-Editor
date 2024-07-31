@@ -64,7 +64,7 @@ void MaterialListFakeEntity::fillJSONForParams(std::string& outJSON)
 	outJSON += "}";
 }
 
-void MaterialListFakeEntity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
+void MaterialListFakeEntity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer)
 {
 	m_materials.lockAccessElements();
 
@@ -77,7 +77,7 @@ void MaterialListFakeEntity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf
 	m_materials.unlockAccessElements();
 }
 
-void MaterialListFakeEntity::save()
+void MaterialListFakeEntity::save() const
 {
 	// TODO: save info in .mtl file
 }

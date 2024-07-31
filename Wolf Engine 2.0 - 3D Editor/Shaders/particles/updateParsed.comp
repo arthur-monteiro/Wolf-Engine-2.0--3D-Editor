@@ -1,0 +1,89 @@
+#version 460
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+struct EmitterInfo
+{
+	vec3 directionWithSpeed;
+	uint nextParticleToSpawnIdx;
+
+	vec3 spawnPosition;
+	uint nextParticleToSpawnCount;
+
+	uint particleLifetime;
+	uint emitterIdx;
+	uint nextSpawnTimer;
+	float padding;
+};
+
+const uint MAX_EMITTER_COUNT = 16;
+layout (binding = 0, std140) uniform UniformBuffer
+{
+	uint currentTimer;
+    uvec4 particleCountPerEmitter[MAX_EMITTER_COUNT / 4];
+
+	EmitterInfo emittersInfo[MAX_EMITTER_COUNT];
+} ub;
+
+struct ParticleInfoGPU
+{
+	uint createdTimer;
+	vec3 position;
+	vec3 speed;
+
+	uint emitterIdx;
+	float age;
+};
+
+const uint MAX_TOTAL_PARTICLES = 262144;
+layout(std430, binding = 1) restrict buffer ParticleInfoBufferLayout
+{
+    ParticleInfoGPU particlesInfo[MAX_TOTAL_PARTICLES];
+};
+
+uint getParticleCountForEmitter(uint idx)
+{
+	return ub.particleCountPerEmitter[idx / 4][idx % 4];
+}
+
+void main()
+{
+	uint particleIdx = gl_GlobalInvocationID.x;
+	
+	const uint INVALID_EMITTER_IDX = MAX_EMITTER_COUNT + 1;
+	uint emitterIdx = INVALID_EMITTER_IDX;
+	uint currentParticleCount = 0;
+	for (uint i = 0; i < MAX_EMITTER_COUNT; ++i)
+	{
+		currentParticleCount += getParticleCountForEmitter(i);
+		if (particleIdx < currentParticleCount)
+		{
+			emitterIdx = i;
+			break;
+		}
+	}
+
+	if (emitterIdx == INVALID_EMITTER_IDX)
+		return;
+
+	// Check for particle death
+	if (particlesInfo[particleIdx].createdTimer != 0 && ub.currentTimer - particlesInfo[particleIdx].createdTimer >= ub.emittersInfo[emitterIdx].particleLifetime)
+	{
+		particlesInfo[particleIdx].createdTimer = 0;
+	}
+	
+	// Check for particle birth
+	uint nextParticleToSpawnIdx = ub.emittersInfo[emitterIdx].nextParticleToSpawnIdx;
+	uint lastParticleToSpawnIdx = ub.emittersInfo[emitterIdx].nextParticleToSpawnIdx + ub.emittersInfo[emitterIdx].nextParticleToSpawnCount;
+
+	if (particlesInfo[particleIdx].createdTimer == 0 && particleIdx >= nextParticleToSpawnIdx && particleIdx < lastParticleToSpawnIdx)
+	{
+		particlesInfo[particleIdx].createdTimer = ub.emittersInfo[emitterIdx].nextSpawnTimer + (particleIdx - nextParticleToSpawnIdx) * ub.emittersInfo[emitterIdx].particleLifetime;
+		particlesInfo[particleIdx].position = ub.emittersInfo[emitterIdx].spawnPosition;
+		particlesInfo[particleIdx].emitterIdx = ub.emittersInfo[emitterIdx].emitterIdx;
+	}
+	else if (particlesInfo[particleIdx].createdTimer != 0) // update existing particle
+	{
+		particlesInfo[particleIdx].position += ub.emittersInfo[emitterIdx].directionWithSpeed;
+		particlesInfo[particleIdx].age = float(ub.currentTimer - particlesInfo[particleIdx].createdTimer) / float(ub.emittersInfo[emitterIdx].particleLifetime);
+	}
+}

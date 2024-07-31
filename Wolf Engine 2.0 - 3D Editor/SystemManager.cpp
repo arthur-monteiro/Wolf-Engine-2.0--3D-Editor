@@ -19,6 +19,7 @@ SystemManager::SystemManager()
 	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 
+	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
 	createRenderer();
 	
 	m_entityContainer.reset(new EntityContainer);
@@ -38,8 +39,7 @@ SystemManager::SystemManager()
 			return allEntities[0].createNonOwnerResource();
 		},
 		m_configuration.createNonOwnerResource()));
-	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
-
+	
 	if (!m_configuration->getDefaultScene().empty())
 	{
 		m_loadSceneRequest = m_configuration->getDefaultScene();
@@ -327,15 +327,27 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	outputFile << "{\n";
 
 	// Scene data
-	const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 	outputFile << "\t\"sceneName\":\"" << m_currentSceneName << "\",\n";
-	outputFile << "\t\"entityCount\":" << allEntities.size() << ",\n";
+
+	const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	uint32_t entityCountToSave = 0;
+	for (const ResourceUniqueOwner<Entity>& entity : allEntities)
+	{
+		if (!entity->isFake())
+		{
+			entityCountToSave++;
+		}
+	}
+	outputFile << "\t\"entityCount\":" << entityCountToSave << ",\n";
 
 	// Model infos
 	outputFile << "\t\"entities\": [\n";
 	for (uint32_t i = 0; i < allEntities.size(); ++i)
 	{
 		const ResourceUniqueOwner<Entity>& entity = allEntities[i];
+		if (entity->isFake())
+			continue;
+
 		entity->save();
 
 		outputFile << "\t\t{\n";
@@ -505,11 +517,8 @@ void SystemManager::updateBeforeFrame()
 	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 
 	RenderMeshList& renderList = m_wolfInstance->getRenderMeshList();
-
-	for (const ResourceUniqueOwner<Entity>& entity : allEntities)
+	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		entity->updateBeforeFrame(m_wolfInstance->getInputHandler());
-		entity->updateDuringFrame(m_wolfInstance->getInputHandler()); // TODO: send this to another thread
 		entity->addMeshesToRenderList(renderList);
 		entity->addLightToLightManager(m_lightManager.createNonOwnerResource());
 		entity->addDebugInfo(*m_debugRenderingManager);
@@ -517,10 +526,14 @@ void SystemManager::updateBeforeFrame()
 	m_debugRenderingManager->addMeshesToRenderList(renderList);
 
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
-
 	m_camera->setAspect(m_editorParams->getAspect());
 
 	m_wolfInstance->updateBeforeFrame();
+	for (ResourceUniqueOwner<Entity>& entity : allEntities)
+	{
+		entity->updateBeforeFrame(m_wolfInstance->getInputHandler(), m_wolfInstance->getGlobalTimer());
+		entity->updateDuringFrame(m_wolfInstance->getInputHandler()); // TODO: send this to another thread
+	}
 	m_lightManager->updateBeforeFrame();
 	m_renderer->update(m_wolfInstance.get(), m_lightManager.createNonOwnerResource());
 
@@ -588,7 +601,7 @@ void SystemManager::loadScene()
 
 	addFakeEntities();
 
-	JSONReader jsonReader(m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest));
+	JSONReader jsonReader(JSONReader::FileReadInfo { m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest) });
 
 	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
 	const std::string& sceneName = jsonReader.getRoot()->getPropertyString("sceneName");

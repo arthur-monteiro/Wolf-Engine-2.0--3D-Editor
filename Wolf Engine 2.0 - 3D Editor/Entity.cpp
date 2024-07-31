@@ -16,7 +16,7 @@ void Entity::loadParams(const std::function<ComponentInterface* (const std::stri
 	const std::ifstream inFile(g_editorConfiguration->computeFullPathFromLocalPath(m_filepath));
 	if (inFile.good())
 	{
-		Wolf::JSONReader jsonReader(g_editorConfiguration->computeFullPathFromLocalPath(m_filepath));
+		Wolf::JSONReader jsonReader(Wolf::JSONReader::FileReadInfo { g_editorConfiguration->computeFullPathFromLocalPath(m_filepath) });
 		::loadParams(jsonReader, "entity", m_entityParams);
 
 		const uint32_t componentCount = jsonReader.getRoot()->getPropertyCount();
@@ -71,7 +71,7 @@ std::string Entity::computeEscapedLoadingPath() const
 	return escapedLoadingPath;
 }
 
-void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
+void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer)
 {
 	if (m_requiresInputs)
 	{
@@ -80,7 +80,7 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 		inputHandler->unlockCache(this);
 	}
 
-	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame();)
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame(globalTimer);)
 }
 
 void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
@@ -150,7 +150,7 @@ void Entity::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 	}
 }
 
-void Entity::save()
+void Entity::save() const
 {
 	std::ofstream outFile(g_editorConfiguration->computeFullPathFromLocalPath(m_filepath));
 

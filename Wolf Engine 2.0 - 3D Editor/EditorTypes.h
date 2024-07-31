@@ -4,6 +4,7 @@
 #include <string>
 #include <glm/glm.hpp>
 
+#include <JSONReader.h>
 #include <WolfEngine.h>
 
 namespace ultralight
@@ -29,7 +30,7 @@ public:
 
 	void setCategory(const std::string& category) { m_category = category; }
 
-	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array, Entity, Bool, Enum };
+	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array, Entity, Bool, Enum, Group, Curve };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 	bool isEnabled() const { return !m_isActivable || m_isEnabled; }
@@ -263,4 +264,37 @@ private:
 
 	uint32_t m_value = 0;
 	std::vector<std::string> m_options;
+};
+
+class EditorParamCurve : public EditorParamInterface
+{
+public:
+	EditorParamCurve(const std::string& name, const std::string& tab, const std::string& category, bool isActivable = false, bool isReadOnly = false)
+		: EditorParamInterface(Type::Curve, name, tab, category, isActivable, isReadOnly)
+	{
+		m_lines.resize(1);
+		m_lines[0] = { glm::vec2(0.0f, 0.0f) };
+	}
+	EditorParamCurve(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, bool isActivable = false, bool isReadOnly = false)
+		: EditorParamCurve(name, tab, category, isActivable, isReadOnly)
+	{
+		m_callbackValueChanged = callbackValueChanged;
+	}
+
+	void activate() override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
+
+	void computeValues(std::vector<float>& outValues, uint32_t valueCount) const;
+
+	void loadData(Wolf::JSONReader::JSONObjectInterface* object);
+
+private:
+	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+
+	struct LineData
+	{
+		glm::vec2 startPoint;
+	};
+	std::vector<LineData> m_lines;
+	float m_endPointY = 1.0f;
 };

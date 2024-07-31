@@ -49,7 +49,7 @@ public:
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
-	void updateBeforeFrame() override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
 	void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) override;
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}

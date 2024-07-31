@@ -45,7 +45,7 @@ vec4 computeLighting(MaterialInfo materialInfo)
 {
     if (materialInfo.shadingMode == 0)
     {
-        vec3 albedo = materialInfo.albedo;
+        vec3 albedo = materialInfo.albedo.rgb;
         vec3 normal = materialInfo.normal;
         float roughness = materialInfo.roughness;
         float metalness = materialInfo.metalness;
@@ -100,7 +100,7 @@ void main()
     MaterialInfo materialInfo = fetchMaterial(inTexCoords, inMaterialID, inTBN, computeWorldPosFromViewPos(inViewPos));
 
     if (ubDisplay.displayType == DISPLAY_TYPE_ALBEDO)
-        outColor = vec4(materialInfo.albedo, 1.0);
+        outColor = vec4(materialInfo.albedo.rgb, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_NORMAL)
         outColor = vec4(materialInfo.normal, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_ROUGHNESS)

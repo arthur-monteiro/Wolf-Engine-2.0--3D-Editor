@@ -6,12 +6,13 @@
 #include "MipMapGenerator.h"
 
 MaterialEditor::MaterialEditor(const std::string& tab, const std::string& category, Wolf::MaterialsGPUManager::MaterialCacheInfo& materialCacheInfo)
-	: m_albedoPathParam("Albedo file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_normalPathParam("Normal file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_roughnessParam("Roughness file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_metalnessParam("Metalness file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_aoParam("AO file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_anisoStrengthParam("Aniso Strength file", tab, category, [this]() { onAlbedoChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	: m_albedoPathParam("Albedo file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_normalPathParam("Normal file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_roughnessParam("Roughness file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_metalnessParam("Metalness file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_aoParam("AO file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_anisoStrengthParam("Aniso Strength file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_enableAlpha("Enable alpha",tab, category, [this]() { onTextureChanged(); }),
 	m_shadingMode({ "GGX", "Anisotropic GGX" }, "Shading Mode", tab, category, [this]() { onShadingModeChanged(); }),
 	m_materialCacheInfo(materialCacheInfo)
 {
@@ -36,7 +37,10 @@ void MaterialEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Materi
 
 		if (m_materialCacheInfo.materialInfo->imageNames.empty() || m_materialCacheInfo.materialInfo->imageNames[0] != materialFileInfo.albedo.substr(materialFileInfo.albedo.size() - m_materialCacheInfo.materialInfo->imageNames[0].size()))
 		{
-			Wolf::MaterialLoader materialLoader(materialFileInfo, Wolf::MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE, false);
+			Wolf::MaterialLoader::OutputLayout outputLayout;
+			outputLayout.albedoCompression = m_enableAlpha ? Wolf::ImageCompression::Compression::BC3 : Wolf::ImageCompression::Compression::BC1;
+
+			Wolf::MaterialLoader materialLoader(materialFileInfo, Wolf::MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE, outputLayout, false);
 			m_materialCacheInfo.materialInfo->images[0].reset(materialLoader.releaseImage(0));
 
 			if (m_materialId != 0)
@@ -64,7 +68,7 @@ void MaterialEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount, bo
 	::addParamsToJSON(outJSON, m_materialParams, isLast, tabCount);
 }
 
-void MaterialEditor::onAlbedoChanged()
+void MaterialEditor::onTextureChanged()
 {
 	m_textureChanged = true;
 }

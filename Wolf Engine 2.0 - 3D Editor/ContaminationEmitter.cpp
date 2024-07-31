@@ -69,7 +69,7 @@ void ContaminationEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCou
 	}
 }
 
-void ContaminationEmitter::updateBeforeFrame()
+void ContaminationEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
 	if (m_transferInfoToBufferRequested)
 		transferInfoToBuffer();

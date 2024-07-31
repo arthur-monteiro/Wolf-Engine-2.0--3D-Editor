@@ -9,6 +9,8 @@
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
+#include "Particle.h"
+#include "ParticleEmitter.h"
 #include "PlayerComponent.h"
 #include "PointLight.h"
 #include "StaticModel.h"
@@ -40,7 +42,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 6> m_componentsInfo =
+	std::array<ComponentInfo, 8> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -94,6 +96,24 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new PointLight());
+			}
+		},
+		ComponentInfo
+		{
+			"Particle emitter",
+			ParticleEmitter::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new ParticleEmitter(m_renderingPipeline, m_getEntityFromLoadingPathCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Particle component",
+			Particle::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new Particle(m_materialsGPUManager, m_editorConfiguration));
 			}
 		}
 	};

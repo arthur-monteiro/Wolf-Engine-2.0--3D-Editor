@@ -13,13 +13,15 @@
 
 #include "BindlessDescriptor.h"
 #include "EditorParams.h"
+#include "ParticleUpdatePass.h"
 
 class LightManager;
 
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore) : m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore) {}
+	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdateSemaphore) :
+		m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdateSemaphore) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -69,6 +71,15 @@ private:
 	};
 	std::unique_ptr<Wolf::Buffer> m_pointLightsUniformBuffer;
 
+	/* Particles resources */
+	Wolf::DescriptorSetLayoutGenerator m_particlesDescriptorSetLayoutGenerator;
+	std::unique_ptr<Wolf::DescriptorSetLayout> m_particlesDescriptorSetLayout;
+	std::unique_ptr<Wolf::DescriptorSet> m_particlesDescriptorSet;
+
+	std::unique_ptr<Wolf::ShaderParser> m_particlesVertexShaderParser;
+	std::unique_ptr<Wolf::ShaderParser> m_particlesFragmentShaderParser;
+	std::unique_ptr<Wolf::Pipeline> m_particlesPipeline;
+
 	/* UI resources */
 	Wolf::DescriptorSetLayoutGenerator m_userInterfaceDescriptorSetLayoutGenerator;
 	std::unique_ptr<Wolf::DescriptorSetLayout> m_userInterfaceDescriptorSetLayout;
@@ -82,5 +93,6 @@ private:
 
 	EditorParams* m_editorParams;
 	const Wolf::Semaphore* m_contaminationUpdateSemaphore;
+	Wolf::ResourceNonOwner<const ParticleUpdatePass> m_particlesUpdatePass;
 };
 

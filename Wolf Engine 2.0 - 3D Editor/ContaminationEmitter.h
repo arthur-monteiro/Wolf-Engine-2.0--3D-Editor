@@ -3,7 +3,7 @@
 #include "ComponentInterface.h"
 #include "DescriptorSetLayoutGenerator.h"
 #include "EditorConfiguration.h"
-#include "EditorParamArray.h"
+#include "EditorTypesTemplated.h"
 #include "MaterialEditor.h"
 #include "Notifier.h"
 #include "ShootInfo.h"
@@ -28,7 +28,7 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
-	void updateBeforeFrame() override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override;
 

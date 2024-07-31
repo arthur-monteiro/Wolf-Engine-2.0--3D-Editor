@@ -18,7 +18,7 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
-	void updateBeforeFrame() override {}
+	void updateBeforeFrame(const Wolf::Timer& globalTimer) override {}
 	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
@@ -33,6 +33,5 @@ private:
 	void onContaminationEmitterChanged();
 	EditorParamString m_contaminationEmitterParam = EditorParamString("Contamination Emitter", TAB, "General", [this]() { onContaminationEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
-
-	std::unordered_map<Wolf::PipelineSet*, std::unique_ptr<Wolf::PipelineSet>> m_pipelineSetMapping;
+	std::unordered_map<const Wolf::PipelineSet*, std::unique_ptr<Wolf::PipelineSet>> m_pipelineSetMapping;
 };

@@ -5,7 +5,7 @@
 #include <Debug.h>
 #include <JSONReader.h>
 
-#include "EditorParamArray.h"
+#include "EditorTypesTemplated.h"
 #include "EditorTypes.h"
 
 class DummyParameterGroup : public ParameterGroupInterface
@@ -18,7 +18,7 @@ public:
 	bool hasDefaultName() const override { return false; }
 };
 
-template <typename ArrayItemType = DummyParameterGroup>
+template <typename GroupItemType = DummyParameterGroup>
 inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId, std::span<EditorParamInterface*> params, uint32_t arrayIdx = 0)
 {
 	Wolf::JSONReader::JSONObjectInterface* root = jsonReader.getRoot()->getPropertyObject(objectId);
@@ -87,7 +87,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				const uint32_t count = static_cast<uint32_t>(findParamObject(param->getName())->getPropertyFloat("count"));
 				for (uint32_t itemArrayIdx = 0; itemArrayIdx < count; ++itemArrayIdx)
 				{
-					ArrayItemType& item = static_cast<EditorParamArray<ArrayItemType>*>(param)->emplace_back();
+					GroupItemType& item = static_cast<EditorParamArray<GroupItemType>*>(param)->emplace_back();
 					std::vector<EditorParamInterface*> arrayItemParams;
 					arrayItemParams.assign(item.getAllParams().begin(), item.getAllParams().end());
 					arrayItemParams.push_back(item.getNameParam());
@@ -103,6 +103,21 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					}
 				}
 				break;
+			case EditorParamInterface::Type::Group:
+			{
+				GroupItemType& item = static_cast<EditorParamGroup<GroupItemType>*>(param)->get();
+				std::vector<EditorParamInterface*> arrayItemParams;
+				arrayItemParams.assign(item.getAllParams().begin(), item.getAllParams().end());
+				arrayItemParams.push_back(item.getNameParam());
+				loadParams(jsonReader, objectId, arrayItemParams);
+
+				break;
+			}
+			case EditorParamInterface::Type::Curve:
+			{
+				dynamic_cast<EditorParamCurve*>(param)->loadData(findParamObject(param->getName()));
+				break;
+			}
 			default:
 				Wolf::Debug::sendError("Unsupported type");
 				break;

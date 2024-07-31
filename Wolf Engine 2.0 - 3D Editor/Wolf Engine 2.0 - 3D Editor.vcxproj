@@ -199,7 +199,6 @@
     <ClCompile Include="DebugRenderingManager.cpp" />
     <ClCompile Include="EditorConfiguration.cpp" />
     <ClCompile Include="EditorLightInterface.cpp" />
-    <ClCompile Include="EditorParamArray.cpp" />
     <ClCompile Include="EditorParams.cpp" />
     <ClCompile Include="EditorTypes.cpp" />
     <ClCompile Include="Entity.cpp" />
@@ -209,6 +208,9 @@
     <ClCompile Include="LightManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MaterialListFakeEntity.cpp" />
+    <ClCompile Include="Particle.cpp" />
+    <ClCompile Include="ParticleEmitter.cpp" />
+    <ClCompile Include="ParticleUpdatePass.cpp" />
     <ClCompile Include="RenderingPipeline.cpp" />
     <ClCompile Include="EditorModelInterface.cpp" />
     <ClCompile Include="MaterialEditor.cpp" />
@@ -231,7 +233,7 @@
     <ClInclude Include="DebugRenderingManager.h" />
     <ClInclude Include="EditorConfiguration.h" />
     <ClInclude Include="EditorLightInterface.h" />
-    <ClInclude Include="EditorParamArray.h" />
+    <ClInclude Include="EditorTypesTemplated.h" />
     <ClInclude Include="EditorParams.h" />
     <ClInclude Include="EditorParamsHelper.h" />
     <ClInclude Include="EditorTypes.h" />
@@ -241,6 +243,9 @@
     <ClInclude Include="GameContext.h" />
     <ClInclude Include="LightManager.h" />
     <ClInclude Include="MaterialListFakeEntity.h" />
+    <ClInclude Include="Particle.h" />
+    <ClInclude Include="ParticleEmitter.h" />
+    <ClInclude Include="ParticleUpdatePass.h" />
     <ClInclude Include="RenderingPipeline.h" />
     <ClInclude Include="EditorModelInterface.h" />
     <ClInclude Include="MaterialEditor.h" />

@@ -1,5 +1,7 @@
 #include "EditorTypes.h"
 
+#include "JSONReader.h"
+
 Wolf::WolfEngine* EditorParamInterface::ms_wolfInstance = nullptr;
 
 void EditorParamInterface::setGlobalWolfInstance(Wolf::WolfEngine* wolfInstance)
@@ -69,6 +71,12 @@ std::string EditorParamInterface::getTypeAsString() const
 		case Type::Enum:
 			return "Enum";
 			break;
+		case Type::Group:
+			return "Group";
+			break;
+		case Type::Curve:
+			return "Curve";
+			break;
 		default:
 			Wolf::Debug::sendError("Undefined type");
 			return "Undefined_type";
@@ -84,11 +92,16 @@ std::string EditorParamInterface::formatStringForFunctionName(const std::string&
 		if (character == ' ' || character == '(' || character == ')')
 		{
 			nextCharIsUpper = true;
-			continue;
 		}
-
-		out += nextCharIsUpper ? std::toupper(character) : character;
-		nextCharIsUpper = false;
+		else if (character == '/')
+		{
+			out += "_";
+		}
+		else
+		{
+			out += nextCharIsUpper ? std::toupper(character) : character;
+			nextCharIsUpper = false;
+		}
 	}
 	return out;
 }
@@ -435,6 +448,93 @@ void EditorParamEnum::setValueJSCallback(const ultralight::JSObject& thisObject,
 void EditorParamEnum::setValue(uint32_t value)
 {
 	m_value = value;
+
+	if (m_callbackValueChanged)
+		m_callbackValueChanged();
+}
+
+void EditorParamCurve::activate()
+{
+	EditorParamInterface::activate();
+
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamCurve::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void EditorParamCurve::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+
+	out += tabs + '\t' + R"("lines" : [)" + '\n';
+	for (uint32_t i = 0; i < m_lines.size(); ++i)
+	{
+		const LineData& line = m_lines[i];
+
+		out += tabs + '\t' + '\t' + R"({ "startPointX" : )" + std::to_string(line.startPoint.x) + ", \"startPointY\" : " + std::to_string(line.startPoint.y) + " }";
+		if (i != m_lines.size() - 1)
+			out += ',';
+		out += '\n';
+	}
+	out += tabs + '\t' + "],\n";
+	out += tabs + '\t' + "\"endPointY\" : " + std::to_string(m_endPointY);
+
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamCurve::computeValues(std::vector<float>& outValues, uint32_t valueCount) const
+{
+	outValues.resize(valueCount);
+	for (uint32_t i = 0; i < valueCount; ++i)
+	{
+		float globalX = static_cast<float>(i) / static_cast<float>(valueCount - 1); // -1 to have last value = last point
+
+		for (uint32_t lineIdx = 0; lineIdx < m_lines.size(); ++lineIdx)
+		{
+			float lineStartX = m_lines[lineIdx].startPoint.x;
+			float lineEndX = lineIdx == m_lines.size() - 1 ? 1.0f : m_lines[lineIdx + 1].startPoint.x;
+
+			if (globalX >= lineStartX && globalX <= lineEndX)
+			{
+				float localX = (globalX - lineStartX) / (lineEndX - lineStartX);
+
+				float lineStartY = m_lines[lineIdx].startPoint.y;
+				float lineEndY = lineIdx == m_lines.size() - 1 ? m_endPointY : m_lines[lineIdx + 1].startPoint.y;
+
+				outValues[i] = glm::mix(lineStartY, lineEndY, localX);
+				break;
+			}
+		}
+	}
+}
+
+void EditorParamCurve::loadData(Wolf::JSONReader::JSONObjectInterface* object)
+{
+	uint32_t lineCount = object->getArraySize("lines");
+	m_lines.resize(lineCount);
+
+	for (uint32_t i = 0; i < lineCount; ++i)
+	{
+		Wolf::JSONReader::JSONObjectInterface* lineInfo = object->getArrayObjectItem("lines", i);
+
+		m_lines[i].startPoint = glm::vec2(lineInfo->getPropertyFloat("startPointX"), lineInfo->getPropertyFloat("startPointY"));
+	}
+
+	m_endPointY = object->getPropertyFloat("endPointY");
+}
+
+void EditorParamCurve::setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string jsonValue = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	Wolf::JSONReader jsonReader(Wolf::JSONReader::StringReadInfo { jsonValue });
+
+	loadData(jsonReader.getRoot());
 
 	if (m_callbackValueChanged)
 		m_callbackValueChanged();

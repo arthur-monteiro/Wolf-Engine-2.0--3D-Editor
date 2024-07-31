@@ -30,7 +30,7 @@ public:
 	void setShadingMode(uint32_t shadingMode) { m_shadingMode = shadingMode; }
 
 private:
-	void onAlbedoChanged();
+	void onTextureChanged();
 	void onShadingModeChanged();
 
 	EditorParamString m_albedoPathParam;
@@ -39,10 +39,11 @@ private:
 	EditorParamString m_metalnessParam;
 	EditorParamString m_aoParam;
 	EditorParamString m_anisoStrengthParam;
+	EditorParamBool m_enableAlpha;
 
 	EditorParamEnum m_shadingMode;
 
-	std::array<EditorParamInterface*, 7> m_materialParams =
+	std::array<EditorParamInterface*, 8> m_materialParams =
 	{
 		&m_albedoPathParam,
 		&m_normalPathParam,
@@ -50,6 +51,7 @@ private:
 		&m_metalnessParam,
 		&m_aoParam,
 		&m_anisoStrengthParam,
+		&m_enableAlpha,
 		&m_shadingMode
 	};
 

@@ -28,7 +28,7 @@ layout(std430, binding = 1, set = £CONTAMINATION_DESCRIPTOR_SLOT) readonly restr
 
 struct MaterialInfo
 {
-    vec3 albedo;
+    vec4 albedo;
     vec3 normal;
     float roughness;
     float metalness;
@@ -50,7 +50,7 @@ MaterialInfo internalFetch(in const vec2 texCoords, in uint materialId, in const
 {
     MaterialInfo materialInfo;
 
-    materialInfo.albedo = texture(sampler2D(textures[materialsInfo[materialId].albedoIdx], textureSampler), texCoords).rgb;
+    materialInfo.albedo = texture(sampler2D(textures[materialsInfo[materialId].albedoIdx], textureSampler), texCoords).rgba;
     materialInfo.normal = (texture(sampler2D(textures[materialsInfo[materialId].normalIdx], textureSampler), texCoords).rgb * 2.0 - vec3(1.0)) * matrixTBN;
     vec4 combinedRoughnessMetalnessAOAniso = texture(sampler2D(textures[materialsInfo[materialId].roughnessMetalnessAOIdx], textureSampler), texCoords).rgba;
 	materialInfo.roughness = combinedRoughnessMetalnessAOAniso.r;

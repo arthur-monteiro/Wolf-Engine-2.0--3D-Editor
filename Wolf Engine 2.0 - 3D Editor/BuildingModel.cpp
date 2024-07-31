@@ -109,9 +109,9 @@ void BuildingModel::loadParams(Wolf::JSONReader& jsonReader)
 	::loadParams(jsonReader, ID, m_modelParams);
 }
 
-void BuildingModel::updateBeforeFrame()
+void BuildingModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
-	EditorModelInterface::updateBeforeFrame();
+	EditorModelInterface::updateBeforeFrame(globalTimer);
 
 	if (m_needRebuild)
 	{

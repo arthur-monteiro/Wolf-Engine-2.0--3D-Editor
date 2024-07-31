@@ -32,7 +32,7 @@ void PlayerComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	}
 }
 
-void PlayerComponent::updateBeforeFrame()
+void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
 	if (isShooting())
 	{

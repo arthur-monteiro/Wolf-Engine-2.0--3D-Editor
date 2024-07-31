@@ -28,10 +28,8 @@ ComponentInterface* ComponentInstancier::instanciateComponent(const std::string&
 std::string ComponentInstancier::getAllComponentTypes(const Wolf::ResourceNonOwner<Entity>& selectedEntity) const
 {
 	std::string r = R"({ "components": [)";
-	for (uint32_t i = 0; i < m_componentsInfo.size(); ++i)
+	for (const ComponentInfo& componentInfo : m_componentsInfo)
 	{
-		const ComponentInfo& componentInfo = m_componentsInfo[i];
-
 		// Model interface check
 		if ((componentInfo.id == StaticModel::ID || componentInfo.id == BuildingModel::ID) && selectedEntity->hasModelComponent())
 			continue;

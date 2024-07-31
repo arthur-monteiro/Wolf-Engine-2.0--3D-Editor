@@ -3,12 +3,14 @@
 #include <DebugMarker.h>
 #include <DescriptorSet.h>
 #include <DescriptorSetGenerator.h>
+#include <GraphicCameraInterface.h>
 #include <Image.h>
 
 #include "BuildingModel.h"
 #include "CommonDescriptorLayouts.h"
 #include "GameContext.h"
 #include "EditorModelInterface.h"
+
 #include "LightManager.h"
 #include "Vertex2DTextured.h"
 
@@ -44,6 +46,23 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 
 		m_commonDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_commonDescriptorSetLayout));
 		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+	}
+
+	// Particles resources
+	{
+		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT,   0); // particles buffer
+		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1); // emitters buffer
+		m_particlesDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+
+		DescriptorSetGenerator descriptorSetGenerator(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts());
+		descriptorSetGenerator.setBuffer(0, m_particlesUpdatePass->getParticleBuffer());
+		descriptorSetGenerator.setBuffer(1, m_particlesUpdatePass->getEmittersBuffer());
+
+		m_particlesDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_particlesDescriptorSetLayout));
+		m_particlesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+
+		m_particlesVertexShaderParser.reset(new ShaderParser("Shaders/particles/render.vert", {}, 1));
+		m_particlesFragmentShaderParser.reset(new ShaderParser("Shaders/particles/render.frag", {}, -1, 2));
 	}
 
 	// UI resources
@@ -129,6 +148,14 @@ void ForwardPass::record(const RecordContext& context)
 			{ COMMON_DESCRIPTOR_SET_SLOT, m_commonDescriptorSet.get() }
 		});
 
+	/* Particles */
+	m_commandBuffer->bindPipeline(m_particlesPipeline.get());
+	m_commandBuffer->setViewport(renderViewport);
+	m_commandBuffer->bindDescriptorSet(m_particlesDescriptorSet.get(), 0, *m_particlesPipeline);
+	m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
+	m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
+	m_commandBuffer->draw(m_particlesUpdatePass->getParticleCount() * 6, 1, 0, 0);
+
 	/* UI */
 	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
 	m_commandBuffer->bindDescriptorSet(m_userInterfaceDescriptorSet.get(), 0, *m_userInterfacePipeline);
@@ -144,12 +171,18 @@ void ForwardPass::record(const RecordContext& context)
 
 void ForwardPass::submit(const SubmitContext& context)
 {
-	const std::vector waitSemaphores{ m_contaminationUpdateSemaphore, context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
+	std::vector waitSemaphores{ m_contaminationUpdateSemaphore, context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
+	if (m_particlesUpdatePass->getParticleCount() > 0)
+		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore());
 	const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
 
 	bool anyShaderModified = m_userInterfaceVertexShaderParser->compileIfFileHasBeenModified();
 	if (m_userInterfaceFragmentShaderParser->compileIfFileHasBeenModified())
+		anyShaderModified = true;
+	if (m_particlesVertexShaderParser->compileIfFileHasBeenModified())
+		anyShaderModified = true;
+	if (m_particlesFragmentShaderParser->compileIfFileHasBeenModified())
 		anyShaderModified = true;
 
 	if (anyShaderModified)
@@ -217,6 +250,36 @@ void ForwardPass::initializeFramesBuffers(const InitializationContext& context, 
 
 void ForwardPass::createPipelines()
 {
+	// Particles
+	{
+		RenderingPipelineCreateInfo pipelineCreateInfo;
+		pipelineCreateInfo.renderPass = m_renderPass.get();
+
+		// Programming stages
+		pipelineCreateInfo.shaderCreateInfos.resize(2);
+		m_particlesVertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);
+		pipelineCreateInfo.shaderCreateInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		m_particlesFragmentShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[1].shaderCode);
+		pipelineCreateInfo.shaderCreateInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		// Viewport
+		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
+
+		// Rasterization
+		pipelineCreateInfo.cullMode = VK_CULL_MODE_NONE;
+
+		// Resources
+		pipelineCreateInfo.descriptorSetLayouts = { m_particlesDescriptorSetLayout.get(), GraphicCameraInterface::getDescriptorSetLayout(), MaterialsGPUManager::getDescriptorSetLayout() };
+
+		// Color Blend
+		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
+
+		// Dynamic state
+		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+
+		m_particlesPipeline.reset(Pipeline::createRenderingPipeline(pipelineCreateInfo));
+	}
+
 	// UI
 	{
 		RenderingPipelineCreateInfo pipelineCreateInfo;

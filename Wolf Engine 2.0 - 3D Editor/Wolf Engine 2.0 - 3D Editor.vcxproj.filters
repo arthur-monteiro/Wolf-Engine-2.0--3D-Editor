@@ -75,9 +75,6 @@
     <ClCompile Include="ParameterGroupInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EditorParamArray.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ContaminationReceiver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -103,6 +100,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MaterialListFakeEntity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleEmitter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Particle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleUpdatePass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -170,7 +176,7 @@
     <ClInclude Include="ParameterGroupInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="EditorParamArray.h">
+    <ClInclude Include="EditorTypesTemplated.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ContaminationReceiver.h">
@@ -201,6 +207,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MaterialListFakeEntity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleEmitter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Particle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleUpdatePass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
