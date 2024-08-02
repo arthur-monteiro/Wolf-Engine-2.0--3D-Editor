@@ -59,7 +59,9 @@ void main()
 		return;
 	}
 
-	vec3 worldPos = quadVertices[vertexIdx] + particlesInfo[particleIdx].position;
+	mat3 invViewRot = inverse(mat3(getViewMatrix()));
+	vec3 worldPos = particlesInfo[particleIdx].position + invViewRot * quadVertices[vertexIdx];
+
 	vec4 viewPos = getViewMatrix() * vec4(worldPos, 1.0);
 
     gl_Position = getProjectionMatrix() * viewPos;

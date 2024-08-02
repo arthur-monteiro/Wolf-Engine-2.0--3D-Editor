@@ -257,6 +257,7 @@ public:
 
 	EditorParamEnum& operator=(uint32_t value) { setValue(value); return *this; }
 	operator uint32_t& () { return m_value; }
+	operator uint32_t () const { return m_value; }
 
 private:
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);

@@ -5,9 +5,11 @@
 #include "Particle.h"
 #include "ParticleUpdatePass.h"
 
-ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback) :
+ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback) :
 	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
+	m_requestReloadCallback = requestReloadCallback;
+
 	m_maxParticleCount = 1;
 	m_delayBetweenTwoParticles = 1.0f;
 	m_direction = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -20,25 +22,20 @@ ParticleEmitter::~ParticleEmitter()
 
 void ParticleEmitter::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_editorParams);
+	::loadParams(jsonReader, ID, m_allEditorParams);
 
 	m_particleUpdatePass->registerEmitter(this);
 }
 
 void ParticleEmitter::activateParams()
 {
-	for (EditorParamInterface* editorParam : m_editorParams)
-	{
-		editorParam->activate();
-	}
+	std::string unused;
+	forAllVisibleParams([](EditorParamInterface* e, std::string&) { e->activate(); }, unused);
 }
 
 void ParticleEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
-	for (const EditorParamInterface* editorParam : m_editorParams)
-	{
-		editorParam->addToJSON(outJSON, tabCount, false);
-	}
+	forAllVisibleParams([tabCount](EditorParamInterface* e, std::string& inOutJSON) mutable  { e->addToJSON(inOutJSON, tabCount, false); }, outJSON);
 }
 
 void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
@@ -65,12 +62,102 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 	}
 }
 
+glm::vec3 ParticleEmitter::getSpawnPosition() const
+{
+	switch (static_cast<uint32_t>(m_spawnShape))
+	{
+		case CYLINDER_SHAPE:
+			return m_spawnCylinderCenterPosition;
+		case BOX_SHAPE:
+			return m_spawnBoxCenterPosition;
+		default:
+			Wolf::Debug::sendError("Undefined spawn shape");
+	}
+
+	return glm::vec3(0.0f);
+}
+
+uint32_t ParticleEmitter::getSpawnShape() const
+{
+	return m_spawnShape;
+}
+
+float ParticleEmitter::getSpawnShapeRadiusRadiusOrWidth() const
+{
+	switch (static_cast<uint32_t>(m_spawnShape))
+	{
+	case CYLINDER_SHAPE:
+		return m_spawnCylinderRadius;
+	case BOX_SHAPE:
+		return m_spawnBoxWidth;
+	default:
+		Wolf::Debug::sendError("Undefined spawn shape");
+	}
+
+	return 0.0f;
+}
+
+float ParticleEmitter::getSpawnShapeHeight() const
+{
+	switch (static_cast<uint32_t>(m_spawnShape))
+	{
+	case CYLINDER_SHAPE:
+		return m_spawnCylinderHeight;
+	case BOX_SHAPE:
+		return m_spawnBoxHeight;
+	default:
+		Wolf::Debug::sendError("Undefined spawn shape");
+	}
+
+	return 0.0f;
+}
+
+float ParticleEmitter::getSpawnBoxDepth() const
+{
+	return m_spawnBoxDepth;
+}
+
+void ParticleEmitter::forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString)
+{
+	for (EditorParamInterface* editorParam : m_alwaysVisibleEditorParams)
+	{
+		callback(editorParam, inOutString);
+	}
+
+	// Shape specific params
+	switch (static_cast<uint32_t>(m_spawnShape))
+	{
+	case CYLINDER_SHAPE:
+	{
+		for (EditorParamInterface* editorParam : m_spawnShapeCylinderParams)
+		{
+			callback(editorParam, inOutString);
+		}
+		break;
+	}
+		case BOX_SHAPE:
+		for (EditorParamInterface* editorParam : m_spawnShapeBoxParams)
+		{
+			callback(editorParam, inOutString);
+		}
+		break;
+	default:
+		Wolf::Debug::sendError("Undefined spawn shape");
+		break;
+	}
+}
+
 void ParticleEmitter::updateNormalizedDirection()
 {
 	if (static_cast<glm::vec3>(m_direction) != glm::vec3(0.0f))
 	{
 		m_normalizedDirection = glm::normalize(static_cast<glm::vec3>(m_direction));
 	}
+}
+
+void ParticleEmitter::onParticleSizeChanged()
+{
+	m_particleUpdatePass->updateEmitter(this);
 }
 
 void ParticleEmitter::onParticleOpacityChanged()

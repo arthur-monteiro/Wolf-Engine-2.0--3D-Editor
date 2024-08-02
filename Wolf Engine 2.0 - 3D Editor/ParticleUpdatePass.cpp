@@ -1,5 +1,7 @@
 #include "ParticleUpdatePass.h"
 
+#include <random>
+
 #include "DebugMarker.h"
 #include "Pipeline.h"
 
@@ -14,14 +16,17 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	m_emitterDrawInfoBuffer.reset(Wolf::Buffer::createBuffer(MAX_EMITTER_COUNT * sizeof(EmitterDrawInfo), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 
 	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(UniformBufferData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	createNoiseBuffer();
 
 	m_descriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 0);
 	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 1);
+	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 2);
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 	descriptorSetGenerator.setBuffer(0, *m_uniformBuffer);
 	descriptorSetGenerator.setBuffer(1, *m_particlesBuffer);
+	descriptorSetGenerator.setBuffer(2, *m_noiseBuffer);
 
 	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -105,7 +110,13 @@ void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer)
 
 		EmitterUpdateInfo& emitterInfo = uniformBufferData.emittersInfo[i];
 		emitterInfo.directionWithSpeed = emitter->getDirection() * emitter->getSpeed() * (static_cast<float>(globalTimer.getElapsedTimeSinceLastUpdateInMs()) / 1000.0f);
+
 		emitterInfo.spawnPosition = emitter->getSpawnPosition();
+		emitterInfo.spawnShape = emitter->getSpawnShape();
+		emitterInfo.spawnShapeRadiusOrWidth = emitter->getSpawnShapeRadiusRadiusOrWidth();
+		emitterInfo.spawnShapeHeight = emitter->getSpawnShapeHeight();
+		emitterInfo.spawnBoxDepth = emitter->getSpawnBoxDepth();
+
 		emitterInfo.particleLifetime = emitter->getLifetimeInMs();
 		emitterInfo.emitterIdx = i;
 		if (emitter->getNextSpawnTimerInMs() > std::numeric_limits<uint32_t>::max())
@@ -181,4 +192,19 @@ void ParticleUpdatePass::createPipeline()
 	std::vector<Wolf::ResourceReference<const Wolf::DescriptorSetLayout>> descriptorSetLayouts = { m_descriptorSetLayout.createConstNonOwnerResource() };
 
 	m_computePipeline.reset(Wolf::Pipeline::createComputePipeline(computeShaderInfo, descriptorSetLayouts));
+}
+
+void ParticleUpdatePass::createNoiseBuffer()
+{
+	static std::default_random_engine generator;
+	static std::uniform_real_distribution distrib(0.0f, 1.0f);
+
+	float randomData[NOISE_POINT_COUNT];
+	for (float& random : randomData)
+	{
+		random = distrib(generator);
+	}
+
+	m_noiseBuffer.reset(Wolf::Buffer::createBuffer(NOISE_POINT_COUNT * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+	m_noiseBuffer->transferCPUMemoryWithStagingBuffer(randomData, NOISE_POINT_COUNT * sizeof(float));
 }

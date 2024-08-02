@@ -104,7 +104,7 @@ private:
 			ParticleEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ParticleEmitter(m_renderingPipeline, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new ParticleEmitter(m_renderingPipeline, m_getEntityFromLoadingPathCallback, m_requestReloadCallback));
 			}
 		},
 		ComponentInfo

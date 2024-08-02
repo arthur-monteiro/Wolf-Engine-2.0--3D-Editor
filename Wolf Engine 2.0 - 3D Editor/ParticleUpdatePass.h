@@ -28,8 +28,10 @@ public:
 	void updateEmitter(const ParticleEmitter* emitter);
 
 private:
-	void addEmitterInfoUpdate(const ParticleEmitter* emitter, uint32_t emitterIdx);
 	void createPipeline();
+	void createNoiseBuffer();
+
+	void addEmitterInfoUpdate(const ParticleEmitter* emitter, uint32_t emitterIdx);
 
 	Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_computeShaderParser;
 	Wolf::ResourceUniqueOwner<Wolf::Pipeline> m_computePipeline;
@@ -75,6 +77,11 @@ private:
 		glm::vec3 spawnPosition;
 		uint32_t nextParticleToSpawnCount;
 
+		uint32_t spawnShape;
+		float spawnShapeRadiusOrWidth;
+		float spawnShapeHeight;
+		float spawnBoxDepth;
+
 		uint32_t particleLifetime;
 		uint32_t emitterIdx;
 		uint32_t nextSpawnTimer;
@@ -87,11 +94,16 @@ private:
 		glm::vec3 padding;
 
 		uint32_t particleCountPerEmitter[MAX_EMITTER_COUNT];
-		static_assert(sizeof(uint32_t) * MAX_EMITTER_COUNT % sizeof(glm::vec4) == 0);
+		static_assert((sizeof(uint32_t) * MAX_EMITTER_COUNT) % sizeof(glm::vec4) == 0);
 
 		EmitterUpdateInfo emittersInfo[MAX_EMITTER_COUNT];
+		static_assert(sizeof(EmitterUpdateInfo) % sizeof(glm::vec4) == 0);
 	};
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_uniformBuffer;
+
+	// Noise
+	static constexpr uint32_t NOISE_POINT_COUNT = 1024;
+	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_noiseBuffer;
 
 	uint32_t m_particleCount = 0;
 

@@ -1,6 +1,11 @@
 #version 460
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
+const float PI = 3.141592653589793;
+
+const uint CYLINDER_SHAPE = 0;
+const uint BOX_SHAPE = 1;
+
 struct EmitterInfo
 {
 	vec3 directionWithSpeed;
@@ -8,6 +13,11 @@ struct EmitterInfo
 
 	vec3 spawnPosition;
 	uint nextParticleToSpawnCount;
+
+	uint spawnShape;
+	float spawnShapeRadiusOrWidth;
+	float spawnShapeHeight;
+	float spawnBoxDepth;
 
 	uint particleLifetime;
 	uint emitterIdx;
@@ -39,6 +49,17 @@ layout(std430, binding = 1) restrict buffer ParticleInfoBufferLayout
 {
     ParticleInfoGPU particlesInfo[MAX_TOTAL_PARTICLES];
 };
+
+const uint NOISE_POINT_COUNT = 1024;
+layout(std430, binding = 2) restrict buffer NoiseBufferLayout
+{
+    float noise[NOISE_POINT_COUNT];
+};
+
+float getRandomFloat(uint offset)
+{
+	return noise[(gl_GlobalInvocationID.x + offset) % NOISE_POINT_COUNT];
+}
 
 uint getParticleCountForEmitter(uint idx)
 {
@@ -78,8 +99,23 @@ void main()
 	if (particlesInfo[particleIdx].createdTimer == 0 && particleIdx >= nextParticleToSpawnIdx && particleIdx < lastParticleToSpawnIdx)
 	{
 		particlesInfo[particleIdx].createdTimer = ub.emittersInfo[emitterIdx].nextSpawnTimer + (particleIdx - nextParticleToSpawnIdx) * ub.emittersInfo[emitterIdx].particleLifetime;
-		particlesInfo[particleIdx].position = ub.emittersInfo[emitterIdx].spawnPosition;
 		particlesInfo[particleIdx].emitterIdx = ub.emittersInfo[emitterIdx].emitterIdx;
+
+		// Spawn position
+		vec3 spawnPosition = vec3(0.0f);
+		if (ub.emittersInfo[emitterIdx].spawnShape == CYLINDER_SHAPE)
+		{
+			float angle = getRandomFloat(0) * 2.0f * PI;
+			float distanceFromCenter = getRandomFloat(1) * ub.emittersInfo[emitterIdx].spawnShapeRadiusOrWidth;
+			float height = getRandomFloat(2) * ub.emittersInfo[emitterIdx].spawnShapeHeight - ub.emittersInfo[emitterIdx].spawnShapeHeight * 0.5f;
+
+			spawnPosition = vec3(distanceFromCenter * cos(angle), height, distanceFromCenter * sin(angle)) + ub.emittersInfo[emitterIdx].spawnPosition;
+		}
+		else if (ub.emittersInfo[emitterIdx].spawnShape == BOX_SHAPE)
+		{
+
+		}
+		particlesInfo[particleIdx].position = spawnPosition;
 	}
 	else if (particlesInfo[particleIdx].createdTimer != 0) // update existing particle
 	{

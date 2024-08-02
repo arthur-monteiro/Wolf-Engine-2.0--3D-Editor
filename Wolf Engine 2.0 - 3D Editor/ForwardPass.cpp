@@ -272,7 +272,10 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.descriptorSetLayouts = { m_particlesDescriptorSetLayout.get(), GraphicCameraInterface::getDescriptorSetLayout(), MaterialsGPUManager::getDescriptorSetLayout() };
 
 		// Color Blend
-		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
+		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ADD };
+
+		// Depth testing
+		pipelineCreateInfo.enableDepthWrite = false;
 
 		// Dynamic state
 		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
