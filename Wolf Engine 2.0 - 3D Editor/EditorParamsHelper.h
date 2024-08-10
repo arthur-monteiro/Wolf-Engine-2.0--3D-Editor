@@ -24,13 +24,13 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 	Wolf::JSONReader::JSONObjectInterface* root = jsonReader.getRoot()->getPropertyObject(objectId);
 	const uint32_t paramCount = root->getArraySize("params");
 
-	auto findParamObject = [&root, paramCount, arrayIdx](const std::string& paramName)
+	auto findParamObject = [&root, paramCount, arrayIdx](const std::string& paramName, const std::string& paramCategory)
 		{
 			uint32_t paramFoundCount = 0;
 			for (uint32_t i = 0; i < paramCount; ++i)
 			{
 				Wolf::JSONReader::JSONObjectInterface* paramObject = root->getArrayObjectItem("params", i);
-				if (paramObject->getPropertyString("name") == paramName)
+				if (paramObject->getPropertyString("name") == paramName && (paramCategory.empty() || paramObject->getPropertyString("category") == paramCategory))
 				{
 					if (paramFoundCount == arrayIdx)
 						return paramObject;
@@ -41,13 +41,34 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			return static_cast<Wolf::JSONReader::JSONObjectInterface*>(nullptr);
 		};
 
+	// First change category depending on strings driving category name
+	bool stringDrivingCategoryNameAlreadyFound = false;
+	for (EditorParamInterface* param : params)
+	{
+		if (param->getType() == EditorParamInterface::Type::String)
+		{
+			if (dynamic_cast<EditorParamString*>(param)->drivesCategoryName())
+			{
+				if (stringDrivingCategoryNameAlreadyFound)
+				{
+					Wolf::Debug::sendError("Only one string driving category name can be there, otherwise we can't know which string needs which value");
+				}
+				else if(Wolf::JSONReader::JSONObjectInterface * object = findParamObject(param->getName(), ""))
+				{
+					*dynamic_cast<EditorParamString*>(param) = object->getPropertyString("value"); // will call callbacks changing the category for all properties concerned
+				}
+				stringDrivingCategoryNameAlreadyFound = true;
+			}
+		}
+	}
+
 	for (EditorParamInterface* param : params)
 	{
 		switch (param->getType()) 
 		{
 			case EditorParamInterface::Type::Float:
 				{
-					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
 						*dynamic_cast<EditorParamFloat*>(param) = object->getPropertyFloat("value");
 					}
@@ -55,18 +76,18 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				break;
 			case EditorParamInterface::Type::UInt:
 				{
-					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
 						*dynamic_cast<EditorParamUInt*>(param) = static_cast<uint32_t>(object->getPropertyFloat("value"));
 					}
 				}
 				break;
 			case EditorParamInterface::Type::Vector2:
-				*static_cast<EditorParamVector2*>(param) = glm::vec2(findParamObject(param->getName())->getPropertyFloat("valueX"), findParamObject(param->getName())->getPropertyFloat("valueY"));
+				*static_cast<EditorParamVector2*>(param) = glm::vec2(findParamObject(param->getName(), param->getCategory())->getPropertyFloat("valueX"), findParamObject(param->getName(), param->getCategory())->getPropertyFloat("valueY"));
 				break;
 			case EditorParamInterface::Type::Vector3:
 				{
-					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
 						*dynamic_cast<EditorParamVector3*>(param) = glm::vec3(object->getPropertyFloat("valueX"), object->getPropertyFloat("valueY"), object->getPropertyFloat("valueZ"));
 					}
@@ -76,7 +97,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			case EditorParamInterface::Type::File:
 			case EditorParamInterface::Type::Entity:
 				{
-					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
 						*dynamic_cast<EditorParamString*>(param) = object->getPropertyString("value");
 					}
@@ -84,7 +105,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				break;
 			case EditorParamInterface::Type::Array:
 			{
-				const uint32_t count = static_cast<uint32_t>(findParamObject(param->getName())->getPropertyFloat("count"));
+				const uint32_t count = static_cast<uint32_t>(findParamObject(param->getName(), param->getCategory())->getPropertyFloat("count"));
 				for (uint32_t itemArrayIdx = 0; itemArrayIdx < count; ++itemArrayIdx)
 				{
 					GroupItemType& item = static_cast<EditorParamArray<GroupItemType>*>(param)->emplace_back();
@@ -97,7 +118,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			}
 			case EditorParamInterface::Type::Bool:
 				{
-					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName()))
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
 						*dynamic_cast<EditorParamBool*>(param) = object->getPropertyBool("value");
 					}
@@ -115,7 +136,18 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			}
 			case EditorParamInterface::Type::Curve:
 			{
-				dynamic_cast<EditorParamCurve*>(param)->loadData(findParamObject(param->getName()));
+				if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
+				{
+					dynamic_cast<EditorParamCurve*>(param)->loadData(object);
+				}
+				break;
+			}
+			case EditorParamInterface::Type::Enum:
+			{
+				if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
+				{
+					*dynamic_cast<EditorParamEnum*>(param) = static_cast<uint32_t>(object->getPropertyFloat("value"));
+				}
 				break;
 			}
 			default:

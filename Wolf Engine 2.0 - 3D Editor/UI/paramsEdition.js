@@ -225,22 +225,22 @@ function computeInput(param, isLast) {
 		htmlToAdd += "</select>";
     }
     else if (param.type == "Curve") {
-        htmlToAdd += param.name + ": <div id='curveEditorPlaceholder'></div>";
+        htmlToAdd += param.name + ": <div id='curveEditorPlaceholder" + nameForCallback + "'></div>";
 
-        htmlToAdd += "<div id='closeButton' onclick='setToPreview()' style='cursor: pointer'><div style='display: block; transform: translate(-1px, -5px); font: message-box;'>X</div></div>";
+        htmlToAdd += "<div class='closeButton' id='closeButton" + nameForCallback + "' onclick='setToPreview" + nameForCallback + "()' style='cursor: pointer'><div style='display: block; transform: translate(-1px, -5px); font: message-box;'>X</div></div>";
 
         // Add script to create the curve editor here to be sure it's executed when div is created
         htmlToAdd += "<script>";
-        htmlToAdd += "var curveEditor = new CurveEditor(256, 256, 50, 50, 'curveEditorPlaceholder', 'closeButton', 'curveEditorCustomYInput', change" + nameForCallback + ");";
+        htmlToAdd += "var curveEditor" + nameForCallback + " = new CurveEditor(256, 256, 50, 50, 'curveEditorPlaceholder" + nameForCallback + "', 'closeButton" + nameForCallback + "', 'curveEditorCustomYInput', change" + nameForCallback + ");";
         for (let i = 0; i < param.lines.length; ++i) {
             let isLast = i == param.lines.length - 1;
 
-            htmlToAdd += "curveEditor.addLineExternal((" + param.lines[i].startPointX + " * curveEditor.getWidth()), (curveEditor.getHeight() - (" + param.lines[i].startPointY + " * curveEditor.getHeight())), " 
-                + (isLast ? ("curveEditor.getWidth(), " + "(curveEditor.getHeight() - (" + param.endPointY + "* curveEditor.getHeight()))") 
-                    : "(" + (param.lines[i + 1].startPointX + " * curveEditor.getWidth()), (curveEditor.getHeight() - " + param.lines[i + 1].startPointY + " * curveEditor.getHeight())")) + ", " + i + ");";
+            htmlToAdd += "curveEditor" + nameForCallback + ".addLineExternal((" + param.lines[i].startPointX + " * curveEditor" + nameForCallback + ".getWidth()), (curveEditor" + nameForCallback + ".getHeight() - (" + param.lines[i].startPointY + " * curveEditor" + nameForCallback + ".getHeight())), " 
+                + (isLast ? ("curveEditor" + nameForCallback + ".getWidth(), " + "(curveEditor" + nameForCallback + ".getHeight() - (" + param.endPointY + "* curveEditor" + nameForCallback + ".getHeight()))") 
+                    : "(" + (param.lines[i + 1].startPointX + " * curveEditor" + nameForCallback + ".getWidth()), (curveEditor" + nameForCallback + ".getHeight() - " + param.lines[i + 1].startPointY + " * curveEditor" + nameForCallback + ".getHeight())")) + ", " + i + ");";
         }
-        htmlToAdd += "function setToPreview() { curveEditor.setToPreview(); }\n";
-        htmlToAdd += "animationsInstances.push(curveEditor);";
+        htmlToAdd += "function setToPreview" + nameForCallback + "() { curveEditor" + nameForCallback + ".setToPreview(); }\n";
+        htmlToAdd += "animationsInstances.push(curveEditor" + nameForCallback + ");";
         htmlToAdd += "</script>";        
     }
 

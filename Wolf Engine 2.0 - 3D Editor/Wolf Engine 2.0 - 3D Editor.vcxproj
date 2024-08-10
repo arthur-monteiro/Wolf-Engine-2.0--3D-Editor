@@ -220,6 +220,7 @@
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="RenderingPipelineInterface.cpp" />
     <ClCompile Include="StaticModel.cpp" />
+    <ClCompile Include="SkyLight.cpp" />
     <ClCompile Include="SystemManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -256,6 +257,7 @@
     <ClInclude Include="RenderingPipelineInterface.h" />
     <ClInclude Include="ShootInfo.h" />
     <ClInclude Include="StaticModel.h" />
+    <ClInclude Include="SkyLight.h" />
     <ClInclude Include="SystemManager.h" />
     <ClInclude Include="Vertex2DTextured.h" />
   </ItemGroup>

@@ -6,6 +6,9 @@ Particle::Particle(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& mate
 	m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration)
 {
 	m_particleMaterial.get().subscribe(this, [this]() { notifySubscribers(); });
+
+	m_flipBookSizeX = 1;
+	m_flipBookSizeY = 1;
 }
 
 void Particle::loadParams(Wolf::JSONReader& jsonReader)

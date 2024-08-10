@@ -329,6 +329,15 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	// Scene data
 	outputFile << "\t\"sceneName\":\"" << m_currentSceneName << "\",\n";
 
+	// Camera
+	outputFile << "\t\"defaultCamera\": {\n";
+	outputFile << "\t\t\"posX\": " << m_camera->getPosition().x << ",\n";
+	outputFile << "\t\t\"posY\": " << m_camera->getPosition().y << ",\n";
+	outputFile << "\t\t\"posZ\": " << m_camera->getPosition().z << ",\n";
+	outputFile << "\t\t\"phi\": " << m_camera->getPhi() << ",\n";
+	outputFile << "\t\t\"theta\": " << m_camera->getTheta() << "\n";
+	outputFile << "\t},\n";
+
 	const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 	uint32_t entityCountToSave = 0;
 	for (const ResourceUniqueOwner<Entity>& entity : allEntities)
@@ -603,8 +612,24 @@ void SystemManager::loadScene()
 
 	JSONReader jsonReader(JSONReader::FileReadInfo { m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest) });
 
-	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
 	const std::string& sceneName = jsonReader.getRoot()->getPropertyString("sceneName");
+
+	// Camera
+	if (JSONReader::JSONObjectInterface* cameraObject = jsonReader.getRoot()->getPropertyObject("defaultCamera"))
+	{
+		float posX = cameraObject->getPropertyFloat("posX");
+		float posY = cameraObject->getPropertyFloat("posY");
+		float posZ = cameraObject->getPropertyFloat("posZ");
+
+		float phi = cameraObject->getPropertyFloat("phi");
+		float theta = cameraObject->getPropertyFloat("theta");
+
+		m_camera->setPosition(glm::vec3(posX, posY, posZ));
+		m_camera->setPhi(phi);
+		m_camera->setTheta(theta);
+	}
+
+	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
 	for(uint32_t entityIdx = 0; entityIdx < entityCount; entityIdx++)
 	{
 		JSONReader::JSONObjectInterface* entityObject = jsonReader.getRoot()->getArrayObjectItem("entities", entityIdx);

@@ -26,6 +26,8 @@ public:
 	bool requiresInputs() const override { return false; }
 
 	uint32_t getMaterialIdx() const { return m_particleMaterial.get().getMaterialIdx();	}
+	uint32_t getFlipBookSizeX() const { return m_flipBookSizeX; }
+	uint32_t getFlipBookSizeY() const { return m_flipBookSizeY; }
 
 private:
 	inline static const std::string TAB = "Particle";
@@ -55,9 +57,13 @@ private:
 	};
 
 	EditorParamGroup<ParticleMaterial> m_particleMaterial = EditorParamGroup<ParticleMaterial>("Particle material", TAB, "Material");
+	EditorParamUInt m_flipBookSizeX = EditorParamUInt("Flip book size X", TAB, "Material", 1, 8, [this]() { notifySubscribers(); });
+	EditorParamUInt m_flipBookSizeY = EditorParamUInt("Flip book size Y", TAB, "Material", 1, 8, [this]() { notifySubscribers(); });
 
-	std::array<EditorParamInterface*, 1> m_editorParams =
+	std::array<EditorParamInterface*, 3> m_editorParams =
 	{
-		&m_particleMaterial
+		&m_particleMaterial,
+		&m_flipBookSizeX,
+		&m_flipBookSizeY
 	};
 };

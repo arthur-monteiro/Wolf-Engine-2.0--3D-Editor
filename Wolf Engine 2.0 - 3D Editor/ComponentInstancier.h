@@ -13,6 +13,7 @@
 #include "ParticleEmitter.h"
 #include "PlayerComponent.h"
 #include "PointLight.h"
+#include "SkyLight.h"
 #include "StaticModel.h"
 
 class RenderingPipelineInterface;
@@ -42,7 +43,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 8> m_componentsInfo =
+	std::array<ComponentInfo, 9> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -114,6 +115,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new Particle(m_materialsGPUManager, m_editorConfiguration));
+			}
+		},
+		ComponentInfo
+		{
+			"Sky light",
+			SkyLight::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new SkyLight());
 			}
 		}
 	};

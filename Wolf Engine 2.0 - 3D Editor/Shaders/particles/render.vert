@@ -2,12 +2,13 @@
 
 struct ParticleInfoGPU
 {
-	uint createdFrameIdx;
 	vec3 position;
-	vec3 speed;
+	uint createdFrameIdx;
 
 	uint emitterIdx;
 	float age;
+	float orientationAngle;
+	float sizeMultiplier;
 };
 
 const uint MAX_TOTAL_PARTICLES = 262144;
@@ -16,6 +17,8 @@ layout(std430, set = 0, binding = 0) restrict buffer ParticleInfoBufferLayout
     ParticleInfoGPU particlesInfo[MAX_TOTAL_PARTICLES];
 };
  
+#include "particleBuffer.glsl"
+
 out gl_PerVertex
 {
     vec4 gl_Position;
@@ -28,13 +31,13 @@ layout(location = 5) out float outAge;
 
 vec3 quadVertices[6] = 
 { 
-	vec3(0.0f, 0.0f, 0.0f), // bot left
-	vec3(1.0f, 0.0f, 0.0f), // bot right
-	vec3(0.0f, 1.0f, 0.0f), // top left
+	vec3(-0.5f, -0.5f, 0.0f), // bot left
+	vec3(0.5f, -0.5f, 0.0f), // bot right
+	vec3(-0.5f, 0.5f, 0.0f), // top left
 
-	vec3(0.0f, 1.0f, 0.0f), // top left
-	vec3(1.0f, 0.0f, 0.0f), // bot right
-	vec3(1.0f, 1.0f, 0.0f)  // top right
+	vec3(-0.5f, 0.5f, 0.0f), // top left
+	vec3(0.5f, -0.5f, 0.0f), // bot right
+	vec3(0.5f, 0.5f, 0.0f)  // top right
 };
 
 vec2 quadTexCoords[6] =
@@ -59,8 +62,31 @@ void main()
 		return;
 	}
 
+	// Size
+	float sizeIdxFloat = particlesInfo[particleIdx].age * SIZE_VALUE_COUNT;
+    uint firstSizeIdx = uint(trunc(sizeIdxFloat));
+    float lerpValue = sizeIdxFloat - float(firstSizeIdx);
+
+    if (firstSizeIdx == SIZE_VALUE_COUNT - 1)
+    {
+        firstSizeIdx--;
+        lerpValue = 1.0f;
+    }
+
+    float firstSize = emitterDrawInfo[particlesInfo[particleIdx].emitterIdx].size[firstSizeIdx];
+    float nextSize = emitterDrawInfo[particlesInfo[particleIdx].emitterIdx].size[firstSizeIdx + 1];
+
+    float size = mix(firstSize, nextSize, lerpValue) * particlesInfo[particleIdx].sizeMultiplier;
+
+	// Orientation
+	mat3 orientationMatrix = mat3(cos(particlesInfo[particleIdx].orientationAngle), - sin(particlesInfo[particleIdx].orientationAngle), 0,
+		sin(particlesInfo[particleIdx].orientationAngle), cos(particlesInfo[particleIdx].orientationAngle), 0,
+		0, 0, 1);
+
+	vec3 vertex = orientationMatrix * quadVertices[vertexIdx];
+
 	mat3 invViewRot = inverse(mat3(getViewMatrix()));
-	vec3 worldPos = particlesInfo[particleIdx].position + invViewRot * quadVertices[vertexIdx];
+	vec3 worldPos = particlesInfo[particleIdx].position + invViewRot * vertex * size;
 
 	vec4 viewPos = getViewMatrix() * vec4(worldPos, 1.0);
 
@@ -70,4 +96,4 @@ void main()
 	outEmitterIdx = particlesInfo[particleIdx].emitterIdx;
 	outTBN = mat3(1.0f);
 	outAge = particlesInfo[particleIdx].age;
-} 
+}

@@ -10,9 +10,13 @@ ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineI
 {
 	m_requestReloadCallback = requestReloadCallback;
 
+	m_particleUpdatePass->registerEmitter(this);
+
 	m_maxParticleCount = 1;
 	m_delayBetweenTwoParticles = 1.0f;
-	m_direction = glm::vec3(0.0f, 1.0f, 0.0f);
+	m_directionConeDirection = glm::vec3(0.0f, 1.0f, 0.0f);
+	m_particleMinSizeMultiplier = 1.0f;
+	m_particleMaxSizeMultiplier = 1.0f;
 }
 
 ParticleEmitter::~ParticleEmitter()
@@ -23,8 +27,6 @@ ParticleEmitter::~ParticleEmitter()
 void ParticleEmitter::loadParams(Wolf::JSONReader& jsonReader)
 {
 	::loadParams(jsonReader, ID, m_allEditorParams);
-
-	m_particleUpdatePass->registerEmitter(this);
 }
 
 void ParticleEmitter::activateParams()
@@ -58,6 +60,7 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		if (const Wolf::ResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>())
 		{
 			particleComponent->subscribe(this, [this]() { onParticleDataChanged(); });
+			m_particleNotificationRegistered = true;
 		}
 	}
 }
@@ -66,9 +69,9 @@ glm::vec3 ParticleEmitter::getSpawnPosition() const
 {
 	switch (static_cast<uint32_t>(m_spawnShape))
 	{
-		case CYLINDER_SHAPE:
+		case SPAWN_CYLINDER_SHAPE:
 			return m_spawnCylinderCenterPosition;
-		case BOX_SHAPE:
+		case SPAWN_BOX_SHAPE:
 			return m_spawnBoxCenterPosition;
 		default:
 			Wolf::Debug::sendError("Undefined spawn shape");
@@ -86,9 +89,9 @@ float ParticleEmitter::getSpawnShapeRadiusRadiusOrWidth() const
 {
 	switch (static_cast<uint32_t>(m_spawnShape))
 	{
-	case CYLINDER_SHAPE:
+	case SPAWN_CYLINDER_SHAPE:
 		return m_spawnCylinderRadius;
-	case BOX_SHAPE:
+	case SPAWN_BOX_SHAPE:
 		return m_spawnBoxWidth;
 	default:
 		Wolf::Debug::sendError("Undefined spawn shape");
@@ -101,9 +104,9 @@ float ParticleEmitter::getSpawnShapeHeight() const
 {
 	switch (static_cast<uint32_t>(m_spawnShape))
 	{
-	case CYLINDER_SHAPE:
+	case SPAWN_CYLINDER_SHAPE:
 		return m_spawnCylinderHeight;
-	case BOX_SHAPE:
+	case SPAWN_BOX_SHAPE:
 		return m_spawnBoxHeight;
 	default:
 		Wolf::Debug::sendError("Undefined spawn shape");
@@ -127,31 +130,48 @@ void ParticleEmitter::forAllVisibleParams(const std::function<void(EditorParamIn
 	// Shape specific params
 	switch (static_cast<uint32_t>(m_spawnShape))
 	{
-	case CYLINDER_SHAPE:
-	{
-		for (EditorParamInterface* editorParam : m_spawnShapeCylinderParams)
+		case SPAWN_CYLINDER_SHAPE:
 		{
-			callback(editorParam, inOutString);
+			for (EditorParamInterface* editorParam : m_spawnShapeCylinderParams)
+			{
+				callback(editorParam, inOutString);
+			}
+			break;
 		}
-		break;
+		case SPAWN_BOX_SHAPE:
+		{
+			for (EditorParamInterface* editorParam : m_spawnShapeBoxParams)
+			{
+				callback(editorParam, inOutString);
+			}
+			break;
+		}
+		default:
+			Wolf::Debug::sendError("Undefined spawn shape");
+			break;
 	}
-		case BOX_SHAPE:
-		for (EditorParamInterface* editorParam : m_spawnShapeBoxParams)
+
+	switch (static_cast<uint32_t>(m_directionShape))
+	{
+		case DIRECTION_CONE_SHAPE:
 		{
-			callback(editorParam, inOutString);
+			for (EditorParamInterface* editorParam : m_directionConeParams)
+			{
+				callback(editorParam, inOutString);
+			}
+			break;
 		}
-		break;
-	default:
-		Wolf::Debug::sendError("Undefined spawn shape");
-		break;
+		default:
+			Wolf::Debug::sendError("Undefined direction shape");
+			break;
 	}
 }
 
 void ParticleEmitter::updateNormalizedDirection()
 {
-	if (static_cast<glm::vec3>(m_direction) != glm::vec3(0.0f))
+	if (static_cast<glm::vec3>(m_directionConeDirection) != glm::vec3(0.0f))
 	{
-		m_normalizedDirection = glm::normalize(static_cast<glm::vec3>(m_direction));
+		m_normalizedDirection = glm::normalize(static_cast<glm::vec3>(m_directionConeDirection));
 	}
 }
 
@@ -174,6 +194,8 @@ void ParticleEmitter::onParticleDataChanged()
 {
 	const Wolf::ResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>();
 	m_materialIdx = particleComponent->getMaterialIdx();
+	m_flipBookSizeX = particleComponent->getFlipBookSizeX();
+	m_flipBookSizeY = particleComponent->getFlipBookSizeY();
 
 	m_particleUpdatePass->updateEmitter(this);
 }

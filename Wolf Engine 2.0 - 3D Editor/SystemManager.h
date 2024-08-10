@@ -80,7 +80,7 @@ private:
 	std::mutex m_entityChangedMutex;
 	bool m_entityChanged = false;
 	bool m_entityReloadRequested = false;
-	bool m_isCameraLocked = false;
+	bool m_isCameraLocked = true;
 
 	Wolf::ResourceUniqueOwner<DebugRenderingManager> m_debugRenderingManager;
 

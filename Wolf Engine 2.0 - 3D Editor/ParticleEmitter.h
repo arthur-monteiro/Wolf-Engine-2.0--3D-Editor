@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/gtc/constants.hpp>
+
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
 #include "MaterialEditor.h"
@@ -25,6 +27,8 @@ public:
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 	bool requiresInputs() const override { return false; }
 
+	uint32_t getMaxParticleCount() const { return m_maxParticleCount; }
+
 	// Spawn
 	glm::vec3 getSpawnPosition() const;
 	uint32_t getSpawnShape() const;
@@ -32,13 +36,27 @@ public:
 	float getSpawnShapeHeight() const;
 	float getSpawnBoxDepth() const;
 
-	uint32_t getMaxParticleCount() const { return m_maxParticleCount; }
+	// Movement
 	glm::vec3 getDirection() const { return m_normalizedDirection; }
-	float getSpeed() const { return m_speed; }
-	uint32_t getLifetimeInMs() const { return static_cast<uint32_t>(m_lifetime * 1000.0f); }
+	float getMinSpeed() const { return m_minSpeed; }
+	float getMaxSpeed() const { return m_maxSpeed; }
+	uint32_t getDirectionShape() const { return m_directionShape; }
+	float getDirectionConeAngle() const { return m_directionConeAngle; }
+
+	// Death
+	uint32_t getMinLifetimeInMs() const { return static_cast<uint32_t>(m_minLifetime * 1000.0f); }
+	uint32_t getMaxLifetimeInMs() const { return static_cast<uint32_t>(m_maxLifetime * 1000.0f); }
+
+	// Particle
 	uint32_t getMaterialIdx() const { return m_materialIdx; }
+	uint32_t getFlipBookSizeX() const { return m_flipBookSizeX; }
+	uint32_t getFlipBookSizeY() const { return m_flipBookSizeY; }
 	void computeOpacity(std::vector<float>& outValues, uint32_t valueCount) const { m_particleOpacity.computeValues(outValues, valueCount); }
 	void computeSize(std::vector<float>& outValues, uint32_t valueCount) const { m_particleSize.computeValues(outValues, valueCount); }
+	float getMinSizeMultiplier() const { return m_particleMinSizeMultiplier; }
+	float getMaxSizeMultiplier() const { return m_particleMaxSizeMultiplier; }
+	float getOrientationMinAngle() const { return m_particleOrientationMinAngle; }
+	float getOrientationMaxAngle() const { return m_particleOrientationMaxAngle; }
 
 	uint64_t getNextSpawnTimerInMs() const { return m_nextSpawnMsTimer; }
 	uint32_t getNextParticleToSpawnIdx() const { return m_nextParticleToSpawnIdx; }
@@ -51,8 +69,8 @@ private:
 	inline static const std::string TAB = "Particle emitter";
 
 	// ----- Spawn -----
-	static constexpr uint32_t CYLINDER_SHAPE = 0;
-	static constexpr uint32_t BOX_SHAPE = 1;
+	static constexpr uint32_t SPAWN_CYLINDER_SHAPE = 0;
+	static constexpr uint32_t SPAWN_BOX_SHAPE = 1;
 	EditorParamEnum m_spawnShape = EditorParamEnum({ "Cylinder", "Box" }, "Shape", TAB, "Spawn", [this]() { m_requestReloadCallback(this); });
 
 	// Cylinder shape
@@ -83,24 +101,41 @@ private:
 	EditorParamFloat m_delayBetweenTwoParticles = EditorParamFloat("Delay between 2 particles (sec)", TAB, "Spawn", 0.0f, 10.0f);
 
 	// ----- Movement -----
+	EditorParamFloat m_minSpeed = EditorParamFloat("Speed min (m/s)", TAB, "Movement", 0.0f, 10.0f);
+	EditorParamFloat m_maxSpeed = EditorParamFloat("Speed max (m/s)", TAB, "Movement", 0.0f, 10.0f);
+
+	static constexpr uint32_t DIRECTION_CONE_SHAPE = 0;
+	EditorParamEnum m_directionShape = EditorParamEnum({ "Cone"}, "Shape", TAB, "Movement", [this]() { m_requestReloadCallback(this); });
+
 	void updateNormalizedDirection();
-	EditorParamVector3 m_direction = EditorParamVector3("Direction", TAB, "Movement", -1.0f, 1.0f, [this]() { updateNormalizedDirection(); });
-	EditorParamFloat m_speed = EditorParamFloat("Speed (m/s)", TAB, "Movement", 1.0f, 10.0f);
+	// Cone shape
+	EditorParamVector3 m_directionConeDirection = EditorParamVector3("Cone direction", TAB, "Movement", -1.0f, 1.0f, [this]() { updateNormalizedDirection(); });
+	EditorParamFloat m_directionConeAngle = EditorParamFloat("Cone radius", TAB, "Movement", 0.0f, glm::pi<float>());
+	std::array<EditorParamInterface*, 2> m_directionConeParams =
+	{
+		&m_directionConeDirection,
+		&m_directionConeAngle
+	};
 
 	// ----- Death -----
-	EditorParamFloat m_lifetime = EditorParamFloat("Lifetime (sec)", TAB, "Death", 0.1f, 10.0f);
+	EditorParamFloat m_minLifetime = EditorParamFloat("Lifetime min (sec)", TAB, "Death", 0.1f, 10.0f);
+	EditorParamFloat m_maxLifetime = EditorParamFloat("Lifetime max (sec)", TAB, "Death", 0.1f, 10.0f);
 
 	// ----- Particle -----
 	void onParticleSizeChanged();
 	EditorParamCurve m_particleSize = EditorParamCurve("Size", TAB, "Particle", [this]() { onParticleSizeChanged(); });
+	EditorParamFloat m_particleMinSizeMultiplier = EditorParamFloat("Size multiplier min", TAB, "Particle", 0.1f, 10.0f, [this]() { onParticleSizeChanged(); });
+	EditorParamFloat m_particleMaxSizeMultiplier = EditorParamFloat("Size multiplier max", TAB, "Particle", 0.1f, 10.0f, [this]() { onParticleSizeChanged(); });
 	void onParticleOpacityChanged();
 	EditorParamCurve m_particleOpacity = EditorParamCurve("Opacity", TAB, "Particle", [this]() { onParticleOpacityChanged(); });
+	EditorParamFloat m_particleOrientationMinAngle = EditorParamFloat("Orientation min (rad)", TAB, "Particle", 0.0f, glm::pi<float>());
+	EditorParamFloat m_particleOrientationMaxAngle = EditorParamFloat("Orientation max (rad)", TAB, "Particle", 0.0f, glm::pi<float>());
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_particleEntity;
 	void onParticleEntityChanged();
 	void onParticleDataChanged();
 	EditorParamString m_particleEntityParam = EditorParamString("Particle entity", TAB, "Particle", [this]() { onParticleEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
-	std::array<EditorParamInterface*, 15> m_allEditorParams =
+	std::array<EditorParamInterface*, 23> m_allEditorParams =
 	{
 		&m_spawnShape,
 
@@ -115,29 +150,43 @@ private:
 		&m_maxParticleCount,
 		&m_delayBetweenTwoParticles,
 
-		&m_direction,
-		&m_speed,
+		&m_minSpeed,
+		&m_maxSpeed,
+		&m_directionShape,
+		&m_directionConeDirection,
+		&m_directionConeAngle,
 
-		&m_lifetime,
+		&m_minLifetime,
+		&m_maxLifetime,
 
 		&m_particleSize,
+		&m_particleMinSizeMultiplier,
+		&m_particleMaxSizeMultiplier,
+		&m_particleOrientationMinAngle,
+		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
 		&m_particleEntityParam
 	};
 
-	std::array<EditorParamInterface*, 9> m_alwaysVisibleEditorParams =
+	std::array<EditorParamInterface*, 15> m_alwaysVisibleEditorParams =
 	{
 		&m_spawnShape,
 
 		&m_maxParticleCount,
 		&m_delayBetweenTwoParticles,
 
-		&m_direction,
-		&m_speed,
+		&m_minSpeed,
+		&m_maxSpeed,
+		&m_directionShape,
 
-		&m_lifetime,
+		&m_minLifetime,
+		&m_maxLifetime,
 
 		&m_particleSize,
+		&m_particleMinSizeMultiplier,
+		&m_particleMaxSizeMultiplier,
+		&m_particleOrientationMinAngle,
+		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
 		&m_particleEntityParam
 	};
@@ -154,6 +203,8 @@ private:
 
 	glm::vec3 m_normalizedDirection = glm::vec3(0.0f, 1.0f, 0.0f);
 	uint32_t m_materialIdx = 0;
+	uint32_t m_flipBookSizeX = 1;
+	uint32_t m_flipBookSizeY = 1;
 
 	bool m_particleNotificationRegistered = false;
 };

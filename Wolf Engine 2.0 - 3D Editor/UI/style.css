@@ -25,6 +25,7 @@ input {
 
 body {
     color: white;
+    font-family: Arial, sans-serif;
 }
 
 .card {
@@ -159,7 +160,7 @@ span {
     cursor: default;
 }
 
-#closeButton {
+.closeButton {
     z-index: 1000;
     background-color: #ffffff;
     position: fixed;
@@ -518,4 +519,12 @@ li {
 
 .entityListItem {
     cursor: pointer;
+    line-height: 20px;
+}
+
+.entityType {
+    float: right;
+    color: #807f7e;
+    font-style: normal;
+    font-size: small;
 }

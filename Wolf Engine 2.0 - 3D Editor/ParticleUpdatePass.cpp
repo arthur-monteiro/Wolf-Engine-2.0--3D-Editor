@@ -109,7 +109,10 @@ void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		m_particleCount+= emitterMaxParticleCount;
 
 		EmitterUpdateInfo& emitterInfo = uniformBufferData.emittersInfo[i];
-		emitterInfo.directionWithSpeed = emitter->getDirection() * emitter->getSpeed() * (static_cast<float>(globalTimer.getElapsedTimeSinceLastUpdateInMs()) / 1000.0f);
+		emitterInfo.direction = emitter->getDirection();
+		emitterInfo.minSpeed = emitter->getMinSpeed() * (static_cast<float>(globalTimer.getElapsedTimeSinceLastUpdateInMs()) / 1000.0f);
+		emitterInfo.maxSpeed = emitter->getMaxSpeed() * (static_cast<float>(globalTimer.getElapsedTimeSinceLastUpdateInMs()) / 1000.0f);
+		emitterInfo.directionConeAngle = emitter->getDirectionConeAngle();
 
 		emitterInfo.spawnPosition = emitter->getSpawnPosition();
 		emitterInfo.spawnShape = emitter->getSpawnShape();
@@ -117,13 +120,22 @@ void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		emitterInfo.spawnShapeHeight = emitter->getSpawnShapeHeight();
 		emitterInfo.spawnBoxDepth = emitter->getSpawnBoxDepth();
 
-		emitterInfo.particleLifetime = emitter->getLifetimeInMs();
+		emitterInfo.minOrientationAngle = emitter->getOrientationMinAngle();
+		emitterInfo.maxOrientationAngle = emitter->getOrientationMaxAngle();
+		emitterInfo.minSizeMultiplier = emitter->getMinSizeMultiplier();
+		emitterInfo.maxSizeMultiplier = emitter->getMaxSizeMultiplier();
+
+		emitterInfo.minParticleLifetime = emitter->getMinLifetimeInMs();
+		emitterInfo.maxParticleLifetime = emitter->getMaxLifetimeInMs();
 		emitterInfo.emitterIdx = i;
 		if (emitter->getNextSpawnTimerInMs() > std::numeric_limits<uint32_t>::max())
 			Wolf::Debug::sendError("Next spawn timer can't be stored in 32 bits");
 		emitterInfo.nextSpawnTimer = static_cast<uint32_t>(emitter->getNextSpawnTimerInMs());
 		emitterInfo.nextParticleToSpawnIdx = emitter->getNextParticleToSpawnIdx();
 		emitterInfo.nextParticleToSpawnCount = emitter->getNextParticleToSpawnCount();
+
+		if (i == 1 && emitterInfo.nextParticleToSpawnCount == 0)
+			emitterInfo.nextParticleToSpawnCount = 1;
 	}
 
 	m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));
@@ -175,9 +187,16 @@ void ParticleUpdatePass::addEmitterInfoUpdate(const ParticleEmitter* emitter, ui
 	EmitterDrawInfoUpdate emitterDrawInfoUpdate;
 
 	emitterDrawInfoUpdate.data.materialIdx = emitter->getMaterialIdx();
+	emitterDrawInfoUpdate.data.flipBookSizeX = emitter->getFlipBookSizeX();
+	emitterDrawInfoUpdate.data.flipBookSizeY = emitter->getFlipBookSizeY();
+
 	std::vector<float> opacity;
 	emitter->computeOpacity(opacity, EmitterDrawInfo::OPACITY_VALUE_COUNT);
 	memcpy(emitterDrawInfoUpdate.data.opacity, opacity.data(), sizeof(float) * EmitterDrawInfo::OPACITY_VALUE_COUNT);
+
+	std::vector<float> size;
+	emitter->computeSize(size, EmitterDrawInfo::SIZE_VALUE_COUNT);
+	memcpy(emitterDrawInfoUpdate.data.size, size.data(), sizeof(float) * EmitterDrawInfo::SIZE_VALUE_COUNT);
 
 	emitterDrawInfoUpdate.emitterIdx = emitterIdx;
 	m_emitterDrawInfoUpdates.push_back(emitterDrawInfoUpdate);
@@ -205,6 +224,6 @@ void ParticleUpdatePass::createNoiseBuffer()
 		random = distrib(generator);
 	}
 
-	m_noiseBuffer.reset(Wolf::Buffer::createBuffer(NOISE_POINT_COUNT * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+	m_noiseBuffer.reset(Wolf::Buffer::createBuffer(NOISE_POINT_COUNT * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 	m_noiseBuffer->transferCPUMemoryWithStagingBuffer(randomData, NOISE_POINT_COUNT * sizeof(float));
 }

@@ -32,7 +32,7 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 	// Shared resources
 	{
 		m_displayOptionsUniformBuffer.reset(Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-		m_pointLightsUniformBuffer.reset(Buffer::createBuffer(sizeof(PointLightsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+		m_pointLightsUniformBuffer.reset(Buffer::createBuffer(sizeof(LightsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
@@ -51,7 +51,7 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 	// Particles resources
 	{
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT,   0); // particles buffer
-		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1); // emitters buffer
+		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 1); // emitters buffer
 		m_particlesDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		DescriptorSetGenerator descriptorSetGenerator(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts());
@@ -194,13 +194,13 @@ void ForwardPass::submit(const SubmitContext& context)
 
 void ForwardPass::updateLights(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
 {
-	PointLightsUBData pointLightsUBData{};
+	LightsUBData lightsUbData{};
 
 	uint32_t pointLightIdx = 0;
-	for (const LightManager::PointLightInfo& pointLightInfo : lightManager->getCurrentLights())
+	for (const LightManager::PointLightInfo& pointLightInfo : lightManager->getCurrentPointLights())
 	{
-		pointLightsUBData.lights[pointLightIdx].lightPos = glm::vec4(pointLightInfo.worldPos, 1.0f);
-		pointLightsUBData.lights[pointLightIdx].lightColor = glm::vec4(pointLightInfo.color * pointLightInfo.intensity * 0.01f, 1.0f);
+		lightsUbData.pointLights[pointLightIdx].lightPos = glm::vec4(pointLightInfo.worldPos, 1.0f);
+		lightsUbData.pointLights[pointLightIdx].lightColor = glm::vec4(pointLightInfo.color * pointLightInfo.intensity * 0.01f, 1.0f);
 
 		pointLightIdx++;
 
@@ -210,9 +210,25 @@ void ForwardPass::updateLights(const Wolf::ResourceNonOwner<LightManager>& light
 			break;
 		}
 	}
-	pointLightsUBData.count = pointLightIdx;
+	lightsUbData.pointLightsCount = pointLightIdx;
 
-	m_pointLightsUniformBuffer->transferCPUMemory(&pointLightsUBData, sizeof(PointLightsUBData));
+	uint32_t sunLightIdx = 0;
+	for (const LightManager::SunLightInfo& sunLightInfo : lightManager->getCurrentSunLights())
+	{
+		lightsUbData.sunLights[sunLightIdx].sunDirection = glm::vec4(sunLightInfo.direction, 1.0f);
+		lightsUbData.sunLights[sunLightIdx].sunColor = glm::vec4(sunLightInfo.color * sunLightInfo.intensity * 0.01f, 1.0f);
+
+		sunLightIdx++;
+
+		if (sunLightIdx == MAX_SUN_LIGHTS)
+		{
+			Debug::sendMessageOnce("Max sun lights reached, next will be ignored", Debug::Severity::WARNING, this);
+			break;
+		}
+	}
+	lightsUbData.sunLightsCount = sunLightIdx;
+
+	m_pointLightsUniformBuffer->transferCPUMemory(&lightsUbData, sizeof(LightsUBData));
 }
 
 Attachment ForwardPass::setupColorAttachment(const InitializationContext& context)

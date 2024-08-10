@@ -40,14 +40,15 @@ private:
 	static constexpr uint32_t MAX_TOTAL_PARTICLES = 262'144;
 	struct ParticleInfoGPU
 	{
-		uint32_t createdTimer;
 		glm::vec3 position;
-		glm::vec3 speed;
+		uint32_t createdTimer;
 
 		uint32_t emitterIdx;
 		float age;
+		float orientationAngle;
+		float sizeMultiplier;
 	};
-	static_assert(sizeof(ParticleInfoGPU) == 36);
+	static_assert(sizeof(ParticleInfoGPU) == 32);
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_particlesBuffer;
 
 	// Emitter draw info buffer
@@ -58,6 +59,12 @@ private:
 
 		static constexpr uint32_t OPACITY_VALUE_COUNT = 32;
 		float opacity[OPACITY_VALUE_COUNT];
+
+		static constexpr uint32_t SIZE_VALUE_COUNT = 32;
+		float size[OPACITY_VALUE_COUNT];
+
+		uint32_t flipBookSizeX;
+		uint32_t flipBookSizeY;
 	};
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_emitterDrawInfoBuffer;
 
@@ -71,7 +78,7 @@ private:
 	// Update
 	struct EmitterUpdateInfo
 	{
-		glm::vec3 directionWithSpeed;
+		glm::vec3 direction;
 		uint32_t nextParticleToSpawnIdx;
 
 		glm::vec3 spawnPosition;
@@ -82,9 +89,19 @@ private:
 		float spawnShapeHeight;
 		float spawnBoxDepth;
 
-		uint32_t particleLifetime;
+		uint32_t minParticleLifetime;
 		uint32_t emitterIdx;
 		uint32_t nextSpawnTimer;
+		float directionConeAngle;
+
+		float minSpeed;
+		float maxSpeed;
+		uint32_t maxParticleLifetime;
+		float minOrientationAngle;
+
+		float maxOrientationAngle;
+		float minSizeMultiplier;
+		float maxSizeMultiplier;
 		float padding;
 	};
 

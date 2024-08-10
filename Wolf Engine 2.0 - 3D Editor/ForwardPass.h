@@ -64,10 +64,23 @@ private:
 		glm::vec4 lightColor;
 	};
 	static constexpr uint32_t MAX_POINT_LIGHTS = 16;
-	struct PointLightsUBData
+
+	struct SunLightInfo
 	{
-		PointLightInfo lights[MAX_POINT_LIGHTS];
-		uint32_t count;
+		glm::vec4 sunDirection;
+		glm::vec4 sunColor;
+	};
+	static constexpr uint32_t MAX_SUN_LIGHTS = 1;
+
+	struct LightsUBData
+	{
+		PointLightInfo pointLights[MAX_POINT_LIGHTS];
+		uint32_t pointLightsCount;
+		glm::vec3 padding;
+
+		SunLightInfo sunLights[MAX_SUN_LIGHTS];
+		uint32_t sunLightsCount;
+		glm::vec3 padding2;
 	};
 	std::unique_ptr<Wolf::Buffer> m_pointLightsUniformBuffer;
 

@@ -8,7 +8,7 @@ const uint BOX_SHAPE = 1;
 
 struct EmitterInfo
 {
-	vec3 directionWithSpeed;
+	vec3 direction;
 	uint nextParticleToSpawnIdx;
 
 	vec3 spawnPosition;
@@ -19,9 +19,19 @@ struct EmitterInfo
 	float spawnShapeHeight;
 	float spawnBoxDepth;
 
-	uint particleLifetime;
+	uint minParticleLifetime;
 	uint emitterIdx;
 	uint nextSpawnTimer;
+	float directionConeAngle;
+
+	float minSpeed;
+	float maxSpeed;
+	uint maxParticleLifetime;
+	float minOrientationAngle;
+
+	float maxOrientationAngle;
+	float minSizeMultiplier;
+	float maxSizeMultiplier;
 	float padding;
 };
 
@@ -29,6 +39,10 @@ const uint MAX_EMITTER_COUNT = 16;
 layout (binding = 0, std140) uniform UniformBuffer
 {
 	uint currentTimer;
+	float padding0;
+	float padding1;
+	float padding2;
+
     uvec4 particleCountPerEmitter[MAX_EMITTER_COUNT / 4];
 
 	EmitterInfo emittersInfo[MAX_EMITTER_COUNT];
@@ -36,12 +50,13 @@ layout (binding = 0, std140) uniform UniformBuffer
 
 struct ParticleInfoGPU
 {
-	uint createdTimer;
 	vec3 position;
-	vec3 speed;
+	uint createdTimer;
 
 	uint emitterIdx;
 	float age;
+	float orientationAngle;
+	float sizeMultiplier;
 };
 
 const uint MAX_TOTAL_PARTICLES = 262144;
@@ -69,12 +84,15 @@ uint getParticleCountForEmitter(uint idx)
 void main()
 {
 	uint particleIdx = gl_GlobalInvocationID.x;
+	uint firstParticleIdxForEmitter = 0;
 	
 	const uint INVALID_EMITTER_IDX = MAX_EMITTER_COUNT + 1;
 	uint emitterIdx = INVALID_EMITTER_IDX;
 	uint currentParticleCount = 0;
 	for (uint i = 0; i < MAX_EMITTER_COUNT; ++i)
 	{
+		firstParticleIdxForEmitter = currentParticleCount;
+
 		currentParticleCount += getParticleCountForEmitter(i);
 		if (particleIdx < currentParticleCount)
 		{
@@ -86,8 +104,12 @@ void main()
 	if (emitterIdx == INVALID_EMITTER_IDX)
 		return;
 
+	uint particleIdxInEmitter = particleIdx - firstParticleIdxForEmitter;
+
+	float particleLifetime = mix(float(ub.emittersInfo[emitterIdx].minParticleLifetime), float(ub.emittersInfo[emitterIdx].maxParticleLifetime), getRandomFloat(5));
+
 	// Check for particle death
-	if (particlesInfo[particleIdx].createdTimer != 0 && ub.currentTimer - particlesInfo[particleIdx].createdTimer >= ub.emittersInfo[emitterIdx].particleLifetime)
+	if (particlesInfo[particleIdx].createdTimer != 0 && ub.currentTimer - particlesInfo[particleIdx].createdTimer >= particleLifetime)
 	{
 		particlesInfo[particleIdx].createdTimer = 0;
 	}
@@ -96,9 +118,9 @@ void main()
 	uint nextParticleToSpawnIdx = ub.emittersInfo[emitterIdx].nextParticleToSpawnIdx;
 	uint lastParticleToSpawnIdx = ub.emittersInfo[emitterIdx].nextParticleToSpawnIdx + ub.emittersInfo[emitterIdx].nextParticleToSpawnCount;
 
-	if (particlesInfo[particleIdx].createdTimer == 0 && particleIdx >= nextParticleToSpawnIdx && particleIdx < lastParticleToSpawnIdx)
+	if (particlesInfo[particleIdx].createdTimer == 0 && particleIdxInEmitter >= nextParticleToSpawnIdx && particleIdxInEmitter < lastParticleToSpawnIdx)
 	{
-		particlesInfo[particleIdx].createdTimer = ub.emittersInfo[emitterIdx].nextSpawnTimer + (particleIdx - nextParticleToSpawnIdx) * ub.emittersInfo[emitterIdx].particleLifetime;
+		particlesInfo[particleIdx].createdTimer = ub.emittersInfo[emitterIdx].nextSpawnTimer + (particleIdxInEmitter - nextParticleToSpawnIdx) * uint(particleLifetime);
 		particlesInfo[particleIdx].emitterIdx = ub.emittersInfo[emitterIdx].emitterIdx;
 
 		// Spawn position
@@ -116,10 +138,20 @@ void main()
 
 		}
 		particlesInfo[particleIdx].position = spawnPosition;
+
+		particlesInfo[particleIdx].orientationAngle = mix(ub.emittersInfo[emitterIdx].minOrientationAngle, ub.emittersInfo[emitterIdx].maxOrientationAngle, getRandomFloat(5));
+		particlesInfo[particleIdx].sizeMultiplier = mix(ub.emittersInfo[emitterIdx].minSizeMultiplier, ub.emittersInfo[emitterIdx].maxSizeMultiplier, getRandomFloat(6));
 	}
 	else if (particlesInfo[particleIdx].createdTimer != 0) // update existing particle
 	{
-		particlesInfo[particleIdx].position += ub.emittersInfo[emitterIdx].directionWithSpeed;
-		particlesInfo[particleIdx].age = float(ub.currentTimer - particlesInfo[particleIdx].createdTimer) / float(ub.emittersInfo[emitterIdx].particleLifetime);
+		vec3 random = normalize(2.0f * vec3(getRandomFloat(0), getRandomFloat(1), getRandomFloat(2)) - vec3(1.0f)) * ub.emittersInfo[emitterIdx].directionConeAngle;
+		vec3 normalizedDirection = normalize(ub.emittersInfo[emitterIdx].direction + random);
+
+		float speed = mix(ub.emittersInfo[emitterIdx].minSpeed, ub.emittersInfo[emitterIdx].maxSpeed, getRandomFloat(4));
+		vec3 direction = normalizedDirection * speed;
+
+		particlesInfo[particleIdx].position += direction;
 	}
+
+	particlesInfo[particleIdx].age = float(ub.currentTimer - particlesInfo[particleIdx].createdTimer) / float(particleLifetime);
 }

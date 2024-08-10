@@ -33,6 +33,7 @@ public:
 	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array, Entity, Bool, Enum, Group, Curve };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
+	const std::string& getCategory() const { return m_category; }
 	bool isEnabled() const { return !m_isActivable || m_isEnabled; }
 
 protected:
@@ -205,6 +206,8 @@ public:
 	EditorParamString& operator=(const std::string& value) { setValue(value); return *this; }
 	operator std::string& () { return m_value; }
 	operator const std::string& () const { return m_value; }
+
+	bool drivesCategoryName() const { return m_drivesCategoryName; }
 
 private:
 	static Type stringTypeToParamType(ParamStringType stringType);

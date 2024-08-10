@@ -36,7 +36,7 @@
 	</div>
 
 	<div id="addEntityWindow" class="modalWindow" style="display: none;">
-		<div id="closeButton" onclick="closeEntityAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
+		<div class='closeButton' id="closeButton" onclick="closeEntityAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
 		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
 			<li class="table-row" id="addEntityPathTR">
 				<div class="col col-1" data-label="infoType">Path</div>
@@ -51,7 +51,7 @@
 	</div>
 
 	<div id="addComponentWindow" class="modalWindow" style="display: none;">
-		<div id="closeButton" onclick="closeComponentAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
+		<div class='closeButton' id="closeButton" onclick="closeComponentAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
 		<div id="addComponentWindowContent">
 			<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
 				<li class="table-row">
@@ -90,7 +90,7 @@
 	</div>
 
 	<div id="options" class="modalWindow" style="display: none;">
-		<div id="closeButton" onclick="closeOptions()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
+		<div class='closeButton' id="closeButton" onclick="closeOptions()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
 		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
 			<li class="table-row">
 				<div class="col col-1" data-label="infoType">Display</div>
@@ -285,7 +285,9 @@
 	}
 
 	function addEntityToList(name, path, isFake = false) {
-		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\" id='" + path + "' style='" + (isFake ? "font-style: italic;" : "") + "'>" + name + "</div><br/>";
+		let entityTypeDiv = "<div class='entityType'>" + (isFake ? "Fake" : "Entity") + "</div>"
+
+		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\" id='" + path + "' style='" + (isFake ? "font-style: italic;" : "") + "'>" + name + entityTypeDiv +"</div><br/>";
 	}
 
 	function resetEntityList() {
