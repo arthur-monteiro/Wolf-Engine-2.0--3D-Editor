@@ -54,8 +54,8 @@ private:
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 		
-		std::span<EditorParamInterface*> getAllParams() override;
-		std::span<EditorParamInterface* const> getAllConstParams() const override;
+		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
+		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
 		bool hasDefaultName() const override;
 		uint32_t getMaterialId() const { return m_materialId; }
 

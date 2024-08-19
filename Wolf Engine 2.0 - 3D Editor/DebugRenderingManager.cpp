@@ -37,7 +37,6 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
 		// Resources
-		pipelineInfo.descriptorSetLayouts = { { m_linesDescriptorSetLayout.get(), 1 } , { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
 		pipelineInfo.cameraDescriptorSlot = 0;
 
 		// Color Blend
@@ -146,7 +145,6 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.cullMode = VK_CULL_MODE_NONE;
 
 		// Resources
-		pipelineInfo.descriptorSetLayouts = { { m_spheresDescriptorSetLayout.get(), 1 } , { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
 		pipelineInfo.cameraDescriptorSlot = 0;
 
 		// Color Blend
@@ -217,8 +215,8 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 	{
 		PerGroupOfLines& AABBInfo = m_AABBInfoArray[i];
 
-		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(AABBInfo.mesh, m_linesPipelineSet.get());
-		meshToRenderInfo.descriptorSets.push_back({ AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), 1});
+		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(AABBInfo.mesh, m_linesPipelineSet.createConstNonOwnerResource());
+		meshToRenderInfo.descriptorSets.emplace_back(AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), m_linesDescriptorSetLayout.createConstNonOwnerResource(), 1);
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}
@@ -227,8 +225,8 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 	{
 		PerGroupOfLines& customInfo = m_customLinesInfoArray[i];
 
-		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(customInfo.mesh, m_linesPipelineSet.get());
-		meshToRenderInfo.descriptorSets.push_back({ customInfo.linesDescriptorSet.createConstNonOwnerResource(), 1 });
+		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(customInfo.mesh, m_linesPipelineSet.createConstNonOwnerResource());
+		meshToRenderInfo.descriptorSets.emplace_back(customInfo.linesDescriptorSet.createConstNonOwnerResource(), m_linesDescriptorSetLayout.createConstNonOwnerResource(), 1);
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}
@@ -237,16 +235,16 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 	{
 		m_spheresUniformBuffer->transferCPUMemory(&m_spheresData, sizeof(SpheresUBData));
 
-		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_cubeLQuadMesh.createNonOwnerResource(), m_spheresPipelineSet.get());
+		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_cubeLQuadMesh.createNonOwnerResource(), m_spheresPipelineSet.createConstNonOwnerResource());
 		meshToRenderInfo.instanceInfos.instanceCount = m_sphereCount;
-		meshToRenderInfo.descriptorSets.push_back({ m_spheresDescriptorSet.createConstNonOwnerResource(), 1 });
+		meshToRenderInfo.descriptorSets.emplace_back(m_spheresDescriptorSet.createConstNonOwnerResource(), m_spheresDescriptorSetLayout.createConstNonOwnerResource(), 1);
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}
 }
 
 DebugRenderingManager::PerGroupOfLines::PerGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh,
-	const std::unique_ptr<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout,
+	const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout,
 	const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator) : mesh(mesh)
 {
 	linesUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(LinesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));

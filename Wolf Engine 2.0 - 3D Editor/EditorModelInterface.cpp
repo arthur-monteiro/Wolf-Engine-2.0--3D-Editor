@@ -18,13 +18,13 @@ EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
 
 	m_matricesUniformBuffer.reset(Buffer::createBuffer(sizeof(MatricesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
-	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, EditorModelInterface>([this](std::unique_ptr<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
+	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, EditorModelInterface>([this](ResourceUniqueOwner<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
 		{
 			descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
 			descriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // matrices
 		}));
 
-	m_modelDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, EditorModelInterface>([this](std::unique_ptr<DescriptorSetLayout>& descriptorSetLayout)
+	m_modelDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, EditorModelInterface>([this](ResourceUniqueOwner<DescriptorSetLayout>& descriptorSetLayout)
 		{
 			descriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
 		}));

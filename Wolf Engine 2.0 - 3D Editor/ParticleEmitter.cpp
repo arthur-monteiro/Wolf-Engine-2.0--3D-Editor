@@ -61,6 +61,8 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		{
 			particleComponent->subscribe(this, [this]() { onParticleDataChanged(); });
 			m_particleNotificationRegistered = true;
+
+			onParticleDataChanged();
 		}
 	}
 }
@@ -198,4 +200,6 @@ void ParticleEmitter::onParticleDataChanged()
 	m_flipBookSizeY = particleComponent->getFlipBookSizeY();
 
 	m_particleUpdatePass->updateEmitter(this);
+
+	m_requestReloadCallback(this);
 }

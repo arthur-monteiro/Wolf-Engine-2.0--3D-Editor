@@ -28,7 +28,7 @@ void SkyLight::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	}
 }
 
-void SkyLight::addLightsToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
+void SkyLight::addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
 {
 	lightManager->addSunLightInfoForNextFrame({ m_sunDirection, m_color, m_sunIntensity });
 }

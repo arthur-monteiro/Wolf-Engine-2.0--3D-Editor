@@ -37,17 +37,13 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<Wolf::RenderMeshList
 		{
 			for (Wolf::RenderMeshList::MeshToRenderInfo& meshToRender : renderMeshList)
 			{
-				std::unique_ptr<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.pipelineSet];
+				Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.pipelineSet->getPipelineHash(0)]; // TODO: use all pipelines hashes
 				if (!replacePipelineSet)
 				{
 					replacePipelineSet.reset(new Wolf::PipelineSet);
 					for (const Wolf::PipelineSet::PipelineInfo* pipelineInfo : meshToRender.pipelineSet->retrieveAllPipelinesInfo())
 					{
 						Wolf::PipelineSet::PipelineInfo newPipelineInfo = *pipelineInfo;
-						if (newPipelineInfo.bindlessDescriptorSlot != static_cast<uint32_t>(-1))
-						{
-							newPipelineInfo.descriptorSetLayouts.emplace_back(contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), 4);
-						}
 						for (Wolf::PipelineSet::PipelineInfo::ShaderInfo& shaderInfo : newPipelineInfo.shaderInfos)
 						{
 							if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -62,7 +58,7 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<Wolf::RenderMeshList
 									size_t descriptorSlotTokenPos = line.find(descriptorSlotToken);
 									while (descriptorSlotTokenPos != std::string::npos)
 									{
-										line.replace(descriptorSlotTokenPos, descriptorSlotToken.length(), std::to_string(4)); // TODO: replace this '4' with an available slot
+										line.replace(descriptorSlotTokenPos, descriptorSlotToken.length(), std::to_string(5)); // TODO: replace this '5' with an available slot
 										descriptorSlotTokenPos = line.find(descriptorSlotToken);
 									}
 									shaderInfo.materialFetchProcedure.codeString += line + '\n';
@@ -73,8 +69,8 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<Wolf::RenderMeshList
 					}
 				}
 
-				meshToRender.pipelineSet = replacePipelineSet.get();
-				meshToRender.descriptorSets.push_back({ contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), 4 });
+				meshToRender.pipelineSet = replacePipelineSet.createConstNonOwnerResource();
+				meshToRender.descriptorSets.emplace_back(contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), 5);
 			}
 		}
 	}

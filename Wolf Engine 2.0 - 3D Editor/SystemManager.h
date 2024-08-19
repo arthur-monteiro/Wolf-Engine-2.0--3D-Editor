@@ -24,7 +24,8 @@ private:
 	void updateBeforeFrame();
 
 	void loadScene();
-	void addEntity(const std::string& filePath);
+	Entity* addEntity(const std::string& filePath);
+	void duplicateEntity(const Wolf::ResourceNonOwner<Entity>& entityToDuplicate, const std::string& filePath);
 	void addComponent(const std::string& componentId);
 
 	void addFakeEntities();
@@ -53,6 +54,7 @@ private:
 	ultralight::JSValue getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void enableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void disableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void updateUISelectedEntity() const;
 
@@ -74,7 +76,6 @@ private:
 	std::unique_ptr<Wolf::FirstPersonCamera> m_camera;
 
 	std::unique_ptr<EditorParams> m_editorParams;
-	Wolf::ResourceUniqueOwner<LightManager> m_lightManager;
 
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_selectedEntity;
 	std::mutex m_entityChangedMutex;

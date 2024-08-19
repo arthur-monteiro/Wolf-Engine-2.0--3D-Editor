@@ -27,7 +27,7 @@ public:
 
 	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer);
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
-	void addLightToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const;
+	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	virtual void activateParams() const;
 	virtual void fillJSONForParams(std::string& outJSON);
@@ -63,6 +63,7 @@ public:
 		return m_components[0].createNonOwnerResource<T>();
 	}
 
+	void setName(const std::string& name) { m_nameParam = name; }
 
 private:
 	std::string m_filepath;

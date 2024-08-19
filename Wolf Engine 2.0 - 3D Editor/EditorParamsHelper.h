@@ -8,13 +8,13 @@
 #include "EditorTypesTemplated.h"
 #include "EditorTypes.h"
 
-class DummyParameterGroup : public ParameterGroupInterface
+class DummyParameterGroup final : public ParameterGroupInterface
 {
 public:
 	DummyParameterGroup() : ParameterGroupInterface("Dummy") {}
 	DummyParameterGroup(const DummyParameterGroup&) = default;
-	std::span<EditorParamInterface*> getAllParams() override { return {}; }
-	std::span<EditorParamInterface* const> getAllConstParams() const override { return {}; }
+	void getAllParams(std::vector<EditorParamInterface*>& out) const override {}
+	void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override {}
 	bool hasDefaultName() const override { return false; }
 };
 
@@ -110,7 +110,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				{
 					GroupItemType& item = static_cast<EditorParamArray<GroupItemType>*>(param)->emplace_back();
 					std::vector<EditorParamInterface*> arrayItemParams;
-					arrayItemParams.assign(item.getAllParams().begin(), item.getAllParams().end());
+					item.getAllParams(arrayItemParams);
 					arrayItemParams.push_back(item.getNameParam());
 					loadParams(jsonReader, objectId, arrayItemParams, itemArrayIdx);
 				}
@@ -128,7 +128,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			{
 				GroupItemType& item = static_cast<EditorParamGroup<GroupItemType>*>(param)->get();
 				std::vector<EditorParamInterface*> arrayItemParams;
-				arrayItemParams.assign(item.getAllParams().begin(), item.getAllParams().end());
+				item.getAllParams(arrayItemParams);
 				arrayItemParams.push_back(item.getNameParam());
 				loadParams(jsonReader, objectId, arrayItemParams);
 

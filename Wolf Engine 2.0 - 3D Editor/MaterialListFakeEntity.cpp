@@ -24,6 +24,9 @@ void MaterialListFakeEntity::fillJSONForParams(std::string& outJSON)
 	{
 		Wolf::MaterialsGPUManager::MaterialCacheInfo& materialCacheInfo = materialCache[i];
 
+		if (materialCacheInfo.materialInfo->materialName.empty())
+			continue;
+
 		if (materialCacheInfo.materialInfo->imageNames.size() != 6)
 		{
 			Wolf::Debug::sendWarning("Debug info for material " + materialCacheInfo.materialInfo->materialName + " has been found but there isn't 6 image names");
@@ -91,14 +94,14 @@ void MaterialListFakeEntity::MaterialInfo::updateBeforeFrame(const Wolf::Resourc
 	m_material->updateBeforeFrame(materialGPUManager, editorConfiguration);
 }
 
-std::span<EditorParamInterface*> MaterialListFakeEntity::MaterialInfo::getAllParams()
+void MaterialListFakeEntity::MaterialInfo::getAllParams(std::vector<EditorParamInterface*>& out) const
 {
-	return m_material->getAllParams();
+	m_material->getAllParams(out);
 }
 
-std::span<EditorParamInterface* const> MaterialListFakeEntity::MaterialInfo::getAllConstParams() const
+void MaterialListFakeEntity::MaterialInfo::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
 {
-	return m_material->getAllConstParams();
+	m_material->getAllVisibleParams(out);
 }
 
 bool MaterialListFakeEntity::MaterialInfo::hasDefaultName() const

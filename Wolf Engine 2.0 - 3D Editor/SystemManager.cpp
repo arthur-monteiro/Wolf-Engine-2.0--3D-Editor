@@ -46,7 +46,6 @@ SystemManager::SystemManager()
 	}
 
 	m_debugRenderingManager.reset(new DebugRenderingManager);
-	m_lightManager.reset(new LightManager);
 
 	addFakeEntities();	
 }
@@ -181,6 +180,7 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["getAllComponentTypes"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getAllComponentTypesJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["enableEntityPicking"] = std::bind(&SystemManager::enableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["disableEntityPicking"] = std::bind(&SystemManager::disableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["duplicateEntity"] = std::bind(&SystemManager::duplicateEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -461,7 +461,7 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 	outHTML.close();
 	inHTML.close();
 
-	std::filesystem::copy("UI/", "tmp/UI/");
+	std::filesystem::copy("UI/", "tmp/UI/", std::filesystem::copy_options::recursive);
 	system("start tmp/UI/UI_dmp.html");
 }
 
@@ -484,6 +484,33 @@ void SystemManager::disableEntityPickingJSCallback(const ultralight::JSObject& t
 	const ultralight::JSArgs& args)
 {
 	m_entityPickingEnabled = false;
+}
+
+void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string previousEntityName = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	const std::string filepath = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
+
+	std::unique_ptr<ResourceNonOwner<Entity>> entityToDuplicate;
+
+	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	for (ResourceUniqueOwner<Entity>& entity : allEntities)
+	{
+		if (entity->getName() == previousEntityName)
+		{
+			entityToDuplicate.reset(new ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
+			break;
+		}
+	}
+
+	if (entityToDuplicate)
+	{
+		duplicateEntity(*entityToDuplicate, filepath);
+	}
+	else
+	{
+		Debug::sendError("Entity to duplicate not found");
+	}
 }
 
 void SystemManager::updateBeforeFrame()
@@ -529,7 +556,7 @@ void SystemManager::updateBeforeFrame()
 	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
 		entity->addMeshesToRenderList(renderList);
-		entity->addLightToLightManager(m_lightManager.createNonOwnerResource());
+		entity->addLightToLightManager(m_wolfInstance->getLightManager().createNonOwnerResource());
 		entity->addDebugInfo(*m_debugRenderingManager);
 	}
 	m_debugRenderingManager->addMeshesToRenderList(renderList);
@@ -543,8 +570,7 @@ void SystemManager::updateBeforeFrame()
 		entity->updateBeforeFrame(m_wolfInstance->getInputHandler(), m_wolfInstance->getGlobalTimer());
 		entity->updateDuringFrame(m_wolfInstance->getInputHandler()); // TODO: send this to another thread
 	}
-	m_lightManager->updateBeforeFrame();
-	m_renderer->update(m_wolfInstance.get(), m_lightManager.createNonOwnerResource());
+	m_renderer->update(m_wolfInstance.get());
 
 	if (m_wolfInstance->getInputHandler()->keyPressedThisFrame(GLFW_KEY_ESCAPE))
 	{
@@ -660,7 +686,7 @@ void SystemManager::loadScene()
 	m_loadSceneRequest.clear();
 }
 
-void SystemManager::addEntity(const std::string& filePath)
+Entity* SystemManager::addEntity(const std::string& filePath)
 {
 	Entity* newEntity = new Entity(filePath, [this](Entity*)
 		{
@@ -672,6 +698,15 @@ void SystemManager::addEntity(const std::string& filePath)
 
 	const std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\", \"" + newEntity->computeEscapedLoadingPath() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
+
+	return newEntity;
+}
+
+void SystemManager::duplicateEntity(const Wolf::ResourceNonOwner<Entity>& entityToDuplicate, const std::string& filePath)
+{
+	std::filesystem::copy(m_configuration->computeFullPathFromLocalPath(entityToDuplicate->getLoadingPath()), m_configuration->computeFullPathFromLocalPath(filePath));
+	Entity* newEntity = addEntity(filePath);
+	newEntity->setName(entityToDuplicate->getName() + " - Copy");
 }
 
 void SystemManager::addComponent(const std::string& componentId)

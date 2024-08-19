@@ -134,14 +134,14 @@ void ContaminationEmitter::ContaminationMaterial::updateBeforeFrame(const Wolf::
 	}
 }
 
-std::span<EditorParamInterface*> ContaminationEmitter::ContaminationMaterial::getAllParams()
+void ContaminationEmitter::ContaminationMaterial::getAllParams(std::vector<EditorParamInterface*>& out) const
 {
-	return m_materialEditor.getAllParams();
+	m_materialEditor.getAllParams(out);
 }
 
-std::span<EditorParamInterface* const> ContaminationEmitter::ContaminationMaterial::getAllConstParams() const
+void ContaminationEmitter::ContaminationMaterial::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
 {
-	return m_materialEditor.getAllConstParams();
+	m_materialEditor.getAllVisibleParams(out);
 }
 
 bool ContaminationEmitter::ContaminationMaterial::hasDefaultName() const

@@ -70,9 +70,9 @@ public:
 	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList);
 
 private:
-	std::unique_ptr<Wolf::PipelineSet> m_linesPipelineSet;
+	Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_linesPipelineSet;
 	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_linesDescriptorSetLayoutGenerator;
-	std::unique_ptr<Wolf::DescriptorSetLayout> m_linesDescriptorSetLayout;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_linesDescriptorSetLayout;
 
 	struct PerGroupOfLines
 	{
@@ -81,7 +81,7 @@ private:
 		Wolf::ResourceNonOwner<Wolf::Mesh> mesh;
 
 		PerGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, 
-			const std::unique_ptr<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout, 
+			const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout, 
 			const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator);
 	};
 
@@ -99,9 +99,9 @@ private:
 	std::vector<PerGroupOfLines> m_customLinesInfoArray;
 
 	// Spheres
-	std::unique_ptr<Wolf::PipelineSet> m_spheresPipelineSet;
+	Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_spheresPipelineSet;
 	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_spheresDescriptorSetLayoutGenerator;
-	std::unique_ptr<Wolf::DescriptorSetLayout> m_spheresDescriptorSetLayout;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_spheresDescriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_spheresDescriptorSet;
 	static constexpr uint32_t MAX_SPHERE_COUNT = 16;
 	struct SpheresUBData

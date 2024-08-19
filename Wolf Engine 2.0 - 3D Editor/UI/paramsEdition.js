@@ -208,7 +208,12 @@ function computeInput(param, isLast) {
         htmlToAdd += param.name + ": <select name='entity' id='entitySelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'><option value=''>No entity selected</option>";
         for (let i = 0; i < entityDivs.length; i++) {
             var entityDiv = entityDivs[i];
-            htmlToAdd += "<option value='" + entityDiv.id + "'" + (param.value == entityDiv.id ? "selected" : "") + ">" + entityDiv.innerHTML + "</option>";
+
+            let option = entityDiv.innerHTML.split("<")[0];
+            if (option == "Entity" || option == "Fake")
+                continue;
+
+            htmlToAdd += "<option value='" + entityDiv.id + "'" + (param.value == entityDiv.id ? "selected" : "") + ">" + option + "</option>";
         }
         htmlToAdd += "</select>";
     }

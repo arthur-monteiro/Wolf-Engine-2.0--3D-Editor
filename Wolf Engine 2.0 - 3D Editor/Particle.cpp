@@ -42,6 +42,7 @@ Particle::ParticleMaterial::ParticleMaterial() : ParameterGroupInterface(Particl
 	m_name = DEFAULT_NAME;
 
 	m_materialCacheInfo.materialInfo = m_materialsInfo.data();
+	m_materialEditor.subscribe(this, [this]() { notifySubscribers(); });
 }
 
 void Particle::ParticleMaterial::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager,	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
@@ -60,14 +61,14 @@ void Particle::ParticleMaterial::updateBeforeFrame(const Wolf::ResourceNonOwner<
 	}
 }
 
-std::span<EditorParamInterface*> Particle::ParticleMaterial::getAllParams()
+void Particle::ParticleMaterial::getAllParams(std::vector<EditorParamInterface*>& out) const
 {
-	return m_materialEditor.getAllParams();
+	m_materialEditor.getAllParams(out);
 }
 
-std::span<EditorParamInterface* const> Particle::ParticleMaterial::getAllConstParams() const
+void Particle::ParticleMaterial::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
 {
-	return m_materialEditor.getAllConstParams();
+	m_materialEditor.getAllVisibleParams(out);
 }
 
 bool Particle::ParticleMaterial::hasDefaultName() const

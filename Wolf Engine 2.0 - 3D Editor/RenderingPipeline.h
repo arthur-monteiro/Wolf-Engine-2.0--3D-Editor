@@ -16,7 +16,7 @@ class RenderingPipeline : public RenderingPipelineInterface
 public:
 	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams);
 
-	void update(const Wolf::WolfEngine* wolfInstance, const Wolf::ResourceNonOwner<LightManager>& lightManager);
+	void update(const Wolf::WolfEngine* wolfInstance);
 	void frame(Wolf::WolfEngine* wolfInstance);
 
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;

@@ -22,7 +22,7 @@ public:
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 	bool requiresInputs() const override { return false; }
 
-	void addLightsToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const override;
+	void addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const override;
 
 private:
 	inline static const std::string TAB = "Sky light";

@@ -1,10 +1,11 @@
 #pragma once
 
+#include <LightManager.h>
+
 #include "ComponentInterface.h"
-#include "LightManager.h"
 
 class EditorLightInterface : public ComponentInterface
 {
 public:
-	virtual void addLightsToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const = 0;
+	virtual void addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const = 0;
 };

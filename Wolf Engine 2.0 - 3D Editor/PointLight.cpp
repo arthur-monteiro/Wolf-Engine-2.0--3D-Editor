@@ -35,7 +35,7 @@ void PointLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 	debugRenderingManager.addSphere(m_position, m_sphereRadius);
 }
 
-void PointLight::addLightsToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
+void PointLight::addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
 {
 	lightManager->addPointLightForNextFrame({ m_position, m_color, m_intensity });
 }

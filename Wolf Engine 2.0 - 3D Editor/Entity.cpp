@@ -17,7 +17,9 @@ void Entity::loadParams(const std::function<ComponentInterface* (const std::stri
 	if (inFile.good())
 	{
 		Wolf::JSONReader jsonReader(Wolf::JSONReader::FileReadInfo { g_editorConfiguration->computeFullPathFromLocalPath(m_filepath) });
-		::loadParams(jsonReader, "entity", m_entityParams);
+
+		if (static_cast<const std::string&>(m_nameParam) == "Undefined")
+			::loadParams(jsonReader, "entity", m_entityParams);
 
 		const uint32_t componentCount = jsonReader.getRoot()->getPropertyCount();
 		for (uint32_t i = 0; i < componentCount; ++i)
@@ -99,7 +101,7 @@ void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
 	}
 }
 
-void Entity::addLightToLightManager(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
+void Entity::addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
 {
 	for (const Wolf::ResourceNonOwner<EditorLightInterface>& lightComponent : m_lightComponents)
 	{

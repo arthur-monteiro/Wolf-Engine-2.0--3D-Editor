@@ -14,29 +14,6 @@ layout(binding = 0, set = 2, std140) uniform readonly UniformBufferDisplay
 	uint displayType;
 } ubDisplay;
 
-struct PointLightInfo
-{
-    vec4 lightPos;
-    vec4 lightColor;
-};
-const uint MAX_POINT_LIGHTS = 16;
-
-struct SunLightInfo
-{
-	vec4 sunDirection;
-	vec4 sunColor;
-};
-const uint MAX_SUN_LIGHTS = 1;
-
-layout(binding = 1, set = 2, std140) uniform readonly UniformBufferLights
-{
-    PointLightInfo pointLights[MAX_POINT_LIGHTS];
-    uint pointLightsCount;
-
-    SunLightInfo sunLights[MAX_SUN_LIGHTS];
-    uint sunLightsCount;
-} ubLights;
-
 const uint DISPLAY_TYPE_ALBEDO = 0;
 const uint DISPLAY_TYPE_NORMAL = 1;
 const uint DISPLAY_TYPE_ROUGHNESS = 2;

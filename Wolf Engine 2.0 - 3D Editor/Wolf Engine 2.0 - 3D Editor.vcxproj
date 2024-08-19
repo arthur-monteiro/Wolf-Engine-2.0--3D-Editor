@@ -205,7 +205,6 @@
     <ClCompile Include="EntityContainer.cpp" />
     <ClCompile Include="ForwardPass.cpp" />
     <ClCompile Include="GameContext.cpp" />
-    <ClCompile Include="LightManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MaterialListFakeEntity.cpp" />
     <ClCompile Include="Particle.cpp" />
@@ -242,7 +241,6 @@
     <ClInclude Include="EntityContainer.h" />
     <ClInclude Include="ForwardPass.h" />
     <ClInclude Include="GameContext.h" />
-    <ClInclude Include="LightManager.h" />
     <ClInclude Include="MaterialListFakeEntity.h" />
     <ClInclude Include="Particle.h" />
     <ClInclude Include="ParticleEmitter.h" />

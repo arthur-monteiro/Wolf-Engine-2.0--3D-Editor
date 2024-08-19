@@ -528,3 +528,26 @@ li {
     font-style: normal;
     font-size: small;
 }
+
+#entityContextMenu {
+    background-color: #3f3f3f;
+}
+
+.menuList {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menuItem {
+    margin: 0;
+    padding: 10px;
+    cursor: pointer;
+    width: auto;
+    height: 100%;
+    border-radius: 0;
+}
+
+.menuItem:hover {
+    background-color: rgb(134, 134, 134);
+}

@@ -24,56 +24,54 @@ BuildingModel::BuildingModel(const glm::mat4& transform, const ResourceNonOwner<
 	m_sizeXZParam = glm::vec2(10.0f, 20.0f);
 	m_fullSizeY = m_floorHeightInMeter * static_cast<uint32_t>(m_floorCountParam);
 
-	m_buildingDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, BuildingModel>([this](std::unique_ptr<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
-		{
-			descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
-			descriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // mesh infos
-		}));
+	//m_buildingDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, BuildingModel>([this](std::unique_ptr<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
+	//	{
+	//		descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
+	//		descriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // mesh infos
+	//	}));
 
-	m_buildingDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, BuildingModel>([this](std::unique_ptr<DescriptorSetLayout>& descriptorSetLayout)
-		{
-			descriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_buildingDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
-		}));
+	//m_buildingDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, BuildingModel>([this](std::unique_ptr<DescriptorSetLayout>& descriptorSetLayout)
+	//	{
+	//		descriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_buildingDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
+	//	}));
 
-	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, BuildingModel>([this](std::unique_ptr<PipelineSet>& pipelineSet)
-		{
-			pipelineSet.reset(new PipelineSet);
+	//m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, BuildingModel>([this](std::unique_ptr<PipelineSet>& pipelineSet)
+	//	{
+	//		pipelineSet.reset(new PipelineSet);
 
-			PipelineSet::PipelineInfo pipelineInfo;
+	//		PipelineSet::PipelineInfo pipelineInfo;
 
-			pipelineInfo.shaderInfos.resize(2);
-			pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/buildings/shader.vert";
-			pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
-			pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	//		pipelineInfo.shaderInfos.resize(2);
+	//		pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/buildings/shader.vert";
+	//		pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+	//		pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
+	//		pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-			// IA
-			Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
-			InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 1, static_cast<uint32_t>(pipelineInfo.vertexInputAttributeDescriptions.size()));
+	//		// IA
+	//		Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+	//		InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 1, static_cast<uint32_t>(pipelineInfo.vertexInputAttributeDescriptions.size()));
 
-			pipelineInfo.vertexInputBindingDescriptions.resize(2);
-			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
-			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
+	//		pipelineInfo.vertexInputBindingDescriptions.resize(2);
+	//		Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+	//		InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
 
-			// Resources
-			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource(), 1 },
-				{ CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 }, { m_buildingDescriptorSetLayout->getResource(), 3 } };
-			pipelineInfo.bindlessDescriptorSlot = 0;
-			pipelineInfo.cameraDescriptorSlot = 4;
+	//		// Resources
+	//		pipelineInfo.bindlessDescriptorSlot = 0;
+	//		pipelineInfo.cameraDescriptorSlot = 4;
 
-			// Color Blend
-			pipelineInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
+	//		// Color Blend
+	//		pipelineInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
-			// Dynamic states
-			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+	//		// Dynamic states
+	//		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 
-			// Rasterization
-			pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+	//		// Rasterization
+	//		pipelineInfo.cullMode = VK_CULL_MODE_NONE;
 
-			const uint32_t pipelineIdx = pipelineSet->addPipeline(pipelineInfo);
-			if (pipelineIdx != 0)
-				Debug::sendError("Unexpected pipeline idx");
-		}));
+	//		const uint32_t pipelineIdx = pipelineSet->addPipeline(pipelineInfo);
+	//		if (pipelineIdx != 0)
+	//			Debug::sendError("Unexpected pipeline idx");
+	//	}));
 
 	m_window.getMeshWithMaterials().loadDefaultMesh(glm::vec3(1.0f, 0.0f, 0.4f));
 	m_wall.getMeshWithMaterials().loadDefaultMesh(glm::vec3(0.5f, 0.25f, 0.0f));
@@ -126,12 +124,12 @@ void BuildingModel::getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRe
 {
 	auto addPiece = [&](BuildingPiece& piece)
 		{
-			RenderMeshList::MeshToRenderInfo meshToRenderInfo(piece.getMeshWithMaterials().getMesh(), m_defaultPipelineSet->getResource());
+			/*RenderMeshList::MeshToRenderInfo meshToRenderInfo(piece.getMeshWithMaterials().getMesh(), m_defaultPipelineSet->getResource());
 			meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.createConstNonOwnerResource(), 1 });
 			meshToRenderInfo.descriptorSets.push_back({ piece.getDescriptorSet().createConstNonOwnerResource(), 3 });
 			meshToRenderInfo.instanceInfos = { piece.getInstanceBuffer().get(), piece.getInstanceCount() };
 
-			outList.push_back(meshToRenderInfo);
+			outList.push_back(meshToRenderInfo);*/
 		};
 
 	addPiece(m_window);

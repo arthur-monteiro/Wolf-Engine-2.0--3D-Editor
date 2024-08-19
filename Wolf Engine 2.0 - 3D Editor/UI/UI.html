@@ -4,10 +4,16 @@
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   </head>
   <body>
-	<div style='display: none;'>
+	<div style='display: none; position: absolute;'>
 		<img id='editCurveIcon' src='curveEditor/editCurveIcon.png' width='225' height='225'/>
 	</div>
 	<input id="curveEditorCustomYInput" type="text" style="display: none; z-index: 1000;"/>
+
+	<div id="entityContextMenu" style="display: none; z-index: 1000;">
+		<ul class="menuList">
+			<li class="menuItem" id="duplicate">Duplicate</li>
+		</ul>
+	</div>
 
 	<div id="staticElements">
 		<div id="actionButtons">
@@ -132,6 +138,8 @@
 	<script src="./paramsEdition.js"></script>
 	<script type="text/javascript">
 	var animationsInstances = [];
+	var selectedEntityName = "";
+	var isRequestingDuplicate = false;
 
 	function updateFrameRate() {
 		document.getElementById('frameRate').innerHTML = getFrameRate();
@@ -157,6 +165,8 @@
 				}
 			}
 		});
+
+		document.getElementsByTagName('body')[0].addEventListener("click", (event) => { closeEntityContextMenu() });
 	});
 
 	function frame() {
@@ -204,7 +214,11 @@
 		closeEntityAdd();
 
 		filepath = document.getElementById("addEntityPath").innerHTML;
-		addEntity(filepath);
+
+		if (isRequestingDuplicate)
+			duplicateEntity(selectedEntityName, filepath);
+		else
+			addEntity(filepath);
 	}
 
 	function openComponentAdd() {
@@ -284,10 +298,46 @@
 		selectTabInfo("tabLinkEntity", "entityInfos");
 	}
 
+	function closeEntityContextMenu() {
+		document.getElementById("entityContextMenu").style.display = "none";
+	}
+
+	function onDuplicate() {
+		isRequestingDuplicate = true;
+		openEntityAdd();
+
+		closeEntityContextMenu();
+	}
+
+	function onMouseDownEntity(e, entityName) {
+		let isRightClick = getMouseButtons(e) == RMB;
+
+		selectedEntityName = entityName;
+
+		if (isRightClick) {
+			document.getElementById("entityContextMenu").style.display = "block";
+			document.getElementById("entityContextMenu").style.position = "absolute";
+			document.getElementById("entityContextMenu").style.left = e.clientX;
+			document.getElementById("entityContextMenu").style.top = e.clientY;
+
+			// Clear all event listeners
+			var old_element = document.getElementById("duplicate");
+        	var new_element = old_element.cloneNode(true);
+        	old_element.parentNode.replaceChild(new_element, old_element);
+			document.getElementById("duplicate").addEventListener("click", onDuplicate);
+		}
+		else
+			selectEntityByName(entityName);
+	}
+
 	function addEntityToList(name, path, isFake = false) {
 		let entityTypeDiv = "<div class='entityType'>" + (isFake ? "Fake" : "Entity") + "</div>"
+		let enityInfoDiv = "<div class='entityListItem' onmousedown=\"onMouseDownEntity(event, '" + name + "');\" id='" + path + "'";
+		if (isFake)
+			enityInfoDiv += "style='font-style: italic;'";
+		enityInfoDiv += ">" + name + entityTypeDiv +"</div><br/>";
 
-		document.getElementById('entityList').innerHTML += "<div class='entityListItem' onclick=\"selectEntityByName('" + name + "')\" id='" + path + "' style='" + (isFake ? "font-style: italic;" : "") + "'>" + name + entityTypeDiv +"</div><br/>";
+		document.getElementById('entityList').innerHTML += enityInfoDiv;
 	}
 
 	function resetEntityList() {

@@ -11,7 +11,10 @@ ParameterGroupInterface::ParameterGroupInterface(const std::string& tab) : m_nam
 void ParameterGroupInterface::activateParams()
 {
 	m_name.activate();
-	for (EditorParamInterface* param : getAllParams())
+
+	std::vector<EditorParamInterface*> allVisibleParam;
+	getAllVisibleParams(allVisibleParam);
+	for (EditorParamInterface* param : allVisibleParam)
 	{
 		param->activate();
 	}
@@ -20,13 +23,20 @@ void ParameterGroupInterface::activateParams()
 void ParameterGroupInterface::addParamsToJSON(std::string& outJSON, uint32_t tabCount, bool isLast) const
 {
 	m_name.addToJSON(outJSON, tabCount, false);
-	::addParamsToJSON(outJSON, getAllConstParams(), isLast, tabCount);
+
+	std::vector<EditorParamInterface*> allParams;
+	getAllVisibleParams(allParams);
+
+	::addParamsToJSON(outJSON, allParams, isLast, tabCount);
 }
 
 void ParameterGroupInterface::onNameChanged()
 {
 	m_name.setCategory(m_name);
-	for (EditorParamInterface* param : getAllParams())
+
+	std::vector<EditorParamInterface*> allVisibleParam;
+	getAllParams(allVisibleParam);
+	for (EditorParamInterface* param : allVisibleParam)
 	{
 		param->setCategory(m_name);
 	}

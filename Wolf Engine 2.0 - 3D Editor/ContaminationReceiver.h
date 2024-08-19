@@ -33,5 +33,5 @@ private:
 	void onContaminationEmitterChanged();
 	EditorParamString m_contaminationEmitterParam = EditorParamString("Contamination Emitter", TAB, "General", [this]() { onContaminationEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
-	std::unordered_map<const Wolf::PipelineSet*, std::unique_ptr<Wolf::PipelineSet>> m_pipelineSetMapping;
+	std::unordered_map<uint64_t, Wolf::ResourceUniqueOwner<Wolf::PipelineSet>> m_pipelineSetMapping;
 };

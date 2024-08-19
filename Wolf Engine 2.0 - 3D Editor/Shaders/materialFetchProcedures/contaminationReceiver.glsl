@@ -34,6 +34,9 @@ struct MaterialInfo
     float metalness;
     float matAO;
     float anisoStrength;
+
+    vec4 sixWaysLightmap0;
+    vec4 sixWaysLightmap1;
 	
 	uint shadingMode;
 };

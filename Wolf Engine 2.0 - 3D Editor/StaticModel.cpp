@@ -14,7 +14,7 @@ using namespace Wolf;
 StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
 : EditorModelInterface(transform), m_materialsGPUManager(materialsGPUManager)
 {
-	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, StaticModel>([this](std::unique_ptr<PipelineSet>& pipelineSet)
+	m_defaultPipelineSet.reset(new LazyInitSharedResource<PipelineSet, StaticModel>([this](Wolf::ResourceUniqueOwner<PipelineSet>& pipelineSet)
 		{
 			pipelineSet.reset(new PipelineSet);
 
@@ -33,9 +33,9 @@ StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwne
 			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
 			// Resources
-			pipelineInfo.descriptorSetLayouts = { { m_modelDescriptorSetLayout->getResource(), 1 }, { CommonDescriptorLayouts::g_commonDescriptorSetLayout, 2 } };
 			pipelineInfo.bindlessDescriptorSlot = 0;
 			pipelineInfo.cameraDescriptorSlot = 3;
+			pipelineInfo.lightDescriptorSlot = 4;
 
 			// Color Blend
 			pipelineInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
@@ -72,8 +72,8 @@ void StaticModel::getMeshesToRender(std::vector<RenderMeshList::MeshToRenderInfo
 	if (!m_modelData.mesh)
 		return;
 
-	RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_modelData.mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource());
-	meshToRenderInfo.descriptorSets.push_back({ m_descriptorSet.createConstNonOwnerResource(), 1 });
+	RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_modelData.mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource());
+	meshToRenderInfo.descriptorSets.emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_modelDescriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
 
 	outList.push_back(meshToRenderInfo);
 }

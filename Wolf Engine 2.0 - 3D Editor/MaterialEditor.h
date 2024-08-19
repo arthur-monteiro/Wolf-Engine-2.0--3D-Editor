@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "ComponentInterface.h"
 #include "EditorConfiguration.h"
 #include "EditorTypes.h"
 #include "Notifier.h"
@@ -14,11 +15,11 @@ public:
 
 	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 
-	void activateParams() const;
-	void addParamsToJSON(std::string& outJSON, uint32_t tabCount, bool isLast) const;
+	void activateParams();
+	void addParamsToJSON(std::string& outJSON, uint32_t tabCount, bool isLast);
 
-	std::span<EditorParamInterface*> getAllParams() { return m_materialParams; }
-	std::span<EditorParamInterface* const> getAllConstParams() const { return m_materialParams; }
+	void getAllParams(std::vector<EditorParamInterface*>& out) const;
+	void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const;
 
 	void setMaterialId(uint32_t materialId) { m_materialId = materialId; }
 	void setAlbedoPath(const std::string& albedoPath) { m_albedoPathParam = albedoPath; }
@@ -39,11 +40,29 @@ private:
 	EditorParamString m_metalnessParam;
 	EditorParamString m_aoParam;
 	EditorParamString m_anisoStrengthParam;
+	EditorParamString m_sixWaysLightmap0;
+	EditorParamString m_sixWaysLightmap1;
 	EditorParamBool m_enableAlpha;
 
+	struct ShadingMode
+	{
+		static constexpr uint32_t GGX = 0;
+		static constexpr uint32_t AnisoGGX = 1;
+		static constexpr uint32_t SixWaysLighting = 2;
+	};
 	EditorParamEnum m_shadingMode;
 
-	std::array<EditorParamInterface*, 8> m_materialParams =
+	std::array<EditorParamInterface*, 6> m_shadingModeGGXParams
+	{
+		&m_albedoPathParam,
+		&m_normalPathParam,
+		&m_roughnessParam,
+		&m_metalnessParam,
+		&m_aoParam,
+		&m_enableAlpha,
+	};
+
+	std::array<EditorParamInterface*, 7> m_shadingModeGGXAnisoParams
 	{
 		&m_albedoPathParam,
 		&m_normalPathParam,
@@ -51,6 +70,30 @@ private:
 		&m_metalnessParam,
 		&m_aoParam,
 		&m_anisoStrengthParam,
+		&m_enableAlpha,
+	};
+
+	std::array<EditorParamInterface*, 2> m_shadingModeSixWaysLighting
+	{
+		&m_sixWaysLightmap0,
+		&m_sixWaysLightmap1
+	};
+
+	std::array<EditorParamInterface*, 1> m_alwaysVisibleParams
+	{
+		&m_shadingMode
+	};
+
+	std::array<EditorParamInterface*, 10> m_allParams =
+	{
+		&m_albedoPathParam,
+		&m_normalPathParam,
+		&m_roughnessParam,
+		&m_metalnessParam,
+		&m_aoParam,
+		&m_anisoStrengthParam,
+		&m_sixWaysLightmap0,
+		&m_sixWaysLightmap1,
 		&m_enableAlpha,
 		&m_shadingMode
 	};

@@ -10,8 +10,8 @@ public:
 
 	void activateParams();
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount, bool isLast) const;
-	virtual std::span<EditorParamInterface*> getAllParams() = 0;
-	virtual std::span<EditorParamInterface* const> getAllConstParams() const = 0;
+	virtual void getAllParams(std::vector<EditorParamInterface*>& out) const = 0;
+	virtual void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const = 0;
 	virtual bool hasDefaultName() const = 0;
 
 	EditorParamInterface* getNameParam() { return &m_name; }

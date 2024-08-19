@@ -16,10 +16,9 @@ RenderingPipeline::RenderingPipeline(const WolfEngine* wolfInstance, EditorParam
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<CommandRecordBase>());
 }
 
-void RenderingPipeline::update(const WolfEngine* wolfInstance, const Wolf::ResourceNonOwner<LightManager>& lightManager)
+void RenderingPipeline::update(const WolfEngine* wolfInstance)
 {
 	m_particleUpdatePass->updateBeforeFrame(wolfInstance->getGlobalTimer());
-	m_forwardPass->updateLights(lightManager);
 }
 
 void RenderingPipeline::frame(WolfEngine* wolfInstance)

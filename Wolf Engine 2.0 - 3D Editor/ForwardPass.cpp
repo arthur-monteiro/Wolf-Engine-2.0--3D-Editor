@@ -16,8 +16,6 @@
 
 using namespace Wolf;
 
-const DescriptorSetLayout* CommonDescriptorLayouts::g_commonDescriptorSetLayout;
-
 void ForwardPass::initializeResources(const InitializationContext& context)
 {
 	Attachment color = setupColorAttachment(context);
@@ -32,17 +30,12 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 	// Shared resources
 	{
 		m_displayOptionsUniformBuffer.reset(Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-		m_pointLightsUniformBuffer.reset(Buffer::createBuffer(sizeof(LightsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
 		m_commonDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
-
-		CommonDescriptorLayouts::g_commonDescriptorSetLayout = m_commonDescriptorSetLayout.get();
 
 		DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, *m_displayOptionsUniformBuffer);
-		descriptorSetGenerator.setBuffer(1, *m_pointLightsUniformBuffer);
 
 		m_commonDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_commonDescriptorSetLayout));
 		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -62,7 +55,7 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 		m_particlesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 		m_particlesVertexShaderParser.reset(new ShaderParser("Shaders/particles/render.vert", {}, 1));
-		m_particlesFragmentShaderParser.reset(new ShaderParser("Shaders/particles/render.frag", {}, -1, 2));
+		m_particlesFragmentShaderParser.reset(new ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3));
 	}
 
 	// UI resources
@@ -143,10 +136,12 @@ void ForwardPass::record(const RecordContext& context)
 	const Viewport renderViewport = m_editorParams->getRenderViewport();
 	m_commandBuffer->setViewport(renderViewport);
 
-	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), 0, 0,
-		{
-			{ COMMON_DESCRIPTOR_SET_SLOT, m_commonDescriptorSet.get() }
-		});
+	DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), COMMON_DESCRIPTOR_SET_SLOT);
+
+	std::vector<DescriptorSetBindInfo> descriptorSetBindInfos;
+	descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo);
+
+	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), 0, 0, descriptorSetBindInfos);
 
 	/* Particles */
 	m_commandBuffer->bindPipeline(m_particlesPipeline.get());
@@ -154,6 +149,7 @@ void ForwardPass::record(const RecordContext& context)
 	m_commandBuffer->bindDescriptorSet(m_particlesDescriptorSet.get(), 0, *m_particlesPipeline);
 	m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
 	m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
+	m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
 	m_commandBuffer->draw(m_particlesUpdatePass->getParticleCount() * 6, 1, 0, 0);
 
 	/* UI */
@@ -190,45 +186,6 @@ void ForwardPass::submit(const SubmitContext& context)
 		context.graphicAPIManager->waitIdle();
 		createPipelines();
 	}
-}
-
-void ForwardPass::updateLights(const Wolf::ResourceNonOwner<LightManager>& lightManager) const
-{
-	LightsUBData lightsUbData{};
-
-	uint32_t pointLightIdx = 0;
-	for (const LightManager::PointLightInfo& pointLightInfo : lightManager->getCurrentPointLights())
-	{
-		lightsUbData.pointLights[pointLightIdx].lightPos = glm::vec4(pointLightInfo.worldPos, 1.0f);
-		lightsUbData.pointLights[pointLightIdx].lightColor = glm::vec4(pointLightInfo.color * pointLightInfo.intensity * 0.01f, 1.0f);
-
-		pointLightIdx++;
-
-		if (pointLightIdx == MAX_POINT_LIGHTS)
-		{
-			Debug::sendMessageOnce("Max point lights reached, next will be ignored", Debug::Severity::WARNING, this);
-			break;
-		}
-	}
-	lightsUbData.pointLightsCount = pointLightIdx;
-
-	uint32_t sunLightIdx = 0;
-	for (const LightManager::SunLightInfo& sunLightInfo : lightManager->getCurrentSunLights())
-	{
-		lightsUbData.sunLights[sunLightIdx].sunDirection = glm::vec4(sunLightInfo.direction, 1.0f);
-		lightsUbData.sunLights[sunLightIdx].sunColor = glm::vec4(sunLightInfo.color * sunLightInfo.intensity * 0.01f, 1.0f);
-
-		sunLightIdx++;
-
-		if (sunLightIdx == MAX_SUN_LIGHTS)
-		{
-			Debug::sendMessageOnce("Max sun lights reached, next will be ignored", Debug::Severity::WARNING, this);
-			break;
-		}
-	}
-	lightsUbData.sunLightsCount = sunLightIdx;
-
-	m_pointLightsUniformBuffer->transferCPUMemory(&lightsUbData, sizeof(LightsUBData));
 }
 
 Attachment ForwardPass::setupColorAttachment(const InitializationContext& context)
@@ -285,7 +242,8 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.cullMode = VK_CULL_MODE_NONE;
 
 		// Resources
-		pipelineCreateInfo.descriptorSetLayouts = { m_particlesDescriptorSetLayout.get(), GraphicCameraInterface::getDescriptorSetLayout(), MaterialsGPUManager::getDescriptorSetLayout() };
+		pipelineCreateInfo.descriptorSetLayouts = { m_particlesDescriptorSetLayout.get(), GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
+			MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(), LightManager::getDescriptorSetLayout().createConstNonOwnerResource() };
 
 		// Color Blend
 		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ADD };

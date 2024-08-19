@@ -15,20 +15,16 @@
 #include "EditorParams.h"
 #include "ParticleUpdatePass.h"
 
-class LightManager;
-
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdateSemaphore) :
-		m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdateSemaphore) {}
+	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass) :
+		m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdatePass) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
-
-	void updateLights(const Wolf::ResourceNonOwner<LightManager>& lightManager) const;
 
 private:
 	static Wolf::Attachment setupColorAttachment(const Wolf::InitializationContext& context);
@@ -47,8 +43,10 @@ private:
 	/* Shared resources */
 	Wolf::DescriptorSetLayoutGenerator m_commonDescriptorSetLayoutGenerator;
 	static constexpr uint32_t COMMON_DESCRIPTOR_SET_SLOT = 2;
-	std::unique_ptr<Wolf::DescriptorSet> m_commonDescriptorSet;
-	std::unique_ptr<Wolf::DescriptorSetLayout> m_commonDescriptorSetLayout;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_commonDescriptorSet;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_commonDescriptorSetLayout;
+
+	static constexpr uint32_t LIGHT_DESCRIPTOR_SET_SLOT = 4;
 
 	// Display options
 	struct DisplayOptionsUBData
@@ -56,33 +54,6 @@ private:
 		uint32_t displayType;
 	};
 	std::unique_ptr<Wolf::Buffer> m_displayOptionsUniformBuffer;
-
-	// Lights
-	struct PointLightInfo
-	{
-		glm::vec4 lightPos;
-		glm::vec4 lightColor;
-	};
-	static constexpr uint32_t MAX_POINT_LIGHTS = 16;
-
-	struct SunLightInfo
-	{
-		glm::vec4 sunDirection;
-		glm::vec4 sunColor;
-	};
-	static constexpr uint32_t MAX_SUN_LIGHTS = 1;
-
-	struct LightsUBData
-	{
-		PointLightInfo pointLights[MAX_POINT_LIGHTS];
-		uint32_t pointLightsCount;
-		glm::vec3 padding;
-
-		SunLightInfo sunLights[MAX_SUN_LIGHTS];
-		uint32_t sunLightsCount;
-		glm::vec3 padding2;
-	};
-	std::unique_ptr<Wolf::Buffer> m_pointLightsUniformBuffer;
 
 	/* Particles resources */
 	Wolf::DescriptorSetLayoutGenerator m_particlesDescriptorSetLayoutGenerator;
