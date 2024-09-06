@@ -11,15 +11,16 @@
 #include <Sampler.h>
 #include <ShaderParser.h>
 
-#include "BindlessDescriptor.h"
 #include "EditorParams.h"
 #include "ParticleUpdatePass.h"
+#include "ShadowMaskPassInterface.h"
 
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass) :
-		m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdatePass) {}
+	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass, 
+		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass)
+	: m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -42,11 +43,8 @@ private:
 
 	/* Shared resources */
 	Wolf::DescriptorSetLayoutGenerator m_commonDescriptorSetLayoutGenerator;
-	static constexpr uint32_t COMMON_DESCRIPTOR_SET_SLOT = 2;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_commonDescriptorSet;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_commonDescriptorSetLayout;
-
-	static constexpr uint32_t LIGHT_DESCRIPTOR_SET_SLOT = 4;
 
 	// Display options
 	struct DisplayOptionsUBData
@@ -64,6 +62,8 @@ private:
 	std::unique_ptr<Wolf::ShaderParser> m_particlesFragmentShaderParser;
 	std::unique_ptr<Wolf::Pipeline> m_particlesPipeline;
 
+	static constexpr uint32_t SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES = 4;
+
 	/* UI resources */
 	Wolf::DescriptorSetLayoutGenerator m_userInterfaceDescriptorSetLayoutGenerator;
 	std::unique_ptr<Wolf::DescriptorSetLayout> m_userInterfaceDescriptorSetLayout;
@@ -78,5 +78,6 @@ private:
 	EditorParams* m_editorParams;
 	const Wolf::Semaphore* m_contaminationUpdateSemaphore;
 	Wolf::ResourceNonOwner<const ParticleUpdatePass> m_particlesUpdatePass;
+	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
 };
 

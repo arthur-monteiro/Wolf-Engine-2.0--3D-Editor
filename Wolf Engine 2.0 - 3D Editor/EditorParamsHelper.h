@@ -45,7 +45,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 	bool stringDrivingCategoryNameAlreadyFound = false;
 	for (EditorParamInterface* param : params)
 	{
-		if (param->getType() == EditorParamInterface::Type::String)
+		if (param->getType() == EditorParamInterface::Type::STRING)
 		{
 			if (dynamic_cast<EditorParamString*>(param)->drivesCategoryName())
 			{
@@ -53,7 +53,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				{
 					Wolf::Debug::sendError("Only one string driving category name can be there, otherwise we can't know which string needs which value");
 				}
-				else if(Wolf::JSONReader::JSONObjectInterface * object = findParamObject(param->getName(), ""))
+				else if (Wolf::JSONReader::JSONObjectInterface * object = findParamObject(param->getName(), ""))
 				{
 					*dynamic_cast<EditorParamString*>(param) = object->getPropertyString("value"); // will call callbacks changing the category for all properties concerned
 				}
@@ -66,7 +66,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 	{
 		switch (param->getType()) 
 		{
-			case EditorParamInterface::Type::Float:
+			case EditorParamInterface::Type::FLOAT:
 				{
 					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
@@ -74,7 +74,8 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					}
 				}
 				break;
-			case EditorParamInterface::Type::UInt:
+			case EditorParamInterface::Type::UINT:
+			case EditorParamInterface::Type::TIME:
 				{
 					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
@@ -82,10 +83,10 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					}
 				}
 				break;
-			case EditorParamInterface::Type::Vector2:
+			case EditorParamInterface::Type::VECTOR2:
 				*static_cast<EditorParamVector2*>(param) = glm::vec2(findParamObject(param->getName(), param->getCategory())->getPropertyFloat("valueX"), findParamObject(param->getName(), param->getCategory())->getPropertyFloat("valueY"));
 				break;
-			case EditorParamInterface::Type::Vector3:
+			case EditorParamInterface::Type::VECTOR3:
 				{
 					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
@@ -93,9 +94,9 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					}
 				}
 				break;
-			case EditorParamInterface::Type::String:
-			case EditorParamInterface::Type::File:
-			case EditorParamInterface::Type::Entity:
+			case EditorParamInterface::Type::STRING:
+			case EditorParamInterface::Type::FILE:
+			case EditorParamInterface::Type::ENTITY:
 				{
 					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
@@ -103,7 +104,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					}
 				}
 				break;
-			case EditorParamInterface::Type::Array:
+			case EditorParamInterface::Type::ARRAY:
 			{
 				const uint32_t count = static_cast<uint32_t>(findParamObject(param->getName(), param->getCategory())->getPropertyFloat("count"));
 				for (uint32_t itemArrayIdx = 0; itemArrayIdx < count; ++itemArrayIdx)
@@ -116,7 +117,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				}
 				break;
 			}
-			case EditorParamInterface::Type::Bool:
+			case EditorParamInterface::Type::BOOL:
 				{
 					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
@@ -124,7 +125,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					}
 				}
 				break;
-			case EditorParamInterface::Type::Group:
+			case EditorParamInterface::Type::GROUP:
 			{
 				GroupItemType& item = static_cast<EditorParamGroup<GroupItemType>*>(param)->get();
 				std::vector<EditorParamInterface*> arrayItemParams;
@@ -134,7 +135,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 
 				break;
 			}
-			case EditorParamInterface::Type::Curve:
+			case EditorParamInterface::Type::CURVE:
 			{
 				if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 				{
@@ -142,7 +143,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				}
 				break;
 			}
-			case EditorParamInterface::Type::Enum:
+			case EditorParamInterface::Type::ENUM:
 			{
 				if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 				{

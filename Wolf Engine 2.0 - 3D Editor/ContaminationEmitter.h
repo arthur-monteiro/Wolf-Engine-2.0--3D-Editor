@@ -81,7 +81,7 @@ private:
 	EditorParamFloat m_size = EditorParamFloat("Size", TAB, "General", 1.0f, 64.0f, [this]() { onParamChanged(); });
 	EditorParamVector3 m_offset = EditorParamVector3("Offset", TAB, "General", -64.0f, 64.0f, [this]() { onParamChanged(); });
 
-	EditorParamUInt m_fillSceneWithValue = EditorParamUInt("Fill scene with value", TAB, "Tool", 0, 255, [this] { onFillSceneWithValueChanged(); }, true);
+	EditorParamUInt m_fillSceneWithValue = EditorParamUInt("Fill scene with value", TAB, "Tool", 0, 255, [this] { onFillSceneWithValueChanged(); }, EditorParamUInt::ParamUIntType::NUMBER, true);
 	EditorParamBool m_fillWithRandom = EditorParamBool("Fill with random", TAB, "Tool", [this] { onFillSceneWithValueChanged(); });
 	EditorParamBool m_drawDebug = EditorParamBool("Draw debug", TAB, "Tool");
 

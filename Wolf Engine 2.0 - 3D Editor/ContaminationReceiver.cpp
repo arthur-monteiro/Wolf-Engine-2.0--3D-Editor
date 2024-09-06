@@ -3,6 +3,7 @@
 #include <fstream>
 #include <utility>
 
+#include "CommonLayouts.h"
 #include "ContaminationEmitter.h"
 #include "EditorParamsHelper.h"
 #include "Entity.h"
@@ -41,27 +42,35 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<Wolf::RenderMeshList
 				if (!replacePipelineSet)
 				{
 					replacePipelineSet.reset(new Wolf::PipelineSet);
-					for (const Wolf::PipelineSet::PipelineInfo* pipelineInfo : meshToRender.pipelineSet->retrieveAllPipelinesInfo())
-					{
-						Wolf::PipelineSet::PipelineInfo newPipelineInfo = *pipelineInfo;
-						for (Wolf::PipelineSet::PipelineInfo::ShaderInfo& shaderInfo : newPipelineInfo.shaderInfos)
-						{
-							if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
-							{
-								shaderInfo.materialFetchProcedure.codeString = "";
 
-								std::ifstream inFile("Shaders/materialFetchProcedures/contaminationReceiver.glsl");
-								std::string line;
-								while (std::getline(inFile, line))
+					std::vector<const Wolf::PipelineSet::PipelineInfo*> allPipelinesInfo = meshToRender.pipelineSet->retrieveAllPipelinesInfo();
+					for (uint32_t i = 0; i < allPipelinesInfo.size(); ++i)
+					{
+						const Wolf::PipelineSet::PipelineInfo* pipelineInfo = allPipelinesInfo[i];
+
+						Wolf::PipelineSet::PipelineInfo newPipelineInfo = *pipelineInfo;
+
+						if (i == CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+						{
+							for (Wolf::PipelineSet::PipelineInfo::ShaderInfo& shaderInfo : newPipelineInfo.shaderInfos)
+							{
+								if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
 								{
-									const std::string& descriptorSlotToken = "£CONTAMINATION_DESCRIPTOR_SLOT";
-									size_t descriptorSlotTokenPos = line.find(descriptorSlotToken);
-									while (descriptorSlotTokenPos != std::string::npos)
+									shaderInfo.materialFetchProcedure.codeString = "";
+
+									std::ifstream inFile("Shaders/materialFetchProcedures/contaminationReceiver.glsl");
+									std::string line;
+									while (std::getline(inFile, line))
 									{
-										line.replace(descriptorSlotTokenPos, descriptorSlotToken.length(), std::to_string(5)); // TODO: replace this '5' with an available slot
-										descriptorSlotTokenPos = line.find(descriptorSlotToken);
+										const std::string& descriptorSlotToken = "£CONTAMINATION_DESCRIPTOR_SLOT";
+										size_t descriptorSlotTokenPos = line.find(descriptorSlotToken);
+										while (descriptorSlotTokenPos != std::string::npos)
+										{
+											line.replace(descriptorSlotTokenPos, descriptorSlotToken.length(), std::to_string(DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT));
+											descriptorSlotTokenPos = line.find(descriptorSlotToken);
+										}
+										shaderInfo.materialFetchProcedure.codeString += line + '\n';
 									}
-									shaderInfo.materialFetchProcedure.codeString += line + '\n';
 								}
 							}
 						}
@@ -70,7 +79,7 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<Wolf::RenderMeshList
 				}
 
 				meshToRender.pipelineSet = replacePipelineSet.createConstNonOwnerResource();
-				meshToRender.descriptorSets.emplace_back(contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), 5);
+				meshToRender.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
 			}
 		}
 	}

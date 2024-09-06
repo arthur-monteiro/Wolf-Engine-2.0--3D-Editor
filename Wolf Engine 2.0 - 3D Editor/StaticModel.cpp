@@ -5,7 +5,7 @@
 #include <Timer.h>
 #include <Pipeline.h>
 
-#include "CommonDescriptorLayouts.h"
+#include "CommonLayouts.h"
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 
@@ -20,11 +20,10 @@ StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwne
 
 			PipelineSet::PipelineInfo pipelineInfo;
 
-			pipelineInfo.shaderInfos.resize(2);
+			/* Pre Depth */
+			pipelineInfo.shaderInfos.resize(1);
 			pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/defaultPipeline/shader.vert";
 			pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
-			pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 			// IA
 			Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
@@ -33,9 +32,7 @@ StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwne
 			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
 			// Resources
-			pipelineInfo.bindlessDescriptorSlot = 0;
-			pipelineInfo.cameraDescriptorSlot = 3;
-			pipelineInfo.lightDescriptorSlot = 4;
+			pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
 
 			// Color Blend
 			pipelineInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
@@ -43,9 +40,30 @@ StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwne
 			// Dynamic states
 			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 
-			const uint32_t pipelineIdx = pipelineSet->addPipeline(pipelineInfo);
-			if (pipelineIdx != 0)
-				Debug::sendError("Unexpected pipeline idx");
+			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH);
+
+			/* Shadow maps */
+			pipelineInfo.dynamicStates.clear();
+			pipelineInfo.depthBiasConstantFactor = 4.0f;
+			pipelineInfo.depthBiasSlopeFactor = 2.5f;
+			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
+			pipelineInfo.depthBiasConstantFactor = 0.0f;
+			pipelineInfo.depthBiasSlopeFactor = 0.0f;
+
+			/* Forward */
+			pipelineInfo.shaderInfos.resize(2);
+			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
+			pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			// Resources
+			pipelineInfo.bindlessDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_BINDLESS;
+			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
+			pipelineInfo.customMask = AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO;
+
+			// Dynamic states
+			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+
+			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
 		}));
 }
 
@@ -73,7 +91,9 @@ void StaticModel::getMeshesToRender(std::vector<RenderMeshList::MeshToRenderInfo
 		return;
 
 	RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_modelData.mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource());
-	meshToRenderInfo.descriptorSets.emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_modelDescriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
+	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_modelDescriptorSetLayout->getResource().createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CUSTOM);
+	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_modelDescriptorSetLayout->getResource().createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CUSTOM);
+	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_modelDescriptorSetLayout->getResource().createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CUSTOM);
 
 	outList.push_back(meshToRenderInfo);
 }

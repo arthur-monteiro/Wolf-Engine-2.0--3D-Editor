@@ -6,8 +6,7 @@
 #include <GraphicCameraInterface.h>
 #include <Image.h>
 
-#include "BuildingModel.h"
-#include "CommonDescriptorLayouts.h"
+#include "CommonLayouts.h"
 #include "GameContext.h"
 #include "EditorModelInterface.h"
 
@@ -43,7 +42,7 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 
 	// Particles resources
 	{
-		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT,   0); // particles buffer
+		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT,                                0); // particles buffer
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 1); // emitters buffer
 		m_particlesDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
@@ -55,7 +54,10 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 		m_particlesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 		m_particlesVertexShaderParser.reset(new ShaderParser("Shaders/particles/render.vert", {}, 1));
-		m_particlesFragmentShaderParser.reset(new ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3));
+		ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
+		m_shadowMaskPass->addShaderCode(shaderCodeToAdd, SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
+		m_particlesFragmentShaderParser.reset(new ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3, ShaderParser::MaterialFetchProcedure(),
+			shaderCodeToAdd));
 	}
 
 	// UI resources
@@ -136,12 +138,13 @@ void ForwardPass::record(const RecordContext& context)
 	const Viewport renderViewport = m_editorParams->getRenderViewport();
 	m_commandBuffer->setViewport(renderViewport);
 
-	DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), COMMON_DESCRIPTOR_SET_SLOT);
+	DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_FORWARD_COMMON);
 
-	std::vector<DescriptorSetBindInfo> descriptorSetBindInfos;
-	descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo);
+	std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
+	descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo, 0);
+	descriptorSetBindInfos.emplace_back(m_shadowMaskPass->getMaskDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO);
 
-	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), 0, 0, descriptorSetBindInfos);
+	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos);
 
 	/* Particles */
 	m_commandBuffer->bindPipeline(m_particlesPipeline.get());
@@ -150,6 +153,7 @@ void ForwardPass::record(const RecordContext& context)
 	m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
 	m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
 	m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
+	m_commandBuffer->bindDescriptorSet(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSet(), SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES, *m_particlesPipeline);
 	m_commandBuffer->draw(m_particlesUpdatePass->getParticleCount() * 6, 1, 0, 0);
 
 	/* UI */
@@ -170,6 +174,8 @@ void ForwardPass::submit(const SubmitContext& context)
 	std::vector waitSemaphores{ m_contaminationUpdateSemaphore, context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
 	if (m_particlesUpdatePass->getParticleCount() > 0)
 		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore());
+	if (m_shadowMaskPass->wasEnabledThisFrame())
+		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
 	const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
 
@@ -242,8 +248,14 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.cullMode = VK_CULL_MODE_NONE;
 
 		// Resources
-		pipelineCreateInfo.descriptorSetLayouts = { m_particlesDescriptorSetLayout.get(), GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
-			MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(), LightManager::getDescriptorSetLayout().createConstNonOwnerResource() };
+		pipelineCreateInfo.descriptorSetLayouts = 
+		{
+			m_particlesDescriptorSetLayout.get(),
+			GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
+			MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(),
+			LightManager::getDescriptorSetLayout().createConstNonOwnerResource(),
+			m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSetLayout()
+		};
 
 		// Color Blend
 		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ADD };

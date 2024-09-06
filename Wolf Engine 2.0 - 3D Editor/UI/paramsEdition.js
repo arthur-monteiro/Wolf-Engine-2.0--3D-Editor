@@ -248,6 +248,32 @@ function computeInput(param, isLast) {
         htmlToAdd += "animationsInstances.push(curveEditor" + nameForCallback + ");";
         htmlToAdd += "</script>";        
     }
+    else if (param.type == "Time") {
+        htmlToAdd += "<script>";
+        htmlToAdd += "function onInputFor" + nameForCallback + "Changed(value){";
+        htmlToAdd += "document.getElementById('hoursInputFor" + nameForCallback + "').value = Math.trunc(value / (60 * 60));";
+        htmlToAdd += "document.getElementById('minutesInputFor" + nameForCallback + "').value = Math.trunc(value / 60) % 60;";
+        htmlToAdd += "change" + nameForCallback + "(value);";
+        htmlToAdd += "}";
+        htmlToAdd += "</script>";
+
+        htmlToAdd += "<div style='float:left;width:25%; display: inline-block; padding: 5px;'>" + param.name + ":</div>";
+
+        htmlToAdd += "<div style='display: inline-block; width: 70%'; margin-top: -2px;>";
+
+        htmlToAdd += "<div style='display: inline-block; width: calc(100% - 100px);'>";
+        htmlToAdd += "<wolf-slider id='timeSlider" + nameForCallback + "' max='" + param.max + "' min='" + param.min + "' step='1.0' oninput=\"onInputFor" + nameForCallback + "Changed\" value=\"" + param.value + "\" noInput=true></wolf-slider>";
+        htmlToAdd += "</div>";
+
+        let hoursValue = Math.trunc(param.value / (60 * 60));
+        let minutesValue = Math.trunc(param.value / 60) % 60;
+
+        htmlToAdd += "<div style='float: right; width: 90px; padding: 5px;'>";
+        htmlToAdd += "<input id='hoursInputFor" + nameForCallback + "' class='numberInput timeUnitInput' value='" + hoursValue + "'/>:<input id='minutesInputFor" + nameForCallback + "'class='numberInput timeUnitInput' value='" + minutesValue + "'/>";
+        htmlToAdd += "</div>";
+
+        htmlToAdd += "</div>";
+    }
 
     htmlToAdd += "</div>"
     return htmlToAdd;

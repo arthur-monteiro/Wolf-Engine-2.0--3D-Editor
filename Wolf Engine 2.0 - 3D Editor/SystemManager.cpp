@@ -564,13 +564,14 @@ void SystemManager::updateBeforeFrame()
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
 	m_camera->setAspect(m_editorParams->getAspect());
 
+	m_renderer->update(m_wolfInstance.get());
+
 	m_wolfInstance->updateBeforeFrame();
 	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
 		entity->updateBeforeFrame(m_wolfInstance->getInputHandler(), m_wolfInstance->getGlobalTimer());
 		entity->updateDuringFrame(m_wolfInstance->getInputHandler()); // TODO: send this to another thread
 	}
-	m_renderer->update(m_wolfInstance.get());
 
 	if (m_wolfInstance->getInputHandler()->keyPressedThisFrame(GLFW_KEY_ESCAPE))
 	{
@@ -626,6 +627,7 @@ void SystemManager::updateBeforeFrame()
 void SystemManager::loadScene()
 {
 	m_wolfInstance->getRenderMeshList().clear();
+	m_debugRenderingManager->clearBeforeFrame();
 	m_wolfInstance->waitIdle();
 
 	m_selectedEntity.reset(nullptr);

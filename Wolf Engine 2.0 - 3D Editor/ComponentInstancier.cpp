@@ -31,7 +31,7 @@ std::string ComponentInstancier::getAllComponentTypes(const Wolf::ResourceNonOwn
 	for (const ComponentInfo& componentInfo : m_componentsInfo)
 	{
 		// Model interface check
-		if ((componentInfo.id == StaticModel::ID || componentInfo.id == BuildingModel::ID) && selectedEntity->hasModelComponent())
+		if ((componentInfo.id == StaticModel::ID) && selectedEntity->hasModelComponent())
 			continue;
 
 		// Same component check

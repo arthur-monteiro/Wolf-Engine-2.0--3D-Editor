@@ -13,16 +13,20 @@ class WolfSlider extends HTMLElement {
         this.step = this.getAttribute('step')?this.getAttribute('step'): (this.min + this.max)/100;
         this.values = this.getAttribute("value")? this.getAttribute("value").split(";").map((str)=>Number(str)) : [(this.min + this.max)/2];
         this.disabled = this.getAttribute("disabled")? this.getAttribute("disabled") : false;
+        this.noInput = this.getAttribute("noInput")? this.getAttribute("noInput") : false;
         var div = document.createElement('input');
-        div.style = "margin: auto 0 auto 1rem; width: 50px; border-color: transparent; background: inherit; color: inherit;";
+        if (this.noInput) 
+            div.style = "display: none";
         div.value =`${this.values}`;
         div.classList.add("textInput");
+        div.classList.add("numberInput");
         let oninputName = this.getAttribute('oninput');
         div.addEventListener('change', function(ev) { 
             eval(oninputName + "(this.value)");
             this.parentNode.querySelector("input").value = this.value;
         });
         this.appendChild(div)
+
         this.values.forEach((val, index) => {
             this.querySelector('section').appendChild(this.input({
                 type: "range",
@@ -45,9 +49,9 @@ class WolfSlider extends HTMLElement {
         Object.assign(this.el, props);
         this.el.setAttribute("value", value);
         this.el.addEventListener('input', () => {
-            this.values[key] = Number(this.el.value);
-            this.querySelector('.textInput').value =`${this.values}`;
-            window[this.getAttribute('oninput')](this.values.length == 1 ? this.values[0] : this.values);
+        this.values[key] = Number(this.el.value);
+        this.querySelector('.textInput').value =`${this.values}`;
+        window[this.getAttribute('oninput')](this.values.length == 1 ? this.values[0] : this.values);
         })
         this.el.disabled = this.disabled;
         return this.el;

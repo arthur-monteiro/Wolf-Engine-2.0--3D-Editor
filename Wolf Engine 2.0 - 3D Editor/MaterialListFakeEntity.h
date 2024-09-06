@@ -47,7 +47,7 @@ private:
 		Wolf::ResourceUniqueOwner<MaterialEditor> m_material;
 	};
 
-	EditorParamUInt m_materialCount = EditorParamUInt("Material Count", "Material List", "General", 0, 100, false, true);
+	EditorParamUInt m_materialCount = EditorParamUInt("Material Count", "Material List", "General", 0, 100, EditorParamUInt::ParamUIntType::NUMBER, false, true);
 	static constexpr uint32_t MAX_MATERIALS = 1024;
 	EditorParamArray<MaterialInfo> m_materials = EditorParamArray<MaterialInfo>("Materials", "Material List", "Materials", MAX_MATERIALS, false, true);
 

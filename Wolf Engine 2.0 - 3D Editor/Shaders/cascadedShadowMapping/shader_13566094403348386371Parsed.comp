@@ -1,0 +1,222 @@
+#version 460
+#define COMPUTE_SHADER
+
+layout(binding = 0, set = 2) uniform UniformBufferCamera
+{
+	mat4 view;
+
+	mat4 projection;
+
+	mat4 invView;
+
+	mat4 invProjection;
+
+	mat4 previousViewMatrix;
+
+	vec2 jitter;
+	vec2 projectionParams;
+
+	float near;
+	float far;
+	
+} ubCamera;
+
+mat4 getViewMatrix()
+{
+	return ubCamera.view;
+}
+
+mat4 getProjectionMatrix()
+{
+	return ubCamera.projection;
+}
+
+mat4 getInvViewMatrix()
+{
+	return ubCamera.invView;
+}
+
+mat4 getInvProjectionMatrix()
+{
+	return ubCamera.invProjection;
+}
+
+vec2 getProjectionParams()
+{
+	return ubCamera.projectionParams;
+}
+
+vec2 getCameraJitter()
+{
+	return ubCamera.jitter;
+}
+
+float linearizeDepth(float d)
+{
+    return ubCamera.near * ubCamera.far / (ubCamera.far - d * (ubCamera.far - ubCamera.near));
+}
+
+mat4 getPreviousViewMatrix()
+{
+	return ubCamera.previousViewMatrix;
+}
+
+vec3 computeWorldPosFromViewPos(in const vec3 viewPos)
+{
+	return (getInvViewMatrix() * vec4(viewPos, 1.0)).xyz;
+}
+
+vec3 getCameraPos()
+{
+	return ubCamera.invView[3].xyz;
+}
+#extension GL_EXT_nonuniform_qualifier : enable
+
+const float BIAS = 0.0; // defined in the pipeline
+const float SEAM_RANGE = 1.0;
+const float HALF_SEAM_RANGE = SEAM_RANGE / 2.0;
+const uint CASCADES_COUNT = 4;
+
+const uint NOISE_TEXTURE_SIZE_PER_SIDE = 128;
+const uint NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE = 4;
+const uint NOISE_TEXTURE_PATTERN_PIXEL_COUNT = NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE;
+
+#ifdef COMPUTE_SHADER
+const uint LOCAL_SIZE = 16;
+shared vec2 sharedStablePositionLightSpace[LOCAL_SIZE][LOCAL_SIZE]; 
+#endif
+
+layout (binding = 0, set = 0) uniform texture2D depthImage;
+layout (binding = 1, set = 0, std140) uniform UniformBuffer
+{
+	uvec2 viewportOffset;
+    uvec2 viewportSize;
+
+    mat4[CASCADES_COUNT] lightSpaceMatrices;
+    vec4 cascadeSplits;
+	vec4[CASCADES_COUNT / 2] cascadeScales;
+	uvec4 cascadeTextureSize;
+	float noiseRotation;
+} ub;
+layout (binding = 2, set = 0) uniform texture2D[] shadowMaps;
+layout (binding = 3, set = 0) uniform sampler shadowMapsSampler;
+layout (binding = 4, set = 0) uniform sampler3D noiseTexture;
+
+const mat4 biasMat = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 );
+
+vec2 getCascadeScale(in uint cascadeIndex)
+{
+    if(cascadeIndex % 2 == 0)
+        return ub.cascadeScales[cascadeIndex / 2].xy;
+    else
+        return ub.cascadeScales[cascadeIndex / 2].zw;
+}
+
+float computeShadowOcclusionForCascade(in uint cascadeIndex, in vec4 worldPos, in vec2 dStablePositionLightSpace)
+{
+	vec4 posLightSpace = biasMat * ub.lightSpaceMatrices[cascadeIndex] * vec4(worldPos.xyz, 1.0);
+    vec3 projCoords = posLightSpace.xyz / posLightSpace.w;
+
+	vec2 shadowMapDDX = dStablePositionLightSpace.xx * getCascadeScale(cascadeIndex);
+    vec2 shadowMapDDY = dStablePositionLightSpace.yy * getCascadeScale(cascadeIndex);
+    
+	float currentDepth = projCoords.z;
+	float shadow = 0.0;
+
+	for(int i = 0; i < float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT); ++i)
+	{
+		mat2 rotation = mat2(cos(ub.noiseRotation), -sin(ub.noiseRotation),
+							 sin(ub.noiseRotation), cos(ub.noiseRotation));
+
+#ifdef COMPUTE_SHADER
+		vec2 noise = rotation * (texture(noiseTexture, vec3((gl_GlobalInvocationID.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), i / float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT))).rg / ub.cascadeTextureSize[cascadeIndex]);
+#else
+		vec2 noise = rotation * (texture(noiseTexture, vec3((gl_FragCoord.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), i / float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT))).rg / ub.cascadeTextureSize[cascadeIndex]);
+#endif
+		noise *= 4.0f; // replace by distance with occluder
+		noise *= getCascadeScale(cascadeIndex);
+
+		float closestDepth = textureGrad(sampler2D(shadowMaps[cascadeIndex], shadowMapsSampler), projCoords.xy + noise, shadowMapDDX, shadowMapDDY).r;
+		shadow += currentDepth - BIAS > closestDepth  ? 0.0 : 1.0;
+	}
+
+	shadow /= float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT);
+
+	return shadow;
+}
+
+float computeShadowOcclusion(in vec3 viewPos, in vec4 worldPos)
+{
+    uint cascadeIndex = CASCADES_COUNT;
+	for(uint i = 0; i < CASCADES_COUNT; ++i) 
+	{
+		if(-viewPos.z <= ub.cascadeSplits[i])
+		{	
+			cascadeIndex = i;
+			break;
+		}
+	}
+
+	if(cascadeIndex >= CASCADES_COUNT)
+	{
+		return 1.0;
+	}
+
+#ifdef COMPUTE_SHADER
+    sharedStablePositionLightSpace[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = (biasMat * ub.lightSpaceMatrices[0] * vec4(worldPos.xyz, 1.0)).xy;
+
+    memoryBarrierShared(); // allow every threads to compute stable pos
+	barrier();
+
+    uvec2 firstPixelOnQuad = 2 * (gl_LocalInvocationID.xy / 2);
+    vec2 dStablePositionLightSpace = sharedStablePositionLightSpace[firstPixelOnQuad.x + 1][firstPixelOnQuad.y + 0] - sharedStablePositionLightSpace[firstPixelOnQuad.x + 0][firstPixelOnQuad.y + 1];
+#else
+	vec2 dStablePositionLightSpace = vec2(0);
+#endif
+
+    float shadow = computeShadowOcclusionForCascade(cascadeIndex, worldPos, dStablePositionLightSpace);
+
+	if(cascadeIndex != CASCADES_COUNT - 1 && ub.cascadeSplits[cascadeIndex] + viewPos.z < HALF_SEAM_RANGE)
+	{
+		float nextCascadeShadow = computeShadowOcclusionForCascade(cascadeIndex + 1, worldPos, dStablePositionLightSpace);
+		shadow = mix(nextCascadeShadow, shadow, (ub.cascadeSplits[cascadeIndex] + viewPos.z) / SEAM_RANGE + 0.5);
+	}
+	else if(cascadeIndex != 0 && -viewPos.z - ub.cascadeSplits[cascadeIndex - 1] < HALF_SEAM_RANGE)
+	{
+		float previousCascadeShadow = computeShadowOcclusionForCascade(cascadeIndex - 1, worldPos, dStablePositionLightSpace);
+		shadow = mix(previousCascadeShadow, shadow, (-viewPos.z - ub.cascadeSplits[cascadeIndex - 1]) / SEAM_RANGE + 0.5);
+	}
+
+	return shadow;
+}
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_samplerless_texture_functions : require
+
+layout (binding = 0, set = 1, rg32f) uniform image2D resultShadowMask;
+
+layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
+void main()
+{
+	if (gl_GlobalInvocationID.x < ub.viewportOffset.x || gl_GlobalInvocationID.y < ub.viewportOffset.y || gl_GlobalInvocationID.x > ub.viewportOffset.x + ub.viewportSize.x || gl_GlobalInvocationID.y > ub.viewportOffset.y + ub.viewportSize.y)
+	{
+		imageStore(resultShadowMask, ivec2(gl_GlobalInvocationID.xy), vec4(1.0));
+	}
+
+    const vec2 inUV = (gl_GlobalInvocationID.xy - ub.viewportOffset) / vec2(ub.viewportSize);
+    vec2 d = inUV * 2.0 - 1.0; // note that we should apply jitter to have correct depth but we don't get issue due to depth bias
+
+    vec4 viewRay = getInvProjectionMatrix() * vec4(d.x, d.y, 1.0, 1.0);
+    float depth = texelFetch(depthImage, ivec2(gl_GlobalInvocationID.xy), 0).r;
+    float linearDepth = getProjectionParams().y / (depth - getProjectionParams().x);
+    vec3 viewPos = viewRay.xyz * linearDepth;
+	vec4 worldPos = getInvViewMatrix() * vec4(viewPos, 1.0);
+
+    float color = computeShadowOcclusion(viewPos, worldPos);
+
+	float reprojectionData = worldPos.x + worldPos.y + worldPos.z;
+    imageStore(resultShadowMask, ivec2(gl_GlobalInvocationID.xy), vec4(color, reprojectionData, 0.0, 1.0));
+}

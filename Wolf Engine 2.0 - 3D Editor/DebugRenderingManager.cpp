@@ -7,7 +7,7 @@
 #include <DescriptorSetLayoutGenerator.h>
 #include <RenderMeshList.h>
 
-#include "CommonDescriptorLayouts.h"
+#include "CommonLayouts.h"
 
 DebugRenderingManager::DebugRenderingManager()
 {
@@ -37,7 +37,7 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
 		// Resources
-		pipelineInfo.cameraDescriptorSlot = 0;
+		pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
 
 		// Color Blend
 		pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
@@ -45,8 +45,9 @@ DebugRenderingManager::DebugRenderingManager()
 		// Dynamic states
 		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 
-		const uint32_t pipelineIdx = m_linesPipelineSet->addPipeline(pipelineInfo);
-		if (pipelineIdx != 0)
+		m_linesPipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
+		const uint32_t pipelineIdx = m_linesPipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
+		if (pipelineIdx != CommonPipelineIndices::PIPELINE_IDX_FORWARD)
 			Wolf::Debug::sendError("Unexpected pipeline idx");
 	}
 
@@ -145,7 +146,7 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.cullMode = VK_CULL_MODE_NONE;
 
 		// Resources
-		pipelineInfo.cameraDescriptorSlot = 0;
+		pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
 
 		// Color Blend
 		pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
@@ -153,8 +154,9 @@ DebugRenderingManager::DebugRenderingManager()
 		// Dynamic states
 		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 
-		const uint32_t pipelineIdx = m_spheresPipelineSet->addPipeline(pipelineInfo);
-		if (pipelineIdx != 0)
+		m_spheresPipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
+		const uint32_t pipelineIdx = m_spheresPipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
+		if (pipelineIdx != CommonPipelineIndices::PIPELINE_IDX_FORWARD)
 			Wolf::Debug::sendError("Unexpected pipeline idx");
 
 		m_spheresDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_spheresDescriptorSetLayout));
@@ -216,7 +218,7 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 		PerGroupOfLines& AABBInfo = m_AABBInfoArray[i];
 
 		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(AABBInfo.mesh, m_linesPipelineSet.createConstNonOwnerResource());
-		meshToRenderInfo.descriptorSets.emplace_back(AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), m_linesDescriptorSetLayout.createConstNonOwnerResource(), 1);
+		meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), m_linesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CUSTOM);
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}
@@ -226,7 +228,7 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 		PerGroupOfLines& customInfo = m_customLinesInfoArray[i];
 
 		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(customInfo.mesh, m_linesPipelineSet.createConstNonOwnerResource());
-		meshToRenderInfo.descriptorSets.emplace_back(customInfo.linesDescriptorSet.createConstNonOwnerResource(), m_linesDescriptorSetLayout.createConstNonOwnerResource(), 1);
+		meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(customInfo.linesDescriptorSet.createConstNonOwnerResource(), m_linesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CUSTOM);
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}
@@ -237,7 +239,7 @@ void DebugRenderingManager::addMeshesToRenderList(Wolf::RenderMeshList& renderMe
 
 		Wolf::RenderMeshList::MeshToRenderInfo meshToRenderInfo(m_cubeLQuadMesh.createNonOwnerResource(), m_spheresPipelineSet.createConstNonOwnerResource());
 		meshToRenderInfo.instanceInfos.instanceCount = m_sphereCount;
-		meshToRenderInfo.descriptorSets.emplace_back(m_spheresDescriptorSet.createConstNonOwnerResource(), m_spheresDescriptorSetLayout.createConstNonOwnerResource(), 1);
+		meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_spheresDescriptorSet.createConstNonOwnerResource(), m_spheresDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CUSTOM);
 
 		renderMeshList.addMeshToRender(meshToRenderInfo);
 	}

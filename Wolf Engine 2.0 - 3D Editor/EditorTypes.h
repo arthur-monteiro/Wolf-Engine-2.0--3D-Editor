@@ -30,7 +30,7 @@ public:
 
 	void setCategory(const std::string& category) { m_category = category; }
 
-	enum class Type { Float, Vector2, Vector3, String, UInt, File, Array, Entity, Bool, Enum, Group, Curve };
+	enum class Type { FLOAT, VECTOR2, VECTOR3, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 	const std::string& getCategory() const { return m_category; }
@@ -105,9 +105,9 @@ class EditorParamVector2 : public EditorParamsVector<glm::vec2>
 {
 public:
 	EditorParamVector2(const std::string& name, const std::string& tab, const std::string& category, float min, float max, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamsVector(Type::Vector2, name, tab, category, min, max, isActivable, isReadOnly) {}
+		: EditorParamsVector(Type::VECTOR2, name, tab, category, min, max, isActivable, isReadOnly) {}
 	EditorParamVector2(const std::string& name, const std::string& tab, const std::string& category, float min, float max, const std::function<void()>& callbackValueChanged, bool isActivable = false)
-		: EditorParamsVector(Type::Vector2, name, tab, category, min, max, callbackValueChanged, isActivable, false) {}
+		: EditorParamsVector(Type::VECTOR2, name, tab, category, min, max, callbackValueChanged, isActivable, false) {}
 
 	EditorParamVector2& operator=(const glm::vec2& value) { setValue(value); return *this; }
 	operator glm::vec2& () { return m_value; }
@@ -117,9 +117,9 @@ class EditorParamVector3 : public EditorParamsVector<glm::vec3>
 {
 public:
 	EditorParamVector3(const std::string& name, const std::string& tab, const std::string& category, float min, float max, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamsVector(Type::Vector3, name, tab, category, min, max, isActivable, isReadOnly) {}
+		: EditorParamsVector(Type::VECTOR3, name, tab, category, min, max, isActivable, isReadOnly) {}
 	EditorParamVector3(const std::string& name, const std::string& tab, const std::string& category, float min, float max, const std::function<void()>& callbackValueChanged, bool isActivable = false)
-		: EditorParamsVector(Type::Vector3, name, tab, category, min, max, callbackValueChanged, isActivable, false) {}
+		: EditorParamsVector(Type::VECTOR3, name, tab, category, min, max, callbackValueChanged, isActivable, false) {}
 
 	EditorParamVector3& operator=(const glm::vec3& value) { setValue(value); return *this; }
 	operator glm::vec3& () { return m_value; }
@@ -129,14 +129,15 @@ public:
 class EditorParamUInt : public EditorParamInterface
 {
 public:
-	EditorParamUInt(const std::string& name, const std::string& tab, const std::string& category, uint32_t min, uint32_t max, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamInterface(Type::UInt, name, tab, category, isActivable, isReadOnly)
+	enum class ParamUIntType { NUMBER, TIME /* number of seconds elapsed since midnight */ };
+	EditorParamUInt(const std::string& name, const std::string& tab, const std::string& category, uint32_t min, uint32_t max, ParamUIntType type = ParamUIntType::NUMBER, bool isActivable = false, bool isReadOnly = false)
+		: EditorParamInterface(uintTypeToParamType(type), name, tab, category, isActivable, isReadOnly)
 	{
 		m_min = min;
 		m_max = max;
 	}
-	EditorParamUInt(const std::string& name, const std::string& tab, const std::string& category, uint32_t min, uint32_t max, const std::function<void()>& callbackValueChanged, bool isActivable = false)
-		: EditorParamUInt(name, tab, category, min, max, isActivable, false)
+	EditorParamUInt(const std::string& name, const std::string& tab, const std::string& category, uint32_t min, uint32_t max, const std::function<void()>& callbackValueChanged, ParamUIntType type = ParamUIntType::NUMBER, bool isActivable = false)
+		: EditorParamUInt(name, tab, category, min, max, type, isActivable, false)
 	{
 		m_callbackValueChanged = callbackValueChanged;
 	}
@@ -148,6 +149,7 @@ public:
 	operator uint32_t() const { return m_value; }
 
 private:
+	static Type uintTypeToParamType(ParamUIntType uintType);
 	void setValue(uint32_t value);
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
@@ -160,7 +162,7 @@ class EditorParamFloat : public EditorParamInterface
 {
 public:
 	EditorParamFloat(const std::string& name, const std::string& tab, const std::string& category, float min, float max, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamInterface(Type::Float, name, tab, category, isActivable, isReadOnly)
+		: EditorParamInterface(Type::FLOAT, name, tab, category, isActivable, isReadOnly)
 	{
 		m_min = min;
 		m_max = max;
@@ -222,8 +224,8 @@ private:
 class EditorParamBool : public EditorParamInterface
 {
 public:
-	EditorParamBool(const std::string& name, const std::string& tab, const std::string& category, bool isReadOnly = false) : EditorParamInterface(Type::Bool, name, tab, category, false, isReadOnly) {}
-	EditorParamBool(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged) : EditorParamInterface(Type::Bool, name, tab, category, false, false)
+	EditorParamBool(const std::string& name, const std::string& tab, const std::string& category, bool isReadOnly = false) : EditorParamInterface(Type::BOOL, name, tab, category, false, isReadOnly) {}
+	EditorParamBool(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged) : EditorParamInterface(Type::BOOL, name, tab, category, false, false)
 	{
 		m_callbackValueChanged = callbackValueChanged;
 	}
@@ -245,7 +247,7 @@ class EditorParamEnum : public EditorParamInterface
 {
 public:
 	EditorParamEnum(const std::vector<std::string>& options, const std::string& name, const std::string& tab, const std::string& category, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamInterface(Type::Enum, name, tab, category, isActivable, isReadOnly)
+		: EditorParamInterface(Type::ENUM, name, tab, category, isActivable, isReadOnly)
 	{
 		m_options = options;
 	}
@@ -274,7 +276,7 @@ class EditorParamCurve : public EditorParamInterface
 {
 public:
 	EditorParamCurve(const std::string& name, const std::string& tab, const std::string& category, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamInterface(Type::Curve, name, tab, category, isActivable, isReadOnly)
+		: EditorParamInterface(Type::CURVE, name, tab, category, isActivable, isReadOnly)
 	{
 		m_lines.resize(1);
 		m_lines[0] = { glm::vec2(0.0f, 0.0f) };

@@ -4,7 +4,6 @@
 #include <functional>
 #include <string>
 
-#include "BuildingModel.h"
 #include "ComponentInterface.h"
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
@@ -43,7 +42,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 9> m_componentsInfo =
+	std::array<ComponentInfo, 8> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -52,15 +51,6 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), m_materialsGPUManager));
-			}
-		},
-		ComponentInfo
-		{
-			"Building model",
-			BuildingModel::ID,
-			[this]()
-			{
-				return static_cast<ComponentInterface*>(new BuildingModel(glm::mat4(1.0f), m_materialsGPUManager));
 			}
 		},
 		ComponentInfo

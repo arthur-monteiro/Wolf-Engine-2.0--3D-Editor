@@ -1,0 +1,27 @@
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_samplerless_texture_functions : require
+
+layout (binding = 0, set = 1, rg32f) uniform image2D resultShadowMask;
+
+layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
+void main()
+{
+	if (gl_GlobalInvocationID.x < ub.viewportOffset.x || gl_GlobalInvocationID.y < ub.viewportOffset.y || gl_GlobalInvocationID.x > ub.viewportOffset.x + ub.viewportSize.x || gl_GlobalInvocationID.y > ub.viewportOffset.y + ub.viewportSize.y)
+	{
+		imageStore(resultShadowMask, ivec2(gl_GlobalInvocationID.xy), vec4(1.0));
+	}
+
+    const vec2 inUV = (gl_GlobalInvocationID.xy - ub.viewportOffset) / vec2(ub.viewportSize);
+    vec2 d = inUV * 2.0 - 1.0; // note that we should apply jitter to have correct depth but we don't get issue due to depth bias
+
+    vec4 viewRay = getInvProjectionMatrix() * vec4(d.x, d.y, 1.0, 1.0);
+    float depth = texelFetch(depthImage, ivec2(gl_GlobalInvocationID.xy), 0).r;
+    float linearDepth = getProjectionParams().y / (depth - getProjectionParams().x);
+    vec3 viewPos = viewRay.xyz * linearDepth;
+	vec4 worldPos = getInvViewMatrix() * vec4(viewPos, 1.0);
+
+    float color = computeShadowOcclusion(viewPos, worldPos);
+
+	float reprojectionData = worldPos.x + worldPos.y + worldPos.z;
+    imageStore(resultShadowMask, ivec2(gl_GlobalInvocationID.xy), vec4(color, reprojectionData, 0.0, 1.0));
+}

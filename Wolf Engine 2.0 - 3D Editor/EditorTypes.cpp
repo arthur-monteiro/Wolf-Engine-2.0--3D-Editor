@@ -41,42 +41,32 @@ std::string EditorParamInterface::getTypeAsString() const
 {
 	switch (m_type)
 	{
-		case Type::Float:
+		case Type::FLOAT:
 			return "Float";
-			break;
-		case Type::Vector2:
+		case Type::VECTOR2:
 			return "Vector2";
-			break;
-		case Type::Vector3: 
+		case Type::VECTOR3: 
 			return "Vector3";
-			break;
-		case Type::String:
+		case Type::STRING:
 			return "String";
-			break;
-		case Type::UInt:
+		case Type::UINT:
 			return "UInt";
-			break;
-		case Type::File:
+		case Type::FILE:
 			return "File";
-			break;
-		case Type::Array:
+		case Type::ARRAY:
 			return "Array";
-			break;
-		case Type::Entity:
+		case Type::ENTITY:
 			return "Entity";
-			break;
-		case Type::Bool:
+		case Type::BOOL:
 			return "Bool";
-			break;
-		case Type::Enum:
+		case Type::ENUM:
 			return "Enum";
-			break;
-		case Type::Group:
+		case Type::GROUP:
 			return "Group";
-			break;
-		case Type::Curve:
+		case Type::CURVE:
 			return "Curve";
-			break;
+		case Type::TIME:
+			return "Time";
 		default:
 			Wolf::Debug::sendError("Undefined type");
 			return "Undefined_type";
@@ -243,6 +233,20 @@ void EditorParamUInt::addToJSON(std::string& out, uint32_t tabCount, bool isLast
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
 }
 
+EditorParamInterface::Type EditorParamUInt::uintTypeToParamType(ParamUIntType uintType)
+{
+	switch (uintType)
+	{
+		case ParamUIntType::NUMBER:
+			return Type::UINT;
+		case ParamUIntType::TIME:
+			return Type::TIME;
+		default:
+			Wolf::Debug::sendError("Unsupported type");
+			return Type::UINT;
+	}
+}
+
 void EditorParamUInt::setValue(uint32_t value)
 {
 	m_value = value;
@@ -335,18 +339,15 @@ EditorParamInterface::Type EditorParamString::stringTypeToParamType(ParamStringT
 	switch (stringType) 
 	{
 		case ParamStringType::STRING:
-			return Type::String;
-			break;
+			return Type::STRING;
 		case ParamStringType::FILE_OBJ:
 		case ParamStringType::FILE_IMG:
-			return Type::File;
-			break;
+			return Type::FILE;
 		case ParamStringType::ENTITY:
-			return Type::Entity;
-			break;
+			return Type::ENTITY;
 		default:
 			Wolf::Debug::sendError("Unhandled string type");
-			return Type::String;
+			return Type::STRING;
 	}
 }
 

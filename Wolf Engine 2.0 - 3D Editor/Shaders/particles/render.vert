@@ -28,6 +28,9 @@ layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out uint outEmitterIdx;
 layout(location = 2) out mat3 outTBN;
 layout(location = 5) out float outAge;
+layout(location = 6) out vec3 outWorldPos;
+layout(location = 7) out vec3 outParticlePos;
+layout(location = 8) out float outSize;
 
 vec3 quadVertices[6] = 
 { 
@@ -96,4 +99,7 @@ void main()
 	outEmitterIdx = particlesInfo[particleIdx].emitterIdx;
 	outTBN = mat3(1.0f);
 	outAge = particlesInfo[particleIdx].age;
+	outWorldPos = worldPos.xyz;
+	outParticlePos = particlesInfo[particleIdx].position;
+	outSize = size;
 }

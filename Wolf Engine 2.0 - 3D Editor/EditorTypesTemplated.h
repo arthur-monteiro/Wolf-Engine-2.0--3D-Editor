@@ -10,7 +10,7 @@ class EditorParamArray : public EditorParamInterface
 {
 public:
 	EditorParamArray(const std::string& name, const std::string& tab, const std::string& category, uint32_t maxSize, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamInterface(Type::Array, name, tab, category, isActivable, isReadOnly)
+		: EditorParamInterface(Type::ARRAY, name, tab, category, isActivable, isReadOnly)
 	{
 		m_maxSize = maxSize;
 	}
@@ -19,7 +19,7 @@ public:
 	{
 		m_callbackValueChanged = callbackValueChanged;
 	}
-	EditorParamArray(const EditorParamArray<T>& other) : EditorParamInterface(Type::Array, other.m_name, other.m_tab, other.m_category)
+	EditorParamArray(const EditorParamArray<T>& other) : EditorParamInterface(Type::ARRAY, other.m_name, other.m_tab, other.m_category)
 	{
 		m_callbackValueChanged = other.m_callbackValueChanged;
 		m_value = other.m_value;
@@ -105,10 +105,10 @@ class EditorParamGroup : public EditorParamInterface
 {
 public:
 	EditorParamGroup(const std::string& name, const std::string& tab, const std::string& category, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamInterface(Type::Group, name, tab, category, isActivable, isReadOnly)
+		: EditorParamInterface(Type::GROUP, name, tab, category, isActivable, isReadOnly)
 	{
 	}
-	EditorParamGroup(const EditorParamArray<T>& other) : EditorParamInterface(Type::Array, other.m_name, other.m_tab, other.m_category)
+	EditorParamGroup(const EditorParamArray<T>& other) : EditorParamInterface(Type::ARRAY, other.m_name, other.m_tab, other.m_category)
 	{
 		m_value = other.m_value;
 	}
