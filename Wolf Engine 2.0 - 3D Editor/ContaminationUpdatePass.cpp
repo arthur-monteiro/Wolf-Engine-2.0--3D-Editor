@@ -1,5 +1,7 @@
 #include "ContaminationUpdatePass.h"
 
+#include <ProfilerCommon.h>
+
 #include "ContaminationEmitter.h"
 #include "DebugMarker.h"
 
@@ -22,6 +24,8 @@ void ContaminationUpdatePass::resize(const InitializationContext& context)
 
 void ContaminationUpdatePass::record(const RecordContext& context)
 {
+	PROFILE_FUNCTION
+
 	for (const ShootRequest& shootRequest : m_shootRequests)
 	{
 		// TODO: add shoot requests to a buffer

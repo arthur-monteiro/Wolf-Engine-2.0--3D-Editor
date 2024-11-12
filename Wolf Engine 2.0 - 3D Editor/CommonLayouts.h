@@ -9,6 +9,7 @@ namespace CommonCameraIndices
 	constexpr uint32_t CAMERA_IDX_SHADOW_CASCADE_1 = 2;
 	constexpr uint32_t CAMERA_IDX_SHADOW_CASCADE_2 = 3;
 	constexpr uint32_t CAMERA_IDX_SHADOW_CASCADE_3 = 4;
+	constexpr uint32_t CAMERA_IDX_THUMBNAIL_GENERATION = 5;
 }
 
 namespace CommonPipelineIndices
@@ -21,12 +22,12 @@ namespace CommonPipelineIndices
 namespace DescriptorSetSlots
 {
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_CAMERA = 0;
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_CUSTOM = 1; // for model matrix, etc...
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_FORWARD_COMMON = 2; // for all in forward pass
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_BINDLESS = 3; // for textured meshes (not debug mesh) in forward pass
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_LIGHT_INFO = 4;
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_SHADOW_MASK_INFO = 5;
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_COUNT = 6;
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_FORWARD_COMMON = 1; // for all in forward pass
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_BINDLESS = 2; // for textured meshes (not debug mesh) in forward pass
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_MESH_DEBUG = 2; // used for matrices for debug meshes
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_LIGHT_INFO = 3;
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_SHADOW_MASK_INFO = 4;
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_COUNT = 5;
 }
 
 namespace AdditionalDescriptorSetsMaskBits

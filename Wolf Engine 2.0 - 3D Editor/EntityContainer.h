@@ -19,7 +19,7 @@ public:
 	std::vector<Wolf::ResourceUniqueOwner<Entity>>& getEntities() { return m_currentEntities; }
 
 private:
-	static constexpr uint32_t MAX_ENTITY_COUNT = 1024;
+	static constexpr uint32_t MAX_ENTITY_COUNT = 4096;
 
 	std::vector<Wolf::ResourceUniqueOwner<Entity>> m_currentEntities;
 	std::vector<Wolf::ResourceUniqueOwner<Entity>> m_newEntities;

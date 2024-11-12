@@ -9,12 +9,12 @@ layout (location = 7) in vec3 inWorldSpacePos;
 
 layout (location = 0) out vec4 outColor;
 
-layout(binding = 0, set = 2, std140) uniform readonly UniformBufferDisplay
+layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 {
 	uint displayType;
 } ubDisplay;
 
-layout (binding = 0, set = 5, r32f) uniform image2D shadowMask;
+layout (binding = 0, set = 4, r32f) uniform image2D shadowMask;
 
 const uint DISPLAY_TYPE_ALBEDO = 0;
 const uint DISPLAY_TYPE_NORMAL = 1;

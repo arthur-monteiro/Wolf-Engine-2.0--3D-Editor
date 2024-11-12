@@ -13,14 +13,15 @@
 
 #include "EditorParams.h"
 #include "ParticleUpdatePass.h"
+#include "PreDepthPass.h"
 #include "ShadowMaskPassInterface.h"
 
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
 	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass, 
-		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass)
-	: m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass) {}
+		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass)
+	: m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -79,5 +80,6 @@ private:
 	const Wolf::Semaphore* m_contaminationUpdateSemaphore;
 	Wolf::ResourceNonOwner<const ParticleUpdatePass> m_particlesUpdatePass;
 	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
+	Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
 };
 

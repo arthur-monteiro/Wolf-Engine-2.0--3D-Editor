@@ -7,10 +7,36 @@ input {
 }
 
 .frameRate {
+    position: fixed;
+    bottom: 0%;
+    overflow: hidden;
     font-size: 40px;
-    position: fixed; 
-    bottom:0%;
-    width:100%;
+    z-index: 100;
+    width: 200px;
+    border: solid;
+    text-align: center;
+    height: 45px;
+    vertical-align: middle;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.frameRate:hover span {
+    display:none
+}
+  
+.frameRate:hover:before {
+    content:"View performances";
+    font-size: 15px;
+}
+  
+.frameRate:hover {
+    background-color: rgb(255, 255, 255);
+    color: black;
+    border-color: black;
+    /*transition: 0.5s ease-in;*/
 }
 
 .cameraPosition {
@@ -218,6 +244,8 @@ span {
 
     box-sizing: border-box;
     padding: 10px;
+
+    overflow-y: scroll;
 }
 
 .vectorInput {
@@ -370,6 +398,17 @@ span {
     cursor: col-resize;
     background-color: rgb(224, 224, 224);
     z-index: 1;
+}
+
+#sliderResourceBrowser {
+    position: absolute;
+    bottom: 250px; /* 50px for FPS + 200px for resource browser*/
+    height: 5px;
+    width: 100%;
+    cursor: row-resize;
+    background-color: rgb(224, 224, 224);
+    z-index: 1;
+    left: 0;
 }
 
 #actionButtons {
@@ -537,6 +576,7 @@ li {
     list-style-type: none;
     padding: 0;
     margin: 0;
+    display: inline-grid;
 }
 
 .menuItem {
@@ -544,7 +584,6 @@ li {
     padding: 10px;
     cursor: pointer;
     width: auto;
-    height: 100%;
     border-radius: 0;
 }
 
@@ -562,4 +601,39 @@ li {
 
 .timeUnitInput {
     width:3ch;
+}
+
+#resourceBrowser {
+    height: 200px;
+    position: absolute;
+    bottom: 50px;
+    left: 0px;
+    width: calc(100% - 2px);
+    border: 1px solid white;
+    display: inline-flex;
+    overflow: scroll;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.resourceMesh {
+    width: 100px;
+    height: 125px;
+    border: solid 1px white;
+    margin-top: 15px;
+    margin-left: 7px;
+    margin-right: 7px;
+}
+
+.resourceIcon {
+    width: 100px;
+    height: 100px;
+}
+
+.resourceName {
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 25px;
 }

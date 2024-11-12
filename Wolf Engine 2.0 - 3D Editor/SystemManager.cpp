@@ -6,7 +6,9 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <iostream>
 
+#include <GPUMemoryDebug.h>
 #include <JSONReader.h>
+#include <ProfilerCommon.h>
 
 #include "MaterialListFakeEntity.h"
 
@@ -19,8 +21,13 @@ SystemManager::SystemManager()
 	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 
-	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 5.0f, 16.0f / 9.0f));
+	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f, 16.0f / 9.0f));
 	createRenderer();
+
+	m_resourceManager.reset(new ResourceManager([this](const std::string& resourceName, const std::string& iconPath)
+		{
+			m_wolfInstance->evaluateUserInterfaceScript("addResourceToList(\"" + resourceName + "\", \"" + iconPath + "\");");
+		}, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>()));
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), 
@@ -38,7 +45,8 @@ SystemManager::SystemManager()
 			Debug::sendCriticalError("Entity not found");
 			return allEntities[0].createNonOwnerResource();
 		},
-		m_configuration.createNonOwnerResource()));
+		m_configuration.createNonOwnerResource(),
+		m_resourceManager.createNonOwnerResource()));
 	
 	if (!m_configuration->getDefaultScene().empty())
 	{
@@ -46,8 +54,9 @@ SystemManager::SystemManager()
 	}
 
 	m_debugRenderingManager.reset(new DebugRenderingManager);
+	m_drawManager.reset(new DrawManager(m_wolfInstance->getRenderMeshList(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>()));
 
-	addFakeEntities();	
+	addFakeEntities();
 }
 
 void SystemManager::run()
@@ -68,9 +77,11 @@ void SystemManager::run()
 			m_currentFramesAccumulated = 0;
 			m_startTimeFPSCounter = currentTime;
 		}
+
+		FrameMark;
 	}
 
-	m_wolfInstance->getRenderMeshList().clear();
+	m_wolfInstance->getRenderMeshList()->clear();
 	m_wolfInstance->waitIdle();
 }
 
@@ -126,34 +137,37 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 
 	std::cout << message << '\n';
 
-	std::string escapedMessage;
-	for (const char character : message)
+	if (!m_isLoading)
 	{
-		if (character == '\\')
-			escapedMessage += "\\\\";
-		else if (character == '\"')
-			escapedMessage += "\\\"";
-		else if (character == '\n')
-			escapedMessage += "  ";
-		else
-			escapedMessage += character;
-	}
-
-	if(m_wolfInstance)
-	{
-		switch (severity)
+		std::string escapedMessage;
+		for (const char character : message)
 		{
-		case Debug::Severity::ERROR:
-			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logError"))");
-			break;
-		case Debug::Severity::WARNING:
-			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logWarning"))");
-			break;
-		case Debug::Severity::INFO:
-			m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logInfo"))");
-			break;
-		case Debug::Severity::VERBOSE:
-			return;
+			if (character == '\\')
+				escapedMessage += "\\\\";
+			else if (character == '\"')
+				escapedMessage += "\\\"";
+			else if (character == '\n')
+				escapedMessage += "  ";
+			else
+				escapedMessage += character;
+		}
+
+		if (m_wolfInstance)
+		{
+			switch (severity)
+			{
+			case Debug::Severity::ERROR:
+				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logError"))");
+				break;
+			case Debug::Severity::WARNING:
+				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logWarning"))");
+				break;
+			case Debug::Severity::INFO:
+				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logInfo"))");
+				break;
+			case Debug::Severity::VERBOSE:
+				return;
+			}
 		}
 	}
 }
@@ -163,6 +177,8 @@ void SystemManager::bindUltralightCallbacks()
 	ultralight::JSObject jsObject;
 	m_wolfInstance->getUserInterfaceJSObject(jsObject);
 	jsObject["getFrameRate"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getFrameRateJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getVRAMRequested"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMRequestedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getVRAMUsed"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMUsedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["addEntity"] = std::bind(&SystemManager::addEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["addComponent"] = std::bind(&SystemManager::addComponentJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["pickFile"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::pickFileJSCallback, this, std::placeholders::_1, std::placeholders::_2));
@@ -195,6 +211,18 @@ ultralight::JSValue SystemManager::getFrameRateJSCallback(const ultralight::JSOb
 {
 	const std::string fpsStr = "FPS: " + std::to_string(m_stableFPS);
 	return { fpsStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string vramRequestedStr = std::to_string(GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
+	return { vramRequestedStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getVRAMUsedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string vramUsedStr = std::to_string(GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
+	return { vramUsedStr.c_str() };
 }
 
 std::string exec(const char* cmd)
@@ -303,7 +331,7 @@ void SystemManager::selectEntityByNameJSCallback(const ultralight::JSObject& thi
 		if(entity->getName() == name)
 		{
 			m_selectedEntity.reset(new ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
-			updateUISelectedEntity();
+			selectEntity();
 			break;
 		}
 	}
@@ -466,7 +494,7 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 }
 
 ultralight::JSValue SystemManager::getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args)
+                                                                  const ultralight::JSArgs& args)
 {
 	if (m_selectedEntity)
 		return { m_componentInstancier->getAllComponentTypes(*m_selectedEntity).c_str() };
@@ -513,8 +541,25 @@ void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisOb
 	}
 }
 
+void SystemManager::selectEntity() const
+{
+	if ((*m_selectedEntity)->hasModelComponent())
+	{
+		AABB entityAABB = (*m_selectedEntity)->getAABB();
+		float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
+
+		m_camera->setPosition(entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight));
+		m_camera->setPhi(-0.645398319f);
+		m_camera->setTheta(glm::quarter_pi<float>());
+	}
+
+	updateUISelectedEntity();
+}
+
 void SystemManager::updateBeforeFrame()
 {
+	PROFILE_FUNCTION
+
 	if(!m_loadSceneRequest.empty())
 	{
 		loadScene();
@@ -550,14 +595,17 @@ void SystemManager::updateBeforeFrame()
 	if (m_selectedEntity && (*m_selectedEntity)->hasModelComponent())
 		m_debugRenderingManager->addAABB((*m_selectedEntity)->getAABB());
 
+	m_resourceManager->updateBeforeFrame();
+
 	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 
-	RenderMeshList& renderList = m_wolfInstance->getRenderMeshList();
+	Wolf::ResourceNonOwner<RenderMeshList> renderList = m_wolfInstance->getRenderMeshList();
+	Wolf::ResourceNonOwner<Wolf::LightManager> lightManager = m_wolfInstance->getLightManager().createNonOwnerResource();
+	DebugRenderingManager& debugRenderingManager = *m_debugRenderingManager;
 	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		entity->addMeshesToRenderList(renderList);
-		entity->addLightToLightManager(m_wolfInstance->getLightManager().createNonOwnerResource());
-		entity->addDebugInfo(*m_debugRenderingManager);
+		entity->addLightToLightManager(lightManager);
+		entity->addDebugInfo(debugRenderingManager);
 	}
 	m_debugRenderingManager->addMeshesToRenderList(renderList);
 
@@ -567,25 +615,28 @@ void SystemManager::updateBeforeFrame()
 	m_renderer->update(m_wolfInstance.get());
 
 	m_wolfInstance->updateBeforeFrame();
+
+	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
+	Wolf::ResourceNonOwner<InputHandler> inputHandler = m_wolfInstance->getInputHandler();
 	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		entity->updateBeforeFrame(m_wolfInstance->getInputHandler(), m_wolfInstance->getGlobalTimer());
-		entity->updateDuringFrame(m_wolfInstance->getInputHandler()); // TODO: send this to another thread
+		entity->updateBeforeFrame(inputHandler, m_wolfInstance->getGlobalTimer(), drawManager);
+		entity->updateDuringFrame(inputHandler); // TODO: send this to another thread
 	}
 
-	if (m_wolfInstance->getInputHandler()->keyPressedThisFrame(GLFW_KEY_ESCAPE))
+	if (inputHandler->keyPressedThisFrame(GLFW_KEY_ESCAPE))
 	{
 		m_isCameraLocked = !m_isCameraLocked;
 		m_camera->setLocked(m_isCameraLocked);
 	}
 
 	// Select object by click
-	if (m_entityPickingEnabled && m_wolfInstance->getInputHandler()->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	if (m_entityPickingEnabled && inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
 	{
 		const glm::vec3 rayOrigin = m_camera->getPosition();
 
 		float currentMousePosX, currentMousePosY;
-		m_wolfInstance->getInputHandler()->getMousePosition(currentMousePosX, currentMousePosY);
+		inputHandler->getMousePosition(currentMousePosX, currentMousePosY);
 
 		const float renderPosX = currentMousePosX - static_cast<float>(m_editorParams->getRenderOffsetLeft());
 		const float renderPosY = currentMousePosY - static_cast<float>(m_editorParams->getRenderOffsetBot());
@@ -616,22 +667,34 @@ void SystemManager::updateBeforeFrame()
 			}
 
 			if (m_selectedEntity)
+			{
 				updateUISelectedEntity();
+			}
 		}
 	}
 
 	const glm::vec3 cameraPosition = m_camera->getPosition();
 	m_wolfInstance->evaluateUserInterfaceScript("setCameraPosition(\"" + std::to_string(cameraPosition.x) + ", " + std::to_string(cameraPosition.y) + ", " + std::to_string(cameraPosition.z) + "\")");
+
+	// Don't reset earlier to avoid displaying all resources warnings to the UI
+	if (m_isLoading)
+	{
+		m_isLoading = false;
+	}
 }
 
 void SystemManager::loadScene()
 {
-	m_wolfInstance->getRenderMeshList().clear();
+	m_isLoading = true;
+
+	m_wolfInstance->getRenderMeshList()->clear();
 	m_debugRenderingManager->clearBeforeFrame();
 	m_wolfInstance->waitIdle();
 
 	m_selectedEntity.reset(nullptr);
 	m_entityContainer->clear();
+
+	m_resourceManager->clear();
 
 	m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
 	m_wolfInstance->evaluateUserInterfaceScript("resetSelectedEntity()");

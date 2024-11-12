@@ -1,15 +1,12 @@
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0, set = 1) uniform UniformBufferMVP
-{
-    mat4 model;
-} ubMVP;
-
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec3 inTangent;
 layout(location = 3) in vec2 inTexCoord;
 layout(location = 4) in uint inMaterialID;
+
+layout(location = 5) in mat4 inTransform;
 
 layout(location = 0) out vec3 outViewPos;
 layout(location = 1) out vec2 outTexCoord;
@@ -31,11 +28,11 @@ const mat4 biasMat = mat4(
 
 void main() 
 {
-	vec4 viewPos = getViewMatrix() * ubMVP.model * vec4(inPosition, 1.0);
+	vec4 viewPos = getViewMatrix() * inTransform * vec4(inPosition, 1.0);
 
     gl_Position = getProjectionMatrix() * viewPos;
 
-	mat3 usedModelMatrix = transpose(inverse(mat3(ubMVP.model)));
+	mat3 usedModelMatrix = transpose(inverse(mat3(inTransform)));
     vec3 n = normalize(usedModelMatrix * inNormal);
 	vec3 t = normalize(usedModelMatrix * inTangent);
 	t = normalize(t - dot(t, n) * n);
@@ -46,5 +43,5 @@ void main()
     outTexCoord = inTexCoord;
 	outMaterialID = inMaterialID;
 	outWorldSpaceNormal = normalize(inNormal);
-	outWorldSpacePos =  (ubMVP.model * vec4(inPosition, 1.0)).xyz;
+	outWorldSpacePos =  (inTransform * vec4(inPosition, 1.0)).xyz;
 } 

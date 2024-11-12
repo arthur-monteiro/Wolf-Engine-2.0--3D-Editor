@@ -4,11 +4,12 @@
 #include <PipelineSet.h>
 
 #include "EditorModelInterface.h"
+#include "ResourceManager.h"
 
 class StaticModel : public EditorModelInterface
 {
 public:
-	StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
+	StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
@@ -16,8 +17,8 @@ public:
 	std::string getId() const override { return ID; }
 
 	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
-	void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) override;
-	void alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList) override {}
+	void getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
+	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
 	void activateParams() override;
@@ -28,15 +29,14 @@ public:
 	std::string getTypeString() override { return "staticMesh"; }
 
 private:
-	void loadModel();
-
-	bool m_modelLoadingRequested = false;
 	void requestModelLoading();
 	EditorParamString m_loadingPathParam = EditorParamString("Mesh", "Model", "Loading", [this] { requestModelLoading(); }, EditorParamString::ParamStringType::FILE_OBJ);
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>> m_defaultPipelineSet;
-	
-	Wolf::ModelData m_modelData;
+
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
+	Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
+	ResourceManager::ResourceId m_meshResourceId = ResourceManager::NO_RESOURCE;
+
 };
 

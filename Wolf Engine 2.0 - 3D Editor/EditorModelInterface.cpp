@@ -16,8 +16,6 @@ EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
 	glm::decompose(m_transform, m_scaleParam.getValue(), quatRotation, m_translationParam.getValue(), skew, perspective);
 	m_rotationParam = glm::eulerAngles(quatRotation) * 3.14159f / 180.f;
 
-	m_matricesUniformBuffer.reset(Buffer::createBuffer(sizeof(MatricesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-
 	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, EditorModelInterface>([this](ResourceUniqueOwner<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
 		{
 			descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
@@ -32,9 +30,6 @@ EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
 
 void EditorModelInterface::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
-	MatricesUBData mvp;
-	mvp.model = m_transform;
-	m_matricesUniformBuffer->transferCPUMemory(&mvp, sizeof(mvp), 0);
 }
 
 void EditorModelInterface::activateParams()

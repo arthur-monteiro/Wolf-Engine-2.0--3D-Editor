@@ -12,6 +12,7 @@
 #include "ParticleEmitter.h"
 #include "PlayerComponent.h"
 #include "PointLight.h"
+#include "ResourceManager.h"
 #include "SkyLight.h"
 #include "StaticModel.h"
 
@@ -22,7 +23,7 @@ class ComponentInstancier
 public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
-		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -34,6 +35,7 @@ private:
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
+	Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
 
 	struct ComponentInfo
 	{
@@ -50,7 +52,7 @@ private:
 			StaticModel::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), m_materialsGPUManager));
+				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), m_materialsGPUManager, m_resourceManager));
 			}
 		},
 		ComponentInfo

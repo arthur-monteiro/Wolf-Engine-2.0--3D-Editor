@@ -1,5 +1,6 @@
 #include "PreDepthPass.h"
 
+#include <ProfilerCommon.h>
 #include <RenderMeshList.h>
 #include <Timer.h>
 
@@ -32,6 +33,8 @@ void PreDepthPass::resize(const Wolf::InitializationContext& context)
 
 void PreDepthPass::record(const Wolf::RecordContext& context)
 {
+	PROFILE_FUNCTION
+
 	m_commandBuffer->beginCommandBuffer();
 
 	DepthPassBase::record(context);
@@ -53,7 +56,10 @@ void PreDepthPass::record(const Wolf::RecordContext& context)
 	copyRegion.extent = m_copyImage->getExtent();
 
 	m_depthImage->setImageLayoutWithoutOperation(getFinalLayout()); // at this point, render pass should have set final layout
+
+	m_copyImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1 });
 	m_copyImage->recordCopyGPUImage(*m_depthImage, copyRegion, *m_commandBuffer);
+	m_copyImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1 });
 	m_depthImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
 
 	m_commandBuffer->endCommandBuffer();
@@ -61,8 +67,12 @@ void PreDepthPass::record(const Wolf::RecordContext& context)
 
 void PreDepthPass::submit(const Wolf::SubmitContext& context)
 {
-	const std::vector<const Wolf::Semaphore*> waitSemaphores{ };
+	std::vector<const Wolf::Semaphore*> waitSemaphores{ };
+	if (m_updateGPUBuffersPass->transferRecordedThisFrame())
+		waitSemaphores.push_back(m_updateGPUBuffersPass->getSemaphore());
+
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 }
 

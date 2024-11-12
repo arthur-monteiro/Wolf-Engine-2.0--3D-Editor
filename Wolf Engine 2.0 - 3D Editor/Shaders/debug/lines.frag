@@ -1,6 +1,6 @@
 layout (early_fragment_tests) in;
 
-layout(binding = 0, set = 2, std140) uniform readonly UniformBuffer
+layout(binding = 0, set = 1, std140) uniform readonly UniformBuffer
 {
 	uint displayType;
 } ub;

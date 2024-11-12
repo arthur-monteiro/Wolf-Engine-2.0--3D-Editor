@@ -2,6 +2,8 @@
 
 #include <fstream>
 
+#include <ProfilerCommon.h>
+
 #include "ComponentInstancier.h"
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
@@ -49,6 +51,7 @@ void Entity::addComponent(ComponentInterface* component)
 		if (hasModelComponent())
 			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
 		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
+		(*m_modelComponent)->subscribe(this, [this]() { m_needsMeshesToRenderComputation = true; });
 	}
 	else if (const Wolf::ResourceNonOwner<EditorLightInterface> componentAsLight = m_components.back().createNonOwnerResource<EditorLightInterface>())
 	{
@@ -57,6 +60,9 @@ void Entity::addComponent(ComponentInterface* component)
 
 	if (m_components.back()->requiresInputs())
 		m_requiresInputs = true;
+
+	if (m_modelComponent)
+		m_needsMeshesToRenderComputation = true;
 }
 
 std::string Entity::computeEscapedLoadingPath() const
@@ -73,8 +79,10 @@ std::string Entity::computeEscapedLoadingPath() const
 	return escapedLoadingPath;
 }
 
-void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer)
+void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager)
 {
+	PROFILE_FUNCTION
+
 	if (m_requiresInputs)
 	{
 		inputHandler->lockCache(this);
@@ -83,20 +91,19 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 	}
 
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame(globalTimer);)
-}
 
-void Entity::addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const
-{
-	if (m_modelComponent)
+	if (m_needsMeshesToRenderComputation)
 	{
-		std::vector<Wolf::RenderMeshList::MeshToRenderInfo> meshesToRender;
-		(*m_modelComponent)->getMeshesToRender(meshesToRender);
+		std::vector<DrawManager::DrawMeshInfo> meshes;
+		(*m_modelComponent)->getMeshesToRender(meshes);
 
-		DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->alterMeshesToRender(meshesToRender);)
+		DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->alterMeshesToRender(meshes);)
 
-		for (Wolf::RenderMeshList::MeshToRenderInfo& meshToRender : meshesToRender)
+		// Re-request meshes until they are loaded
+		if (!meshes.empty())
 		{
-			renderMeshList.addMeshToRender(meshToRender);
+			m_needsMeshesToRenderComputation = false;
+			drawManager->addMeshesToDraw(meshes, this);
 		}
 	}
 }
@@ -111,6 +118,8 @@ void Entity::addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightMana
 
 void Entity::addDebugInfo(DebugRenderingManager& debugRenderingManager) const
 {
+	PROFILE_FUNCTION
+
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->addDebugInfo(debugRenderingManager);)
 }
 
@@ -140,6 +149,8 @@ void Entity::fillJSONForParams(std::string& outJSON)
 
 void Entity::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const
 {
+	PROFILE_FUNCTION
+
 	if (m_requiresInputs)
 		inputHandler->lockCache(this);
 
@@ -191,6 +202,7 @@ void Entity::removeAllComponents()
 	m_modelComponent.reset();
 	m_lightComponents.clear();
 	m_components.clear();
+	
 }
 
 Wolf::AABB Entity::getAABB() const

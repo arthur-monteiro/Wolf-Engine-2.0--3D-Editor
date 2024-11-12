@@ -5,11 +5,11 @@
 #include <DescriptorSetGenerator.h>
 #include <GraphicCameraInterface.h>
 #include <Image.h>
+#include <ProfilerCommon.h>
 
 #include "CommonLayouts.h"
 #include "GameContext.h"
 #include "EditorModelInterface.h"
-
 #include "LightManager.h"
 #include "Vertex2DTextured.h"
 
@@ -117,6 +117,8 @@ void ForwardPass::resize(const InitializationContext& context)
 
 void ForwardPass::record(const RecordContext& context)
 {
+	PROFILE_FUNCTION
+
 	/* Command buffer record */
 	const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
 	const uint32_t frameBufferIdx = context.swapChainImageIdx;
@@ -147,14 +149,17 @@ void ForwardPass::record(const RecordContext& context)
 	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos);
 
 	/* Particles */
-	m_commandBuffer->bindPipeline(m_particlesPipeline.get());
-	m_commandBuffer->setViewport(renderViewport);
-	m_commandBuffer->bindDescriptorSet(m_particlesDescriptorSet.get(), 0, *m_particlesPipeline);
-	m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
-	m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
-	m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
-	m_commandBuffer->bindDescriptorSet(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSet(), SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES, *m_particlesPipeline);
-	m_commandBuffer->draw(m_particlesUpdatePass->getParticleCount() * 6, 1, 0, 0);
+	if (uint32_t particleCount = m_particlesUpdatePass->getParticleCount())
+	{
+		m_commandBuffer->bindPipeline(m_particlesPipeline.get());
+		m_commandBuffer->setViewport(renderViewport);
+		m_commandBuffer->bindDescriptorSet(m_particlesDescriptorSet.get(), 0, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSet(), SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES, *m_particlesPipeline);
+		m_commandBuffer->draw(particleCount * 6, 1, 0, 0);
+	}
 
 	/* UI */
 	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
@@ -176,6 +181,8 @@ void ForwardPass::submit(const SubmitContext& context)
 		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore());
 	if (m_shadowMaskPass->wasEnabledThisFrame())
 		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
+	else
+		waitSemaphores.push_back(m_preDepthPass->getSemaphore());
 	const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
 

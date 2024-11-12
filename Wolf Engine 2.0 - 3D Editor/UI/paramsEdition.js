@@ -195,7 +195,10 @@ function computeInput(param, isLast) {
         htmlToAdd += "<table style='width: 70%; border-collapse: collapse; border-radius: 5px'>"
 
         let id = param.tab + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category);
-        htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', '" + param.fileFilter + "', change" + nameForCallback + ")\">Select file</button></td></tr>";
+        htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', '" + param.fileFilter + "', change" + nameForCallback + ")\""
+        if (param.isReadOnly)
+            htmlToAdd += " disabled";
+        htmlToAdd += ">Select file</button></td></tr>";
         htmlToAdd += "</table>";
     }
     else if (param.type == "Array") {
@@ -205,7 +208,10 @@ function computeInput(param, isLast) {
     }
     else if (param.type == "Entity") {
         var entityDivs = document.getElementById('entityList').getElementsByTagName('div');
-        htmlToAdd += param.name + ": <select name='entity' id='entitySelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'><option value=''>No entity selected</option>";
+        htmlToAdd += param.name + ": <select name='entity' id='entitySelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'";
+        if (param.isReadOnly)
+            htmlToAdd += " disabled";
+        htmlToAdd += "><option value=''>No entity selected</option>";
         for (let i = 0; i < entityDivs.length; i++) {
             var entityDiv = entityDivs[i];
 

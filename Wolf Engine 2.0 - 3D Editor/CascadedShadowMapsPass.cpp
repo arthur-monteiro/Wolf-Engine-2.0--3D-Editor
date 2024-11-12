@@ -1,10 +1,10 @@
 #include "CascadedShadowMapsPass.h"
 
+#include <ProfilerCommon.h>
 #include <RenderMeshList.h>
 
 #include "CommonLayouts.h"
 #include "DebugMarker.h"
-#include "GameContext.h"
 #include "LightManager.h"
 
 CascadeDepthPass::CascadeDepthPass(const Wolf::InitializationContext& context, uint32_t width, uint32_t height,
@@ -68,6 +68,8 @@ void CascadedShadowMapsPass::resize(const Wolf::InitializationContext& context)
 
 void CascadedShadowMapsPass::record(const Wolf::RecordContext& context)
 {
+	PROFILE_FUNCTION
+
 	const Wolf::CameraInterface* camera = context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
 
 	uint32_t sunLightCount = context.lightManager->getSunLightCount();
@@ -131,6 +133,9 @@ void CascadedShadowMapsPass::record(const Wolf::RecordContext& context)
 
 void CascadedShadowMapsPass::submit(const Wolf::SubmitContext& context)
 {
+	if (!m_wasEnabledThisFrame)
+		return;
+
 	const std::vector<const Wolf::Semaphore*> waitSemaphores{ };
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);

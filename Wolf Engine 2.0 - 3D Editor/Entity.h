@@ -7,6 +7,7 @@
 #include <DynamicResourceUniqueOwnerArray.h>
 
 #include "ComponentInterface.h"
+#include "DrawManager.h"
 #include "EditorLightInterface.h"
 #include "EditorTypes.h"
 #include "GameContext.h"
@@ -25,8 +26,7 @@ public:
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
 
-	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer);
-	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList) const;
+	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager);
 	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	virtual void activateParams() const;
@@ -71,8 +71,14 @@ private:
 
 	static constexpr uint32_t MAX_COMPONENT_COUNT = 8;
 	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface> m_components;
+
+	// Model related
 	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
+	bool m_needsMeshesToRenderComputation = false;
+
+	// Light related
 	std::vector<Wolf::ResourceNonOwner<EditorLightInterface>> m_lightComponents;
+
 	bool m_requiresInputs = false;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });

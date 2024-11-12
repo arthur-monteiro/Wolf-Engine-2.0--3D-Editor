@@ -30,14 +30,16 @@ void ContaminationReceiver::addParamsToJSON(std::string& outJSON, uint32_t tabCo
 	::addParamsToJSON(outJSON, params, false, tabCount);
 }
 
-void ContaminationReceiver::alterMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& renderMeshList)
+void ContaminationReceiver::alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList)
 {
 	if (m_contaminationEmitterEntity)
 	{
 		if (const Wolf::ResourceNonOwner<ContaminationEmitter> contaminationEmitterComponent = (*m_contaminationEmitterEntity)->getComponent<ContaminationEmitter>())
 		{
-			for (Wolf::RenderMeshList::MeshToRenderInfo& meshToRender : renderMeshList)
+			for (DrawManager::DrawMeshInfo& drawMeshInfo : renderMeshList)
 			{
+				Wolf::RenderMeshList::MeshToRender& meshToRender = drawMeshInfo.meshToRender;
+
 				Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.pipelineSet->getPipelineHash(0)]; // TODO: use all pipelines hashes
 				if (!replacePipelineSet)
 				{

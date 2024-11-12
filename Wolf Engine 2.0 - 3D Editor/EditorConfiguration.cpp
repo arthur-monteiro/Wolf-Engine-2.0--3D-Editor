@@ -25,6 +25,8 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 				m_dataFolderPath = line;
 			else if (token == "defaultScene")
 				m_defaultScene = line;
+			else if (token == "enableDebugDraw")
+				m_enableDebugDraw = std::stoi(line);
 		}
 	}
 

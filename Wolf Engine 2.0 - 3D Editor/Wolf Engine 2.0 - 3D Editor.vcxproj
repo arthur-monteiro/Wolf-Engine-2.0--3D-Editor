@@ -140,9 +140,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;RESOURCE_DEBUG;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;RESOURCE_DEBUG;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;TRACY_ENABLE;TRACY_ON_DEMAND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Common;..\..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Public;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Common;..\..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Public;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -196,6 +196,7 @@
     <ClCompile Include="ContaminationReceiver.cpp" />
     <ClCompile Include="ContaminationUpdatePass.cpp" />
     <ClCompile Include="DebugRenderingManager.cpp" />
+    <ClCompile Include="DrawManager.cpp" />
     <ClCompile Include="EditorConfiguration.cpp" />
     <ClCompile Include="EditorLightInterface.cpp" />
     <ClCompile Include="EditorParams.cpp" />
@@ -219,11 +220,14 @@
     <ClCompile Include="PlayerComponent.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="RenderingPipelineInterface.cpp" />
+    <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="ShadowMaskPassCascadedShadowMapping.cpp" />
     <ClCompile Include="ShadowMaskPassInterface.cpp" />
     <ClCompile Include="StaticModel.cpp" />
     <ClCompile Include="SkyLight.cpp" />
     <ClCompile Include="SystemManager.cpp" />
+    <ClCompile Include="ThumbnailsGenerationPass.cpp" />
+    <ClCompile Include="UpdateGPUBuffersPass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CascadedShadowMapsPass.h" />
@@ -234,6 +238,7 @@
     <ClInclude Include="ContaminationReceiver.h" />
     <ClInclude Include="ContaminationUpdatePass.h" />
     <ClInclude Include="DebugRenderingManager.h" />
+    <ClInclude Include="DrawManager.h" />
     <ClInclude Include="EditorConfiguration.h" />
     <ClInclude Include="EditorLightInterface.h" />
     <ClInclude Include="EditorTypesTemplated.h" />
@@ -258,12 +263,15 @@
     <ClInclude Include="PlayerComponent.h" />
     <ClInclude Include="PointLight.h" />
     <ClInclude Include="RenderingPipelineInterface.h" />
+    <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="ShadowMaskPassCascadedShadowMapping.h" />
     <ClInclude Include="ShadowMaskPassInterface.h" />
     <ClInclude Include="ShootInfo.h" />
     <ClInclude Include="StaticModel.h" />
     <ClInclude Include="SkyLight.h" />
     <ClInclude Include="SystemManager.h" />
+    <ClInclude Include="ThumbnailsGenerationPass.h" />
+    <ClInclude Include="UpdateGPUBuffersPass.h" />
     <ClInclude Include="Vertex2DTextured.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

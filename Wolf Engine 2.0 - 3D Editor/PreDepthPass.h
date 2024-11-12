@@ -6,13 +6,15 @@
 #include <Image.h>
 
 #include "EditorParams.h"
+#include "UpdateGPUBuffersPass.h"
 
 class SceneElements;
 
 class PreDepthPass : public Wolf::CommandRecordBase, public Wolf::DepthPassBase
 {
 public:
-	PreDepthPass(EditorParams* editorParams, bool copyOutput) : m_editorParams(editorParams), m_copyOutput(copyOutput) {}
+	PreDepthPass(EditorParams* editorParams, bool copyOutput, const Wolf::ResourceNonOwner<UpdateGPUBuffersPass>& updateGPUBuffersPass)
+		: m_editorParams(editorParams), m_copyOutput(copyOutput), m_updateGPUBuffersPass(updateGPUBuffersPass) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -44,5 +46,8 @@ private:
 
 	/* Params */
 	bool m_copyOutput;
+
+	/* Extern */
+	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 };
 

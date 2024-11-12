@@ -3,6 +3,8 @@
 #include <fstream>
 #include <random>
 
+#include <ProfilerCommon.h>
+
 #include "CommonLayouts.h"
 #include "DebugMarker.h"
 #include "DescriptorSetGenerator.h"
@@ -79,24 +81,18 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 
 	m_outputComputeDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_outputComputeDescriptorSetLayout));
 	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
+
+	m_outputMaskDescriptorSetLayoutGenerator.addStorageImage(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+	m_outputMaskDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_outputMaskDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+
+	m_outputMaskDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_outputMaskDescriptorSetLayout));
+
 	updateDescriptorSet();
 
 	for (float& noiseRotation : m_noiseRotations)
 	{
 		noiseRotation = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 3.14f * 2.0f;
 	}
-
-	m_outputMaskDescriptorSetLayoutGenerator.addStorageImage(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-	m_outputMaskDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_outputMaskDescriptorSetLayoutGenerator.getDescriptorLayouts()));
-
-	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_outputMaskDescriptorSetLayoutGenerator.getDescriptorLayouts());
-	Wolf::DescriptorSetGenerator::ImageDescription shadowMaskDesc;
-	shadowMaskDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	shadowMaskDesc.imageView = m_outputMasks->getDefaultImageView();
-	descriptorSetGenerator.setImage(0, shadowMaskDesc);
-
-	m_outputMaskDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_outputMaskDescriptorSetLayout));
-	m_outputMaskDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }
 
 void ShadowMaskPassCascadedShadowMapping::resize(const Wolf::InitializationContext& context)
@@ -107,6 +103,8 @@ void ShadowMaskPassCascadedShadowMapping::resize(const Wolf::InitializationConte
 
 void ShadowMaskPassCascadedShadowMapping::record(const Wolf::RecordContext& context)
 {
+	PROFILE_FUNCTION
+
 	uint32_t sunLightCount = context.lightManager->getSunLightCount();
 	if (sunLightCount == 0)
 	{
@@ -153,8 +151,8 @@ void ShadowMaskPassCascadedShadowMapping::record(const Wolf::RecordContext& cont
 	m_commandBuffer->bindPipeline(m_pipeline.get());
 
 	constexpr VkExtent3D dispatchGroups = { 16, 16, 1 };
-	const uint32_t groupSizeX = m_outputMasks->getExtent().width % dispatchGroups.width != 0 ? m_outputMasks->getExtent().width / dispatchGroups.width + 1 : m_outputMasks->getExtent().width / dispatchGroups.width;
-	const uint32_t groupSizeY = m_outputMasks->getExtent().height % dispatchGroups.height != 0 ? m_outputMasks->getExtent().height / dispatchGroups.height + 1 : m_outputMasks->getExtent().height / dispatchGroups.height;
+	const uint32_t groupSizeX = m_outputMask->getExtent().width % dispatchGroups.width != 0 ? m_outputMask->getExtent().width / dispatchGroups.width + 1 : m_outputMask->getExtent().width / dispatchGroups.width;
+	const uint32_t groupSizeY = m_outputMask->getExtent().height % dispatchGroups.height != 0 ? m_outputMask->getExtent().height / dispatchGroups.height + 1 : m_outputMask->getExtent().height / dispatchGroups.height;
 	m_commandBuffer->dispatch(groupSizeX, groupSizeY, dispatchGroups.depth);
 
 	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
@@ -205,8 +203,8 @@ void ShadowMaskPassCascadedShadowMapping::createOutputImages(uint32_t width, uin
 	createImageInfo.mipLevelCount = 1;
 	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 	createImageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	m_outputMasks.reset(Wolf::Image::createImage(createImageInfo));
-	m_outputMasks->setImageLayout({ VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
+	m_outputMask.reset(Wolf::Image::createImage(createImageInfo));
+	m_outputMask->setImageLayout({ VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
 }
 
 void ShadowMaskPassCascadedShadowMapping::createPipeline()
@@ -249,13 +247,25 @@ void ShadowMaskPassCascadedShadowMapping::updateDescriptorSet() const
 	m_outputComputeDescriptorSet->update(outputDescriptorSetGenerator.getDescriptorSetCreateInfo());
 
 	// Only for this pass
-	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
-	Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc;
-	outputImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	outputImageDesc.imageView = m_outputMasks->getDefaultImageView();
-	descriptorSetGenerator.setImage(0, outputImageDesc);
+	{
+		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
+		Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc;
+		outputImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		outputImageDesc.imageView = m_outputMask->getDefaultImageView();
+		descriptorSetGenerator.setImage(0, outputImageDesc);
 
-	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+		m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+	}
+
+	{
+		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_outputMaskDescriptorSetLayoutGenerator.getDescriptorLayouts());
+		Wolf::DescriptorSetGenerator::ImageDescription shadowMaskDesc;
+		shadowMaskDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		shadowMaskDesc.imageView = m_outputMask->getDefaultImageView();
+		descriptorSetGenerator.setImage(0, shadowMaskDesc);
+
+		m_outputMaskDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+	}
 }
 
 float ShadowMaskPassCascadedShadowMapping::jitter()

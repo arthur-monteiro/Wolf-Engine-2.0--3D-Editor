@@ -3,7 +3,7 @@ layout(quads, equal_spacing, ccw) in;
 layout(location = 0) flat in uint inInstanceId[];
 
 const uint MAX_SPHERE_COUNT = 16;
-layout(binding = 0, set = 1) uniform UniformBuffer
+layout(binding = 0, set = 2) uniform UniformBuffer
 {
     vec4 worldPosAndRadius[MAX_SPHERE_COUNT];
 } ub;

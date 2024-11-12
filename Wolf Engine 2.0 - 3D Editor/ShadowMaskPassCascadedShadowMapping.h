@@ -27,7 +27,7 @@ public:
 
 	void addShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const override;
 
-	Wolf::Image* getOutput() override { return m_outputMasks.get(); }
+	Wolf::Image* getOutput() override { return m_outputMask.get(); }
 	const Wolf::Semaphore* getSemaphore() const override { return Wolf::CommandRecordBase::getSemaphore(); }
 	void getConditionalBlocksToEnableWhenReadingMask(std::vector<std::string>& conditionalBlocks) const override {}
 	Wolf::Image* getDenoisingPatternImage() override { return nullptr; }
@@ -46,7 +46,7 @@ private:
 	/* Pipeline */
 	std::unique_ptr<Wolf::ShaderParser> m_computeShaderParser;
 	std::unique_ptr<Wolf::Pipeline> m_pipeline;
-	std::unique_ptr<Wolf::Image> m_outputMasks;
+	std::unique_ptr<Wolf::Image> m_outputMask;
 
 	/* Resources */
 	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;

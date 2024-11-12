@@ -67,7 +67,7 @@ public:
 	void addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data);
 	void addSphere(const glm::vec3& worldPos, float radius);
 
-	void addMeshesToRenderList(Wolf::RenderMeshList& renderMeshList);
+	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
 
 private:
 	Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_linesPipelineSet;
@@ -111,4 +111,6 @@ private:
 	SpheresUBData m_spheresData;
 	uint32_t m_sphereCount = 0;
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_spheresUniformBuffer;
+
+	std::vector<Wolf::ResourceUniqueOwner<Wolf::RenderMeshList::MeshToRender>> m_meshesToRender;
 };

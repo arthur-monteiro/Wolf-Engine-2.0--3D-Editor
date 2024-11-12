@@ -11,6 +11,7 @@
 #include "GameContext.h"
 #include "LightManager.h"
 #include "RenderingPipeline.h"
+#include "ResourceManager.h"
 
 class SystemManager
 {
@@ -36,6 +37,8 @@ private:
 
 	// JS callbacks
 	ultralight::JSValue getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue getVRAMUsedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue pickFileJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue pickFolderJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 	ultralight::JSValue getRenderHeightJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
@@ -56,11 +59,13 @@ private:
 	void disableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
+	void selectEntity() const;
 	void updateUISelectedEntity() const;
 
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
 	Wolf::ResourceUniqueOwner<RenderingPipeline> m_renderer;
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
+	Wolf::ResourceUniqueOwner<ResourceManager> m_resourceManager;
 
 	/* FPS counter */
 	uint32_t m_currentFramesAccumulated = 0;
@@ -74,6 +79,7 @@ private:
 	Wolf::ResourceUniqueOwner<EntityContainer> m_entityContainer;
 	Wolf::ResourceUniqueOwner<ComponentInstancier> m_componentInstancier;
 	std::unique_ptr<Wolf::FirstPersonCamera> m_camera;
+	Wolf::ResourceUniqueOwner<DrawManager> m_drawManager;
 
 	std::unique_ptr<EditorParams> m_editorParams;
 
@@ -86,4 +92,5 @@ private:
 	Wolf::ResourceUniqueOwner<DebugRenderingManager> m_debugRenderingManager;
 
 	std::string m_loadSceneRequest;
+	bool m_isLoading = false;
 };

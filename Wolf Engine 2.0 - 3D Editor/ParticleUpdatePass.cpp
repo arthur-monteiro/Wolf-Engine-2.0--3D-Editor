@@ -2,6 +2,8 @@
 
 #include <random>
 
+#include <ProfilerCommon.h>
+
 #include "DebugMarker.h"
 #include "Pipeline.h"
 
@@ -41,6 +43,8 @@ void ParticleUpdatePass::resize(const Wolf::InitializationContext& context)
 
 void ParticleUpdatePass::record(const Wolf::RecordContext& context)
 {
+	PROFILE_FUNCTION
+
 	if (m_particleCount == 0)
 		return;
 

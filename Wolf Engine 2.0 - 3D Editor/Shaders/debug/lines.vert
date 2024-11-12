@@ -1,6 +1,6 @@
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0, set = 1) uniform UniformBuffer
+layout(binding = 0, set = 2) uniform UniformBuffer
 {
     mat4 transform;
 } ub;

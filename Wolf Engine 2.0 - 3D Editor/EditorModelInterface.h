@@ -8,7 +8,9 @@
 #include <WolfEngine.h>
 
 #include "ComponentInterface.h"
+#include "DrawManager.h"
 #include "EditorTypes.h"
+#include "Notifier.h"
 
 namespace Wolf
 {
@@ -17,13 +19,13 @@ namespace Wolf
 	class AABB;
 }
 
-class EditorModelInterface : public ComponentInterface
+class EditorModelInterface : public ComponentInterface, public Notifier
 {
 public:
 	EditorModelInterface(const glm::mat4& transform);
 
 	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
-	virtual void getMeshesToRender(std::vector<Wolf::RenderMeshList::MeshToRenderInfo>& outList) = 0;
+	virtual void getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) = 0;
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 
@@ -46,20 +48,13 @@ protected:
 	EditorParamVector3 m_scaleParam = EditorParamVector3("Scale", "Model", "Transform", -1.0f, 1.0f, [this] { recomputeTransform(); });
 	EditorParamVector3 m_translationParam = EditorParamVector3("Translation", "Model", "Transform", -10.0f, 10.0f, [this] { recomputeTransform(); });
 	EditorParamVector3 m_rotationParam = EditorParamVector3("Rotation", "Model", "Transform", 0.0f, 6.29f, [this] { recomputeTransform(); });
+
 	std::array<EditorParamInterface*, 3> m_modelParams =
 	{
 		&m_scaleParam,
 		&m_translationParam,
 		&m_rotationParam
 	};
-
-	struct MatricesUBData
-	{
-		glm::mat4 model;
-	};
-
-	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
-	std::unique_ptr<Wolf::Buffer> m_matricesUniformBuffer;
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayoutGenerator, EditorModelInterface>> m_modelDescriptorSetLayoutGenerator;
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, EditorModelInterface>> m_modelDescriptorSetLayout;

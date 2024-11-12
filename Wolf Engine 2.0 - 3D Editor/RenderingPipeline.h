@@ -9,6 +9,8 @@
 #include "PreDepthPass.h"
 #include "RenderingPipelineInterface.h"
 #include "ShadowMaskPassCascadedShadowMapping.h"
+#include "ThumbnailsGenerationPass.h"
+#include "UpdateGPUBuffersPass.h"
 
 class LightManager;
 class BindlessDescriptor;
@@ -24,12 +26,16 @@ public:
 
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
+	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() override;
+	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
 
 private:
+	Wolf::ResourceUniqueOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceUniqueOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceUniqueOwner<CascadedShadowMapsPass> m_cascadedShadowMapsPass;
 	Wolf::ResourceUniqueOwner<ShadowMaskPassCascadedShadowMapping> m_shadowMaskPassCascadedShadowMapping;
 	Wolf::ResourceUniqueOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
 	Wolf::ResourceUniqueOwner<ParticleUpdatePass> m_particleUpdatePass;
+	Wolf::ResourceUniqueOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
 	Wolf::ResourceUniqueOwner<ForwardPass> m_forwardPass;
 };

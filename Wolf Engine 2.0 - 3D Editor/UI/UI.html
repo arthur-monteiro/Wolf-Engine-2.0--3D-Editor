@@ -23,7 +23,7 @@
 			<div id="sceneName" style="display: inline-block;">Unknown scene</div>
 			<div id="optionsIcon" style="float: right; padding: 5px 10px 0px 0px; cursor: pointer;" onclick="openOptions()"><div class="material-symbols-outlined">settings</div></div>
 		</div>
-		<div class="frameRate" id="frameRate">FPS: 60</div>
+		<div class="frameRate" role="button"><span class="text" id="frameRate">FPS: XX</span></div>
 		<div class="cameraPosition" id="cameraPosition">Camera position:</div>
 		<div class="logs" id="logs"></div>
 
@@ -35,10 +35,12 @@
 		<div id="entityInfos" class="info">
 			<span>No entity selected</span>
 		</div>
+		<div id="entityList"></div>
+		<div id="resourceBrowser"></div>
+
 		<div id="sliderInfo" onmousedown="resizeInfo()"></div>
 		<div id="sliderList" onmousedown="resizeList()"></div>
-
-		<div id="entityList"></div>
+		<div id="sliderResourceBrowser" onmousedown="resizeList()"></div>
 	</div>
 
 	<div id="addEntityWindow" class="modalWindow" style="display: none;">
@@ -132,6 +134,20 @@
 		</ul>
 	</div>
 
+	<div id="performances" class="modalWindow" style="display: none;">
+		<div class='closeButton' id="closeButton" onclick="closePerformances()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
+		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
+			<li class="table-row">
+				<div class="col col-1" data-label="infoType">GPU</div>
+				<div class="columnDivider"></div>
+				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px; min-width: 300px;">
+					VRAM Requested: <span id="vramRequested">0 MB</span><br/>
+					VRAM Used: <span id="vramUsed">0 MB</span>
+				</div>
+			</li>
+		</ul>
+	</div>
+
     <script src="./slider.js"></script>
     <script src="./select.js"></script>
 	<script src="curveEditor/curveEditor.js"></script>
@@ -141,17 +157,33 @@
 	var selectedEntityName = "";
 	var isRequestingDuplicate = false;
 
-	function updateFrameRate() {
+	function openPerformances()
+	{
+		document.getElementById('performances').style.display = "block";
+		openModalWindow();
+	}
+
+	function closePerformances()
+	{
+		document.getElementById('performances').style.display = "none";
+		closeModalWindow();
+	}
+
+	function updateStats() {
 		document.getElementById('frameRate').innerHTML = getFrameRate();
+		document.getElementById('vramRequested').innerHTML = getVRAMRequested();
+		document.getElementById('vramUsed').innerHTML = getVRAMUsed();
 
 		setTimeout(()=> {
-			updateFrameRate();
+			updateStats();
 		}, 1000);
 	}
 	
 	window.addEventListener('DOMContentLoaded', (event) => {
+		document.getElementById('frameRate').parentElement.onclick = openPerformances;
+
 		setTimeout(()=> {
-			updateFrameRate();
+			updateStats();
 
 			refreshWindowSize();
       	}, 1000);
@@ -331,17 +363,32 @@
 	}
 
 	function addEntityToList(name, path, isFake = false) {
-		let entityTypeDiv = "<div class='entityType'>" + (isFake ? "Fake" : "Entity") + "</div>"
-		let enityInfoDiv = "<div class='entityListItem' onmousedown=\"onMouseDownEntity(event, '" + name + "');\" id='" + path + "'";
+		let entityTypeStr = "";
 		if (isFake)
-			enityInfoDiv += "style='font-style: italic;'";
-		enityInfoDiv += ">" + name + entityTypeDiv +"</div><br/>";
+			entityTypeStr = "Fake";
+		else 
+			entityTypeStr = "Entity";
 
-		document.getElementById('entityList').innerHTML += enityInfoDiv;
+		let entityTypeDiv = "<div class='entityType'>" + entityTypeStr + "</div>"
+		let entityInfoDiv = "<div class='entityListItem' onmousedown=\"onMouseDownEntity(event, '" + name + "');\" id='" + path + "'";
+		if (isFake)
+			entityInfoDiv += "style='font-style: italic;'";
+		entityInfoDiv += ">" + name + entityTypeDiv +"</div><br/>";
+
+		document.getElementById('entityList').innerHTML += entityInfoDiv;
 	}
 
 	function resetEntityList() {
 		document.getElementById('entityList').innerHTML = "";
+	}
+
+	function addResourceToList(name, iconPath) {
+		let resourceInfoDiv = "<div class='resourceMesh'>";
+		resourceInfoDiv += "<div class='resourceIcon'><img src='" + iconPath + "'/></div>";
+		resourceInfoDiv += "<div class='resourceName'>" + name + "</div>";
+		resourceInfoDiv += "</div>";
+
+		document.getElementById('resourceBrowser').innerHTML += resourceInfoDiv;
 	}
 
 	function makeID(length) {
@@ -358,7 +405,7 @@
 
 	function addLog(log, type) {
 		let logID = makeID(10);
-		document.getElementById('logs').innerHTML += "<br/><div class='" + type + "' id='" + logID + "'><span style='background-color: #ffffff; opacity: 0.7; padding: 3px 20px 5px 20px;'>" + log + "</span></div>";
+		document.getElementById('logs').innerHTML += "<div class='" + type + "' id='" + logID + "'><br/><span style='background-color: #ffffff; opacity: 0.7; padding: 3px 20px 5px 20px;'>" + log + "</span></div>";
 
 		setTimeout(()=> {
 			document.getElementById(logID).classList.add("hidden");
