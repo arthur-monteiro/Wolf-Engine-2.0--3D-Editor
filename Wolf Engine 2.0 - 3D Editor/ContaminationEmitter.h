@@ -4,7 +4,7 @@
 #include "DescriptorSetLayoutGenerator.h"
 #include "EditorConfiguration.h"
 #include "EditorTypesTemplated.h"
-#include "MaterialEditor.h"
+#include "TextureSetEditor.h"
 #include "Notifier.h"
 #include "ShootInfo.h"
 
@@ -18,8 +18,9 @@ public:
 	std::string getId() const override { return ID; }
 	static constexpr uint32_t CONTAMINATION_IDS_IMAGE_SIZE = 64;
 
-	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
+		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
+		const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 	ContaminationEmitter(const ContaminationEmitter&) = delete;
 	~ContaminationEmitter() override;
 
@@ -45,6 +46,7 @@ private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
+	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	class ContaminationMaterial : public ParameterGroupInterface, public Notifier
 	{
@@ -53,19 +55,27 @@ private:
 		ContaminationMaterial(const ContaminationMaterial&) = delete;
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+
+		void setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 		
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
 		bool hasDefaultName() const override;
-		uint32_t getMaterialId() const { return m_materialId; }
+		uint32_t getMaterialIdx() const;
 
 	private:
 		inline static const std::string DEFAULT_NAME = "New material";
+		std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
-		std::vector<Wolf::MaterialsGPUManager::MaterialInfo> m_materialsInfo;
-		Wolf::MaterialsGPUManager::MaterialCacheInfo m_materialCacheInfo;
-		uint32_t m_materialId = 0;
-		MaterialEditor m_materialEditor;
+		std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_materialEntity;
+		void onMaterialEntityChanged();
+		bool m_materialNotificationRegistered = false;
+
+		EditorParamString m_materialEntityParam = EditorParamString("Material entity", TAB, "Material", [this]() { onMaterialEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
+		std::array<EditorParamInterface*, 1> m_editorParams =
+		{
+			&m_materialEntityParam,
+		};
 	};
 
 	void onMaterialAdded();

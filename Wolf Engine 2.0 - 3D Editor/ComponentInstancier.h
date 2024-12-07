@@ -8,6 +8,8 @@
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
+#include "MaterialComponent.h"
+#include "TextureSetComponent.h"
 #include "Particle.h"
 #include "ParticleEmitter.h"
 #include "PlayerComponent.h"
@@ -44,7 +46,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 8> m_componentsInfo =
+	std::array<ComponentInfo, 10> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -52,7 +54,7 @@ private:
 			StaticModel::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), m_materialsGPUManager, m_resourceManager));
+				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), m_materialsGPUManager, m_resourceManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
 			}
 		},
 		ComponentInfo
@@ -61,7 +63,7 @@ private:
 			ContaminationEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration));
+				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback));
 			}
 		},
 		ComponentInfo
@@ -106,7 +108,7 @@ private:
 			Particle::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new Particle(m_materialsGPUManager, m_editorConfiguration));
+				return static_cast<ComponentInterface*>(new Particle(m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback));
 			}
 		},
 		ComponentInfo
@@ -116,6 +118,24 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new SkyLight());
+			}
+		},
+		ComponentInfo
+		{
+			"Texture set",
+			TextureSetComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new TextureSetComponent(m_materialsGPUManager, m_editorConfiguration, m_requestReloadCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Material",
+			MaterialComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new MaterialComponent(m_materialsGPUManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
 			}
 		}
 	};

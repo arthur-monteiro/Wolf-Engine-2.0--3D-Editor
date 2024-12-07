@@ -4,7 +4,7 @@
 
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
-#include "MaterialEditor.h"
+#include "TextureSetEditor.h"
 #include "RenderingPipelineInterface.h"
 
 class ParticleEmitter : public ComponentInterface

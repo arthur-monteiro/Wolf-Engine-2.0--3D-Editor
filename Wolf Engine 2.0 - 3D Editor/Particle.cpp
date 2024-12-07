@@ -1,19 +1,20 @@
 #include "Particle.h"
 
 #include "EditorParamsHelper.h"
+#include "Entity.h"
+#include "MaterialComponent.h"
 
-Particle::Particle(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration) :
-	m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration)
+Particle::Particle(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
+                   const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback) :
+	m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
-	m_particleMaterial.get().subscribe(this, [this]() { notifySubscribers(); });
-
 	m_flipBookSizeX = 1;
 	m_flipBookSizeY = 1;
 }
 
 void Particle::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams<ParticleMaterial>(jsonReader, ID, m_editorParams);
+	::loadParams(jsonReader, ID, m_editorParams);
 }
 
 void Particle::activateParams()
@@ -34,44 +35,33 @@ void Particle::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 void Particle::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
-	m_particleMaterial.get().updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
-}
-
-Particle::ParticleMaterial::ParticleMaterial() : ParameterGroupInterface(Particle::TAB), m_materialsInfo(1), m_materialEditor(Particle::TAB, "", m_materialCacheInfo)
-{
-	m_name = DEFAULT_NAME;
-
-	m_materialCacheInfo.materialInfo = m_materialsInfo.data();
-	m_materialEditor.subscribe(this, [this]() { notifySubscribers(); });
-}
-
-void Particle::ParticleMaterial::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager,	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
-{
-	m_materialEditor.updateBeforeFrame(materialGPUManager, editorConfiguration);
-
-	if (m_materialIdx == 0)
+	if (m_materialEntity && !m_materialNotificationRegistered)
 	{
-		m_materialIdx = materialGPUManager->getCurrentMaterialCount();
-		materialGPUManager->addNewMaterials(m_materialsInfo);
-		m_materialCacheInfo = materialGPUManager->getMaterialsCacheInfo().back();
+		if (const Wolf::ResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
+		{
+			materialComponent->subscribe(this, [this]() { notifySubscribers(); });
+			m_materialNotificationRegistered = true;
 
-		m_materialEditor.setMaterialId(m_materialIdx);
-
-		notifySubscribers();
+			notifySubscribers();
+		}
 	}
 }
 
-void Particle::ParticleMaterial::getAllParams(std::vector<EditorParamInterface*>& out) const
+uint32_t Particle::getMaterialIdx() const
 {
-	m_materialEditor.getAllParams(out);
+	if (m_materialEntity)
+	{
+		if (const Wolf::ResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
+		{
+			return materialComponent->getMaterialIdx();
+		}
+	}
+
+	return 0;
 }
 
-void Particle::ParticleMaterial::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
+void Particle::onMaterialEntityChanged()
 {
-	m_materialEditor.getAllVisibleParams(out);
-}
-
-bool Particle::ParticleMaterial::hasDefaultName() const
-{
-	return std::string(m_name) == DEFAULT_NAME;
+	m_materialEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_materialEntityParam)));
+	m_materialNotificationRegistered = false;
 }

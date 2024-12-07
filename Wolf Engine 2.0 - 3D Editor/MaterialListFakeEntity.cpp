@@ -17,32 +17,31 @@ void MaterialListFakeEntity::activateParams() const
 
 void MaterialListFakeEntity::fillJSONForParams(std::string& outJSON)
 {
-	m_materialCount = m_materialsGPUManager->getCurrentMaterialCount();
+	m_materialCount = m_materialsGPUManager->getCurrentTextureSetCount();
 	m_materials.clear();
-	std::vector<Wolf::MaterialsGPUManager::MaterialCacheInfo>& materialCache = m_materialsGPUManager->getMaterialsCacheInfo();
-	for (uint32_t i = 0; i < materialCache.size(); ++i)
+	std::vector<Wolf::MaterialsGPUManager::TextureSetCacheInfo>& textureSetCache = m_materialsGPUManager->getTextureSetsCacheInfo();
+	for (uint32_t i = 0; i < textureSetCache.size(); ++i)
 	{
-		Wolf::MaterialsGPUManager::MaterialCacheInfo& materialCacheInfo = materialCache[i];
+		Wolf::MaterialsGPUManager::TextureSetCacheInfo& materialCacheInfo = textureSetCache[i];
 
-		if (materialCacheInfo.materialInfo->materialName.empty())
+		if (materialCacheInfo.materialName.empty())
 			continue;
 
-		if (materialCacheInfo.materialInfo->imageNames.size() != 6)
+		if (materialCacheInfo.imageNames.size() != 6)
 		{
-			Wolf::Debug::sendWarning("Debug info for material " + materialCacheInfo.materialInfo->materialName + " has been found but there isn't 6 image names");
+			Wolf::Debug::sendWarning("Debug info for material " + materialCacheInfo.materialName + " has been found but there isn't 6 image names");
 			continue;
 		}
 
 		MaterialInfo& materialInfo = m_materials.emplace_back();
-		materialInfo.setMaterialCacheInfo(materialCacheInfo);
-		materialInfo.setName(materialCacheInfo.materialInfo->materialName);
-		materialInfo.getMaterialEditor().setMaterialId(i + 1 /* remove default material */);
+		materialInfo.setMaterialCacheInfo();
+		materialInfo.setName(materialCacheInfo.materialName);
 
 		auto computeLocalPath = [materialCacheInfo](uint32_t imageIdx) -> std::string
 			{
-				if (materialCacheInfo.materialInfo->imageNames[imageIdx].empty())
+				if (materialCacheInfo.imageNames[imageIdx].empty())
 					return "";
-				return g_editorConfiguration->computeLocalPathFromFullPath(materialCacheInfo.materialInfo->materialFolder + "/" + materialCacheInfo.materialInfo->imageNames[imageIdx]);
+				return g_editorConfiguration->computeLocalPathFromFullPath(materialCacheInfo.materialFolder + "/" + materialCacheInfo.imageNames[imageIdx]);
 			};
 
 		materialInfo.getMaterialEditor().setAlbedoPath(computeLocalPath(0));
@@ -51,7 +50,6 @@ void MaterialListFakeEntity::fillJSONForParams(std::string& outJSON)
 		materialInfo.getMaterialEditor().setMetalnessPath(computeLocalPath(3));
 		materialInfo.getMaterialEditor().setAOPath(computeLocalPath(4));
 		materialInfo.getMaterialEditor().setAnisoStrengthPath(computeLocalPath(5));
-		materialInfo.getMaterialEditor().setShadingMode(materialCacheInfo.materialInfo->shadingMode);
 	}
 
 	activateParams(); // reactivate params as we just modified them
@@ -71,11 +69,12 @@ void MaterialListFakeEntity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf
 {
 	m_materials.lockAccessElements();
 
-	for (uint32_t i = 0; i < m_materials.size(); ++i)
+	// Little hack to avoid the texture set editors to create their own resources
+	/*for (uint32_t i = 0; i < m_materials.size(); ++i)
 	{
 		MaterialInfo& materialEditor = m_materials[i];
 		materialEditor.updateBeforeFrame(m_materialsGPUManager, m_editorConfiguration);
-	}
+	}*/
 
 	m_materials.unlockAccessElements();
 }
@@ -109,7 +108,7 @@ bool MaterialListFakeEntity::MaterialInfo::hasDefaultName() const
 	return false;
 }
 
-void MaterialListFakeEntity::MaterialInfo::setMaterialCacheInfo(Wolf::MaterialsGPUManager::MaterialCacheInfo& materialCacheInfo)
+void MaterialListFakeEntity::MaterialInfo::setMaterialCacheInfo()
 {
-	m_material.reset(new MaterialEditor("Material List", "Material", materialCacheInfo));
+	m_material.reset(new TextureSetEditor("Material List", "Material", Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX));
 }

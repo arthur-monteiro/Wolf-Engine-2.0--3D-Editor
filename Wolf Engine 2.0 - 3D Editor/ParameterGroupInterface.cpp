@@ -30,6 +30,14 @@ void ParameterGroupInterface::addParamsToJSON(std::string& outJSON, uint32_t tab
 	::addParamsToJSON(outJSON, allParams, isLast, tabCount);
 }
 
+void ParameterGroupInterface::loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId)
+{
+	std::vector<EditorParamInterface*> arrayItemParams;
+	getAllParams(arrayItemParams);
+	arrayItemParams.push_back(getNameParam());
+	::loadParams(jsonReader, objectId, arrayItemParams);
+}
+
 void ParameterGroupInterface::onNameChanged()
 {
 	m_name.setCategory(m_name);

@@ -11,6 +11,7 @@ class Entity;
 struct InstanceData
 {
 	glm::mat4 transform;
+	uint32_t firstMaterialIdx;
 
 	static void getBindingDescription(VkVertexInputBindingDescription& bindingDescription, uint32_t binding)
 	{
@@ -22,7 +23,7 @@ struct InstanceData
 	static void getAttributeDescriptions(std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
 	{
 		const uint32_t attributeDescriptionCountBefore = static_cast<uint32_t>(attributeDescriptions.size());
-		attributeDescriptions.resize(attributeDescriptionCountBefore + 4);
+		attributeDescriptions.resize(attributeDescriptionCountBefore + 5);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 0].location = attributeDescriptionCountBefore + 0;
@@ -43,6 +44,11 @@ struct InstanceData
 		attributeDescriptions[attributeDescriptionCountBefore + 3].location = attributeDescriptionCountBefore + 3;
 		attributeDescriptions[attributeDescriptionCountBefore + 3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 		attributeDescriptions[attributeDescriptionCountBefore + 3].offset = offsetof(InstanceData, transform) + 3 * sizeof(glm::vec4);
+
+		attributeDescriptions[attributeDescriptionCountBefore + 4].binding = binding;
+		attributeDescriptions[attributeDescriptionCountBefore + 4].location = attributeDescriptionCountBefore + 4;
+		attributeDescriptions[attributeDescriptionCountBefore + 4].format = VK_FORMAT_R32_UINT;
+		attributeDescriptions[attributeDescriptionCountBefore + 4].offset = offsetof(InstanceData, firstMaterialIdx);
 	}
 };
 
@@ -57,6 +63,7 @@ public:
 		InstanceData instanceData;
 	};
 	void addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRender, Entity* entity);
+	void clear();
 
 private:
 	class InstancedMeshRegistered;

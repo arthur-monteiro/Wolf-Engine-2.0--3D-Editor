@@ -39,7 +39,7 @@ SystemManager::SystemManager()
 			std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 			for (ResourceUniqueOwner<Entity>& entity : allEntities)
 			{
-				if (entity->getLoadingPath() == entityLoadingPath)
+				if (!entity->isFake() && entity->getLoadingPath() == entityLoadingPath)
 					return entity.createNonOwnerResource();
 			}
 			Debug::sendCriticalError("Entity not found");
@@ -695,6 +695,7 @@ void SystemManager::loadScene()
 	m_entityContainer->clear();
 
 	m_resourceManager->clear();
+	m_drawManager->clear();
 
 	m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
 	m_wolfInstance->evaluateUserInterfaceScript("resetSelectedEntity()");

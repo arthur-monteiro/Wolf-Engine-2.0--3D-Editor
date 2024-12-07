@@ -210,6 +210,7 @@ public:
 	operator const std::string& () const { return m_value; }
 
 	bool drivesCategoryName() const { return m_drivesCategoryName; }
+	void setNoEntitySelectedString(const std::string& value) { m_noEntitySelectedString = value; }
 
 private:
 	static Type stringTypeToParamType(ParamStringType stringType);
@@ -219,6 +220,8 @@ private:
 	ParamStringType m_stringType;
 	bool m_drivesCategoryName;
 	std::string m_value;
+
+	std::string m_noEntitySelectedString = "No entity selected";
 };
 
 class EditorParamBool : public EditorParamInterface

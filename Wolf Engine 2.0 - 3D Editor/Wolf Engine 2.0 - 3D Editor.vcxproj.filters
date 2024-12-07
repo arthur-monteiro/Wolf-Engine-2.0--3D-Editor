@@ -63,7 +63,7 @@
     <ClCompile Include="ContaminationEmitter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MaterialEditor.cpp">
+    <ClCompile Include="TextureSetEditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ParameterGroupInterface.cpp">
@@ -132,6 +132,12 @@
     <ClCompile Include="UpdateGPUBuffersPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TextureSetComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MaterialComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vertex2DTextured.h">
@@ -185,7 +191,7 @@
     <ClInclude Include="ContaminationEmitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MaterialEditor.h">
+    <ClInclude Include="TextureSetEditor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ParameterGroupInterface.h">
@@ -261,6 +267,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="UpdateGPUBuffersPass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureSetComponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MaterialComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

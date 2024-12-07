@@ -4,13 +4,14 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec3 inTangent;
 layout(location = 3) in vec2 inTexCoord;
-layout(location = 4) in uint inMaterialID;
+layout(location = 4) in uint inSubMeshIdx;
 
 layout(location = 5) in mat4 inTransform;
+layout(location = 9) in uint inFirstMaterialIdx;
 
 layout(location = 0) out vec3 outViewPos;
 layout(location = 1) out vec2 outTexCoord;
-layout(location = 2) out uint outMaterialID;
+layout(location = 2) out uint outMaterialIdx;
 layout(location = 3) out mat3 outTBN;
 layout(location = 6) out vec3 outWorldSpaceNormal;
 layout(location = 7) out vec3 outWorldSpacePos;
@@ -41,7 +42,7 @@ void main()
 
 	outViewPos = viewPos.xyz;
     outTexCoord = inTexCoord;
-	outMaterialID = inMaterialID;
+	outMaterialIdx = inFirstMaterialIdx + inSubMeshIdx;
 	outWorldSpaceNormal = normalize(inNormal);
 	outWorldSpacePos =  (inTransform * vec4(inPosition, 1.0)).xyz;
 } 

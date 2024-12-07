@@ -7,11 +7,11 @@
 #include "EditorTypes.h"
 #include "Notifier.h"
 
-class MaterialEditor : public Notifier
+class TextureSetEditor : public Notifier
 {
 public:
-	MaterialEditor(const std::string& tab, const std::string& category, Wolf::MaterialsGPUManager::MaterialCacheInfo& materialCacheInfo);
-	MaterialEditor(const MaterialEditor&) = delete;
+	TextureSetEditor(const std::string& tab, const std::string& category, Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode shadingMode);
+	TextureSetEditor(const TextureSetEditor&) = delete;
 
 	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 
@@ -21,7 +21,8 @@ public:
 	void getAllParams(std::vector<EditorParamInterface*>& out) const;
 	void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const;
 
-	void setMaterialId(uint32_t materialId) { m_materialId = materialId; }
+	uint32_t getTextureSetIdx() const;
+
 	void setAlbedoPath(const std::string& albedoPath) { m_albedoPathParam = albedoPath; }
 	void setNormalPath(const std::string& normalPath) { m_normalPathParam = normalPath; }
 	void setRoughnessPath(const std::string& roughnessPath) { m_roughnessParam = roughnessPath; }
@@ -44,12 +45,6 @@ private:
 	EditorParamString m_sixWaysLightmap1;
 	EditorParamBool m_enableAlpha;
 
-	struct ShadingMode
-	{
-		static constexpr uint32_t GGX = 0;
-		static constexpr uint32_t AnisoGGX = 1;
-		static constexpr uint32_t SixWaysLighting = 2;
-	};
 	EditorParamEnum m_shadingMode;
 
 	std::array<EditorParamInterface*, 6> m_shadingModeGGXParams
@@ -98,8 +93,8 @@ private:
 		&m_shadingMode
 	};
 
-	uint32_t m_materialId = 0;
-	Wolf::MaterialsGPUManager::MaterialCacheInfo& m_materialCacheInfo;
+	Wolf::MaterialsGPUManager::TextureSetCacheInfo m_textureSetCacheInfo;
+	Wolf::MaterialsGPUManager::TextureSetInfo m_textureSetInfo;
 
 	bool m_shadingModeChanged = false;
 	bool m_textureChanged = false;

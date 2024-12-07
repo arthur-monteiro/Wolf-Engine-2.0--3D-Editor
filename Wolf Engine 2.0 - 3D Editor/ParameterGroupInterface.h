@@ -17,6 +17,8 @@ public:
 	EditorParamInterface* getNameParam() { return &m_name; }
 	void setName(const std::string& name) { m_name = name; }
 
+	virtual void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId);
+
 protected:
 	std::string m_currentCategory;
 	EditorParamString m_name;

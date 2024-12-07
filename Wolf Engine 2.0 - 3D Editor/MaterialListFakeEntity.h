@@ -2,7 +2,7 @@
 
 #include "EditorTypesTemplated.h"
 #include "Entity.h"
-#include "MaterialEditor.h"
+#include "TextureSetEditor.h"
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
 
@@ -39,12 +39,12 @@ private:
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
 		bool hasDefaultName() const override;
 
-		MaterialEditor& getMaterialEditor() { return *m_material; }
+		TextureSetEditor& getMaterialEditor() { return *m_material; }
 
-		void setMaterialCacheInfo(Wolf::MaterialsGPUManager::MaterialCacheInfo& materialCacheInfo);
+		void setMaterialCacheInfo();
 
 	private:
-		Wolf::ResourceUniqueOwner<MaterialEditor> m_material;
+		Wolf::ResourceUniqueOwner<TextureSetEditor> m_material;
 	};
 
 	EditorParamUInt m_materialCount = EditorParamUInt("Material Count", "Material List", "General", 0, 100, EditorParamUInt::ParamUIntType::NUMBER, false, true);

@@ -211,7 +211,7 @@ function computeInput(param, isLast) {
         htmlToAdd += param.name + ": <select name='entity' id='entitySelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'";
         if (param.isReadOnly)
             htmlToAdd += " disabled";
-        htmlToAdd += "><option value=''>No entity selected</option>";
+        htmlToAdd += "><option value=''>" + param.noEntitySelectedName +  "</option>";
         for (let i = 0; i < entityDivs.length; i++) {
             var entityDiv = entityDivs[i];
 

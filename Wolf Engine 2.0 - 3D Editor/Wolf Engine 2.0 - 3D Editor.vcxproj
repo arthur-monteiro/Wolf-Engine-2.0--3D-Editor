@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug - No debug resource|Win32">
+      <Configuration>Debug - No debug resource</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug - No debug resource|x64">
+      <Configuration>Debug - No debug resource</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
@@ -40,6 +48,12 @@
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - No debug resource|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -54,6 +68,12 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - No debug resource|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
@@ -80,6 +100,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - No debug resource|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -87,6 +110,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - No debug resource|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Lib - Debug|x64'" Label="PropertySheets">
@@ -97,6 +123,18 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - No debug resource|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
@@ -140,7 +178,23 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;RESOURCE_DEBUG;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;TRACY_ENABLE;TRACY_ON_DEMAND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;TRACY_ENABLE;TRACY_ON_DEMAND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Common;..\..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Public;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\x64\Debug;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Lib\Windows\x64\Debug\VS2017;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\lib-vc2019;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Lib;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Wolf Engine\lib;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;LibOVR.lib;UltralightCore.lib;Ultralight.lib;WebCore.lib;AppCore.lib;Engine Core.lib;Common.lib;Graphic API Broker.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - No debug resource|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Common;..\..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Public;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -206,6 +260,8 @@
     <ClCompile Include="ForwardPass.cpp" />
     <ClCompile Include="GameContext.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MaterialComponent.cpp" />
+    <ClCompile Include="TextureSetComponent.cpp" />
     <ClCompile Include="MaterialListFakeEntity.cpp" />
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="ParticleEmitter.cpp" />
@@ -214,7 +270,7 @@
     <ClCompile Include="PreDepthPass.cpp" />
     <ClCompile Include="RenderingPipeline.cpp" />
     <ClCompile Include="EditorModelInterface.cpp" />
-    <ClCompile Include="MaterialEditor.cpp" />
+    <ClCompile Include="TextureSetEditor.cpp" />
     <ClCompile Include="Notifier.cpp" />
     <ClCompile Include="ParameterGroupInterface.cpp" />
     <ClCompile Include="PlayerComponent.cpp" />
@@ -249,6 +305,8 @@
     <ClInclude Include="EntityContainer.h" />
     <ClInclude Include="ForwardPass.h" />
     <ClInclude Include="GameContext.h" />
+    <ClInclude Include="MaterialComponent.h" />
+    <ClInclude Include="TextureSetComponent.h" />
     <ClInclude Include="MaterialListFakeEntity.h" />
     <ClInclude Include="Particle.h" />
     <ClInclude Include="ParticleEmitter.h" />
@@ -257,7 +315,7 @@
     <ClInclude Include="PreDepthPass.h" />
     <ClInclude Include="RenderingPipeline.h" />
     <ClInclude Include="EditorModelInterface.h" />
-    <ClInclude Include="MaterialEditor.h" />
+    <ClInclude Include="TextureSetEditor.h" />
     <ClInclude Include="Notifier.h" />
     <ClInclude Include="ParameterGroupInterface.h" />
     <ClInclude Include="PlayerComponent.h" />

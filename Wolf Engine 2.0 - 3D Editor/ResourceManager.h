@@ -21,6 +21,8 @@ public:
 	ResourceId addModel(const std::string& loadingPath);
 	bool isModelLoaded(ResourceId modelResourceId) const;
 	Wolf::ModelData* getModelData(ResourceId modelResourceId) const;
+	uint32_t getFirstMaterialIdx(ResourceId modelResourceId) const;
+	uint32_t getFirstTextureSetIdx(ResourceId modelResourceId) const;
 
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
@@ -56,6 +58,8 @@ private:
 
 		bool isLoaded() const override;
 		Wolf::ModelData* getModelData() { return &m_modelData; }
+		uint32_t getFirstMaterialIdx() const { return m_firstMaterialIdx; }
+		uint32_t getFirstTextureSetIdx() const { return m_firstTextureSetIdx; }
 
 	private:
 		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& m_thumbnailsGenerationPass);
@@ -63,11 +67,13 @@ private:
 		bool m_modelLoadingRequested = false;
 		bool m_thumbnailGenerationRequested = false;
 		Wolf::ModelData m_modelData;
+
+		uint32_t m_firstTextureSetIdx = 0;
+		uint32_t m_firstMaterialIdx = 0;
 	};
 
 	static constexpr uint32_t MESH_RESOURCE_IDX_OFFSET = 0;
 	std::vector<Wolf::ResourceUniqueOwner<Mesh>> m_meshes;
-
 
 	static constexpr uint32_t IMAGE_RESOURCE_IDX_OFFSET = 1000;
 

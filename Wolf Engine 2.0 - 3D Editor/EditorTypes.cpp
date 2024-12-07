@@ -330,7 +330,8 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 			break;
 		case ParamStringType::ENTITY: break;
 	}
-	out += "\"\n";
+	out += "\",\n";
+	out += tabs + '\t' + R"("noEntitySelectedName" : ")" + m_noEntitySelectedString + "\"\n";
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
 }
 

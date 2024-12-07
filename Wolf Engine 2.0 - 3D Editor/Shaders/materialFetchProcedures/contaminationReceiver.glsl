@@ -1,22 +1,3 @@
-#extension GL_EXT_nonuniform_qualifier : enable
-
-layout (binding = 0, set = £BINDLESS_DESCRIPTOR_SLOT) uniform texture2D[] textures;
-layout (binding = 1, set = £BINDLESS_DESCRIPTOR_SLOT) uniform sampler textureSampler;
-
-struct InputMaterialInfo
-{
-    uint albedoIdx;
-	uint normalIdx;
-	uint roughnessMetalnessAOIdx;
-
-    uint shadingMode;
-};
-
-layout(std430, binding = 2, set = £BINDLESS_DESCRIPTOR_SLOT) readonly restrict buffer MaterialBufferLayout
-{
-    InputMaterialInfo materialsInfo[];
-};
-
 layout (binding = 0, set = £CONTAMINATION_DESCRIPTOR_SLOT) uniform usampler3D contaminationIds;
 const uint MAX_MATERIALS = 8;
 layout(std430, binding = 1, set = £CONTAMINATION_DESCRIPTOR_SLOT) readonly restrict buffer contaminationInfo
@@ -26,43 +7,12 @@ layout(std430, binding = 1, set = £CONTAMINATION_DESCRIPTOR_SLOT) readonly restr
     uint materialOffsets[MAX_MATERIALS];
 };
 
-struct MaterialInfo
-{
-    vec4 albedo;
-    vec3 normal;
-    float roughness;
-    float metalness;
-    float matAO;
-    float anisoStrength;
-
-    vec4 sixWaysLightmap0;
-    vec4 sixWaysLightmap1;
-	
-	uint shadingMode;
-};
-
 uint fetchContamination(in const vec3 worldPos)
 {
     vec3 sampleUV = (worldPos - offset) / size;
     if (any(lessThan(sampleUV, vec3(0.0))) || any(greaterThan(sampleUV, vec3(1.0))))
         return 0;
     return uint(texture(contaminationIds, sampleUV).r);
-}
-
-MaterialInfo internalFetch(in const vec2 texCoords, in uint materialId, in const mat3 matrixTBN)
-{
-    MaterialInfo materialInfo;
-
-    materialInfo.albedo = texture(sampler2D(textures[materialsInfo[materialId].albedoIdx], textureSampler), texCoords).rgba;
-    materialInfo.normal = (texture(sampler2D(textures[materialsInfo[materialId].normalIdx], textureSampler), texCoords).rgb * 2.0 - vec3(1.0)) * matrixTBN;
-    vec4 combinedRoughnessMetalnessAOAniso = texture(sampler2D(textures[materialsInfo[materialId].roughnessMetalnessAOIdx], textureSampler), texCoords).rgba;
-	materialInfo.roughness = combinedRoughnessMetalnessAOAniso.r;
-	materialInfo.metalness = combinedRoughnessMetalnessAOAniso.g;
-    materialInfo.matAO = combinedRoughnessMetalnessAOAniso.b;
-    materialInfo.anisoStrength = combinedRoughnessMetalnessAOAniso.a;
-	materialInfo.shadingMode = materialsInfo[materialId].shadingMode;
-
-    return materialInfo;
 }
 
 MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const mat3 matrixTBN, in const vec3 worldPos)
@@ -78,23 +28,23 @@ MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const
         float b = (normal.x + normal.y + normal.z);
         normal /= b;
 
-        MaterialInfo xAxis = internalFetch(worldPos.yz, materialId, matrixTBN);
-        MaterialInfo yAxis = internalFetch(worldPos.xz, materialId, matrixTBN);
-        MaterialInfo zAxis = internalFetch(worldPos.xy, materialId, matrixTBN);
+        MaterialInfo xAxis = defaultFetchMaterial(worldPos.yz, materialId, matrixTBN, worldPos);
+        MaterialInfo yAxis = defaultFetchMaterial(worldPos.xz, materialId, matrixTBN, worldPos);
+        MaterialInfo zAxis = defaultFetchMaterial(worldPos.xy, materialId, matrixTBN, worldPos);
 
         MaterialInfo finalMaterialInfo;
-#define LERP_INFO(name) (xAxis.name * normal.x + yAxis.name * normal.y + zAxis.name * normal.z);
-        finalMaterialInfo.albedo = LERP_INFO(albedo);
-        finalMaterialInfo.normal = LERP_INFO(normal);
-        finalMaterialInfo.roughness = LERP_INFO(roughness);
-        finalMaterialInfo.metalness = LERP_INFO(metalness);
-        finalMaterialInfo.matAO = LERP_INFO(matAO);
+#define LERP_INFO_CUSTOM(name) (xAxis.name * normal.x + yAxis.name * normal.y + zAxis.name * normal.z);
+        finalMaterialInfo.albedo = LERP_INFO_CUSTOM(albedo);
+        finalMaterialInfo.normal = LERP_INFO_CUSTOM(normal);
+        finalMaterialInfo.roughness = LERP_INFO_CUSTOM(roughness);
+        finalMaterialInfo.metalness = LERP_INFO_CUSTOM(metalness);
+        finalMaterialInfo.matAO = LERP_INFO_CUSTOM(matAO);
 		finalMaterialInfo.shadingMode = xAxis.shadingMode;
 
         return finalMaterialInfo;
     }
     else
     {
-        return internalFetch(texCoords, materialId, matrixTBN);
+        return defaultFetchMaterial(texCoords, materialId, matrixTBN, worldPos);
     }
 }

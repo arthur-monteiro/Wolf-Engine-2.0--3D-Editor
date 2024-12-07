@@ -75,6 +75,12 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 	}
 }
 
+void DrawManager::clear()
+{
+	m_instancedMeshesRegistered.clear();
+	m_infoByEntities.clear();
+}
+
 void DrawManager::addInstanceDataToBuffer(InstancedMeshRegistered& instancedMeshRegistered, uint32_t instanceIdx, const InstanceData& instanceData)
 {
 	Wolf::RenderMeshList::InstancedMesh instancedMesh = { instancedMeshRegistered.getMeshToRender(), instancedMeshRegistered.getInstanceBuffer().createNonOwnerResource(), sizeof(InstanceData) };

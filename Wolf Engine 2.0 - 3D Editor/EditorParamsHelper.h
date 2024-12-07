@@ -19,22 +19,21 @@ public:
 };
 
 template <typename GroupItemType = DummyParameterGroup>
-inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId, std::span<EditorParamInterface*> params, uint32_t arrayIdx = 0)
+inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId, std::span<EditorParamInterface*> params, bool loadArrayItems = true)
 {
 	Wolf::JSONReader::JSONObjectInterface* root = jsonReader.getRoot()->getPropertyObject(objectId);
 	const uint32_t paramCount = root->getArraySize("params");
 
-	auto findParamObject = [&root, paramCount, arrayIdx](const std::string& paramName, const std::string& paramCategory)
+	auto findParamObject = [&root, paramCount](const std::string& paramName, const std::string& paramCategory)
 		{
 			uint32_t paramFoundCount = 0;
 			for (uint32_t i = 0; i < paramCount; ++i)
 			{
 				Wolf::JSONReader::JSONObjectInterface* paramObject = root->getArrayObjectItem("params", i);
-				if (paramObject->getPropertyString("name") == paramName && (paramCategory.empty() || paramObject->getPropertyString("category") == paramCategory))
+				if (paramObject->getPropertyString("name") == paramName && (paramCategory.empty() || paramObject->getPropertyString("category") == paramCategory) && !paramObject->hasBeenVisited())
 				{
-					if (paramFoundCount == arrayIdx)
-						return paramObject;
-					paramFoundCount++;
+					paramObject->setVisited();
+					return paramObject;
 				}
 			}
 
@@ -101,19 +100,24 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
 						*dynamic_cast<EditorParamString*>(param) = object->getPropertyString("value");
+						if (param->getType() == EditorParamInterface::Type::ENTITY)
+						{
+							dynamic_cast<EditorParamString*>(param)->setNoEntitySelectedString(object->getPropertyString("noEntitySelectedName"));
+						}
 					}
 				}
 				break;
 			case EditorParamInterface::Type::ARRAY:
 			{
-				const uint32_t count = static_cast<uint32_t>(findParamObject(param->getName(), param->getCategory())->getPropertyFloat("count"));
-				for (uint32_t itemArrayIdx = 0; itemArrayIdx < count; ++itemArrayIdx)
+				if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 				{
-					GroupItemType& item = static_cast<EditorParamArray<GroupItemType>*>(param)->emplace_back();
-					std::vector<EditorParamInterface*> arrayItemParams;
-					item.getAllParams(arrayItemParams);
-					arrayItemParams.push_back(item.getNameParam());
-					loadParams(jsonReader, objectId, arrayItemParams, itemArrayIdx);
+					const uint32_t count = static_cast<uint32_t>(object->getPropertyFloat("count"));
+					for (uint32_t itemArrayIdx = 0; itemArrayIdx < count; ++itemArrayIdx)
+					{
+						GroupItemType& item = static_cast<EditorParamArray<GroupItemType>*>(param)->emplace_back();
+						if (loadArrayItems)
+							item.loadParams(jsonReader, objectId);
+					}
 				}
 				break;
 			}

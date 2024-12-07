@@ -63,6 +63,16 @@ Wolf::ModelData* ResourceManager::getModelData(ResourceId modelResourceId) const
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getModelData();
 }
 
+uint32_t ResourceManager::getFirstMaterialIdx(ResourceId modelResourceId) const
+{
+	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getFirstMaterialIdx();
+}
+
+uint32_t ResourceManager::getFirstTextureSetIdx(ResourceId modelResourceId) const
+{
+	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getFirstTextureSetIdx();
+}
+
 std::string ResourceManager::computeModelFullIdentifier(const std::string& loadingPath)
 {
 	std::string modelFullIdentifier;
@@ -129,11 +139,19 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 	modelLoadingInfo.filename = fullFilePath;
 	modelLoadingInfo.mtlFolder = fullFilePath.substr(0, fullFilePath.find_last_of('\\'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
-	modelLoadingInfo.materialLayout = Wolf::MaterialLoader::InputMaterialLayout::EACH_TEXTURE_A_FILE;
-	modelLoadingInfo.materialIdOffset = materialsGPUManager->getCurrentMaterialCount();
+	modelLoadingInfo.textureSetLayout = Wolf::TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
 	Wolf::ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
-	materialsGPUManager->addNewMaterials(m_modelData.materials);
+	m_firstTextureSetIdx = m_modelData.textureSets.empty() ? 0 : materialsGPUManager->getCurrentTextureSetCount();
+	m_firstMaterialIdx = m_modelData.textureSets.empty() ? 0 : materialsGPUManager->getCurrentMaterialCount();
+	for (const Wolf::MaterialsGPUManager::TextureSetInfo& textureSetInfo : m_modelData.textureSets)
+	{
+		materialsGPUManager->addNewTextureSet(textureSetInfo);
+
+		Wolf::MaterialsGPUManager::MaterialInfo materialInfo;
+		materialInfo.textureSetInfos[0].textureSetIdx = materialsGPUManager->getTextureSetsCacheInfo().back().textureSetIdx;
+		materialsGPUManager->addNewMaterial(materialInfo);
+	}
 
 	if (m_thumbnailGenerationRequested)
 	{
