@@ -57,6 +57,11 @@ private:
 	bool m_changeSamplingModeRequested = false;
 	EditorParamEnum m_samplingMode = EditorParamEnum({ "Mesh texture coordinates", "Triplanar" }, "Sampling mode", TAB, "Sampling", [this]() { onSamplingModeChanged(); });
 
+	// Mesh texture coordinates
+	void onTextureCoordsScaleChanged();
+	bool m_changeTextureCoordsScaleRequested = false;
+	EditorParamVector2 m_textureCoordsScale = EditorParamVector2("Scale", TAB, "Texture coordinates", 0.0f, 8.0f, [this]() { onTextureCoordsScaleChanged(); });
+
 	// Triplanar
 	void onTriplanarScaleChanged();
 	bool m_changeTriplanarScaleRequested = false;
@@ -68,15 +73,21 @@ private:
 		&m_samplingMode
 	};
 
+	std::array<EditorParamInterface*, 1> m_textureCoordsParams =
+	{
+		&m_textureCoordsScale
+	};
+
 	std::array<EditorParamInterface*, 1> m_triplanarParams =
 	{
 		&m_triplanarScale
 	};
 
-	std::array<EditorParamInterface*, 3> m_allParams =
+	std::array<EditorParamInterface*, 4> m_allParams =
 	{
 		&m_textureSet,
 		&m_samplingMode,
+		&m_textureCoordsScale,
 		&m_triplanarScale
 	};
 };

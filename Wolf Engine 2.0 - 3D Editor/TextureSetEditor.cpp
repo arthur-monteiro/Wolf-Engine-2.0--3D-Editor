@@ -43,9 +43,12 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 			{
 				Wolf::TextureSetLoader::OutputLayout outputLayout;
 				outputLayout.albedoCompression = m_enableAlpha ? Wolf::ImageCompression::Compression::BC3 : Wolf::ImageCompression::Compression::BC1;
+				outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
 
 				Wolf::TextureSetLoader materialLoader(materialFileInfo, outputLayout, false);
 				m_textureSetInfo.images[0].reset(materialLoader.releaseImage(0));
+				m_textureSetInfo.images[1].reset(materialLoader.releaseImage(1));
+				m_textureSetInfo.images[2].reset(materialLoader.releaseImage(2));
 
 				materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
 

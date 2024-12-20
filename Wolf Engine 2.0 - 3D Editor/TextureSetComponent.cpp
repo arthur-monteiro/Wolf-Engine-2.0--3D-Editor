@@ -9,6 +9,7 @@ TextureSetComponent::TextureSetComponent(const Wolf::ResourceNonOwner<Wolf::Mate
 {
 	m_textureSet.get().subscribe(this, [this]() { });
 
+	m_textureCoordsScale = glm::vec2(1.0f);
 	m_triplanarScale = glm::vec3(1.0f);
 }
 
@@ -33,6 +34,14 @@ void TextureSetComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCoun
 		editorParam->addToJSON(outJSON, tabCount, false);
 	}
 
+	if (m_samplingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TEXTURE_COORDS))
+	{
+		for (const EditorParamInterface* editorParam : m_textureCoordsParams)
+		{
+			editorParam->addToJSON(outJSON, tabCount, false);
+		}
+	}
+
 	if (m_samplingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TRIPLANAR))
 	{
 		for (const EditorParamInterface* editorParam : m_triplanarParams)
@@ -53,12 +62,14 @@ void TextureSetComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		}
 	}
 
-	if (m_changeTriplanarScaleRequested)
+	if (m_changeTriplanarScaleRequested || m_changeTextureCoordsScaleRequested)
 	{
+		glm::vec3 scale = m_changeTriplanarScaleRequested ? m_triplanarScale : glm::vec3(static_cast<glm::vec2>(m_textureCoordsScale), 1.0f);
+
 		if (uint32_t textureSetIdx = m_textureSet.get().getTextureSetIdx(); textureSetIdx != 0)
 		{
-			m_materialGPUManager->changeTriplanarScaleBeforeFrame(textureSetIdx, m_triplanarScale);
-			m_changeTriplanarScaleRequested = false;
+			m_materialGPUManager->changeScaleBeforeFrame(textureSetIdx, scale);
+			m_changeTriplanarScaleRequested = m_changeTriplanarScaleRequested = false;
 		}
 	}
 
@@ -103,6 +114,11 @@ void TextureSetComponent::onSamplingModeChanged()
 {
 	m_requestReloadCallback(this);
 	m_changeSamplingModeRequested = true;
+}
+
+void TextureSetComponent::onTextureCoordsScaleChanged()
+{
+	m_changeTextureCoordsScaleRequested = true;
 }
 
 void TextureSetComponent::onTriplanarScaleChanged()

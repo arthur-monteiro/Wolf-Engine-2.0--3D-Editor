@@ -83,7 +83,12 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				}
 				break;
 			case EditorParamInterface::Type::VECTOR2:
-				*static_cast<EditorParamVector2*>(param) = glm::vec2(findParamObject(param->getName(), param->getCategory())->getPropertyFloat("valueX"), findParamObject(param->getName(), param->getCategory())->getPropertyFloat("valueY"));
+				{
+					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
+					{
+						*dynamic_cast<EditorParamVector2*>(param) = glm::vec2(object->getPropertyFloat("valueX"), object->getPropertyFloat("valueY"));
+					}
+				}
 				break;
 			case EditorParamInterface::Type::VECTOR3:
 				{
