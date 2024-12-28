@@ -148,6 +148,8 @@ public:
 	EditorParamUInt& operator=(uint32_t value) { setValue(value); return *this; }
 	operator uint32_t() const { return m_value; }
 
+	void setMax(uint32_t max) { m_max = max; }
+
 private:
 	static Type uintTypeToParamType(ParamUIntType uintType);
 	void setValue(uint32_t value);
@@ -181,6 +183,8 @@ public:
 	EditorParamFloat& operator=(float value) { setValue(value); return *this; }
 	operator float() const { return m_value; }
 
+	void setMax(float max) { m_max = max; }
+
 private:
 	void setValue(float value);
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -193,7 +197,7 @@ private:
 class EditorParamString : public EditorParamInterface
 {
 public:
-	enum class ParamStringType { STRING, FILE_OBJ, FILE_IMG, ENTITY };
+	enum class ParamStringType { STRING, FILE_OBJ, FILE_IMG, ENTITY, FILE_DAE };
 	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false, bool isReadOnly = false)
 		: EditorParamInterface(stringTypeToParamType(stringType), name, tab, category, isActivable, isReadOnly), m_stringType(stringType), m_drivesCategoryName(drivesCategoryName) {}
 	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false)
@@ -238,6 +242,7 @@ public:
 
 	EditorParamBool& operator=(bool value) { setValue(value); return *this; }
 	operator bool() const { return m_value; }
+	bool operator !() const { return !m_value; }
 
 private:
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -266,6 +271,8 @@ public:
 	EditorParamEnum& operator=(uint32_t value) { setValue(value); return *this; }
 	operator uint32_t& () { return m_value; }
 	operator uint32_t () const { return m_value; }
+
+	void setOptions(const std::vector<std::string>& options) { m_options = options; }
 
 private:
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);

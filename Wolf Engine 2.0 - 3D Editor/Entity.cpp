@@ -95,12 +95,12 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 	if (m_needsMeshesToRenderComputation)
 	{
 		std::vector<DrawManager::DrawMeshInfo> meshes;
-		(*m_modelComponent)->getMeshesToRender(meshes);
+		bool areMeshesLoaded = (*m_modelComponent)->getMeshesToRender(meshes);
 
 		DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->alterMeshesToRender(meshes);)
 
 		// Re-request meshes until they are loaded
-		if (!meshes.empty())
+		if (areMeshesLoaded)
 		{
 			m_needsMeshesToRenderComputation = false;
 			drawManager->addMeshesToDraw(meshes, this);

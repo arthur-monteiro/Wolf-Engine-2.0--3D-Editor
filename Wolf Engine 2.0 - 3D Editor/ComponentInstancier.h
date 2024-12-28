@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 
+#include "AnimatedModel.h"
 #include "ComponentInterface.h"
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
@@ -46,7 +47,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 10> m_componentsInfo =
+	std::array<ComponentInfo, 11> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -54,7 +55,7 @@ private:
 			StaticModel::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new StaticModel(glm::mat4(1.0f), m_materialsGPUManager, m_resourceManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new StaticModel(m_materialsGPUManager, m_resourceManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
 			}
 		},
 		ComponentInfo
@@ -136,6 +137,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new MaterialComponent(m_materialsGPUManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Animated model",
+			AnimatedModel::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new AnimatedModel(m_materialsGPUManager, m_resourceManager, m_getEntityFromLoadingPathCallback, m_renderingPipeline, m_requestReloadCallback));
 			}
 		}
 	};

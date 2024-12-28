@@ -22,10 +22,10 @@ namespace Wolf
 class EditorModelInterface : public ComponentInterface, public Notifier
 {
 public:
-	EditorModelInterface(const glm::mat4& transform);
+	EditorModelInterface();
 
 	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
-	virtual void getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) = 0;
+	virtual bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) = 0;
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 

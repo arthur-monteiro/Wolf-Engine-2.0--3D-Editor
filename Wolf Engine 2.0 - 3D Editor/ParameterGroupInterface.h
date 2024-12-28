@@ -14,7 +14,7 @@ public:
 	virtual void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const = 0;
 	virtual bool hasDefaultName() const = 0;
 
-	EditorParamInterface* getNameParam() { return &m_name; }
+	EditorParamString* getNameParam() { return &m_name; }
 	void setName(const std::string& name) { m_name = name; }
 
 	virtual void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId);
@@ -23,6 +23,8 @@ protected:
 	std::string m_currentCategory;
 	EditorParamString m_name;
 
+	virtual void onNameChanged() { };
+
 private:
-	void onNameChanged();
+	void onNameChangedInternal();
 };

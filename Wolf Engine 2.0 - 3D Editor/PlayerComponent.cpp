@@ -101,7 +101,7 @@ void PlayerComponent::onContaminationEmitterChanged()
 
 glm::vec3 PlayerComponent::getGunPosition() const
 {
-	return m_entity->getPosition();
+	return m_entity->getPosition() + static_cast<glm::vec3>(m_gunPositionOffset);
 }
 
 bool PlayerComponent::isShooting() const

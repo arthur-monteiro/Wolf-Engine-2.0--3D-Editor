@@ -153,7 +153,7 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 		materialsGPUManager->addNewMaterial(materialInfo);
 	}
 
-	if (m_thumbnailGenerationRequested)
+	if (m_thumbnailGenerationRequested && m_modelData.animationData.get() == nullptr /* animated meshes thumbnail generation is not supported yet */)
 	{
 		thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, computeIconPath(m_loadingPath) }); // TODO: once generated, refresh the icon
 		m_thumbnailGenerationRequested = false;

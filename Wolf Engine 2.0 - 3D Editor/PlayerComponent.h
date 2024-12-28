@@ -32,18 +32,20 @@ private:
 
 	EditorParamFloat m_shootLength = EditorParamFloat("Shoot length", TAB, "Shoot", 1.0f, 30.0f);
 	EditorParamFloat m_shootAngle = EditorParamFloat("Shoot angle in degree", TAB, "Shoot", 1.0f, 30.0f);
+	EditorParamVector3 m_gunPositionOffset = EditorParamVector3("Gun position offset", TAB, "Shoot", 0.0f, 2.0f);
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_contaminationEmitterEntity;
 	void onContaminationEmitterChanged();
 	EditorParamString m_contaminationEmitterParam = EditorParamString("Contamination Emitter", TAB, "Shoot", [this]() { onContaminationEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
 	EditorParamUInt m_gamepadIdx = EditorParamUInt("Gamepad Idx", TAB, "General", 0, Wolf::InputHandler::MAX_GAMEPAD_COUNT);
 
-	std::array<EditorParamInterface*, 5> m_editorParams =
+	std::array<EditorParamInterface*, 6> m_editorParams =
 	{
 		&m_speed,
 		&m_gamepadIdx,
 		&m_shootLength,
 		&m_shootAngle,
+		&m_gunPositionOffset,
 		&m_contaminationEmitterParam
 	};
 

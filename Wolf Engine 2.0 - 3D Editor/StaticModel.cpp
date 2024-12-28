@@ -13,9 +13,9 @@
 #include "Entity.h"
 #include "TextureSetComponent.h"
 
-StaticModel::StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager,
+StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager,
 	const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
-: EditorModelInterface(transform), m_materialsGPUManager(materialsGPUManager), m_resourceManager(resourceManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+: m_materialsGPUManager(materialsGPUManager), m_resourceManager(resourceManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_defaultPipelineSet.reset(new Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>([this](Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& pipelineSet)
 		{
@@ -129,12 +129,12 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 	}
 }
 
-void StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
+bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
 {
 	PROFILE_FUNCTION
 
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
-		return;
+		return false;
 
 	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelData(m_meshResourceId)->mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
@@ -142,6 +142,8 @@ void StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
 		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
 	outList.push_back({ meshToRenderInfo, { m_transform, firstMaterialIdx }});
+
+	return true;
 }
 
 void StaticModel::activateParams()

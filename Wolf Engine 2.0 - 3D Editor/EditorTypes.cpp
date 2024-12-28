@@ -79,7 +79,7 @@ std::string EditorParamInterface::formatStringForFunctionName(const std::string&
 	bool nextCharIsUpper = false;
 	for (const char character : in)
 	{
-		if (character == ' ' || character == '(' || character == ')')
+		if (character == ' ' || character == '(' || character == ')' || character == '-')
 		{
 			nextCharIsUpper = true;
 		}
@@ -325,6 +325,9 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 		case ParamStringType::FILE_OBJ: 
 			out += "obj";
 			break;
+		case ParamStringType::FILE_DAE:
+			out += "dae";
+			break;
 		case ParamStringType::FILE_IMG: 
 			out += "img";
 			break;
@@ -343,6 +346,7 @@ EditorParamInterface::Type EditorParamString::stringTypeToParamType(ParamStringT
 			return Type::STRING;
 		case ParamStringType::FILE_OBJ:
 		case ParamStringType::FILE_IMG:
+		case ParamStringType::FILE_DAE:
 			return Type::FILE;
 		case ParamStringType::ENTITY:
 			return Type::ENTITY;

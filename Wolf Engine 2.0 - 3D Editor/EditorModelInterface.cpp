@@ -7,9 +7,9 @@
 
 using namespace Wolf;
 
-EditorModelInterface::EditorModelInterface(const glm::mat4& transform)
+EditorModelInterface::EditorModelInterface()
 {
-	m_transform = transform;
+	m_transform = glm::mat4(1.0f);
 	glm::quat quatRotation;
 	glm::vec3 skew;
 	glm::vec4 perspective;

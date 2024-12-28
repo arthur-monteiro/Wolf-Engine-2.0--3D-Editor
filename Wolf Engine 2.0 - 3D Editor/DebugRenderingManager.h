@@ -103,7 +103,7 @@ private:
 	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_spheresDescriptorSetLayoutGenerator;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_spheresDescriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_spheresDescriptorSet;
-	static constexpr uint32_t MAX_SPHERE_COUNT = 16;
+	static constexpr uint32_t MAX_SPHERE_COUNT = 128;
 	struct SpheresUBData
 	{
 		glm::vec4 worldPosAndRadius[MAX_SPHERE_COUNT];

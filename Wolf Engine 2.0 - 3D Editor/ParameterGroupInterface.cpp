@@ -2,7 +2,7 @@
 
 #include "EditorParamsHelper.h"
 
-ParameterGroupInterface::ParameterGroupInterface(const std::string& tab) : m_name("Name", tab, "Placeholder category", [this]() { onNameChanged(); }, 
+ParameterGroupInterface::ParameterGroupInterface(const std::string& tab) : m_name("Name", tab, "Placeholder category", [this]() { onNameChangedInternal(); }, 
 																				  EditorParamString::ParamStringType::STRING, true)
 {
 	m_currentCategory = m_name;
@@ -38,7 +38,7 @@ void ParameterGroupInterface::loadParams(Wolf::JSONReader& jsonReader, const std
 	::loadParams(jsonReader, objectId, arrayItemParams);
 }
 
-void ParameterGroupInterface::onNameChanged()
+void ParameterGroupInterface::onNameChangedInternal()
 {
 	m_name.setCategory(m_name);
 
@@ -49,4 +49,6 @@ void ParameterGroupInterface::onNameChanged()
 		param->setCategory(m_name);
 	}
 	m_currentCategory = m_name;
+
+	onNameChanged();
 }

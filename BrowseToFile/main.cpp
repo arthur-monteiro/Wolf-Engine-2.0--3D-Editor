@@ -2,7 +2,7 @@
 #include <string>
 
 enum class BrowseToFileOption { FILE_OPEN, FILE_SAVE };
-enum class BrowseToFileFilter { SAVE, OBJ, BUILDING, IMG };
+enum class BrowseToFileFilter { SAVE, OBJ, DAE, IMG };
 #include <shtypes.h>
 #include <ShlObj_core.h>
 #include <codecvt>
@@ -24,11 +24,11 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
 	case BrowseToFileFilter::OBJ:
 		ofn.lpstrFilter = "Object (OBJ)\0*.obj\0";
 		break;
-	case BrowseToFileFilter::BUILDING:
-		ofn.lpstrFilter = "Building (JSON)\0*.json\0";
+	case BrowseToFileFilter::DAE:
+		ofn.lpstrFilter = "Animated model (DAE)\0*.dae\0";
 		break;
 	case BrowseToFileFilter::IMG:
-		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga\0";
+		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga;*.dds\0";
 		break;
 	}
 	ofn.nFilterIndex = 0;
@@ -72,8 +72,8 @@ int main(int argc, char** argv)
 		browseToFileFilter = BrowseToFileFilter::OBJ;
 	else if (inputFilter == "save")
 		browseToFileFilter = BrowseToFileFilter::SAVE;
-	else if (inputFilter == "building")
-		browseToFileFilter = BrowseToFileFilter::BUILDING;
+	else if (inputFilter == "dae")
+		browseToFileFilter = BrowseToFileFilter::DAE;
 	else if (inputFilter == "img")
 		browseToFileFilter = BrowseToFileFilter::IMG;
 	else

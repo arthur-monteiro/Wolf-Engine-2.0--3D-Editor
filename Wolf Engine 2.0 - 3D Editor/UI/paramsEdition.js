@@ -5,7 +5,7 @@ function formatStringForFunctionName(input) {
     for (let i = 0; i < input.length; ++i) {
         let character = input[i];
 
-        if (character == ' ' || character == '(' || character == ')') {
+        if (character == ' ' || character == '(' || character == ')' || character == '-') {
             nextCharIsUpper = true;
         }
         else if (character == '/') {

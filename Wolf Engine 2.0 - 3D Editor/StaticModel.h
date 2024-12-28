@@ -11,16 +11,16 @@
 class StaticModel : public EditorModelInterface
 {
 public:
-	StaticModel(const glm::mat4& transform, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, 
+	static inline std::string ID = "staticModel";
+	std::string getId() const override { return ID; }
+
+	StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, 
 		const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
-	static inline std::string ID = "staticModel";
-	std::string getId() const override { return ID; }
-
 	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
-	void getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
+	bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 

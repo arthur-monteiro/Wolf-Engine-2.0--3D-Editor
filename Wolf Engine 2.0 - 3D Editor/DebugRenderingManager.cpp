@@ -209,6 +209,12 @@ void DebugRenderingManager::addCustomGroupOfLines(const Wolf::ResourceNonOwner<W
 
 void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius)
 {
+	if (m_sphereCount >= MAX_SPHERE_COUNT)
+	{
+		Wolf::Debug::sendError("Max sphere count reached");
+		return;
+	}
+
 	m_spheresData.worldPosAndRadius[m_sphereCount] = glm::vec4(worldPos, radius);
 	m_sphereCount++;
 }
