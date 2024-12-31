@@ -88,12 +88,12 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 
 	EditorModelInterface::updateBeforeFrame(globalTimer);
 
-	if (m_isWaitingForMeshLoading)
+	if (m_waitingForMeshLoadingFrameCount > 0)
 	{
-		if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		{
-			m_isWaitingForMeshLoading = false;
+		m_waitingForMeshLoadingFrameCount--;
 
+		if (m_waitingForMeshLoadingFrameCount == 0 && m_resourceManager->isModelLoaded(m_meshResourceId))
+		{
 			std::unique_ptr<Wolf::AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->animationData;
 
 			m_boneCount = animationData->boneCount;
@@ -102,81 +102,90 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			m_bonesInfo.resize(m_boneCount);
 			m_updateMaxTimerRequested = true;
 
-			m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0);
-			m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
+			if (!m_descriptorSetLayout)
+			{
+				m_descriptorSetLayoutGenerator.reset();
+				m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0);
+				m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
+
+				m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
+			}
 
 			Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 			descriptorSetGenerator.setBuffer(0, *m_bonesBuffer);
 
-			m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
 			m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 		}
-	}
-
-	// Animation update
-	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-	{
-		bool unused;
-		Wolf::AnimationData* animationData = findAnimationData(unused);
-
-		if (!m_forceTPoseParam)
+		else if (m_waitingForMeshLoadingFrameCount == 0)
 		{
-			float timer = static_cast<float>(globalTimer.getCurrentCachedMillisecondsDuration()) / 1000.0f;
-			timer = fmod(timer, m_maxTimer);
-			if (m_forceTimer.isEnabled())
+			m_waitingForMeshLoadingFrameCount = 1;
+		}
+	}
+	else
+	{
+		// Animation update
+		if (m_resourceManager->isModelLoaded(m_meshResourceId))
+		{
+			bool unused;
+			Wolf::AnimationData* animationData = findAnimationData(unused);
+
+			if (!m_forceTPoseParam)
 			{
-				timer = m_forceTimer;
+				float timer = static_cast<float>(globalTimer.getCurrentCachedMillisecondsDuration()) / 1000.0f;
+				timer = fmod(timer, m_maxTimer);
+				if (m_forceTimer.isEnabled())
+				{
+					timer = m_forceTimer;
+				}
+				computeBonesInfo(animationData->rootBones.data(), glm::mat4(1.0f), timer);
 			}
-			computeBonesInfo(animationData->rootBones.data(), glm::mat4(1.0f), timer);
-		}
-		else
-		{
-			for (BoneInfo& boneInfo : m_bonesInfo)
+			else
 			{
-				boneInfo.transform = glm::mat4(1.0f);
+				for (BoneInfo& boneInfo : m_bonesInfo)
+				{
+					boneInfo.transform = glm::mat4(1.0f);
+				}
 			}
+			m_updateGPUBuffersPass->addRequestBeforeFrame({ m_bonesInfo.data(), static_cast<uint32_t>(m_bonesInfo.size() * sizeof(BoneInfo)), m_bonesBuffer.createNonOwnerResource(), 0 });
 		}
-		m_updateGPUBuffersPass->addRequestBeforeFrame({ m_bonesInfo.data(), static_cast<uint32_t>(m_bonesInfo.size() * sizeof(BoneInfo)), m_bonesBuffer.createNonOwnerResource(), 0 });
-	}
 
-	if (m_textureSetIdxChanged)
-	{
-		uint32_t textureSetGPUIdx = getTextureSetIdx();
-		if (textureSetGPUIdx == 0) // texture set not loaded yet
+		if (m_textureSetIdxChanged)
 		{
-			return;
+			uint32_t textureSetGPUIdx = getTextureSetIdx();
+			if (textureSetGPUIdx == 0) // texture set not loaded yet
+			{
+				return;
+			}
+
+			if (m_materialIdx == MaterialComponent::DEFAULT_MATERIAL_IDX)
+			{
+				Wolf::MaterialsGPUManager::MaterialInfo materialInfo;
+				materialInfo.textureSetInfos[0].textureSetIdx = textureSetGPUIdx;
+				materialInfo.textureSetInfos[0].strength = 1.0f;
+
+				m_materialIdx = m_materialsGPUManager->getCurrentMaterialCount();
+				m_materialsGPUManager->addNewMaterial(materialInfo);
+			}
+			else
+			{
+				m_materialsGPUManager->changeTextureSetIdxBeforeFrame(m_materialIdx, 0, textureSetGPUIdx);
+			}
+
+			m_textureSetIdxChanged = false;
 		}
 
-		if (m_materialIdx == MaterialComponent::DEFAULT_MATERIAL_IDX)
+		if (m_updateMaxTimerRequested)
 		{
-			Wolf::MaterialsGPUManager::MaterialInfo materialInfo;
-			materialInfo.textureSetInfos[0].textureSetIdx = textureSetGPUIdx;
-			materialInfo.textureSetInfos[0].strength = 1.0f;
-
-			m_materialIdx = m_materialsGPUManager->getCurrentMaterialCount();
-			m_materialsGPUManager->addNewMaterial(materialInfo);
+			updateMaxTimer();
 		}
-		else
-		{
-			m_materialsGPUManager->changeTextureSetIdxBeforeFrame(m_materialIdx, 0, textureSetGPUIdx);
-		}
-
-		m_textureSetIdxChanged = false;
 	}
-
-	if (m_updateMaxTimerRequested)
-	{
-		updateMaxTimer();
-	}
-
-	notifySubscribers();
 }
 
 bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
 {
 	PROFILE_FUNCTION
 
-	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
+	if (m_waitingForMeshLoadingFrameCount > 0 || !m_resourceManager->isModelLoaded(m_meshResourceId))
 		return false;
 
 	if (m_hideModel == true)
@@ -234,6 +243,20 @@ Wolf::AABB AnimatedModel::getAABB() const
 		return m_resourceManager->getModelData(m_meshResourceId)->mesh->getAABB() * m_transform;
 
 	return Wolf::AABB();
+}
+
+void AnimatedModel::getAnimationOptions(std::vector<std::string>& out)
+{
+	out = { "Default" };
+	for (uint32_t i = 0; i < m_animationsParam.size(); ++i)
+	{
+		out.push_back(static_cast<std::string>(*m_animationsParam[i].getNameParam()));
+	}
+}
+
+void AnimatedModel::setAnimation(uint32_t animationIdx)
+{
+	m_animationSelectParam = animationIdx;
 }
 
 void AnimatedModel::addBonesToDebug(const Wolf::AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager)
@@ -316,7 +339,7 @@ void AnimatedModel::requestModelLoading()
 	if (!std::string(m_loadingPathParam).empty())
 	{
 		m_meshResourceId = m_resourceManager->addModel(std::string(m_loadingPathParam));
-		m_isWaitingForMeshLoading = true;
+		m_waitingForMeshLoadingFrameCount = 2; // wait a bit to ensure bone matrices upload is finished
 		notifySubscribers();
 	}
 }
@@ -394,14 +417,13 @@ void AnimatedModel::onAnimationAdded()
 
 void AnimatedModel::updateAnimationsOptions()
 {
-	std::vector<std::string> options = { "Default" };
-	for (uint32_t i = 0; i < m_animationsParam.size(); ++i)
-	{
-		options.push_back(static_cast<std::string>(*m_animationsParam[i].getNameParam()));
-	}
+	std::vector<std::string> options;
+	getAnimationOptions(options);
 	m_animationSelectParam.setOptions(options);
 
 	m_requestReloadCallback(this);
+
+	notifySubscribers();
 }
 
 void AnimatedModel::computeBonesInfo(const Wolf::AnimationData::Bone* bone, glm::mat4 currentTransform, float time)

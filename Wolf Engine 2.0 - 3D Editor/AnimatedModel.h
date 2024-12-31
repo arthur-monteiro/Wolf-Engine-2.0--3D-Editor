@@ -28,6 +28,9 @@ public:
 	Wolf::AABB getAABB() const override;
 	std::string getTypeString() override { return ID; }
 
+	void getAnimationOptions(std::vector<std::string>& out);
+	void setAnimation(uint32_t animationIdx);
+
 private:
 	void addBonesToDebug(const Wolf::AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager);
 	static void findMaxTimer(const Wolf::AnimationData::Bone* bone, float& maxTimer);
@@ -46,7 +49,7 @@ private:
 	bool m_updateMaxTimerRequested = false;
 	float m_maxTimer = 0.0f;
 
-	bool m_isWaitingForMeshLoading = false;
+	uint32_t m_waitingForMeshLoadingFrameCount = 0;
 	void requestModelLoading();
 	EditorParamString m_loadingPathParam = EditorParamString("Mesh", TAB, "Loading", [this] { requestModelLoading(); }, EditorParamString::ParamStringType::FILE_DAE);
 

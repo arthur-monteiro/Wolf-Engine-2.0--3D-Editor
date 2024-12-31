@@ -12,11 +12,12 @@
 #include "EditorTypes.h"
 #include "GameContext.h"
 #include "LightManager.h"
+#include "Notifier.h"
 
 class EditorConfiguration;
 class ComponentInstancier;
 
-class Entity
+class Entity : public Notifier
 {
 public:
 	Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback);
@@ -48,6 +49,7 @@ public:
 	bool hasComponent(const std::string& componentId) const;
 	glm::vec3 getPosition() const;
 	void setPosition(const glm::vec3& newPosition) const;
+	void setRotation(const glm::vec3& newRotation) const;
 
 	template <typename T>
 	Wolf::ResourceNonOwner<T> getComponent()
@@ -60,7 +62,7 @@ public:
 			}
 		}
 
-		return m_components[0].createNonOwnerResource<T>();
+		return m_components[0].createNonOwnerResource<T>(); // will be nullptr here
 	}
 
 	void setName(const std::string& name) { m_nameParam = name; }

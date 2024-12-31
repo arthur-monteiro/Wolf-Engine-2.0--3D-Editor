@@ -5,6 +5,8 @@
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
 
+class AnimatedModel;
+
 class PlayerComponent : public ComponentInterface
 {
 public:
@@ -24,7 +26,12 @@ public:
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	bool requiresInputs() const override { return true; }
 
+protected:
+	void onEntityRegistered() override;
+
 private:
+	void updateAnimatedModel();
+
 	inline static const std::string TAB = "Player component";
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
@@ -39,14 +46,22 @@ private:
 
 	EditorParamUInt m_gamepadIdx = EditorParamUInt("Gamepad Idx", TAB, "General", 0, Wolf::InputHandler::MAX_GAMEPAD_COUNT);
 
-	std::array<EditorParamInterface*, 6> m_editorParams =
+	std::unique_ptr<Wolf::ResourceNonOwner<AnimatedModel>> m_animatedModel;
+	EditorParamEnum m_animationIdle = EditorParamEnum({ "Default" }, "Idle animation", TAB, "Animations");
+	EditorParamEnum m_animationWalk = EditorParamEnum({ "Default" }, "Walk animation", TAB, "Animations");
+	EditorParamEnum m_animationRun = EditorParamEnum({ "Default" }, "Run animation", TAB, "Animations");
+
+	std::array<EditorParamInterface*, 9> m_editorParams =
 	{
 		&m_speed,
 		&m_gamepadIdx,
 		&m_shootLength,
 		&m_shootAngle,
 		&m_gunPositionOffset,
-		&m_contaminationEmitterParam
+		&m_contaminationEmitterParam,
+		&m_animationIdle,
+		&m_animationWalk,
+		&m_animationRun
 	};
 
 	std::chrono::steady_clock::time_point m_lastUpdateTimePoint;

@@ -7,7 +7,7 @@ void Notifier::subscribe(const void* instance, const std::function<void()>& call
 
 void Notifier::unsubscribe(const void* instance)
 {
-	for (int32_t i = static_cast<int32_t>(m_subscriptions.size()); i >= 0; ++i)
+	for (int32_t i = static_cast<int32_t>(m_subscriptions.size()) - 1; i >= 0; --i)
 	{
 		if (m_subscriptions[i].instance == instance)
 		{

@@ -33,6 +33,7 @@ public:
 	virtual const glm::mat4& getTransform() const { return m_transform; }
 	glm::vec3 getPosition() const { return m_translationParam; }
 	void setPosition(const glm::vec3& newPosition) { m_translationParam = newPosition; }
+	void setRotation(const glm::vec3& newRotation) { m_rotationParam = newRotation; }
 	
 	virtual std::string getTypeString() = 0;
 

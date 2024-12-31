@@ -63,6 +63,8 @@ void Entity::addComponent(ComponentInterface* component)
 
 	if (m_modelComponent)
 		m_needsMeshesToRenderComputation = true;
+
+	notifySubscribers();
 }
 
 std::string Entity::computeEscapedLoadingPath() const
@@ -104,6 +106,10 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 		{
 			m_needsMeshesToRenderComputation = false;
 			drawManager->addMeshesToDraw(meshes, this);
+		}
+		else
+		{
+			drawManager->removeMeshesForEntity(this);
 		}
 	}
 }
@@ -242,4 +248,15 @@ void Entity::setPosition(const glm::vec3& newPosition) const
 	}
 
 	Wolf::Debug::sendWarning("Trying to set position of entity which doesn't contain a model component");
+}
+
+void Entity::setRotation(const glm::vec3& newRotation) const
+{
+	if (m_modelComponent)
+	{
+		(*m_modelComponent)->setRotation(newRotation);
+		return;
+	}
+
+	Wolf::Debug::sendWarning("Trying to set rotation of entity which doesn't contain a model component");
 }

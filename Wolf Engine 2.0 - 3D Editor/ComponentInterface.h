@@ -28,6 +28,8 @@ public:
 		if (m_entity != nullptr)
 			Wolf::Debug::sendCriticalError("Component is already associated to an entity");
 		m_entity = entity;
+
+		onEntityRegistered();
 	}
 
 	virtual void activateParams() = 0;
@@ -44,6 +46,7 @@ public:
 
 protected:
 	ComponentInterface() = default;
+	virtual void onEntityRegistered() {}
 
 	Entity* m_entity = nullptr;
 };

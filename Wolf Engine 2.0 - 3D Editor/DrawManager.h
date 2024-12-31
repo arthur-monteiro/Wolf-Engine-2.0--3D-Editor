@@ -63,6 +63,7 @@ public:
 		InstanceData instanceData;
 	};
 	void addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRender, Entity* entity);
+	void removeMeshesForEntity(Entity* entity);
 	void clear();
 
 private:

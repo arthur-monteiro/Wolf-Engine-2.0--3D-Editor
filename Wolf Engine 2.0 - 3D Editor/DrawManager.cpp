@@ -75,6 +75,19 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 	}
 }
 
+void DrawManager::removeMeshesForEntity(Entity* entity)
+{
+	if (m_infoByEntities.contains(entity))
+	{
+		const std::vector<InfoByEntity>& infoForEntity = m_infoByEntities[entity];
+		for (const InfoByEntity& info : infoForEntity)
+		{
+			m_renderMeshList->removeInstance(m_instancedMeshesRegistered[info.instancedMeshRegisteredIdx]->getInstancedMeshIdx(), info.instanceIdx);
+		}
+		m_infoByEntities[entity].clear();
+	}
+}
+
 void DrawManager::clear()
 {
 	m_instancedMeshesRegistered.clear();

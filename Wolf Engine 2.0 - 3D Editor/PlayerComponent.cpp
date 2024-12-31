@@ -2,6 +2,7 @@
 
 #include <glm/gtc/constants.hpp>
 
+#include "AnimatedModel.h"
 #include "ContaminationEmitter.h"
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
@@ -80,10 +81,53 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 	const float secondDuration = static_cast<float>(millisecondsDuration) / 1000.0f;
 	m_lastUpdateTimePoint = now;
 
+	glm::vec3 previousPosition = m_entity->getPosition();
+
+	float speed = m_speed;
+	bool isRunning = false;
+	if (inputHandler->getTriggerValueForGamepad(static_cast<uint8_t>(m_gamepadIdx), 1, m_entity) > 0.0f)
+	{
+		speed *= 2.0f;
+		isRunning = true;
+	}
+
 	glm::vec3 position = m_entity->getPosition();
-	position.x += moveX * secondDuration * m_speed;
-	position.z += moveY * secondDuration * m_speed;
+	position.x += moveX * secondDuration * speed;
+	position.z += moveY * secondDuration * speed;
 	m_entity->setPosition(position);
+
+	if (moveX != 0.0f || moveY != 0.0f)
+	{
+		if (m_animatedModel)
+		{
+			if (isRunning)
+			{
+				(*m_animatedModel)->setAnimation(m_animationRun);
+			}
+			else
+			{
+				(*m_animatedModel)->setAnimation(m_animationWalk);
+			}
+		}
+
+		glm::vec3 direction = glm::normalize(position - previousPosition);
+		float phi = glm::asin(direction.y);
+		float theta = glm::asin(direction.x / glm::cos(phi));
+
+		if (direction.z < 0.0f)
+		{
+			theta = glm::pi<float>() - theta;
+		}
+
+		m_entity->setRotation(glm::vec3(phi, theta, 0.0f));
+	}
+	else
+	{
+		if (m_animatedModel)
+		{
+			(*m_animatedModel)->setAnimation(m_animationIdle);
+		}
+	}
 
 	// Shoot
 	inputHandler->getJoystickSpeedForGamepad(static_cast<uint8_t>(m_gamepadIdx), 1, m_currentShootX, m_currentShootY, m_entity);
@@ -91,6 +135,30 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 	if (isShooting())
 	{
 		m_shootDebugMeshRebuildRequested = true;
+	}
+}
+
+void PlayerComponent::onEntityRegistered()
+{
+	updateAnimatedModel();
+	m_entity->subscribe(this, [this]() { updateAnimatedModel(); });
+}
+
+void PlayerComponent::updateAnimatedModel()
+{
+	if (Wolf::ResourceNonOwner<AnimatedModel> animatedModel = m_entity->getComponent<AnimatedModel>())
+	{
+		m_animatedModel.reset(new Wolf::ResourceNonOwner<AnimatedModel>(animatedModel));
+
+		animatedModel->unsubscribe(this);
+		animatedModel->subscribe(this, [this]() { updateAnimatedModel(); });
+
+		std::vector<std::string> options;
+		animatedModel->getAnimationOptions(options);
+
+		m_animationIdle.setOptions(options);
+		m_animationWalk.setOptions(options);
+		m_animationRun.setOptions(options);
 	}
 }
 
