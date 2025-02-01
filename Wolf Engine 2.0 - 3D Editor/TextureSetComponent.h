@@ -33,6 +33,8 @@ private:
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 
+	bool m_paramsLoaded = false;
+
 	// Data
 	class TextureSet : public ParameterGroupInterface, public Notifier
 	{

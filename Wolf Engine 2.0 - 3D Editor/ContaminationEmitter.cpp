@@ -19,7 +19,7 @@ ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<Renderin
 	createImageInfo.extent = { CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE };
 	createImageInfo.format = VK_FORMAT_R8_UINT;
 	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-	createImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	createImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 	createImageInfo.mipLevelCount = 1;
 	m_contaminationIdsImage.reset(Wolf::Image::createImage(createImageInfo));
 	m_contaminationIdsImage->setImageLayout(Wolf::Image::SampledInFragmentShader());
@@ -266,10 +266,10 @@ void ContaminationEmitter::buildDebugMesh()
 
 void ContaminationEmitter::transferInfoToBuffer()
 {
-	ContaminationInfo contaminationInfo{ m_offset, m_size };
+	ContaminationInfo contaminationInfo{ m_offset, m_size,  m_size / static_cast<float>(CONTAMINATION_IDS_IMAGE_SIZE) };
 	for (uint32_t i = 0; i < m_contaminationMaterials.size(); ++i)
 	{
-		contaminationInfo.materialOffsets[i] = m_contaminationMaterials[i].getMaterialIdx();
+		contaminationInfo.materialIds[i] = m_contaminationMaterials[i].getMaterialIdx();
 	}
 	m_contaminationInfoBuffer->transferCPUMemoryWithStagingBuffer(&contaminationInfo, sizeof(ContaminationInfo));
 

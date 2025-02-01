@@ -453,10 +453,13 @@ void EditorParamEnum::setValueJSCallback(const ultralight::JSObject& thisObject,
 
 void EditorParamEnum::setValue(uint32_t value)
 {
-	m_value = value;
+	if (m_value != value)
+	{
+		m_value = value;
 
-	if (m_callbackValueChanged)
-		m_callbackValueChanged();
+		if (m_callbackValueChanged)
+			m_callbackValueChanged();
+	}
 }
 
 void EditorParamCurve::activate()

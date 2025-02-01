@@ -8,6 +8,7 @@
 #include <ProfilerCommon.h>
 
 #include "CommonLayouts.h"
+#include "ContaminationUpdatePass.h"
 #include "GameContext.h"
 #include "EditorModelInterface.h"
 #include "LightManager.h"
@@ -176,7 +177,9 @@ void ForwardPass::record(const RecordContext& context)
 
 void ForwardPass::submit(const SubmitContext& context)
 {
-	std::vector waitSemaphores{ m_contaminationUpdateSemaphore, context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
+	std::vector waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
+	if (m_contaminationUpdatePass->wasEnabledThisFrame())
+		waitSemaphores.push_back(m_contaminationUpdatePass->getSemaphore());
 	if (m_particlesUpdatePass->getParticleCount() > 0)
 		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore());
 	if (m_shadowMaskPass->wasEnabledThisFrame())

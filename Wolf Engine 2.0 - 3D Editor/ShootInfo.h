@@ -5,6 +5,7 @@
 struct ShootRequest
 {
 	glm::vec3 startPoint;
+	glm::vec3 direction;
 	float length;
 	float radius;
 };

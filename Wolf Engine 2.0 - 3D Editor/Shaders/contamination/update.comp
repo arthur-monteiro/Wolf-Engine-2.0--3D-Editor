@@ -1,5 +1,54 @@
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+layout (binding = 0, set = 0, r32ui) uniform uimage3D contaminationIds;
+const uint MAX_MATERIALS = 8;
+layout(std430, binding = 1, set = 0) readonly restrict buffer contaminationInfo
+{
+    vec3 offset;
+    float size;
+    float cellSize;
+    uint materialIds[MAX_MATERIALS];
+};
 
+const uint MAX_SHOOT_REQUEST = 8;
+layout(binding = 2, set = 0) uniform uniformBufferShootRequests
+{
+    uint shootRequestCount;
+
+    vec4 startPointAndLength[MAX_SHOOT_REQUEST];
+    vec4 directionAndRadius[MAX_SHOOT_REQUEST];
+} ubShootRequests;
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 void main()
 {
+    vec3 boxP0 = vec3(gl_GlobalInvocationID.xyz) * cellSize + offset;
+
+    vec3 points[8] = {
+        boxP0,
+        boxP0 + vec3(cellSize, 0.0f, 0.0f),
+        boxP0 + vec3(0.0f, cellSize, 0.0f),
+        boxP0 + vec3(0.0f, 0.0f, cellSize),
+        boxP0 + vec3(cellSize, 0.0f, cellSize),
+        boxP0 + vec3(0.0f, cellSize, cellSize),
+        boxP0 + vec3(cellSize, cellSize, 0.0f),
+        boxP0 + vec3(cellSize, cellSize, cellSize)
+    };
+
+    for (uint i = 0; i < ubShootRequests.shootRequestCount; ++i)
+    {
+        bool isPointInsideCone = false;
+        for (uint pointIdx = 0; pointIdx < 8; ++pointIdx)
+        {
+            if (length(points[pointIdx] - ubShootRequests.startPointAndLength[i].xyz) < ubShootRequests.startPointAndLength[i].w &&
+                dot(normalize(points[pointIdx] - ubShootRequests.startPointAndLength[i].xyz), ubShootRequests.directionAndRadius[i].xyz) > cos(ubShootRequests.directionAndRadius[i].w))
+            {
+                isPointInsideCone = true;
+                break;
+            }
+        }
+
+        if (isPointInsideCone)
+        {
+            imageStore(contaminationIds, ivec3(gl_GlobalInvocationID.xyz), uvec4(0));
+        }
+    }
 }

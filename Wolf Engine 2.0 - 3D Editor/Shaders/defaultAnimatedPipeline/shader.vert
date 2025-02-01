@@ -60,10 +60,10 @@ void main()
 		vec4 localPosition = bonesInfo[inBoneIds[i]].transform * vec4(inPosition, 1.0f);
         totalPosition += localPosition * inBoneWeights[i];
 
-        vec3 localNormal = mat3(bonesInfo[inBoneIds[i]].transform) * inNormal;
+        vec3 localNormal = transpose(inverse(mat3(bonesInfo[inBoneIds[i]].transform))) * inNormal;
 		totalNormal += localNormal * inBoneWeights[i];
 
-		vec3 localTangent = mat3(bonesInfo[inBoneIds[i]].transform) * inTangent;
+		vec3 localTangent = transpose(inverse(mat3(bonesInfo[inBoneIds[i]].transform))) * inTangent;
 		totalTangent += localTangent * inBoneWeights[i];
     }
 
@@ -72,7 +72,7 @@ void main()
     gl_Position = getProjectionMatrix() * viewPos;
 
     vec3 n = normalize(totalNormal);
-	vec3 t = normalize(inTangent);
+	vec3 t = normalize(totalTangent);
 	t = normalize(t - dot(t, n) * n);
 	vec3 b = normalize(cross(t, n));
 	outTBN = transpose(mat3(t, b, n));

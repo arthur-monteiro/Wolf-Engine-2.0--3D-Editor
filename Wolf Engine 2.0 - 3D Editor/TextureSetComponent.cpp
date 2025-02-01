@@ -17,6 +17,8 @@ void TextureSetComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
 	::loadParams<TextureSet>(jsonReader, ID, m_allParams);
 	m_textureSet.get().subscribe(this, [this]() { m_requestReloadCallback(this); });
+
+	m_paramsLoaded = true;
 }
 
 void TextureSetComponent::activateParams()
@@ -53,27 +55,56 @@ void TextureSetComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCoun
 
 void TextureSetComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
-	if (m_changeSamplingModeRequested)
+	if (m_paramsLoaded)
 	{
+		if (m_changeSamplingModeRequested)
+		{
+			if (uint32_t textureSetIdx = m_textureSet.get().getTextureSetIdx(); textureSetIdx != 0)
+			{
+				m_materialGPUManager->changeSamplingModeBeforeFrame(textureSetIdx, static_cast<Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode>(static_cast<uint32_t>(m_samplingMode)));
+				m_changeSamplingModeRequested = false;
+			}
+		}
+
 		if (uint32_t textureSetIdx = m_textureSet.get().getTextureSetIdx(); textureSetIdx != 0)
 		{
-			m_materialGPUManager->changeSamplingModeBeforeFrame(textureSetIdx, static_cast<Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode>(static_cast<uint32_t>(m_samplingMode)));
-			m_changeSamplingModeRequested = false;
+			bool scaleChangedRequested = false;
+			glm::vec3 scale;
+			switch (static_cast<uint32_t>(m_samplingMode))
+			{
+			case 0: // mesh coordinates
+			{
+				if (m_changeTextureCoordsScaleRequested)
+				{
+					scale = glm::vec3(static_cast<glm::vec2>(m_textureCoordsScale), 1.0f);
+					scaleChangedRequested = true;
+					m_changeTextureCoordsScaleRequested = false;
+				}
+				break;
+			}
+			case 1: // triplanar
+			{
+				if (m_changeTriplanarScaleRequested)
+				{
+					scale = static_cast<glm::vec3>(m_triplanarScale);
+					scaleChangedRequested = true;
+					m_changeTriplanarScaleRequested = false;
+				}
+				break;
+			}
+			default:
+				Wolf::Debug::sendError("Unhandled sampling mode");
+			}
+
+			if (scaleChangedRequested)
+			{
+				m_materialGPUManager->changeScaleBeforeFrame(textureSetIdx, scale);
+				m_changeTriplanarScaleRequested = m_changeTextureCoordsScaleRequested = false;
+			}
 		}
+
+		m_textureSet.get().updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
 	}
-
-	if (m_changeTriplanarScaleRequested || m_changeTextureCoordsScaleRequested)
-	{
-		glm::vec3 scale = m_changeTriplanarScaleRequested ? m_triplanarScale : glm::vec3(static_cast<glm::vec2>(m_textureCoordsScale), 1.0f);
-
-		if (uint32_t textureSetIdx = m_textureSet.get().getTextureSetIdx(); textureSetIdx != 0)
-		{
-			m_materialGPUManager->changeScaleBeforeFrame(textureSetIdx, scale);
-			m_changeTriplanarScaleRequested = m_changeTriplanarScaleRequested = false;
-		}
-	}
-
-	m_textureSet.get().updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
 }
 
 uint32_t TextureSetComponent::getTextureSetIdx() const
@@ -81,7 +112,6 @@ uint32_t TextureSetComponent::getTextureSetIdx() const
 	return m_textureSet.get().getTextureSetIdx();
 }
 
-// TODO: this is duplicated in particle at least, should be good to merge (maybe with contamination materials too)
 TextureSetComponent::TextureSet::TextureSet() : ParameterGroupInterface(TextureSetComponent::TAB), m_textureSetEditor(TextureSetComponent::TAB, "Material", Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX)
 {
 	m_name = "Material";

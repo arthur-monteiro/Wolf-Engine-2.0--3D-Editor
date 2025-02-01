@@ -4,7 +4,8 @@ layout(std430, binding = 1, set = £CONTAMINATION_DESCRIPTOR_SLOT) readonly restr
 {
     vec3 offset;
     float size;
-    uint materialOffsets[MAX_MATERIALS];
+    float cellSize;
+    uint materialIds[MAX_MATERIALS];
 };
 
 uint fetchContamination(in const vec3 worldPos)
@@ -20,7 +21,7 @@ MaterialInfo fetchMaterial(in const vec2 texCoords, in uint materialId, in const
     uint contaminationId = fetchContamination(worldPos);
     if (contaminationId > 0)
     {
-        materialId = materialOffsets[contaminationId - 1];
+        materialId = materialIds[contaminationId - 1];
 
         vec3 normal = abs(vec3(matrixTBN[0][2], matrixTBN[1][2], matrixTBN[2][2]));
 

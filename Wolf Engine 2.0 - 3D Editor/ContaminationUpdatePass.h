@@ -7,6 +7,7 @@
 #include <ResourceUniqueOwner.h>
 #include <ShaderParser.h>
 
+#include "DescriptorSetLayoutGenerator.h"
 #include "ShootInfo.h"
 
 class ContaminationEmitter;
@@ -20,8 +21,10 @@ public:
 	void submit(const Wolf::SubmitContext& context) override;
 
 	void registerEmitter(ContaminationEmitter* componentEmitter);
-	void unregisterEmitter(ContaminationEmitter* componentEmitter);
+	void unregisterEmitter(const ContaminationEmitter* componentEmitter);
 	void swapShootRequests(std::vector<ShootRequest>& shootRequests);
+
+	bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame; }
 
 private:
 	void createPipeline();
@@ -29,8 +32,42 @@ private:
 	Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_computeShaderParser;
 	Wolf::ResourceUniqueOwner<Wolf::Pipeline> m_computePipeline;
 
-	std::vector<ContaminationEmitter*> m_contaminationEmitters;
+	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
+
+	class PerEmitterInfo
+	{
+	public:
+		PerEmitterInfo(ContaminationEmitter* contaminationEmitter, const Wolf::DescriptorSetLayoutGenerator& descriptorSetLayoutGenerator, const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& descriptorSetLayout,
+			const Wolf::ResourceUniqueOwner<Wolf::Buffer>& shootRequestsBuffer);
+
+		bool isSame(const ContaminationEmitter* contaminationEmitter) const { return m_componentPtr == contaminationEmitter; }
+		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet>& getUpdateDescriptorSet() { return m_updateDescriptorSet; }
+		ContaminationEmitter* getContaminationEmitter() const { return m_componentPtr; }
+
+	private:
+		ContaminationEmitter* m_componentPtr;
+
+		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_updateDescriptorSet;
+	};
+	std::vector<PerEmitterInfo> m_contaminationEmitters;
 	std::mutex m_contaminationEmitterLock;
 	std::vector<ShootRequest> m_shootRequests;
+	std::mutex m_shootRequestsLock;
+
+	struct ShootRequestGPUInfo
+	{
+		uint32_t shootRequestCount;
+		glm::vec3 padding;
+
+		static constexpr uint32_t MAX_SHOOT_REQUEST = 8;
+		glm::vec4 startPointAndLength[MAX_SHOOT_REQUEST];
+		glm::vec4 directionAndRadius[MAX_SHOOT_REQUEST];
+
+	};
+	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_shootRequestBuffer;
+	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_stagingShootRequestBuffer;
+
+	bool m_wasEnabledThisFrame = false;
 };
 

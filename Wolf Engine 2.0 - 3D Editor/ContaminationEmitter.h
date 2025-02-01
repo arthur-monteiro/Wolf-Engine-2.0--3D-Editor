@@ -39,6 +39,9 @@ public:
 
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet>& getDescriptorSet() { return m_descriptorSet; }
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& getDescriptorSetLayout() { return m_descriptorSetLayout; }
+	const Wolf::ResourceUniqueOwner<Wolf::Image>& getContaminationIdsImage() const { return m_contaminationIdsImage; }
+	const Wolf::ResourceUniqueOwner<Wolf::Sampler>& getContaminationIdsSampler() const { return m_sampler; }
+	const Wolf::ResourceUniqueOwner<Wolf::Buffer>& getContaminationInfoBuffer() const { return m_contaminationInfoBuffer; }
 
 private:
 	inline static const std::string TAB = "Contamination emitter";
@@ -120,7 +123,8 @@ private:
 	{
 		glm::vec3 offset;
 		float size;
-		uint32_t materialOffsets[MAX_MATERIALS];
+		float cellSize;
+		uint32_t materialIds[MAX_MATERIALS];
 	};
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_contaminationInfoBuffer;
 	bool m_transferInfoToBufferRequested = true;

@@ -23,6 +23,7 @@ public:
 
 	void update(Wolf::WolfEngine* wolfInstance);
 	void frame(Wolf::WolfEngine* wolfInstance);
+	void clear();
 
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;

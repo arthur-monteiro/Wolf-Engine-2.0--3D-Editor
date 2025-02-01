@@ -53,6 +53,12 @@ void UpdateGPUBuffersPass::submit(const Wolf::SubmitContext& context)
 	}
 }
 
+void UpdateGPUBuffersPass::clear()
+{
+	m_addRequestsQueue.clear();
+	m_currentRequestsQueue.clear();
+}
+
 void UpdateGPUBuffersPass::InternalRequest::recordCopyToBuffer(Wolf::CommandBuffer* commandBuffer) const
 {
 	Wolf::Buffer::BufferCopy bufferCopy;

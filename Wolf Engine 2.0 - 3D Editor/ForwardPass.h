@@ -19,9 +19,9 @@
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
-	ForwardPass(EditorParams* editorParams, const Wolf::Semaphore* contaminationUpdateSemaphore, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass, 
+	ForwardPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<const ContaminationUpdatePass>& contaminationUpdatePass, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass,
 		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass)
-	: m_editorParams(editorParams), m_contaminationUpdateSemaphore(contaminationUpdateSemaphore), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass) {}
+	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -77,7 +77,7 @@ private:
 	std::unique_ptr<Wolf::Pipeline> m_userInterfacePipeline;
 
 	EditorParams* m_editorParams;
-	const Wolf::Semaphore* m_contaminationUpdateSemaphore;
+	Wolf::ResourceNonOwner<const ContaminationUpdatePass> m_contaminationUpdatePass;
 	Wolf::ResourceNonOwner<const ParticleUpdatePass> m_particlesUpdatePass;
 	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
 	Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;

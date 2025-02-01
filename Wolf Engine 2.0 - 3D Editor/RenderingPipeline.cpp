@@ -25,7 +25,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_thumbnailsGenerationPass.reset(new ThumbnailsGenerationPass);
 	wolfInstance->initializePass(m_thumbnailsGenerationPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass->getSemaphore(), m_particleUpdatePass.createConstNonOwnerResource(), 
+	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
 		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 }
@@ -52,6 +52,11 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance)
 	passes.push_back(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	wolfInstance->frame(passes, m_forwardPass->getSemaphore());
+}
+
+void RenderingPipeline::clear()
+{
+	m_updateGPUBuffersPass->clear();
 }
 
 Wolf::ResourceNonOwner<ContaminationUpdatePass> RenderingPipeline::getContaminationUpdatePass()

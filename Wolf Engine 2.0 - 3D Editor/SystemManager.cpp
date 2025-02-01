@@ -31,9 +31,10 @@ SystemManager::SystemManager()
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), 
-		[this](ComponentInterface*)
+		[this](ComponentInterface* component)
 		{
-			m_entityReloadRequested = true;
+			if (m_selectedEntity && component->isOnEntity(*m_selectedEntity))
+				m_entityReloadRequested = true;
 		}, [this](const std::string& entityLoadingPath)
 		{
 			std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
@@ -81,6 +82,7 @@ void SystemManager::run()
 		FrameMark;
 	}
 
+	m_renderer->clear();
 	m_wolfInstance->getRenderMeshList()->clear();
 	m_wolfInstance->waitIdle();
 }

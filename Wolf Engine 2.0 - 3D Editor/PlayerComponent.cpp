@@ -42,7 +42,7 @@ void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		{
 			if (const Wolf::ResourceNonOwner<ContaminationEmitter> contaminationEmitterComponent = (*m_contaminationEmitterEntity)->getComponent<ContaminationEmitter>())
 			{
-				contaminationEmitterComponent->addShootRequest(ShootRequest{ getGunPosition(), m_shootLength, glm::radians(static_cast<float>(m_shootAngle)) });
+				contaminationEmitterComponent->addShootRequest(ShootRequest{ getGunPosition(), glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY)), m_shootLength, glm::radians(static_cast<float>(m_shootAngle)) });
 			}
 		}
 

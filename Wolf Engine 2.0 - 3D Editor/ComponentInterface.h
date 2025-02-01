@@ -32,6 +32,11 @@ public:
 		onEntityRegistered();
 	}
 
+	bool isOnEntity(const Wolf::ResourceNonOwner<Entity>& entity) const
+	{
+		return entity.isSame(m_entity);
+	}
+
 	virtual void activateParams() = 0;
 	virtual void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) = 0;
 	
