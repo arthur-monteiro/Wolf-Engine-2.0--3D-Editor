@@ -255,6 +255,7 @@
     <ClCompile Include="EditorConfiguration.cpp" />
     <ClCompile Include="EditorLightInterface.cpp" />
     <ClCompile Include="EditorParams.cpp" />
+    <ClCompile Include="EditorPhysicsManager.cpp" />
     <ClCompile Include="EditorTypes.cpp" />
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="EntityContainer.cpp" />
@@ -262,6 +263,8 @@
     <ClCompile Include="GameContext.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MaterialComponent.cpp" />
+    <ClCompile Include="MathsUtilsEditor.cpp" />
+    <ClCompile Include="MeshResourceEditor.cpp" />
     <ClCompile Include="TextureSetComponent.cpp" />
     <ClCompile Include="MaterialListFakeEntity.cpp" />
     <ClCompile Include="Particle.cpp" />
@@ -299,6 +302,7 @@
     <ClInclude Include="DrawManager.h" />
     <ClInclude Include="EditorConfiguration.h" />
     <ClInclude Include="EditorLightInterface.h" />
+    <ClInclude Include="EditorPhysicsManager.h" />
     <ClInclude Include="EditorTypesTemplated.h" />
     <ClInclude Include="EditorParams.h" />
     <ClInclude Include="EditorParamsHelper.h" />
@@ -308,6 +312,8 @@
     <ClInclude Include="ForwardPass.h" />
     <ClInclude Include="GameContext.h" />
     <ClInclude Include="MaterialComponent.h" />
+    <ClInclude Include="MathsUtilsEditor.h" />
+    <ClInclude Include="MeshResourceEditor.h" />
     <ClInclude Include="TextureSetComponent.h" />
     <ClInclude Include="MaterialListFakeEntity.h" />
     <ClInclude Include="Particle.h" />

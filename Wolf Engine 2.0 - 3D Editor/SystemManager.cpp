@@ -24,18 +24,20 @@ SystemManager::SystemManager()
 	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f, 16.0f / 9.0f));
 	createRenderer();
 
-	m_resourceManager.reset(new ResourceManager([this](const std::string& resourceName, const std::string& iconPath)
-		{
-			m_wolfInstance->evaluateUserInterfaceScript("addResourceToList(\"" + resourceName + "\", \"" + iconPath + "\");");
-		}, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>()));
-	
-	m_entityContainer.reset(new EntityContainer);
-	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), 
-		[this](ComponentInterface* component)
+	std::function<void(ComponentInterface*)> requestReloadCallback = [this](ComponentInterface* component)
 		{
 			if (m_selectedEntity && component->isOnEntity(*m_selectedEntity))
 				m_entityReloadRequested = true;
-		}, [this](const std::string& entityLoadingPath)
+		};
+
+	m_resourceManager.reset(new ResourceManager([this](const std::string& resourceName, const std::string& iconPath, ResourceManager::ResourceId resourceId)
+		{
+			m_wolfInstance->evaluateUserInterfaceScript("addResourceToList(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(resourceId) + "\");");
+		}, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, m_configuration.createNonOwnerResource()));
+	
+	m_entityContainer.reset(new EntityContainer);
+	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, 
+		[this](const std::string& entityLoadingPath)
 		{
 			std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 			for (ResourceUniqueOwner<Entity>& entity : allEntities)
@@ -47,7 +49,8 @@ SystemManager::SystemManager()
 			return allEntities[0].createNonOwnerResource();
 		},
 		m_configuration.createNonOwnerResource(),
-		m_resourceManager.createNonOwnerResource()));
+		m_resourceManager.createNonOwnerResource(),
+		m_wolfInstance->getPhysicsManager()));
 	
 	if (!m_configuration->getDefaultScene().empty())
 	{
@@ -56,6 +59,7 @@ SystemManager::SystemManager()
 
 	m_debugRenderingManager.reset(new DebugRenderingManager);
 	m_drawManager.reset(new DrawManager(m_wolfInstance->getRenderMeshList(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>()));
+	m_editorPhysicsManager.reset(new EditorPhysicsManager(m_wolfInstance->getPhysicsManager()));
 
 	addFakeEntities();
 }
@@ -199,6 +203,8 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["enableEntityPicking"] = std::bind(&SystemManager::enableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["disableEntityPicking"] = std::bind(&SystemManager::disableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["duplicateEntity"] = std::bind(&SystemManager::duplicateEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["editResource"] = std::bind(&SystemManager::editResourceJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["debugPhysicsCheckboxChanged"] = std::bind(&SystemManager::debugPhysicsCheckboxChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -406,6 +412,8 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 	outputFile.close();
 
+	m_resourceManager->save();
+
 	Debug::sendInfo("Save successful!");
 }
 
@@ -543,6 +551,24 @@ void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisOb
 	}
 }
 
+void SystemManager::editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string resourceIdStr = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	ResourceManager::ResourceId resourceId = static_cast<ResourceManager::ResourceId>(std::stoi(resourceIdStr));
+
+	m_selectedEntity.reset(nullptr);
+	Wolf::ResourceNonOwner<Entity> entity = m_resourceManager->computeResourceEditor(resourceId);
+	m_selectedEntity.reset(new ResourceNonOwner<Entity>(entity));
+
+	updateUISelectedEntity();
+}
+
+void SystemManager::debugPhysicsCheckboxChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const bool checked = args[0].ToBoolean();
+	m_debugPhysics = checked;
+}
+
 void SystemManager::selectEntity() const
 {
 	if ((*m_selectedEntity)->hasModelComponent())
@@ -609,6 +635,10 @@ void SystemManager::updateBeforeFrame()
 		entity->addLightToLightManager(lightManager);
 		entity->addDebugInfo(debugRenderingManager);
 	}
+	if (m_debugPhysics)
+	{
+		m_editorPhysicsManager->addDebugInfo(debugRenderingManager);
+	}
 	m_debugRenderingManager->addMeshesToRenderList(renderList);
 
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
@@ -619,10 +649,11 @@ void SystemManager::updateBeforeFrame()
 	m_wolfInstance->updateBeforeFrame();
 
 	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
+	Wolf::ResourceNonOwner<EditorPhysicsManager> editorPhysicsManager= m_editorPhysicsManager.createNonOwnerResource();
 	Wolf::ResourceNonOwner<InputHandler> inputHandler = m_wolfInstance->getInputHandler();
 	for (ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		entity->updateBeforeFrame(inputHandler, m_wolfInstance->getGlobalTimer(), drawManager);
+		entity->updateBeforeFrame(inputHandler, m_wolfInstance->getGlobalTimer(), drawManager, editorPhysicsManager);
 		entity->updateDuringFrame(inputHandler); // TODO: send this to another thread
 	}
 

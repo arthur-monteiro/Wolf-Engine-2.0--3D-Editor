@@ -146,7 +146,7 @@ function setNewParams(inputJSON) {
 function computeInput(param, isLast) {
     let addBottomBorder = !(isLast || (param.type != "Vector2" && param.type != "Vector3"));
     let nameForCallback = formatStringForFunctionName(param.tab) + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category);
-    let htmlToAdd = "<div style='width: 100%; overflow: auto;" + (!addBottomBorder && !isLast ? "padding-bottom: 5px;" : "") + "'>";
+    let htmlToAdd = "<div style='width: 100%; overflow: auto; " + (!addBottomBorder && !isLast ? "padding-bottom: 5px; " : "") + (param.type == "Button" ? "text-align: -webkit-center;" : "") + "'>";
 
     let classForElements = "inputClass" + nameForCallback;
 
@@ -279,6 +279,9 @@ function computeInput(param, isLast) {
         htmlToAdd += "</div>";
 
         htmlToAdd += "</div>";
+    }
+    else if (param.type == "Button") {
+        htmlToAdd += "<button type='button' class='actionButton' onclick='change" + nameForCallback + "()'>" + param.name + "</button>";
     }
 
     htmlToAdd += "</div>"

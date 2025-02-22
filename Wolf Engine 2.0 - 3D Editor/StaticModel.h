@@ -21,6 +21,7 @@ public:
 
 	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
 	bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
+	bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
@@ -30,6 +31,8 @@ public:
 	Wolf::AABB getAABB() const override;
 	std::string getTypeString() override { return "staticMesh"; }
 
+	bool requiresInputs() const override { return false; }
+	void saveCustom() const override {}
 
 private:
 	inline static const std::string TAB = "Model";

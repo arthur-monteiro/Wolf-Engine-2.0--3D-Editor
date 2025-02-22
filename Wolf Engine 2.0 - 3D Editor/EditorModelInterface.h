@@ -9,6 +9,7 @@
 
 #include "ComponentInterface.h"
 #include "DrawManager.h"
+#include "EditorPhysicsManager.h"
 #include "EditorTypes.h"
 #include "Notifier.h"
 
@@ -26,6 +27,7 @@ public:
 
 	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
 	virtual bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) = 0;
+	virtual bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) = 0;
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 

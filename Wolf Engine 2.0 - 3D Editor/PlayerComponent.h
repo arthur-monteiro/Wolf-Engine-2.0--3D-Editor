@@ -25,6 +25,7 @@ public:
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	bool requiresInputs() const override { return true; }
+	void saveCustom() const override {}
 
 protected:
 	void onEntityRegistered() override;

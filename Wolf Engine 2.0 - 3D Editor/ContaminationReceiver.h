@@ -24,6 +24,9 @@ public:
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 
+	bool requiresInputs() const override { return false; }
+	void saveCustom() const override {}
+
 private:
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 

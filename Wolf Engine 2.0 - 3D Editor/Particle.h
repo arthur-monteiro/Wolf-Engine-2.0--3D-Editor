@@ -24,6 +24,7 @@ public:
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 	bool requiresInputs() const override { return false; }
+	void saveCustom() const override {}
 
 	uint32_t getMaterialIdx() const;
 	uint32_t getFlipBookSizeX() const { return m_flipBookSizeX; }

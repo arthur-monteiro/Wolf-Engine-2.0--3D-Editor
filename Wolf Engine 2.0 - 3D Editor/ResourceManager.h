@@ -2,35 +2,48 @@
 
 #include <ModelLoader.h>
 
+#include "ComponentInterface.h"
+#include "MeshResourceEditor.h"
 #include "PipelineSet.h"
 #include "RenderingPipelineInterface.h"
 #include "ThumbnailsGenerationPass.h"
 
+class Entity;
+
 class ResourceManager
 {
 public:
-	ResourceManager(const std::function<void(const std::string&, const std::string&)>& addResourceToUICallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, 
-		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
-
-	void updateBeforeFrame();
-	void clear();
-
 	using ResourceId = uint32_t;
 	static constexpr ResourceId NO_RESOURCE = -1;
+
+	ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+
+	void updateBeforeFrame();
+	void save();
+	void clear();
+
+	Wolf::ResourceNonOwner<Entity> computeResourceEditor(ResourceId resourceId);
 
 	ResourceId addModel(const std::string& loadingPath);
 	bool isModelLoaded(ResourceId modelResourceId) const;
 	Wolf::ModelData* getModelData(ResourceId modelResourceId) const;
 	uint32_t getFirstMaterialIdx(ResourceId modelResourceId) const;
 	uint32_t getFirstTextureSetIdx(ResourceId modelResourceId) const;
+	void subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void()>& callback) const;
 
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
 	static std::string computeIconPath(const std::string& loadingPath);
+	MeshResourceEditor* findMeshResourceEditorInResourceEditionToSave(ResourceId resourceId);
+	void addCurrentResourceEditionToSave();
+	void onResourceEditionChanged(ResourceId resourceId, MeshResourceEditor* meshResourceEditor);
 
-	std::function<void(const std::string&, const std::string&)> m_addResourceToUICallback;
+	std::function<void(const std::string&, const std::string&, ResourceId)> m_addResourceToUICallback;
+	std::function<void(ComponentInterface*)> m_requestReloadCallback;
+	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 
-	class ResourceInterface
+	class ResourceInterface : public Notifier
 	{
 	public:
 		ResourceInterface(std::string loadingPath);
@@ -42,6 +55,8 @@ private:
 		virtual bool isLoaded() const = 0;
 		std::string getLoadingPath() const { return m_loadingPath; }
 		std::string computeName();
+
+		void onChanged();
 
 	protected:
 		std::string m_loadingPath;
@@ -79,5 +94,18 @@ private:
 
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
+
+	// Edition
+	struct ResourceEditedParamsToSave
+	{
+		Wolf::ResourceUniqueOwner<MeshResourceEditor> meshResourceEditor;
+		ResourceId resourceId;
+	};
+	static constexpr uint32_t MAX_EDITED_RESOURCES = 16;
+	ResourceEditedParamsToSave m_resourceEditedParamsToSave[MAX_EDITED_RESOURCES];
+	uint32_t m_resourceEditedParamsToSaveCount = 0;
+
+	Wolf::ResourceUniqueOwner<Entity> m_transientEditionEntity;
+	ResourceId m_currentResourceInEdition = NO_RESOURCE;
 };
 

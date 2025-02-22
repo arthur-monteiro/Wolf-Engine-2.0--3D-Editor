@@ -14,6 +14,7 @@
 #include "LightManager.h"
 #include "Notifier.h"
 
+class EditorPhysicsManager;
 class EditorConfiguration;
 class ComponentInstancier;
 
@@ -27,7 +28,7 @@ public:
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
 
-	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager);
+	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager);
 	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	virtual void activateParams() const;
@@ -41,6 +42,8 @@ public:
 	const std::string& getLoadingPath() const { return m_filepath; }
 	virtual std::string computeEscapedLoadingPath() const;
 	virtual bool isFake() const { return false; }
+
+	void setIncludeEntityParams(bool value) { m_includeEntityParams = value; }
 
 	Wolf::DynamicStableArray<Wolf::ResourceUniqueOwner<ComponentInterface>, 8>& getAllComponents() { return m_components; }
 
@@ -65,6 +68,20 @@ public:
 		return m_components[0].createNonOwnerResource<T>(); // will be nullptr here
 	}
 
+	template <typename T>
+	[[nodiscard]] T* releaseComponent()
+	{
+		for (uint32_t i = 0; i < m_components.size(); ++i)
+		{
+			if (const Wolf::ResourceNonOwner<T> componentAsRequestedType = m_components[i].createNonOwnerResource<T>())
+			{
+				return static_cast<T*>(m_components[i].release());
+			}
+		}
+
+		return nullptr;
+	}
+
 	void setName(const std::string& name) { m_nameParam = name; }
 
 private:
@@ -77,6 +94,7 @@ private:
 	// Model related
 	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
 	bool m_needsMeshesToRenderComputation = false;
+	bool m_needsMeshesForPhysicsComputation = false;
 
 	// Light related
 	std::vector<Wolf::ResourceNonOwner<EditorLightInterface>> m_lightComponents;
@@ -88,4 +106,6 @@ private:
 	{
 		&m_nameParam
 	};
+
+	bool m_includeEntityParams = true;
 };

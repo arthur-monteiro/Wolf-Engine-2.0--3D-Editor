@@ -58,6 +58,8 @@ private:
 	void enableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void disableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void debugPhysicsCheckboxChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void selectEntity() const;
 	void updateUISelectedEntity() const;
@@ -80,6 +82,7 @@ private:
 	Wolf::ResourceUniqueOwner<ComponentInstancier> m_componentInstancier;
 	std::unique_ptr<Wolf::FirstPersonCamera> m_camera;
 	Wolf::ResourceUniqueOwner<DrawManager> m_drawManager;
+	Wolf::ResourceUniqueOwner<EditorPhysicsManager> m_editorPhysicsManager;
 
 	std::unique_ptr<EditorParams> m_editorParams;
 
@@ -88,6 +91,7 @@ private:
 	bool m_entityChanged = false;
 	bool m_entityReloadRequested = false;
 	bool m_isCameraLocked = true;
+	bool m_debugPhysics = false;
 
 	Wolf::ResourceUniqueOwner<DebugRenderingManager> m_debugRenderingManager;
 

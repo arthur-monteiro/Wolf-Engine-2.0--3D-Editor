@@ -65,7 +65,7 @@ void MaterialListFakeEntity::fillJSONForParams(std::string& outJSON)
 	outJSON += "}";
 }
 
-void MaterialListFakeEntity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager)
+void MaterialListFakeEntity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager)
 {
 	m_materials.lockAccessElements();
 

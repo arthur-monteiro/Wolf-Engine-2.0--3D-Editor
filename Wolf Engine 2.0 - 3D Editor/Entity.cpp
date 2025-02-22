@@ -51,7 +51,7 @@ void Entity::addComponent(ComponentInterface* component)
 		if (hasModelComponent())
 			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
 		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
-		(*m_modelComponent)->subscribe(this, [this]() { m_needsMeshesToRenderComputation = true; });
+		(*m_modelComponent)->subscribe(this, [this]() { m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true; });
 	}
 	else if (const Wolf::ResourceNonOwner<EditorLightInterface> componentAsLight = m_components.back().createNonOwnerResource<EditorLightInterface>())
 	{
@@ -62,7 +62,7 @@ void Entity::addComponent(ComponentInterface* component)
 		m_requiresInputs = true;
 
 	if (m_modelComponent)
-		m_needsMeshesToRenderComputation = true;
+		m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true;
 
 	notifySubscribers();
 }
@@ -81,7 +81,7 @@ std::string Entity::computeEscapedLoadingPath() const
 	return escapedLoadingPath;
 }
 
-void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager)
+void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager)
 {
 	PROFILE_FUNCTION
 
@@ -112,6 +112,21 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 			drawManager->removeMeshesForEntity(this);
 		}
 	}
+	if (m_needsMeshesForPhysicsComputation)
+	{
+		std::vector<EditorPhysicsManager::PhysicsMeshInfo> meshes;
+
+		// Re-request meshes until they are loaded
+		if (bool areMeshesLoaded = (*m_modelComponent)->getMeshesForPhysics(meshes))
+		{
+			m_needsMeshesForPhysicsComputation = false;
+			editorPhysicsManager->addMeshes(meshes, this);
+		}
+		else
+		{
+			editorPhysicsManager->removeMeshesForEntity(this);
+		}
+	}
 }
 
 void Entity::addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
@@ -131,9 +146,12 @@ void Entity::addDebugInfo(DebugRenderingManager& debugRenderingManager) const
 
 void Entity::activateParams() const
 {
-	for (EditorParamInterface* param : m_entityParams)
+	if (m_includeEntityParams)
 	{
-		param->activate();
+		for (EditorParamInterface* param : m_entityParams)
+		{
+			param->activate();
+		}
 	}
 
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->activateParams();)
@@ -143,7 +161,10 @@ void Entity::fillJSONForParams(std::string& outJSON)
 {
 	outJSON += "{\n";
 	outJSON += "\t" R"("params": [)" "\n";
-	addParamsToJSON(outJSON, m_entityParams, m_components.empty());
+	if (m_includeEntityParams)
+	{
+		addParamsToJSON(outJSON, m_entityParams, m_components.empty());
+	}
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_CONST_RANGE_LOOP(m_components, component, component->addParamsToJSON(outJSON);)
 	if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
 	{
@@ -201,6 +222,8 @@ void Entity::save() const
 	outJSON += "}";
 
 	outFile << outJSON;
+
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->saveCustom();)
 }
 
 void Entity::removeAllComponents()

@@ -1,7 +1,9 @@
 #include "ContaminationEmitter.h"
 
+#include <fstream>
 #include <random>
 
+#include "ContaminationReceiver.h"
 #include "ContaminationUpdatePass.h"
 #include "DebugRenderingManager.h"
 #include "EditorModelInterface.h"
@@ -10,8 +12,10 @@
 #include "RenderingPipelineInterface.h"
 
 ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-                                           const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
-	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+                                           const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, 
+                                           const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager)
+	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
+      m_physicsManager(physicsManager)
 {
 	m_requestReloadCallback = requestReloadCallback;
 
@@ -43,6 +47,8 @@ ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<Renderin
 	m_debugMesh.reset(m_newDebugMesh.release());
 
 	m_contaminationUpdatePass->registerEmitter(this);
+
+	m_activatedCells.fill(true);
 }
 
 ContaminationEmitter::~ContaminationEmitter()
@@ -104,11 +110,42 @@ void ContaminationEmitter::addDebugInfo(DebugRenderingManager& debugRenderingMan
 	}
 }
 
+void ContaminationEmitter::saveCustom() const
+{
+	std::string activatedCellsSaveFile = m_editorConfiguration->computeFullPathFromLocalPath(m_entity->getLoadingPath() + ".contamination_activate_cells.bin");
+
+	std::ofstream fs(activatedCellsSaveFile, std::ios::out | std::ios::binary);
+	uint32_t contaminationIdsImageSize = CONTAMINATION_IDS_IMAGE_SIZE;
+	fs.write(reinterpret_cast<char*>(&contaminationIdsImageSize), sizeof(uint32_t));
+	fs.write(reinterpret_cast<const char*>(m_activatedCells.data()), sizeof(bool) * m_activatedCells.size());
+	fs.close();
+}
+
 void ContaminationEmitter::addShootRequest(ShootRequest shootRequest)
 {
 	m_shootRequestLock.lock();
 	m_shootRequests.emplace_back(shootRequest);
 	m_shootRequestLock.unlock();
+}
+
+void ContaminationEmitter::onEntityRegistered()
+{
+	std::string activatedCellsSaveFile = m_editorConfiguration->computeFullPathFromLocalPath(m_entity->getLoadingPath() + ".contamination_activate_cells.bin");
+	std::ifstream input(activatedCellsSaveFile, std::ios::in | std::ios::binary);
+
+	uint32_t contaminationIdsImageSize;
+	input.read(reinterpret_cast<char*>(&contaminationIdsImageSize), sizeof(contaminationIdsImageSize));
+
+	if (contaminationIdsImageSize != CONTAMINATION_IDS_IMAGE_SIZE)
+	{
+		Wolf::Debug::sendWarning("Contamination emitter save corrupted or outdated, size is not same");
+		input.close();
+		return;
+	}
+
+	input.read(reinterpret_cast<char*>(m_activatedCells.data()), sizeof(bool) * m_activatedCells.size());
+
+	input.close();
 }
 
 ContaminationEmitter::ContaminationMaterial::ContaminationMaterial() : ParameterGroupInterface(ContaminationEmitter::TAB)
@@ -222,36 +259,62 @@ void ContaminationEmitter::buildDebugMesh()
 	std::vector<uint32_t> indices;
 
 	// Normal X
-	for (uint32_t y = 0; y <= CONTAMINATION_IDS_IMAGE_SIZE; ++y)
+	for (uint32_t y = 0; y < CONTAMINATION_IDS_IMAGE_SIZE; ++y)
 	{
-		for (uint32_t z = 0; z <= CONTAMINATION_IDS_IMAGE_SIZE; ++z)
+		for (uint32_t z = 0; z < CONTAMINATION_IDS_IMAGE_SIZE; ++z)
 		{
-			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(0, y, z) * cellSize;
-			vertices.emplace_back(firstPos);
-			vertices.emplace_back(firstPos + glm::vec3(m_size, 0, 0));
+			for (float offset = 0.0f; offset < m_size; offset += cellSize.x)
+			{
+
+				if (m_activatedCells[static_cast<uint32_t>(offset / cellSize.x) + y * CONTAMINATION_IDS_IMAGE_SIZE + z * (CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE)])
+				{
+					glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(0, y, z) * cellSize;
+					vertices.emplace_back(firstPos + glm::vec3(offset, 0, 0));
+					vertices.emplace_back(firstPos + glm::vec3(offset + cellSize.x, 0, 0));
+				}
+			}
 		}
 	}
 
 	// Normal Y
-	for (uint32_t x = 0; x <= CONTAMINATION_IDS_IMAGE_SIZE; ++x)
+	for (uint32_t x = 0; x < CONTAMINATION_IDS_IMAGE_SIZE; ++x)
 	{
-		for (uint32_t z = 0; z <= CONTAMINATION_IDS_IMAGE_SIZE; ++z)
+		for (uint32_t z = 0; z < CONTAMINATION_IDS_IMAGE_SIZE; ++z)
 		{
-			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, 0, z) * cellSize;
-			vertices.emplace_back(firstPos);
-			vertices.emplace_back(firstPos + glm::vec3(0, m_size, 0));
+			for (float offset = 0.0f; offset < m_size; offset += cellSize.x)
+			{
+				if (m_activatedCells[x + static_cast<uint32_t>(offset / cellSize.x) * CONTAMINATION_IDS_IMAGE_SIZE + z * (CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE)])
+				{
+					glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, 0, z) * cellSize;
+					vertices.emplace_back(firstPos + glm::vec3(0, offset, 0));
+					vertices.emplace_back(firstPos + glm::vec3(0, offset + cellSize.x, 0));
+				}
+			}
 		}
 	}
 
 	// Normal Z
-	for (uint32_t x = 0; x <= CONTAMINATION_IDS_IMAGE_SIZE; ++x)
+	for (uint32_t x = 0; x < CONTAMINATION_IDS_IMAGE_SIZE; ++x)
 	{
-		for (uint32_t y = 0; y <= CONTAMINATION_IDS_IMAGE_SIZE; ++y)
+		for (uint32_t y = 0; y < CONTAMINATION_IDS_IMAGE_SIZE; ++y)
 		{
-			glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, y, 0) * cellSize;
-			vertices.emplace_back(firstPos);
-			vertices.emplace_back(firstPos + glm::vec3(0, 0, m_size));
+			for (float offset = 0.0f; offset < m_size; offset += cellSize.x)
+			{
+				if (m_activatedCells[x + y * CONTAMINATION_IDS_IMAGE_SIZE + static_cast<uint32_t>(offset / cellSize.x) * (CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE)])
+				{
+					glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, y, 0) * cellSize;
+					vertices.emplace_back(firstPos + glm::vec3(0, 0, offset));
+					vertices.emplace_back(firstPos + glm::vec3(0, 0, offset + cellSize.x));
+				}
+			}
 		}
+	}
+
+	if (vertices.size() < 2)
+	{
+		vertices.resize(2);
+		vertices.emplace_back(glm::vec3(0.0f));
+		vertices.emplace_back(glm::vec3(0.0f));
 	}
 
 	for (uint32_t i = 0; i < vertices.size(); ++i)
@@ -274,4 +337,34 @@ void ContaminationEmitter::transferInfoToBuffer()
 	m_contaminationInfoBuffer->transferCPUMemoryWithStagingBuffer(&contaminationInfo, sizeof(ContaminationInfo));
 
 	m_transferInfoToBufferRequested = false;
+}
+
+void ContaminationEmitter::buildEmitter()
+{
+	const glm::vec3 cellSize = glm::vec3(static_cast<float>(m_size) / static_cast<float>(CONTAMINATION_IDS_IMAGE_SIZE));
+	for (uint32_t x = 0; x < CONTAMINATION_IDS_IMAGE_SIZE; ++x)
+	{
+		for (uint32_t y = 0; y < CONTAMINATION_IDS_IMAGE_SIZE; ++y)
+		{
+			for (uint32_t z = 0; z < CONTAMINATION_IDS_IMAGE_SIZE; ++z)
+			{
+				bool& isActivated = m_activatedCells[x + y * CONTAMINATION_IDS_IMAGE_SIZE + z * (CONTAMINATION_IDS_IMAGE_SIZE * CONTAMINATION_IDS_IMAGE_SIZE)];
+				isActivated = false;
+
+				glm::vec3 firstPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x, y, z) * cellSize;
+				glm::vec3 lastPos = static_cast<glm::vec3>(m_offset) + glm::vec3(x + 1, y + 1, z + 1) * cellSize;
+
+				Wolf::Physics::PhysicsManager::RayCastResult rayCastResult = m_physicsManager->rayCastAnyHit(firstPos - cellSize * 0.01f, lastPos + cellSize * 0.01f);
+				if (rayCastResult.collision && rayCastResult.instance)
+				{
+					if (static_cast<Entity*>(rayCastResult.instance)->getComponent<ContaminationReceiver>())
+					{
+						isActivated = true;
+					}
+				}
+			}
+		}
+	}
+
+	m_debugMeshRebuildRequested = true;
 }

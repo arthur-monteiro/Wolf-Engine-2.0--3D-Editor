@@ -67,6 +67,8 @@ std::string EditorParamInterface::getTypeAsString() const
 			return "Curve";
 		case Type::TIME:
 			return "Time";
+		case Type::BUTTON:
+			return "Button";
 		default:
 			Wolf::Debug::sendError("Undefined type");
 			return "Undefined_type";
@@ -175,9 +177,14 @@ template void EditorParamsVector<glm::vec3>::setValue(const glm::vec3& value);
 template <typename T>
 void EditorParamsVector<T>::setValue(const T& value)
 {
-	m_value = value;
-	if (m_callbackValueChanged)
-		m_callbackValueChanged();
+	if (value != m_value)
+	{
+		m_value = value;
+		if (m_callbackValueChanged)
+			m_callbackValueChanged();
+	}
+
+	
 }
 
 template <typename T>
@@ -404,6 +411,35 @@ void EditorParamBool::setValue(bool value)
 
 	if (m_callbackValueChanged)
 		m_callbackValueChanged();
+}
+
+void EditorParamButton::activate()
+{
+	EditorParamInterface::activate();
+
+	ultralight::JSObject jsObject;
+	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
+
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamButton::onClickJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void EditorParamButton::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	// Remove ',' as there no other property
+	out = out.substr(0, out.size() - 2);
+	out += "\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamButton::onClickJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	m_callbackValueChanged();
 }
 
 void EditorParamEnum::activate()

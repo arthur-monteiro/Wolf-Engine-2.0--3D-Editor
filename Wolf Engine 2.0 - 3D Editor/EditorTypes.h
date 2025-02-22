@@ -30,7 +30,7 @@ public:
 
 	void setCategory(const std::string& category) { m_category = category; }
 
-	enum class Type { FLOAT, VECTOR2, VECTOR3, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME };
+	enum class Type { FLOAT, VECTOR2, VECTOR3, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 	const std::string& getCategory() const { return m_category; }
@@ -111,6 +111,7 @@ public:
 
 	EditorParamVector2& operator=(const glm::vec2& value) { setValue(value); return *this; }
 	operator glm::vec2& () { return m_value; }
+	operator glm::vec2() const { return m_value; }
 };
 
 class EditorParamVector3 : public EditorParamsVector<glm::vec3>
@@ -249,6 +250,21 @@ private:
 	void setValue(bool value);
 
 	bool m_value = false;
+};
+
+class EditorParamButton : public EditorParamInterface
+{
+public:
+	EditorParamButton(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackOnClick) : EditorParamInterface(Type::BUTTON, name, tab, category, false, false)
+	{
+		m_callbackValueChanged = callbackOnClick;
+	}
+
+	void activate() override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
+
+private:
+	void onClickJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 };
 
 class EditorParamEnum : public EditorParamInterface

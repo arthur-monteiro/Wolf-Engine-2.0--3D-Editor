@@ -26,6 +26,7 @@ public:
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 	bool requiresInputs() const override { return false; }
+	void saveCustom() const override {}
 
 	uint32_t getMaxParticleCount() const { return m_maxParticleCount; }
 

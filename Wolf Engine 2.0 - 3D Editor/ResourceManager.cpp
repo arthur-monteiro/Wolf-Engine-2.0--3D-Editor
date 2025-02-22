@@ -5,11 +5,14 @@
 #include <Timer.h>
 
 #include "EditorConfiguration.h"
+#include "Entity.h"
+#include "MeshResourceEditor.h"
 #include "RenderMeshList.h"
 
-ResourceManager::ResourceManager(const std::function<void(const std::string&, const std::string&)>& addResourceToUICallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, 
-                                 const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
-	: m_addResourceToUICallback(addResourceToUICallback), m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass())
+ResourceManager::ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, 
+                                 const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+	: m_addResourceToUICallback(addResourceToUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration), m_materialsGPUManager(materialsGPUManager),
+	m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass())
 {
 }
 
@@ -21,9 +24,70 @@ void ResourceManager::updateBeforeFrame()
 	}
 }
 
+void ResourceManager::save()
+{
+	if (!findMeshResourceEditorInResourceEditionToSave(m_currentResourceInEdition))
+	{
+		addCurrentResourceEditionToSave();
+	}
+
+	for(uint32_t i = 0; i < m_resourceEditedParamsToSaveCount; ++i)
+	{
+		ResourceEditedParamsToSave& resourceEditedParamsToSave = m_resourceEditedParamsToSave[i];
+
+		std::string fileContent;
+		resourceEditedParamsToSave.meshResourceEditor->computeOutputJSON(fileContent);
+
+		std::string outputFilename = m_meshes[resourceEditedParamsToSave.resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath() + ".physics.json";
+
+		std::ofstream outputFile;
+		outputFile.open(m_editorConfiguration->computeFullPathFromLocalPath(outputFilename));
+		outputFile << fileContent;
+		outputFile.close();
+	}
+}
+
 void ResourceManager::clear()
 {
 	m_meshes.clear();
+}
+
+Wolf::ResourceNonOwner<Entity> ResourceManager::computeResourceEditor(ResourceId resourceId)
+{
+	if (m_currentResourceInEdition == resourceId)
+		return m_transientEditionEntity.createNonOwnerResource();
+
+	MeshResourceEditor* meshResourceEditor = findMeshResourceEditorInResourceEditionToSave(resourceId);
+	if (!meshResourceEditor)
+	{
+		if (m_resourceEditedParamsToSaveCount == MAX_EDITED_RESOURCES - 1)
+		{
+			Wolf::Debug::sendWarning("Maximum edited resources reached");
+			return m_transientEditionEntity.createNonOwnerResource();
+		}
+
+		addCurrentResourceEditionToSave();
+	}
+
+	m_currentResourceInEdition = resourceId;
+
+	m_transientEditionEntity.reset(new Entity("", [](Entity*) {}));
+	m_transientEditionEntity->setIncludeEntityParams(false);
+	if (!meshResourceEditor)
+	{
+		meshResourceEditor = new MeshResourceEditor(m_requestReloadCallback);
+
+		Wolf::ModelData* modelData = getModelData(resourceId);
+		for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->physicsShapes)
+		{
+			meshResourceEditor->addShape(shape);
+		}
+
+		meshResourceEditor->subscribe(this, [this, resourceId, meshResourceEditor]() { onResourceEditionChanged(resourceId, meshResourceEditor); });
+	}
+	m_transientEditionEntity->addComponent(meshResourceEditor);
+
+	return m_transientEditionEntity.createNonOwnerResource();
 }
 
 ResourceManager::ResourceId ResourceManager::addModel(const std::string& loadingPath)
@@ -48,9 +112,10 @@ ResourceManager::ResourceId ResourceManager::addModel(const std::string& loading
 
 	m_meshes.emplace_back(new Mesh(loadingPath, iconFullPath == "media/resourceIcon/no_icon.png"));
 
-	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath);
+	ResourceId resourceId = static_cast<uint32_t>(m_meshes.size()) - 1 + MESH_RESOURCE_IDX_OFFSET;
+	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath, resourceId);
 
-	return static_cast<uint32_t>(m_meshes.size()) - 1 + MESH_RESOURCE_IDX_OFFSET;
+	return resourceId;
 }
 
 bool ResourceManager::isModelLoaded(ResourceId modelResourceId) const
@@ -73,6 +138,11 @@ uint32_t ResourceManager::getFirstTextureSetIdx(ResourceId modelResourceId) cons
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getFirstTextureSetIdx();
 }
 
+void ResourceManager::subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void()>& callback) const
+{
+	m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->subscribe(instance, callback);
+}
+
 std::string ResourceManager::computeModelFullIdentifier(const std::string& loadingPath)
 {
 	std::string modelFullIdentifier;
@@ -92,6 +162,59 @@ std::string ResourceManager::computeIconPath(const std::string& loadingPath)
 	return "UI/media/resourceIcon/" + computeModelFullIdentifier(loadingPath) + ".png";
 }
 
+MeshResourceEditor* ResourceManager::findMeshResourceEditorInResourceEditionToSave(ResourceId resourceId)
+{
+	MeshResourceEditor* meshResourceEditor = nullptr;
+	for (uint32_t i = 0; i < m_resourceEditedParamsToSaveCount; ++i)
+	{
+		ResourceEditedParamsToSave& resourceEditedParamsToSave = m_resourceEditedParamsToSave[i];
+
+		if (resourceEditedParamsToSave.resourceId == resourceId) \
+		{
+			meshResourceEditor = resourceEditedParamsToSave.meshResourceEditor.release();
+			break;
+		}
+	}
+
+	return meshResourceEditor;
+}
+
+void ResourceManager::addCurrentResourceEditionToSave()
+{
+	if (m_currentResourceInEdition != NO_RESOURCE)
+	{
+		m_resourceEditedParamsToSaveCount++;
+		ResourceEditedParamsToSave& resourceEditedParamsToSave = m_resourceEditedParamsToSave[m_resourceEditedParamsToSaveCount - 1];
+		resourceEditedParamsToSave.resourceId = m_currentResourceInEdition;
+		resourceEditedParamsToSave.meshResourceEditor.reset(m_transientEditionEntity->releaseComponent<MeshResourceEditor>());
+
+		resourceEditedParamsToSave.meshResourceEditor->unregisterEntity();
+	}
+}
+
+void ResourceManager::onResourceEditionChanged(ResourceId resourceId, MeshResourceEditor* meshResourceEditor)
+{
+	Wolf::ModelData* modelData = m_meshes[resourceId]->getModelData();
+	modelData->physicsShapes.clear();
+
+	for (uint32_t i = 0; i < meshResourceEditor->getMeshCount(); ++i)
+	{
+		Wolf::Physics::PhysicsShapeType shapeType = meshResourceEditor->getShapeType(i);
+
+		if (shapeType == Wolf::Physics::PhysicsShapeType::Rectangle)
+		{
+			glm::vec3 p0;
+			glm::vec3 s1;
+			glm::vec3 s2;
+			meshResourceEditor->computeInfoForRectangle(i, p0, s1, s2);
+
+			modelData->physicsShapes.emplace_back(new Wolf::Physics::Rectangle(meshResourceEditor->getShapeName(i), p0, s1, s2));
+		}
+	}
+
+	m_meshes[resourceId]->onChanged();
+}
+
 ResourceManager::ResourceInterface::ResourceInterface(std::string loadingPath) : m_loadingPath(std::move(loadingPath))
 {
 }
@@ -107,6 +230,11 @@ std::string ResourceManager::ResourceInterface::computeName()
     {
         return m_loadingPath;
     }
+}
+
+void ResourceManager::ResourceInterface::onChanged()
+{
+	notifySubscribers();
 }
 
 ResourceManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration) : ResourceInterface(loadingPath)
@@ -153,7 +281,7 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 		materialsGPUManager->addNewMaterial(materialInfo);
 	}
 
-	if (m_thumbnailGenerationRequested && m_modelData.animationData.get() == nullptr /* animated meshes thumbnail generation is not supported yet */)
+	if (m_thumbnailGenerationRequested && m_modelData.animationData == nullptr /* TODO: animated meshes thumbnail generation is not supported yet */)
 	{
 		thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, computeIconPath(m_loadingPath) }); // TODO: once generated, refresh the icon
 		m_thumbnailGenerationRequested = false;

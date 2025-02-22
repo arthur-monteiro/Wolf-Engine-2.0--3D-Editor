@@ -20,7 +20,7 @@ public:
 
 	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
-		const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+		const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager);
 	ContaminationEmitter(const ContaminationEmitter&) = delete;
 	~ContaminationEmitter() override;
 
@@ -35,6 +35,9 @@ public:
 
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 
+	bool requiresInputs() const override { return false; }
+	void saveCustom() const override;
+
 	void addShootRequest(ShootRequest shootRequest);
 
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet>& getDescriptorSet() { return m_descriptorSet; }
@@ -44,12 +47,15 @@ public:
 	const Wolf::ResourceUniqueOwner<Wolf::Buffer>& getContaminationInfoBuffer() const { return m_contaminationInfoBuffer; }
 
 private:
+	void onEntityRegistered() override;
+
 	inline static const std::string TAB = "Contamination emitter";
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
 
 	class ContaminationMaterial : public ParameterGroupInterface, public Notifier
 	{
@@ -87,6 +93,7 @@ private:
 
 	void buildDebugMesh();
 	void transferInfoToBuffer();
+	void buildEmitter();
 
 	static constexpr uint32_t MAX_MATERIALS = 8;
 	EditorParamArray<ContaminationMaterial> m_contaminationMaterials = EditorParamArray<ContaminationMaterial>("Contamination materials", TAB, "Materials", MAX_MATERIALS, [this] { onMaterialAdded(); });
@@ -97,15 +104,17 @@ private:
 	EditorParamUInt m_fillSceneWithValue = EditorParamUInt("Fill scene with value", TAB, "Tool", 0, 255, [this] { onFillSceneWithValueChanged(); }, EditorParamUInt::ParamUIntType::NUMBER, true);
 	EditorParamBool m_fillWithRandom = EditorParamBool("Fill with random", TAB, "Tool", [this] { onFillSceneWithValueChanged(); });
 	EditorParamBool m_drawDebug = EditorParamBool("Draw debug", TAB, "Tool");
+	EditorParamButton m_buildButton = EditorParamButton("Build", TAB, "Tool", [this]() { buildEmitter(); });
 
-	std::array<EditorParamInterface*, 6> m_editorParams =
+	std::array<EditorParamInterface*, 7> m_editorParams =
 	{
 		&m_contaminationMaterials,
 		&m_size,
 		&m_offset,
 		&m_fillSceneWithValue,
 		&m_fillWithRandom,
-		&m_drawDebug
+		&m_drawDebug,
+		&m_buildButton
 	};
 
 	std::array<EditorParamInterface*, 3> m_savedEditorParams =
@@ -114,6 +123,8 @@ private:
 		&m_size,
 		&m_offset
 	};
+
+	std::array<bool, static_cast<size_t>(CONTAMINATION_IDS_IMAGE_SIZE* CONTAMINATION_IDS_IMAGE_SIZE* CONTAMINATION_IDS_IMAGE_SIZE)> m_activatedCells;
 
 	// Graphic resources
 	Wolf::ResourceUniqueOwner<Wolf::Image> m_contaminationIdsImage;

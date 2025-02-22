@@ -15,6 +15,12 @@
 		</ul>
 	</div>
 
+	<div id="resourceContextMenu" style="display: none; z-index: 1000;">
+		<ul class="menuList">
+			<li class="menuItem" id="edit" onclick="onResourceEdit()">Edit</li>
+		</ul>
+	</div>
+
 	<div id="staticElements">
 		<div id="actionButtons">
 			<button class="actionButton" onclick="openEntityAdd()">Add entity</button>
@@ -100,19 +106,25 @@
 	<div id="options" class="modalWindow" style="display: none;">
 		<div class='closeButton' id="closeButton" onclick="closeOptions()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
 		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-			<li class="table-row">
-				<div class="col col-1" data-label="infoType">Display</div>
+			<li class="table-row" style="height: 50px;">
+				<div class="col col-1" data-label="infoType" style="transform: translateY(35%);">Display</div>
 				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px">
-					<select id="displayTypeSelect" onchange="displayTypeSelectChanged(this.options[this.selectedIndex].value)">
-						<option value="albedo">Albedo</option>
-						<option value="normal">Normal</option>
-						<option value="roughness">Roughness</option>
-						<option value="metalness">Metalness</option>
-						<option value="matAO">Material AO</option>
-						<option value="anisoStrength">Anisotropy Strength</option>
-						<option value="lighting">Lighting</option>
-					</select>
+				<div class="col col-2" data-label="infoValue" style="display: grid; place-items: center; margin-right: 8px">
+					<div >
+						<select id="displayTypeSelect" onchange="displayTypeSelectChanged(this.options[this.selectedIndex].value)">
+							<option value="albedo">Albedo</option>
+							<option value="normal">Normal</option>
+							<option value="roughness">Roughness</option>
+							<option value="metalness">Metalness</option>
+							<option value="matAO">Material AO</option>
+							<option value="anisoStrength">Anisotropy Strength</option>
+							<option value="lighting">Lighting</option>
+						</select>
+					</div>
+					<div style="padding-top: 12px;">
+						<input type="checkbox" id="debugPhysics" name="debugPhysics" onclick="debugPhysicsCheckboxChanged(this.checked)"/>
+						<label for="debugPhysics">Debug physics</label>
+					</div>
 				</div>
 			</li>
 			<li class="table-row">
@@ -156,6 +168,7 @@
 	var animationsInstances = [];
 	var selectedEntityName = "";
 	var isRequestingDuplicate = false;
+	var selectedResourceId = "";
 
 	function openPerformances()
 	{
@@ -382,8 +395,31 @@
 		document.getElementById('entityList').innerHTML = "";
 	}
 
-	function addResourceToList(name, iconPath) {
-		let resourceInfoDiv = "<div class='resourceMesh'>";
+	function closeResourceContextMenu() {
+		document.getElementById("resourceContextMenu").style.display = "none";
+	}
+
+	function onResourceEdit() {
+		editResource(selectedResourceId);
+
+		closeResourceContextMenu();
+	}
+
+	function onMouseDownResource(e, id) {
+		let isRightClick = getMouseButtons(e) == RMB;
+
+		selectedResourceId = id;
+
+		if (isRightClick) {
+			document.getElementById("resourceContextMenu").style.display = "block";
+			document.getElementById("resourceContextMenu").style.position = "absolute";
+			document.getElementById("resourceContextMenu").style.left = e.clientX;
+			document.getElementById("resourceContextMenu").style.top = e.clientY;
+		}
+	}
+
+	function addResourceToList(name, iconPath, id) {
+		let resourceInfoDiv = "<div class='resourceMesh' onmousedown=\"onMouseDownResource(event, '" + id + "');\">";
 		resourceInfoDiv += "<div class='resourceIcon'><img src='" + iconPath + "'/></div>";
 		resourceInfoDiv += "<div class='resourceName'>" + name + "</div>";
 		resourceInfoDiv += "</div>";

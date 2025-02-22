@@ -146,6 +146,19 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	return true;
 }
 
+bool StaticModel::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)
+{
+	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
+		return false;
+
+	for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& physicsShape : m_resourceManager->getModelData(m_meshResourceId)->physicsShapes)
+	{
+		outList.push_back({physicsShape.createNonOwnerResource(), m_transform });
+	}
+
+	return true;
+}
+
 void StaticModel::activateParams()
 {
 	EditorModelInterface::activateParams();
@@ -189,6 +202,7 @@ void StaticModel::requestModelLoading()
 		m_subMeshes.clear();
 
 		m_meshResourceId = m_resourceManager->addModel(std::string(m_loadingPathParam));
+		m_resourceManager->subscribeToResource(m_meshResourceId, this, [this]() { notifySubscribers(); });
 		m_isWaitingForMeshLoading = true;
 		notifySubscribers();
 	}

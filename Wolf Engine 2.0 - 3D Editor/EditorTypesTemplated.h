@@ -66,6 +66,7 @@ public:
 	size_t size() const { return m_value.size(); }
 	bool empty() const { return m_value.empty(); }
 	T& operator[](size_t idx) { return m_value[idx]; }
+	const T& operator[](size_t idx) const { return m_value[idx]; }
 	T& back() { return m_value.back(); }
 	T& emplace_back() { addValueNoCheck(); return back(); }
 

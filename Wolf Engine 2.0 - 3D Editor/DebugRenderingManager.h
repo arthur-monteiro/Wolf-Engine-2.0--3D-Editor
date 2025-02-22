@@ -66,6 +66,7 @@ public:
 	void addAABB(const Wolf::AABB& box);
 	void addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data);
 	void addSphere(const glm::vec3& worldPos, float radius);
+	void addRectangle(const glm::mat4& transform);
 
 	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
 
@@ -89,7 +90,7 @@ private:
 	std::unique_ptr<Wolf::Buffer> m_AABBVertexBuffer;
 	std::unique_ptr<Wolf::Buffer> m_AABBIndexBuffer;
 	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_cubeLineMesh;
-	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_cubeLQuadMesh;
+	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_cubeQuadMesh;
 
 	uint32_t m_AABBInfoArrayCount = 0;
 	std::vector<PerGroupOfLines> m_AABBInfoArray;
@@ -111,6 +112,21 @@ private:
 	SpheresUBData m_spheresData;
 	uint32_t m_sphereCount = 0;
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_spheresUniformBuffer;
+
+	// Rectangles
+	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_rectangleMesh;
+	Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_rectanglesPipelineSet;
+	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_rectanglesDescriptorSetLayoutGenerator;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_rectanglesDescriptorSetLayout;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_rectanglesDescriptorSet;
+	static constexpr uint32_t MAX_RECTANGLES_COUNT = 128;
+	struct RectanglesUBData
+	{
+		glm::mat4 transform[MAX_RECTANGLES_COUNT];
+	};
+	RectanglesUBData m_rectanglesData;
+	uint32_t m_rectanglesCount = 0;
+	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_rectanglesUniformBuffer;
 
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::RenderMeshList::MeshToRender>> m_meshesToRender;
 };

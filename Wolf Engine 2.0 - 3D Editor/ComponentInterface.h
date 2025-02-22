@@ -31,6 +31,10 @@ public:
 
 		onEntityRegistered();
 	}
+	void unregisterEntity()
+	{
+		m_entity = nullptr;
+	}
 
 	bool isOnEntity(const Wolf::ResourceNonOwner<Entity>& entity) const
 	{
@@ -47,7 +51,9 @@ public:
 	virtual void addDebugInfo(DebugRenderingManager& debugRenderingManager) = 0;
 
 	virtual void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) = 0;
-	virtual bool requiresInputs() const { return false; }
+	virtual bool requiresInputs() const = 0;
+
+	virtual void saveCustom() const = 0;
 
 protected:
 	ComponentInterface() = default;

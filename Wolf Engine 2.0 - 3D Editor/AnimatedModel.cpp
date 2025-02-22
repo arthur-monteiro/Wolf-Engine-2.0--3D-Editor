@@ -172,6 +172,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			}
 
 			m_textureSetIdxChanged = false;
+			notifySubscribers();
 		}
 
 		if (m_updateMaxTimerRequested)
@@ -202,6 +203,12 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 
 	outList.push_back({ meshToRenderInfo, { m_transform, m_materialIdx } });
 
+	return true;
+}
+
+bool AnimatedModel::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)
+{
+	// TODO
 	return true;
 }
 

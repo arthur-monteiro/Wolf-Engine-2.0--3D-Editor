@@ -113,7 +113,7 @@ DebugRenderingManager::DebugRenderingManager()
 		};
 
 		m_cubeLineMesh.reset(new Wolf::Mesh(cubeVertices, cubeLineIndices));
-		m_cubeLQuadMesh.reset(new Wolf::Mesh(cubeVertices, cubeQuadIndices));
+		m_cubeQuadMesh.reset(new Wolf::Mesh(cubeVertices, cubeQuadIndices));
 	}
 
 	// Spheres
@@ -168,6 +168,69 @@ DebugRenderingManager::DebugRenderingManager()
 		descriptorSetGenerator.setBuffer(0, *m_spheresUniformBuffer);
 		m_spheresDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 	}
+
+	// Rectangles
+	{
+		const std::vector<DebugVertex> rectangleVertices =
+		{
+			{ glm::vec3(-0.5, -0.5f, 0.0f)},
+			{ glm::vec3(0.5f, -0.5f, 0.0f) },
+			{ glm::vec3(-0.5f, 0.5f, 0.0f) },
+			{ glm::vec3(0.5f, 0.5f, 0.0f) },
+		};
+
+		const std::vector<uint32_t> rectangleIndices =
+		{
+			0, 1, 3,
+			0, 3, 2
+		};
+
+		m_rectangleMesh.reset(new Wolf::Mesh(rectangleVertices, rectangleIndices));
+
+		m_rectanglesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
+		m_rectanglesDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0);
+
+		m_rectanglesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_rectanglesDescriptorSetLayoutGenerator->getDescriptorLayouts()));
+
+		m_rectanglesPipelineSet.reset(new Wolf::PipelineSet);
+
+		Wolf::PipelineSet::PipelineInfo pipelineInfo;
+
+		pipelineInfo.shaderInfos.resize(2);
+		pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/debug/rectangle.vert";
+		pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/debug/rectangle.frag";
+		pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		// IA
+		DebugVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+
+		pipelineInfo.vertexInputBindingDescriptions.resize(1);
+		DebugVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+
+		pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+
+		// Resources
+		pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
+
+		// Color Blend
+		pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
+
+		// Dynamic states
+		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+
+		m_rectanglesPipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
+		const uint32_t pipelineIdx = m_rectanglesPipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
+		if (pipelineIdx != CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+			Wolf::Debug::sendError("Unexpected pipeline idx");
+
+		m_rectanglesDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_rectanglesDescriptorSetLayout));
+
+		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_rectanglesDescriptorSetLayoutGenerator->getDescriptorLayouts());
+		m_rectanglesUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(RectanglesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+		descriptorSetGenerator.setBuffer(0, *m_rectanglesUniformBuffer);
+		m_rectanglesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+	}
 }
 
 void DebugRenderingManager::clearBeforeFrame()
@@ -177,6 +240,7 @@ void DebugRenderingManager::clearBeforeFrame()
 		m_customLinesInfoArray[i].mesh = m_cubeLineMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
 	m_customLinesInfoArrayCount = 0;
 	m_sphereCount = 0;
+	m_rectanglesCount = 0;
 }
 
 void DebugRenderingManager::addAABB(const Wolf::AABB& box)
@@ -219,6 +283,18 @@ void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius)
 	m_sphereCount++;
 }
 
+void DebugRenderingManager::addRectangle(const glm::mat4& transform)
+{
+	if (m_rectanglesCount >= MAX_RECTANGLES_COUNT)
+	{
+		Wolf::Debug::sendError("Max rectangle count reached");
+		return;
+	}
+
+	m_rectanglesData.transform[m_rectanglesCount] = transform;
+	m_rectanglesCount++;
+}
+
 void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList)
 {
 	PROFILE_FUNCTION
@@ -254,11 +330,22 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 	{
 		m_spheresUniformBuffer->transferCPUMemory(&m_spheresData, sizeof(SpheresUBData));
 
-		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {m_cubeLQuadMesh.createNonOwnerResource(), m_spheresPipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
+		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {m_cubeQuadMesh.createNonOwnerResource(), m_spheresPipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
 		meshToRenderInfo.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_spheresDescriptorSet.createConstNonOwnerResource(),
 			m_spheresDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
 		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_sphereCount);
+	}
+
+	if (m_rectanglesCount > 0)
+	{
+		m_rectanglesUniformBuffer->transferCPUMemory(&m_rectanglesData, sizeof(RectanglesUBData));
+
+		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {m_rectangleMesh.createNonOwnerResource(), m_rectanglesPipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
+		meshToRenderInfo.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_rectanglesDescriptorSet.createConstNonOwnerResource(),
+			m_rectanglesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
+
+		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_rectanglesCount);
 	}
 }
 
