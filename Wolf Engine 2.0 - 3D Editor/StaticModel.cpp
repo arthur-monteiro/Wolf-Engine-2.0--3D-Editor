@@ -6,6 +6,7 @@
 #include <ProfilerCommon.h>
 
 #include "CommonLayouts.h"
+#include "DebugRenderingManager.h" // TEMP
 #include "DrawManager.h"
 #include "DynamicResourceUniqueOwnerArray.h"
 #include "EditorConfiguration.h"
@@ -157,6 +158,10 @@ bool StaticModel::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsM
 	}
 
 	return true;
+}
+
+void StaticModel::addDebugInfo(DebugRenderingManager& debugRenderingManager)
+{
 }
 
 void StaticModel::activateParams()

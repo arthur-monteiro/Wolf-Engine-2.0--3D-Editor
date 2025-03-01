@@ -99,7 +99,8 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			m_boneCount = animationData->boneCount;
 			m_bonesBuffer.reset(Wolf::Buffer::createBuffer(m_boneCount * sizeof(glm::mat4), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 
-			m_bonesInfo.resize(m_boneCount);
+			m_bonesInfoGPU.resize(m_boneCount);
+			m_bonesInfoCPU.resize(m_boneCount);
 			m_updateMaxTimerRequested = true;
 
 			if (!m_descriptorSetLayout)
@@ -115,6 +116,17 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			descriptorSetGenerator.setBuffer(0, *m_bonesBuffer);
 
 			m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+
+			// Bone names
+			m_boneNamesAndIndices.clear();
+			addBoneNamesAndIndices(animationData->rootBones.data());
+
+			std::vector<std::string> boneNames(m_boneNamesAndIndices.size());
+			for (uint32_t i = 0; i < boneNames.size(); ++i)
+			{
+				boneNames[i] = m_boneNamesAndIndices[i].first;
+			}
+			m_highlightBone.setOptions(boneNames);
 		}
 		else if (m_waitingForMeshLoadingFrameCount == 0)
 		{
@@ -141,12 +153,12 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			}
 			else
 			{
-				for (BoneInfo& boneInfo : m_bonesInfo)
+				for (BoneInfoGPU& boneInfo : m_bonesInfoGPU)
 				{
 					boneInfo.transform = glm::mat4(1.0f);
 				}
 			}
-			m_updateGPUBuffersPass->addRequestBeforeFrame({ m_bonesInfo.data(), static_cast<uint32_t>(m_bonesInfo.size() * sizeof(BoneInfo)), m_bonesBuffer.createNonOwnerResource(), 0 });
+			m_updateGPUBuffersPass->addRequestBeforeFrame({ m_bonesInfoGPU.data(), static_cast<uint32_t>(m_bonesInfoGPU.size() * sizeof(BoneInfoGPU)), m_bonesBuffer.createNonOwnerResource(), 0 });
 		}
 
 		if (m_textureSetIdxChanged)
@@ -261,6 +273,11 @@ void AnimatedModel::getAnimationOptions(std::vector<std::string>& out)
 	}
 }
 
+glm::vec3 AnimatedModel::getBonePosition(uint32_t boneIdx) const
+{
+	return m_bonesInfoCPU[boneIdx].position;
+}
+
 void AnimatedModel::setAnimation(uint32_t animationIdx)
 {
 	m_animationSelectParam = animationIdx;
@@ -268,16 +285,30 @@ void AnimatedModel::setAnimation(uint32_t animationIdx)
 
 void AnimatedModel::addBonesToDebug(const Wolf::AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager)
 {
+	if (m_bonesInfoGPU.empty())
+		return;
+
 	static constexpr float DEBUG_SPHERE_RADIUS = 0.05f;
 
 	glm::vec3 offset = glm::inverse(bone->offsetMatrix) * glm::vec4(1.0f);
-	glm::vec4 translation = m_transform * (m_bonesInfo[bone->idx].transform * glm::vec4(offset, 1.0f));
+	glm::vec4 translation = m_transform * (m_bonesInfoGPU[bone->idx].transform * glm::vec4(offset, 1.0f));
 
-	debugRenderingManager.addSphere(glm::vec3(translation), DEBUG_SPHERE_RADIUS);
+	bool isHighlighted = m_boneNamesAndIndices[m_highlightBone].second == bone->idx;
+	debugRenderingManager.addSphere(m_bonesInfoCPU[bone->idx].position, isHighlighted ? DEBUG_SPHERE_RADIUS * 1.5f : DEBUG_SPHERE_RADIUS, isHighlighted ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(1.0f));
 
 	for (const Wolf::AnimationData::Bone& childBone : bone->children)
 	{
 		addBonesToDebug(&childBone, debugRenderingManager);
+	}
+}
+
+void AnimatedModel::addBoneNamesAndIndices(const Wolf::AnimationData::Bone* bone)
+{
+	m_boneNamesAndIndices.emplace_back(bone->name, bone->idx);
+
+	for (const Wolf::AnimationData::Bone& childBone : bone->children)
+	{
+		addBoneNamesAndIndices(&childBone);
 	}
 }
 
@@ -466,7 +497,10 @@ void AnimatedModel::computeBonesInfo(const Wolf::AnimationData::Bone* bone, glm:
 		poseTransform = glm::translate(glm::mat4(1.0f), translation) * glm::toMat4(orientation) * glm::scale(glm::mat4(1.0f), scale);
 	}
 	currentTransform = currentTransform * poseTransform;
-	m_bonesInfo[bone->idx].transform = currentTransform * bone->offsetMatrix;
+	m_bonesInfoGPU[bone->idx].transform = currentTransform * bone->offsetMatrix;
+
+	glm::vec3 offset = glm::inverse(bone->offsetMatrix) * glm::vec4(1.0f);
+	m_bonesInfoCPU[bone->idx].position = m_transform * (m_bonesInfoGPU[bone->idx].transform * glm::vec4(offset, 1.0f));
 
 	for (const Wolf::AnimationData::Bone& childBone : bone->children)
 	{

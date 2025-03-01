@@ -9,6 +9,7 @@
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
+#include "GasCylinderComponent.h"
 #include "MaterialComponent.h"
 #include "TextureSetComponent.h"
 #include "Particle.h"
@@ -48,7 +49,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 11> m_componentsInfo =
+	std::array<ComponentInfo, 12> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -147,6 +148,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new AnimatedModel(m_materialsGPUManager, m_resourceManager, m_getEntityFromLoadingPathCallback, m_renderingPipeline, m_requestReloadCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Gas Cylinder",
+			GasCylinderComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new GasCylinderComponent());
 			}
 		}
 	};

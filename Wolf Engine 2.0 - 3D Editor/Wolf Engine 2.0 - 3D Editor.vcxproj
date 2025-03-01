@@ -261,6 +261,7 @@
     <ClCompile Include="EntityContainer.cpp" />
     <ClCompile Include="ForwardPass.cpp" />
     <ClCompile Include="GameContext.cpp" />
+    <ClCompile Include="GasCylinderComponent.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MaterialComponent.cpp" />
     <ClCompile Include="MathsUtilsEditor.cpp" />
@@ -311,6 +312,7 @@
     <ClInclude Include="EntityContainer.h" />
     <ClInclude Include="ForwardPass.h" />
     <ClInclude Include="GameContext.h" />
+    <ClInclude Include="GasCylinderComponent.h" />
     <ClInclude Include="MaterialComponent.h" />
     <ClInclude Include="MathsUtilsEditor.h" />
     <ClInclude Include="MeshResourceEditor.h" />

@@ -60,8 +60,10 @@ private:
 	void duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void debugPhysicsCheckboxChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void onGoToEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void selectEntity() const;
+	void goToSelectedEntity() const;
 	void updateUISelectedEntity() const;
 
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;

@@ -12,6 +12,7 @@
 	<div id="entityContextMenu" style="display: none; z-index: 1000;">
 		<ul class="menuList">
 			<li class="menuItem" id="duplicate">Duplicate</li>
+			<li class="menuItem" id="goTo">Go To</li>
 		</ul>
 	</div>
 
@@ -354,6 +355,10 @@
 		closeEntityContextMenu();
 	}
 
+	function onGoTo() {
+		goToEntity(selectedEntityName);
+	}
+
 	function onMouseDownEntity(e, entityName) {
 		let isRightClick = getMouseButtons(e) == RMB;
 
@@ -370,6 +375,7 @@
         	var new_element = old_element.cloneNode(true);
         	old_element.parentNode.replaceChild(new_element, old_element);
 			document.getElementById("duplicate").addEventListener("click", onDuplicate);
+			document.getElementById("goTo").addEventListener("click", onGoTo);
 		}
 		else
 			selectEntityByName(entityName);

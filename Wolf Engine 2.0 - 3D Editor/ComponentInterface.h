@@ -7,6 +7,7 @@
 #include <Timer.h>
 
 #include "DrawManager.h"
+#include "Notifier.h"
 
 namespace Wolf
 {
@@ -17,7 +18,7 @@ namespace Wolf
 class DebugRenderingManager;
 class Entity;
 
-class ComponentInterface
+class ComponentInterface : public Notifier
 {
 public:
 	virtual ~ComponentInterface() = default;

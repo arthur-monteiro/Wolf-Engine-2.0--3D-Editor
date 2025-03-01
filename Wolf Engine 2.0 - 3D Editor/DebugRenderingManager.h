@@ -24,7 +24,6 @@ public:
 	struct DebugVertex
 	{
 		glm::vec3 pos;
-		glm::vec3 color;
 
 		static void getBindingDescription(VkVertexInputBindingDescription& bindingDescription, uint32_t binding)
 		{
@@ -36,22 +35,17 @@ public:
 		static void getAttributeDescriptions(std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
 		{
 			const uint32_t attributeDescriptionCountBefore = static_cast<uint32_t>(attributeDescriptions.size());
-			attributeDescriptions.resize(attributeDescriptionCountBefore + 2);
+			attributeDescriptions.resize(attributeDescriptionCountBefore + 1);
 
 			attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
 			attributeDescriptions[attributeDescriptionCountBefore + 0].location = 0;
 			attributeDescriptions[attributeDescriptionCountBefore + 0].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[attributeDescriptionCountBefore + 0].offset = offsetof(DebugVertex, pos);
-
-			attributeDescriptions[attributeDescriptionCountBefore + 1].binding = binding;
-			attributeDescriptions[attributeDescriptionCountBefore + 1].location = 1;
-			attributeDescriptions[attributeDescriptionCountBefore + 1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[attributeDescriptionCountBefore + 1].offset = offsetof(DebugVertex, color);
 		}
 
 		bool operator==(const DebugVertex& other) const
 		{
-			return pos == other.pos && color == other.color;
+			return pos == other.pos;
 		}
 	};
 
@@ -65,7 +59,7 @@ public:
 	};
 	void addAABB(const Wolf::AABB& box);
 	void addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data);
-	void addSphere(const glm::vec3& worldPos, float radius);
+	void addSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color);
 	void addRectangle(const glm::mat4& transform);
 
 	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
@@ -108,6 +102,7 @@ private:
 	struct SpheresUBData
 	{
 		glm::vec4 worldPosAndRadius[MAX_SPHERE_COUNT];
+		glm::vec4 colors[MAX_SPHERE_COUNT];
 	};
 	SpheresUBData m_spheresData;
 	uint32_t m_sphereCount = 0;

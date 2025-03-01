@@ -72,11 +72,14 @@ vec3 getCameraPos()
 layout(quads, equal_spacing, ccw) in;
 
 layout(location = 0) flat in uint inInstanceId[];
+layout(location = 0) flat out uint outInstanceId;
 
 const uint MAX_SPHERE_COUNT = 128;
 layout(binding = 0, set = 2) uniform UniformBuffer
 {
     vec4 worldPosAndRadius[MAX_SPHERE_COUNT];
+    vec3 color;
+    float padding;
 } ub;
 
 void main() 
@@ -90,4 +93,6 @@ void main()
     pos.xyz += ub.worldPosAndRadius[inInstanceId[0]].xyz;
 
     gl_Position = getProjectionMatrix() * getViewMatrix() * vec4(pos.xyz, 1.0f);
+
+    outInstanceId = inInstanceId[0];
 }

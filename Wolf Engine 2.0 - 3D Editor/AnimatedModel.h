@@ -33,10 +33,13 @@ public:
 	void saveCustom() const override {}
 
 	void getAnimationOptions(std::vector<std::string>& out);
+	const std::vector<std::pair<std::string, uint32_t>>& getBoneNamesAndIndices() const { return m_boneNamesAndIndices; }
+	glm::vec3 getBonePosition(uint32_t boneIdx) const;
 	void setAnimation(uint32_t animationIdx);
 
 private:
 	void addBonesToDebug(const Wolf::AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager);
+	void addBoneNamesAndIndices(const Wolf::AnimationData::Bone* bone);
 	static void findMaxTimer(const Wolf::AnimationData::Bone* bone, float& maxTimer);
 
 	inline static const std::string TAB = "Model";
@@ -100,19 +103,22 @@ private:
 	void updateAnimationsOptions();
 	EditorParamEnum m_animationSelectParam = EditorParamEnum({ "Default" }, "Animation", TAB, "Debug", [this]() { m_updateMaxTimerRequested = true; });
 	EditorParamBool m_showBonesParam = EditorParamBool("Show bones", TAB, "Debug");
+	EditorParamEnum m_highlightBone = EditorParamEnum({}, "Highlight bone", TAB, "Debug");
 	EditorParamBool m_hideModel = EditorParamBool("Hide model", TAB, "Debug", [this]() { notifySubscribers(); });
 	EditorParamFloat m_forceTimer = EditorParamFloat("Force timer", TAB, "Debug", 0.0f, 1.0f, true);
 	EditorParamBool m_forceTPoseParam = EditorParamBool("Force T-Pose", TAB, "Debug");
 
 	uint32_t m_materialIdx = 0;
+	std::vector<std::pair<std::string, uint32_t>> m_boneNamesAndIndices;
 
-	std::array<EditorParamInterface*, 8> m_editorParams =
+	std::array<EditorParamInterface*, 9> m_editorParams =
 	{
 		&m_loadingPathParam,
 		&m_textureSetEntityParam,
 		&m_animationsParam,
 		&m_animationSelectParam,
 		&m_showBonesParam,
+		&m_highlightBone,
 		&m_hideModel,
 		&m_forceTimer,
 		&m_forceTPoseParam
@@ -121,13 +127,18 @@ private:
 	/* Rendering */
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, AnimatedModel>> m_defaultPipelineSet;
 
-	struct BoneInfo
+	struct BoneInfoGPU
 	{
 		glm::mat4 transform;
 	};
 	uint32_t m_boneCount = 0;
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_bonesBuffer;
-	std::vector<BoneInfo> m_bonesInfo;
+	std::vector<BoneInfoGPU> m_bonesInfoGPU;
+	struct BoneInfoCPU
+	{
+		glm::vec3 position;
+	};
+	std::vector<BoneInfoCPU> m_bonesInfoCPU;
 	void computeBonesInfo(const Wolf::AnimationData::Bone* bone, glm::mat4 currentTransform, float time);
 
 	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;

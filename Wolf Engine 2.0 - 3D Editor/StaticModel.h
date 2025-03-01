@@ -23,7 +23,7 @@ public:
 	bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
 	bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
-	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
+	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override;
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;

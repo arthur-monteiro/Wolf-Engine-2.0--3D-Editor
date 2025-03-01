@@ -1,11 +1,11 @@
 #pragma once
 
 #include "ComponentInterface.h"
+#include "EditorConfiguration.h"
 #include "EditorTypesTemplated.h"
 #include "EditorTypes.h"
-#include "TextureSetEditor.h"
 
-class Particle : public ComponentInterface, public Notifier
+class Particle : public ComponentInterface
 {
 public:
 	static inline std::string ID = "particleComponent";

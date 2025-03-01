@@ -35,6 +35,12 @@ void PlayerComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
+	if (m_needCheckForNewGasCylinder)
+	{
+		onGasCylinderChanged();
+		m_needCheckForNewGasCylinder = false;
+	}
+
 	if (isShooting())
 	{
 		// Send info to contamination emitter to update the 3D texture
@@ -46,7 +52,27 @@ void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			}
 		}
 
+		// Send info to gas cylinder to update current storage
+		if (m_gasCylinderComponent)
+		{
+			(*m_gasCylinderComponent)->addShootRequest(globalTimer);
+		}
+
 		m_currentShootX = m_currentShootY = 0.0f; // reset to avoid sending the info twice
+	}
+
+	if (m_animatedModel && m_gasCylinderComponent && !(*m_animatedModel)->getBoneNamesAndIndices().empty())
+	{
+		const std::vector<std::pair<std::string, uint32_t>>& boneNamesAndIndices = (*m_animatedModel)->getBoneNamesAndIndices();
+
+		glm::vec3 topBonePosition = (*m_animatedModel)->getBonePosition(boneNamesAndIndices[m_gasCylinderTopBone].second);
+		glm::vec3 botBonePosition = (*m_animatedModel)->getBonePosition(boneNamesAndIndices[m_gasCylinderBottomBone].second);
+
+		glm::mat3 modelTransform = (*m_animatedModel)->computeRotationMatrix();
+		glm::vec3 topBoneOffset = modelTransform * m_gasCylinderTopBoneOffset;
+		glm::vec3 botBoneOffset = modelTransform * m_gasCylinderBottomBoneOffset;
+
+		(*m_gasCylinderComponent)->setLinkPositions(topBonePosition + topBoneOffset, botBonePosition + botBoneOffset);
 	}
 }
 
@@ -142,6 +168,8 @@ void PlayerComponent::onEntityRegistered()
 {
 	updateAnimatedModel();
 	m_entity->subscribe(this, [this]() { updateAnimatedModel(); });
+
+	m_needCheckForNewGasCylinder = true;
 }
 
 void PlayerComponent::updateAnimatedModel()
@@ -159,6 +187,15 @@ void PlayerComponent::updateAnimatedModel()
 		m_animationIdle.setOptions(options);
 		m_animationWalk.setOptions(options);
 		m_animationRun.setOptions(options);
+
+		const std::vector<std::pair<std::string, uint32_t>>& boneNamesAndIndices = animatedModel->getBoneNamesAndIndices();
+		std::vector<std::string> boneNames(boneNamesAndIndices.size());
+		for (uint32_t i = 0; i < boneNames.size(); ++i)
+		{
+			boneNames[i] = boneNamesAndIndices[i].first;
+		}
+		m_gasCylinderTopBone.setOptions(boneNames);
+		m_gasCylinderBottomBone.setOptions(boneNames);
 	}
 }
 
@@ -167,14 +204,30 @@ void PlayerComponent::onContaminationEmitterChanged()
 	m_contaminationEmitterEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_contaminationEmitterParam)));
 }
 
+void PlayerComponent::onGasCylinderChanged()
+{
+	if (!m_entity || static_cast<std::string>(m_gasCylinderParam).empty())
+		return;
+
+	if (Wolf::ResourceNonOwner<GasCylinderComponent> gasCylinder = m_getEntityFromLoadingPathCallback(m_gasCylinderParam)->getComponent<GasCylinderComponent>())
+	{
+		m_gasCylinderComponent.reset(new Wolf::ResourceNonOwner<GasCylinderComponent>(gasCylinder));
+	}
+}
+
 glm::vec3 PlayerComponent::getGunPosition() const
 {
 	return m_entity->getPosition() + static_cast<glm::vec3>(m_gunPositionOffset);
 }
 
+bool PlayerComponent::canShoot() const
+{
+	return m_gasCylinderComponent != nullptr && !(*m_gasCylinderComponent)->isEmpty();
+}
+
 bool PlayerComponent::isShooting() const
 {
-	return m_currentShootX != 0.0f || m_currentShootY != 0.0f;
+	return canShoot() && (m_currentShootX != 0.0f || m_currentShootY != 0.0f);
 }
 
 void PlayerComponent::buildShootDebugMesh()

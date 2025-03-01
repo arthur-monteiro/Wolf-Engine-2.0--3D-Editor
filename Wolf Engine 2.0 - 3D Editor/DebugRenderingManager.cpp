@@ -119,7 +119,7 @@ DebugRenderingManager::DebugRenderingManager()
 	// Spheres
 	{
 		m_spheresDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
-		m_spheresDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0);
+		m_spheresDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0);
 
 		m_spheresDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_spheresDescriptorSetLayoutGenerator->getDescriptorLayouts()));
 
@@ -271,7 +271,7 @@ void DebugRenderingManager::addCustomGroupOfLines(const Wolf::ResourceNonOwner<W
 	m_customLinesInfoArrayCount++;
 }
 
-void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius)
+void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color)
 {
 	if (m_sphereCount >= MAX_SPHERE_COUNT)
 	{
@@ -280,6 +280,7 @@ void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius)
 	}
 
 	m_spheresData.worldPosAndRadius[m_sphereCount] = glm::vec4(worldPos, radius);
+	m_spheresData.colors[m_sphereCount] = glm::vec4(color, 1.0f);
 	m_sphereCount++;
 }
 

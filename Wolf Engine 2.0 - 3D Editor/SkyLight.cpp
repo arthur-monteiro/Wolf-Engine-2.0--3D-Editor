@@ -46,7 +46,7 @@ void SkyLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 	uniformData.transform = glm::mat4(1.0f);
 	debugRenderingManager.addCustomGroupOfLines(useNewMesh ? m_newDebugMesh.createNonOwnerResource() : m_debugMesh.createNonOwnerResource(), uniformData);
 
-	debugRenderingManager.addSphere(-computeSunDirectionForTime(m_currentTime) * 500.0f, 50.0f);
+	debugRenderingManager.addSphere(-computeSunDirectionForTime(m_currentTime) * 500.0f, 50.0f, m_color);
 }
 
 void SkyLight::addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
@@ -89,7 +89,7 @@ void SkyLight::buildDebugMesh()
 		uint32_t time = static_cast<uint32_t>(progress * (24.0f * 60.0f * 60.0f));
 		glm::vec3 sunDirection = computeSunDirectionForTime(time);
 
-		vertices.push_back({ -sunDirection * 500.0f, glm::vec3(1.0f, 1.0f, 1.0f) });
+		vertices.push_back({ -sunDirection * 500.0f });
 		if (i > 0 && i != NUM_DEBUG_POINTS)
 			vertices.push_back(vertices.back());
 	}

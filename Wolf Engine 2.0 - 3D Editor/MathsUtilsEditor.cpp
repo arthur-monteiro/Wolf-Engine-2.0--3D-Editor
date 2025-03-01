@@ -62,3 +62,27 @@ void computeTransform(const glm::vec3& scale, const glm::vec3& rotation, const g
 	outTransform = glm::rotate(outTransform, static_cast<glm::vec3>(rotation).z, glm::vec3(0.0f, 0.0f, 1.0f));
 	outTransform = glm::scale(outTransform, static_cast<glm::vec3>(scale));
 }
+
+void computeTransformFromTwoPoints(const glm::vec3& p0, const glm::vec3& p1, glm::mat4& outTransform)
+{
+	glm::vec3 d = glm::normalize(p1 - p0);
+
+	float alpha = -glm::atan(d.z / d.y);
+	float beta = glm::atan(d.x / glm::sqrt(d.y * d.y + d.z * d.z));
+	if (d.y < 0)
+	{
+		beta = glm::pi<float>() - beta;
+	}
+
+	glm::mat3 rx = glm::mat3(1, 0, 0,
+		0, glm::cos(alpha), glm::sin(alpha),
+		0, -glm::sin(alpha), glm::cos(alpha));
+
+	glm::mat3 rz(glm::cos(beta), glm::sin(beta), 0,
+		-glm::sin(beta), glm::cos(beta), 0,
+		0, 0, 1);
+
+	glm::mat4 t = glm::translate(glm::mat4(1.0f), p0);
+
+	outTransform = t * glm::mat4(glm::transpose(rz * rx));
+}

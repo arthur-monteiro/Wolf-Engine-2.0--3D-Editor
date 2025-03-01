@@ -6,7 +6,7 @@
 #include "ParameterGroupInterface.h"
 #include "PhysicShapes.h"
 
-class MeshResourceEditor : public ComponentInterface, public Notifier
+class MeshResourceEditor : public ComponentInterface
 {
 public:
 	std::string getId() const override { return "meshResourceEditor"; }

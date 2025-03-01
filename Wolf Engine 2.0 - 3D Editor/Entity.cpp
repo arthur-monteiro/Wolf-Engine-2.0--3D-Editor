@@ -51,7 +51,6 @@ void Entity::addComponent(ComponentInterface* component)
 		if (hasModelComponent())
 			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
 		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
-		(*m_modelComponent)->subscribe(this, [this]() { m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true; });
 	}
 	else if (const Wolf::ResourceNonOwner<EditorLightInterface> componentAsLight = m_components.back().createNonOwnerResource<EditorLightInterface>())
 	{
@@ -61,8 +60,11 @@ void Entity::addComponent(ComponentInterface* component)
 	if (m_components.back()->requiresInputs())
 		m_requiresInputs = true;
 
+	component->subscribe(this, [this]() { m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true; });
 	if (m_modelComponent)
+	{
 		m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true;
+	}
 
 	notifySubscribers();
 }
@@ -94,38 +96,45 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame(globalTimer);)
 
-	if (m_needsMeshesToRenderComputation)
+	if (m_modelComponent)
 	{
-		std::vector<DrawManager::DrawMeshInfo> meshes;
-		bool areMeshesLoaded = (*m_modelComponent)->getMeshesToRender(meshes);
-
-		DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->alterMeshesToRender(meshes);)
-
-		// Re-request meshes until they are loaded
-		if (areMeshesLoaded)
+		if (m_needsMeshesToRenderComputation)
 		{
-			m_needsMeshesToRenderComputation = false;
-			drawManager->addMeshesToDraw(meshes, this);
+			std::vector<DrawManager::DrawMeshInfo> meshes;
+			bool areMeshesLoaded = (*m_modelComponent)->getMeshesToRender(meshes);
+
+			DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->alterMeshesToRender(meshes);)
+
+				// Re-request meshes until they are loaded
+				if (areMeshesLoaded)
+				{
+					m_needsMeshesToRenderComputation = false;
+					drawManager->addMeshesToDraw(meshes, this);
+				}
+				else
+				{
+					drawManager->removeMeshesForEntity(this);
+				}
 		}
-		else
+		if (m_needsMeshesForPhysicsComputation)
 		{
-			drawManager->removeMeshesForEntity(this);
+			std::vector<EditorPhysicsManager::PhysicsMeshInfo> meshes;
+
+			// Re-request meshes until they are loaded
+			if (bool areMeshesLoaded = (*m_modelComponent)->getMeshesForPhysics(meshes))
+			{
+				m_needsMeshesForPhysicsComputation = false;
+				editorPhysicsManager->addMeshes(meshes, this);
+			}
+			else
+			{
+				editorPhysicsManager->removeMeshesForEntity(this);
+			}
 		}
 	}
-	if (m_needsMeshesForPhysicsComputation)
+	else
 	{
-		std::vector<EditorPhysicsManager::PhysicsMeshInfo> meshes;
-
-		// Re-request meshes until they are loaded
-		if (bool areMeshesLoaded = (*m_modelComponent)->getMeshesForPhysics(meshes))
-		{
-			m_needsMeshesForPhysicsComputation = false;
-			editorPhysicsManager->addMeshes(meshes, this);
-		}
-		else
-		{
-			editorPhysicsManager->removeMeshesForEntity(this);
-		}
+		m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = false;
 	}
 }
 

@@ -5,7 +5,7 @@
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
 
-class MaterialComponent : public ComponentInterface, public Notifier
+class MaterialComponent : public ComponentInterface
 {
 public:
 	static inline std::string ID = "materialComponent";

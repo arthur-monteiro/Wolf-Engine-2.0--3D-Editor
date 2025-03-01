@@ -205,6 +205,7 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["duplicateEntity"] = std::bind(&SystemManager::duplicateEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["editResource"] = std::bind(&SystemManager::editResourceJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["debugPhysicsCheckboxChanged"] = std::bind(&SystemManager::debugPhysicsCheckboxChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["goToEntity"] = std::bind(&SystemManager::onGoToEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -569,7 +570,17 @@ void SystemManager::debugPhysicsCheckboxChangedJSCallback(const ultralight::JSOb
 	m_debugPhysics = checked;
 }
 
+void SystemManager::onGoToEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	goToSelectedEntity();
+}
+
 void SystemManager::selectEntity() const
+{
+	updateUISelectedEntity();
+}
+
+void SystemManager::goToSelectedEntity() const
 {
 	if ((*m_selectedEntity)->hasModelComponent())
 	{
@@ -580,8 +591,6 @@ void SystemManager::selectEntity() const
 		m_camera->setPhi(-0.645398319f);
 		m_camera->setTheta(glm::quarter_pi<float>());
 	}
-
-	updateUISelectedEntity();
 }
 
 void SystemManager::updateBeforeFrame()

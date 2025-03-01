@@ -4,6 +4,7 @@
 
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
+#include "GasCylinderComponent.h"
 
 class AnimatedModel;
 
@@ -45,6 +46,15 @@ private:
 	void onContaminationEmitterChanged();
 	EditorParamString m_contaminationEmitterParam = EditorParamString("Contamination Emitter", TAB, "Shoot", [this]() { onContaminationEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
+	std::unique_ptr<Wolf::ResourceNonOwner<GasCylinderComponent>> m_gasCylinderComponent;
+	void onGasCylinderChanged();
+	bool m_needCheckForNewGasCylinder = false;
+	EditorParamString m_gasCylinderParam = EditorParamString("Gas cylinder", TAB, "Gas cylinder", [this]() { onGasCylinderChanged(); }, EditorParamString::ParamStringType::ENTITY);
+	EditorParamEnum m_gasCylinderTopBone = EditorParamEnum({}, "Top bone", TAB, "Gas cylinder");
+	EditorParamVector3 m_gasCylinderTopBoneOffset = EditorParamVector3("Top bone offset", TAB, "Gas cylinder", -1.0f, 1.0f);
+	EditorParamEnum m_gasCylinderBottomBone = EditorParamEnum({}, "Bottom bone", TAB, "Gas cylinder");
+	EditorParamVector3 m_gasCylinderBottomBoneOffset = EditorParamVector3("Bottom bone offset", TAB, "Gas cylinder", -1.0f, 1.0f);
+
 	EditorParamUInt m_gamepadIdx = EditorParamUInt("Gamepad Idx", TAB, "General", 0, Wolf::InputHandler::MAX_GAMEPAD_COUNT);
 
 	std::unique_ptr<Wolf::ResourceNonOwner<AnimatedModel>> m_animatedModel;
@@ -52,7 +62,7 @@ private:
 	EditorParamEnum m_animationWalk = EditorParamEnum({ "Default" }, "Walk animation", TAB, "Animations");
 	EditorParamEnum m_animationRun = EditorParamEnum({ "Default" }, "Run animation", TAB, "Animations");
 
-	std::array<EditorParamInterface*, 9> m_editorParams =
+	std::array<EditorParamInterface*, 14> m_editorParams =
 	{
 		&m_speed,
 		&m_gamepadIdx,
@@ -62,7 +72,12 @@ private:
 		&m_contaminationEmitterParam,
 		&m_animationIdle,
 		&m_animationWalk,
-		&m_animationRun
+		&m_animationRun,
+		&m_gasCylinderParam,
+		&m_gasCylinderTopBone,
+		&m_gasCylinderTopBoneOffset,
+		&m_gasCylinderBottomBone,
+		&m_gasCylinderBottomBoneOffset
 	};
 
 	std::chrono::steady_clock::time_point m_lastUpdateTimePoint;
@@ -71,6 +86,7 @@ private:
 	float m_currentShootX = 0.0f, m_currentShootY = 0.0f;
 
 	glm::vec3 getGunPosition() const;
+	bool canShoot() const;
 	bool isShooting() const;
 
 	// Debug

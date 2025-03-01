@@ -32,6 +32,16 @@ void EditorModelInterface::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
 }
 
+glm::mat3 EditorModelInterface::computeRotationMatrix() const
+{
+	glm::mat4 r(1.0f);
+	r = glm::rotate(r, static_cast<glm::vec3>(m_rotationParam).x, glm::vec3(1.0f, 0.0f, 0.0f));
+	r = glm::rotate(r, static_cast<glm::vec3>(m_rotationParam).y, glm::vec3(0.0f, 1.0f, 0.0f));
+	r = glm::rotate(r, static_cast<glm::vec3>(m_rotationParam).z, glm::vec3(0.0f, 0.0f, 1.0f));
+
+	return r;
+}
+
 void EditorModelInterface::activateParams()
 {
 	for (EditorParamInterface* param : m_modelParams)
@@ -52,5 +62,6 @@ void EditorModelInterface::recomputeTransform()
 	m_transform = glm::rotate(m_transform, static_cast<glm::vec3>(m_rotationParam).y, glm::vec3(0.0f, 1.0f, 0.0f));
 	m_transform = glm::rotate(m_transform, static_cast<glm::vec3>(m_rotationParam).z, glm::vec3(0.0f, 0.0f, 1.0f));
 	m_transform = glm::scale(m_transform, static_cast<glm::vec3>(m_scaleParam));
+
 	notifySubscribers();
 }

@@ -11,7 +11,6 @@
 #include "DrawManager.h"
 #include "EditorPhysicsManager.h"
 #include "EditorTypes.h"
-#include "Notifier.h"
 
 namespace Wolf
 {
@@ -20,7 +19,7 @@ namespace Wolf
 	class AABB;
 }
 
-class EditorModelInterface : public ComponentInterface, public Notifier
+class EditorModelInterface : public ComponentInterface
 {
 public:
 	EditorModelInterface();
@@ -34,6 +33,7 @@ public:
 	virtual Wolf::AABB getAABB() const = 0;
 	virtual const glm::mat4& getTransform() const { return m_transform; }
 	glm::vec3 getPosition() const { return m_translationParam; }
+	glm::mat3 computeRotationMatrix() const;
 	void setPosition(const glm::vec3& newPosition) { m_translationParam = newPosition; }
 	void setRotation(const glm::vec3& newRotation) { m_rotationParam = newRotation; }
 	
@@ -47,6 +47,7 @@ private:
 
 protected:
 	glm::mat4 m_transform;
+	bool m_computeFromLine = false;
 
 	EditorParamVector3 m_scaleParam = EditorParamVector3("Scale", "Model", "Transform", -1.0f, 1.0f, [this] { recomputeTransform(); });
 	EditorParamVector3 m_translationParam = EditorParamVector3("Translation", "Model", "Transform", -10.0f, 10.0f, [this] { recomputeTransform(); });

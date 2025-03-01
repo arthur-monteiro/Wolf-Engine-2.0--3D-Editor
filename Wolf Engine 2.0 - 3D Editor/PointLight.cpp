@@ -32,7 +32,7 @@ void PointLight::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 void PointLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 {
-	debugRenderingManager.addSphere(m_position, m_sphereRadius);
+	debugRenderingManager.addSphere(m_position, m_sphereRadius, m_color);
 }
 
 void PointLight::addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
