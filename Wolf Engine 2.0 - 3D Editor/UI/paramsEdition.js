@@ -226,7 +226,7 @@ function computeInput(param, isLast) {
     else if (param.type == "Bool") {
         htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
         htmlToAdd += "<div style='display: inline-block; width: 70%'><input id='checkBox" + nameForCallback + "' type='checkbox' style='margin-top: 9px' onchange='(function() { "
-            + "change" + nameForCallback + "(document.getElementById(\"checkBox" + nameForCallback + "\").checked) })()'/></div>";
+            + "change" + nameForCallback + "(document.getElementById(\"checkBox" + nameForCallback + "\").checked) })()' " + (param.value ? "checked" : "") + "/></div>";
     }
     else if (param.type == "Enum") {
         htmlToAdd += param.name + ": <select name='enum' id='enumSelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'>";

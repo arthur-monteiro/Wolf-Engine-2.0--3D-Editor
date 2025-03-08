@@ -5,30 +5,28 @@
 #include "ContaminationEmitter.h"
 #include "DebugMarker.h"
 
-using namespace Wolf;
-
-void ContaminationUpdatePass::initializeResources(const InitializationContext& context)
+void ContaminationUpdatePass::initializeResources(const Wolf::InitializationContext& context)
 {
-	m_commandBuffer.reset(CommandBuffer::createCommandBuffer(QueueType::GRAPHIC, false)); // Can't run on compute queue as contamination image ids is on graphic queue
-	m_semaphore.reset(Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false)); // Can't run on compute queue as contamination image ids is on graphic queue
+	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
 
-	m_computeShaderParser.reset(new ShaderParser("Shaders/contamination/update.comp"));
-	m_shootRequestBuffer.reset(Buffer::createBuffer(sizeof(ShootRequestGPUInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/contamination/update.comp"));
+	m_shootRequestBuffer.reset(Wolf::Buffer::createBuffer(sizeof(ShootRequestGPUInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
-	m_descriptorSetLayoutGenerator.addStorageImage(VK_SHADER_STAGE_COMPUTE_BIT, 0); // Contamination Ids
-	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 1); // Contamination info
-	m_descriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 2); // Shoot requests
+	m_descriptorSetLayoutGenerator.addStorageImage(Wolf::ShaderStageFlagBits::COMPUTE, 0); // Contamination Ids
+	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 1); // Contamination info
+	m_descriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 2); // Shoot requests
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	createPipeline();
 }
 
-void ContaminationUpdatePass::resize(const InitializationContext& context)
+void ContaminationUpdatePass::resize(const Wolf::InitializationContext& context)
 {
 	// Nothing to do
 }
 
-void ContaminationUpdatePass::record(const RecordContext& context)
+void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 {
 	PROFILE_FUNCTION
 
@@ -52,7 +50,7 @@ void ContaminationUpdatePass::record(const RecordContext& context)
 
 	m_commandBuffer->beginCommandBuffer();
 
-	DebugMarker::beginRegion(m_commandBuffer.get(), DebugMarker::computePassDebugColor, "Contamination update pass");
+	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::computePassDebugColor, "Contamination update pass");
 
 	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT,
 		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
@@ -69,19 +67,19 @@ void ContaminationUpdatePass::record(const RecordContext& context)
 	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT,
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, VK_IMAGE_LAYOUT_GENERAL });
 
-	DebugMarker::endRegion(m_commandBuffer.get());
+	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
 	m_commandBuffer->endCommandBuffer();
 
 	m_wasEnabledThisFrame = true;
 }
 
-void ContaminationUpdatePass::submit(const SubmitContext& context)
+void ContaminationUpdatePass::submit(const Wolf::SubmitContext& context)
 {
 	if (m_wasEnabledThisFrame)
 	{
-		const std::vector<const Semaphore*> waitSemaphores{  };
-		const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
+		const std::vector<const Wolf::Semaphore*> waitSemaphores{  };
+		const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
 		m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
 
 		if (m_computeShaderParser->compileIfFileHasBeenModified())
@@ -124,13 +122,13 @@ void ContaminationUpdatePass::swapShootRequests(std::vector<ShootRequest>& shoot
 
 void ContaminationUpdatePass::createPipeline()
 {
-	ShaderCreateInfo computeShaderInfo;
-	computeShaderInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	Wolf::ShaderCreateInfo computeShaderInfo;
+	computeShaderInfo.stage = Wolf::ShaderStageFlagBits::COMPUTE;
 	m_computeShaderParser->readCompiledShader(computeShaderInfo.shaderCode);
 
-	std::vector<ResourceReference<const DescriptorSetLayout>> descriptorSetLayouts = { m_descriptorSetLayout.createConstNonOwnerResource() };
+	std::vector<Wolf::ResourceReference<const Wolf::DescriptorSetLayout>> descriptorSetLayouts = { m_descriptorSetLayout.createConstNonOwnerResource() };
 
-	m_computePipeline.reset(Pipeline::createComputePipeline(computeShaderInfo, descriptorSetLayouts));
+	m_computePipeline.reset(Wolf::Pipeline::createComputePipeline(computeShaderInfo, descriptorSetLayouts));
 }
 
 ContaminationUpdatePass::PerEmitterInfo::PerEmitterInfo(ContaminationEmitter* contaminationEmitter, const Wolf::DescriptorSetLayoutGenerator& descriptorSetLayoutGenerator, const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& descriptorSetLayout,

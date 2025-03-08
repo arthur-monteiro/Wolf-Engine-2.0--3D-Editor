@@ -38,8 +38,8 @@ void SkyLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 	if (m_newDebugMesh)
 		m_debugMesh.reset(m_newDebugMesh.release());
 
-	const bool useNewMesh = m_debugMeshRebuildRequested;
-	if (m_debugMeshRebuildRequested)
+	const bool useNewMesh = m_debugMeshRebuildRequested || !m_debugMesh;
+	if (useNewMesh)
 		buildDebugMesh();
 
 	DebugRenderingManager::LinesUBData uniformData{};

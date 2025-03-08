@@ -6,6 +6,7 @@
 #include <DynamicStableArray.h>
 #include <DynamicResourceUniqueOwnerArray.h>
 
+#include "BoundingSphere.h"
 #include "ComponentInterface.h"
 #include "DrawManager.h"
 #include "EditorLightInterface.h"
@@ -48,6 +49,7 @@ public:
 	Wolf::DynamicStableArray<Wolf::ResourceUniqueOwner<ComponentInterface>, 8>& getAllComponents() { return m_components; }
 
 	Wolf::AABB getAABB() const;
+	Wolf::BoundingSphere getBoundingSphere() const;
 	bool hasModelComponent() const { return m_modelComponent.get(); }
 	bool hasComponent(const std::string& componentId) const;
 	glm::vec3 getPosition() const;
@@ -55,7 +57,7 @@ public:
 	void setRotation(const glm::vec3& newRotation) const;
 
 	template <typename T>
-	Wolf::ResourceNonOwner<T> getComponent()
+	[[nodiscard]] Wolf::NullableResourceNonOwner<T> getComponent()
 	{
 		for (uint32_t i = 0; i < m_components.size(); ++i)
 		{
@@ -65,7 +67,7 @@ public:
 			}
 		}
 
-		return m_components[0].createNonOwnerResource<T>(); // will be nullptr here
+		return Wolf::NullableResourceNonOwner<T>(); // will be nullptr here
 	}
 
 	template <typename T>

@@ -123,7 +123,7 @@ uint32_t MaterialComponent::TextureSet::getTextureSetIdx() const
 {
 	if (m_textureSetEntity)
 	{
-		if (const Wolf::ResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
+		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
 		{
 			return textureSetComponent->getTextureSetIdx();
 		}
@@ -145,6 +145,11 @@ void MaterialComponent::TextureSet::onTextureSetEntityChanged()
 	else
 	{
 		m_textureSetEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_textureSetEntityParam)));
+
+		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
+		{
+			textureSetComponent->subscribe(this, [this]() { notifySubscribers(); });
+		}
 	}
 
 	notifySubscribers();

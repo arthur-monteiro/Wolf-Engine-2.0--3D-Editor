@@ -16,7 +16,8 @@ public:
 
 	void clear();
 
-	std::vector<Wolf::ResourceUniqueOwner<Entity>>& getEntities() { return m_currentEntities; }
+	[[nodiscard]] std::vector<Wolf::ResourceUniqueOwner<Entity>>& getEntities() { return m_currentEntities; }
+	void findEntitiesWithCenterInSphere(const Wolf::BoundingSphere& sphere, std::vector<Wolf::ResourceNonOwner<Entity>>& out);
 
 private:
 	static constexpr uint32_t MAX_ENTITY_COUNT = 4096;

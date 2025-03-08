@@ -17,6 +17,7 @@ ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineI
 	m_directionConeDirection = glm::vec3(0.0f, 1.0f, 0.0f);
 	m_particleMinSizeMultiplier = 1.0f;
 	m_particleMaxSizeMultiplier = 1.0f;
+	m_isEmitting = true;
 }
 
 ParticleEmitter::~ParticleEmitter()
@@ -55,15 +56,50 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		m_lastSpawnMsTimer += msToWaitBetweenTwoParticles * m_nextParticleToSpawnCount;
 	}
 
+	if (!m_isEmitting)
+	{
+		m_nextParticleToSpawnCount = 0;
+	}
+
 	if (!m_particleNotificationRegistered && m_particleEntity)
 	{
-		if (const Wolf::ResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>())
+		if (const Wolf::NullableResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>())
 		{
 			particleComponent->subscribe(this, [this]() { onParticleDataChanged(); });
 			m_particleNotificationRegistered = true;
 
 			onParticleDataChanged();
 		}
+	}
+}
+
+void ParticleEmitter::setSpawnPosition(const glm::vec3& position)
+{
+	switch (static_cast<uint32_t>(m_spawnShape))
+	{
+	case SPAWN_CYLINDER_SHAPE:
+		m_spawnCylinderCenterPosition = position;
+		break;
+	case SPAWN_BOX_SHAPE:
+		m_spawnBoxCenterPosition = position;
+		break;
+	default:
+		Wolf::Debug::sendError("Undefined spawn shape");
+	}
+}
+
+void ParticleEmitter::setDirection(const glm::vec3& direction)
+{
+	switch (static_cast<uint32_t>(m_directionShape))
+	{
+	case DIRECTION_CONE_SHAPE:
+	{
+		m_directionConeDirection = direction;
+		break;
+	}
+	default:
+		Wolf::Debug::sendError("Undefined direction shape");
+		break;
 	}
 }
 
@@ -189,12 +225,13 @@ void ParticleEmitter::onParticleOpacityChanged()
 
 void ParticleEmitter::onParticleEntityChanged()
 {
-	m_particleEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_particleEntityParam)));
+	if (!static_cast<std::string>(m_particleEntityParam).empty())
+		m_particleEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_particleEntityParam)));
 }
 
 void ParticleEmitter::onParticleDataChanged()
 {
-	const Wolf::ResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>();
+	const Wolf::NullableResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>();
 	m_materialIdx = particleComponent->getMaterialIdx();
 	m_flipBookSizeX = particleComponent->getFlipBookSizeX();
 	m_flipBookSizeY = particleComponent->getFlipBookSizeY();

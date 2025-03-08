@@ -19,7 +19,7 @@ EditorModelInterface::EditorModelInterface()
 	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, EditorModelInterface>([this](ResourceUniqueOwner<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
 		{
 			descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
-			descriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // matrices
+			descriptorSetLayoutGenerator->addUniformBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0); // matrices
 		}));
 
 	m_modelDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, EditorModelInterface>([this](ResourceUniqueOwner<DescriptorSetLayout>& descriptorSetLayout)

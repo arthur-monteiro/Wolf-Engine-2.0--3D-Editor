@@ -31,7 +31,7 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 	{
 		m_displayOptionsUniformBuffer.reset(Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
-		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
 		m_commonDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
@@ -43,8 +43,8 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 
 	// Particles resources
 	{
-		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT,                                0); // particles buffer
-		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, 1); // emitters buffer
+		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::VERTEX,                                       0); // particles buffer
+		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::VERTEX, 1); // emitters buffer
 		m_particlesDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		DescriptorSetGenerator descriptorSetGenerator(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts());
@@ -63,7 +63,7 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 
 	// UI resources
 	{
-		m_userInterfaceDescriptorSetLayoutGenerator.addCombinedImageSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+		m_userInterfaceDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
 		m_userInterfaceDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
@@ -159,6 +159,7 @@ void ForwardPass::record(const RecordContext& context)
 		m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSet(), SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(m_commonDescriptorSet.createConstNonOwnerResource(), 5, *m_particlesPipeline);
 		m_commandBuffer->draw(particleCount * 6, 1, 0, 0);
 	}
 
@@ -247,9 +248,9 @@ void ForwardPass::createPipelines()
 		// Programming stages
 		pipelineCreateInfo.shaderCreateInfos.resize(2);
 		m_particlesVertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		pipelineCreateInfo.shaderCreateInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 		m_particlesFragmentShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[1].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		pipelineCreateInfo.shaderCreateInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 		// Viewport
 		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
@@ -264,7 +265,8 @@ void ForwardPass::createPipelines()
 			GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
 			MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(),
 			LightManager::getDescriptorSetLayout().createConstNonOwnerResource(),
-			m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSetLayout()
+			m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSetLayout(),
+			m_commonDescriptorSetLayout.createConstNonOwnerResource()
 		};
 
 		// Color Blend
@@ -287,9 +289,9 @@ void ForwardPass::createPipelines()
 		// Programming stages
 		pipelineCreateInfo.shaderCreateInfos.resize(2);
 		m_userInterfaceVertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		pipelineCreateInfo.shaderCreateInfos[0].stage = ShaderStageFlagBits::VERTEX;
 		m_userInterfaceFragmentShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[1].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		pipelineCreateInfo.shaderCreateInfos[1].stage = ShaderStageFlagBits::FRAGMENT;
 
 		// IA
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;

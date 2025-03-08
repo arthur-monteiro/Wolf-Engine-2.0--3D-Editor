@@ -27,7 +27,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			/* Pre Depth */
 			pipelineInfo.shaderInfos.resize(1);
 			pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/defaultPipeline/shader.vert";
-			pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+			pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 
 			// IA
 			Wolf::Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
@@ -59,7 +59,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			/* Forward */
 			pipelineInfo.shaderInfos.resize(2);
 			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
-			pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 			// Resources
 			pipelineInfo.bindlessDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_BINDLESS;
@@ -190,6 +190,14 @@ Wolf::AABB StaticModel::getAABB() const
 		return m_resourceManager->getModelData(m_meshResourceId)->mesh->getAABB() * m_transform;
 
 	return Wolf::AABB();
+}
+
+Wolf::BoundingSphere StaticModel::getBoundingSphere() const
+{
+	if (m_resourceManager->isModelLoaded(m_meshResourceId))
+		return m_resourceManager->getModelData(m_meshResourceId)->mesh->getBoundingSphere() * m_scaleParam + m_translationParam;
+
+	return Wolf::BoundingSphere();
 }
 
 void StaticModel::subscribeToAllSubMeshes()
@@ -358,7 +366,7 @@ uint32_t StaticModel::SubMesh::TextureSet::getTextureSetIdx() const
 {
 	if (m_textureSetEntity)
 	{
-		if (const Wolf::ResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
+		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
 		{
 			return textureSetComponent->getTextureSetIdx();
 		}

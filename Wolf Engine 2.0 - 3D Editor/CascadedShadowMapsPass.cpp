@@ -15,6 +15,7 @@ CascadeDepthPass::CascadeDepthPass(const Wolf::InitializationContext& context, u
 	m_height = height;
 
 	DepthPassBase::initializeResources(context);
+	m_depthImage->setImageLayout(Wolf::Image::SampledInFragmentShader());
 
 	m_camera.reset(new Wolf::OrthographicCamera(glm::vec3(0.0f), 0.0f, 50.0f, glm::vec3(0.0f)));
 	m_cameraIdx = cameraIdx;

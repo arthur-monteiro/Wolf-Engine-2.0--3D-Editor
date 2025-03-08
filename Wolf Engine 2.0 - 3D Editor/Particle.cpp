@@ -37,7 +37,7 @@ void Particle::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
 	if (m_materialEntity && !m_materialNotificationRegistered)
 	{
-		if (const Wolf::ResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
+		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
 		{
 			materialComponent->subscribe(this, [this]() { notifySubscribers(); });
 			m_materialNotificationRegistered = true;

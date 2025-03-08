@@ -28,6 +28,12 @@ public:
 	bool requiresInputs() const override { return false; }
 	void saveCustom() const override {}
 
+	// Spawn
+	void requestEmission() { m_isEmitting = true; }
+	void stopEmission() { m_isEmitting = false; }
+	void setSpawnPosition(const glm::vec3& position);
+	void setDirection(const glm::vec3& direction);
+
 	uint32_t getMaxParticleCount() const { return m_maxParticleCount; }
 
 	// Spawn
@@ -70,6 +76,7 @@ private:
 	inline static const std::string TAB = "Particle emitter";
 
 	// ----- Spawn -----
+	EditorParamBool m_isEmitting = EditorParamBool("Emits", TAB, "Spawn");
 	static constexpr uint32_t SPAWN_CYLINDER_SHAPE = 0;
 	static constexpr uint32_t SPAWN_BOX_SHAPE = 1;
 	EditorParamEnum m_spawnShape = EditorParamEnum({ "Cylinder", "Box" }, "Shape", TAB, "Spawn", [this]() { m_requestReloadCallback(this); });
@@ -136,8 +143,9 @@ private:
 	void onParticleDataChanged();
 	EditorParamString m_particleEntityParam = EditorParamString("Particle entity", TAB, "Particle", [this]() { onParticleEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
-	std::array<EditorParamInterface*, 23> m_allEditorParams =
+	std::array<EditorParamInterface*, 24> m_allEditorParams =
 	{
+		&m_isEmitting,
 		&m_spawnShape,
 
 		&m_spawnCylinderCenterPosition,
@@ -169,8 +177,9 @@ private:
 		&m_particleEntityParam
 	};
 
-	std::array<EditorParamInterface*, 15> m_alwaysVisibleEditorParams =
+	std::array<EditorParamInterface*, 16> m_alwaysVisibleEditorParams =
 	{
+		&m_isEmitting,
 		&m_spawnShape,
 
 		&m_maxParticleCount,

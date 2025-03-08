@@ -8,7 +8,8 @@
 #include "EditorParamsHelper.h"
 #include "Entity.h"
 
-PlayerComponent::PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback) : m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback))
+PlayerComponent::PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer)
+	: m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)), m_entityContainer(entityContainer)
 {
 }
 
@@ -35,10 +36,11 @@ void PlayerComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
-	if (m_needCheckForNewGasCylinder)
+	if (m_needCheckForNewLinkedEntities)
 	{
 		onGasCylinderChanged();
-		m_needCheckForNewGasCylinder = false;
+		onSmokeEmitterChanged();
+		m_needCheckForNewLinkedEntities = false;
 	}
 
 	if (isShooting())
@@ -161,6 +163,62 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 	if (isShooting())
 	{
 		m_shootDebugMeshRebuildRequested = true;
+
+		if (m_smokeEmitterComponent)
+		{
+			m_smokeEmitterComponent->requestEmission();
+			m_smokeEmitterComponent->setSpawnPosition(getGunPosition());
+
+			const glm::vec3 shootDirection = glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY));
+			m_smokeEmitterComponent->setDirection(shootDirection);
+		}
+	}
+	else
+	{
+		if (m_smokeEmitterComponent)
+		{
+			m_smokeEmitterComponent->stopEmission();
+		}
+	}
+
+	// Take or drop gas cylinder
+	if (m_isWaitingForGasCylinderButtonRelease)
+	{
+		if (!inputHandler->isGamepadButtonPressed(static_cast<uint8_t>(m_gamepadIdx), 2, m_entity))
+		{
+			m_isWaitingForGasCylinderButtonRelease = false;
+		}
+	}
+	else if (inputHandler->isGamepadButtonPressed(static_cast<uint8_t>(m_gamepadIdx), 2, m_entity))
+	{
+		m_isWaitingForGasCylinderButtonRelease = true;
+
+		if (!static_cast<std::string>(m_gasCylinderParam).empty())
+		{
+			m_gasCylinderParam = "";
+		}
+		else
+		{
+			std::vector<Wolf::ResourceNonOwner<Entity>> entities;
+			m_entityContainer->findEntitiesWithCenterInSphere({ m_entity->getBoundingSphere().getCenter(), 1.0f }, entities);
+
+			float minDistance = 1.0f;
+			std::unique_ptr<Wolf::ResourceNonOwner<Entity>> nearestGasCylinderEntity;
+			for (const Wolf::ResourceNonOwner<Entity>& entity : entities)
+			{
+				float distance = glm::distance(entity->getBoundingSphere().getCenter(), m_entity->getBoundingSphere().getCenter());
+				if (distance < minDistance && entity->getComponent<GasCylinderComponent>())
+				{
+					minDistance = distance;
+					nearestGasCylinderEntity.reset(new Wolf::ResourceNonOwner<Entity>(entity));
+				}
+			}
+
+			if (nearestGasCylinderEntity)
+			{
+				m_gasCylinderParam = (*nearestGasCylinderEntity)->getLoadingPath();
+			}
+		}
 	}
 }
 
@@ -169,12 +227,12 @@ void PlayerComponent::onEntityRegistered()
 	updateAnimatedModel();
 	m_entity->subscribe(this, [this]() { updateAnimatedModel(); });
 
-	m_needCheckForNewGasCylinder = true;
+	m_needCheckForNewLinkedEntities = true;
 }
 
 void PlayerComponent::updateAnimatedModel()
 {
-	if (Wolf::ResourceNonOwner<AnimatedModel> animatedModel = m_entity->getComponent<AnimatedModel>())
+	if (Wolf::NullableResourceNonOwner<AnimatedModel> animatedModel = m_entity->getComponent<AnimatedModel>())
 	{
 		m_animatedModel.reset(new Wolf::ResourceNonOwner<AnimatedModel>(animatedModel));
 
@@ -204,14 +262,42 @@ void PlayerComponent::onContaminationEmitterChanged()
 	m_contaminationEmitterEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_contaminationEmitterParam)));
 }
 
-void PlayerComponent::onGasCylinderChanged()
+void PlayerComponent::onSmokeEmitterChanged()
 {
-	if (!m_entity || static_cast<std::string>(m_gasCylinderParam).empty())
+	if (!m_entity)
 		return;
 
-	if (Wolf::ResourceNonOwner<GasCylinderComponent> gasCylinder = m_getEntityFromLoadingPathCallback(m_gasCylinderParam)->getComponent<GasCylinderComponent>())
+	if (const std::string& smokeEmitterStr = m_smokeEmitterParam; !smokeEmitterStr.empty())
+	{
+		Wolf::ResourceNonOwner<Entity> entity = m_getEntityFromLoadingPathCallback(smokeEmitterStr);
+		if (Wolf::NullableResourceNonOwner<ParticleEmitter> particleEmitter = entity->getComponent<ParticleEmitter>())
+		{
+			m_smokeEmitterComponent = particleEmitter;
+		}
+	}
+}
+
+void PlayerComponent::onGasCylinderChanged()
+{
+	if (!m_entity)
+		return;
+
+	if (static_cast<std::string>(m_gasCylinderParam).empty())
+	{
+		if (m_gasCylinderComponent)
+		{
+			(*m_gasCylinderComponent)->onPlayerRelease();
+		}
+		m_gasCylinderComponent.reset(nullptr);
+	}
+	else if (Wolf::NullableResourceNonOwner<GasCylinderComponent> gasCylinder = m_getEntityFromLoadingPathCallback(m_gasCylinderParam)->getComponent<GasCylinderComponent>())
 	{
 		m_gasCylinderComponent.reset(new Wolf::ResourceNonOwner<GasCylinderComponent>(gasCylinder));
+	}
+	else
+	{
+		Wolf::Debug::sendError("Entity linked to player component doesn't have a gas cylinder component");
+		m_gasCylinderComponent.reset(nullptr);
 	}
 }
 

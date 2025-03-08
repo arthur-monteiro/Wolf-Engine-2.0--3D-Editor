@@ -253,6 +253,17 @@ Wolf::AABB Entity::getAABB() const
 	return {};
 }
 
+Wolf::BoundingSphere Entity::getBoundingSphere() const
+{
+	if (m_modelComponent)
+	{
+		return (*m_modelComponent)->getBoundingSphere();
+	}
+	// TODO: add bounding sphere for all entities
+	//Wolf::Debug::sendWarning("Getting bounding sphere of entity which doesn't contain a model component");
+	return {};
+}
+
 bool Entity::hasComponent(const std::string& componentId) const
 {
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component,

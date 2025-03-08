@@ -10,6 +10,13 @@ layout (location = 8) in float inSize;
 
 #include "particleBuffer.glsl"
 
+layout(binding = 0, set = 5, std140) uniform readonly UniformBufferDisplay
+{
+	uint displayType;
+} ubDisplay;
+
+const uint DISPLAY_TYPE_LIGHTING = 6;
+
 vec2 computeTexCoords(in vec2 tileSize, in uint currentTileIdxU32)
 {
     return inTexCoords * tileSize + vec2(currentTileIdxU32 % emitterDrawInfo[inEmitterIdx].flipBookSizeX, currentTileIdxU32 / emitterDrawInfo[inEmitterIdx].flipBookSizeY) * tileSize;
@@ -37,33 +44,8 @@ float rand(vec2 co){
     return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-void main() 
+vec4 computeLighting(MaterialInfo firstMaterialInfo, MaterialInfo nextMaterialInfo, float currentTileIdx, float opacity)
 {
-    float opacityIdxFloat = inAge * OPACITY_VALUE_COUNT;
-    uint firstOpacityIdx = uint(trunc(opacityIdxFloat));
-    float lerpValue = opacityIdxFloat - float(firstOpacityIdx);
-
-    if (firstOpacityIdx == OPACITY_VALUE_COUNT - 1)
-    {
-        firstOpacityIdx--;
-        lerpValue = 1.0f;
-    }
-
-    float firstOpacity = emitterDrawInfo[inEmitterIdx].opacity[firstOpacityIdx];
-    float nextOpacity = emitterDrawInfo[inEmitterIdx].opacity[firstOpacityIdx + 1];
-
-    float opacity = mix(firstOpacity, nextOpacity, lerpValue);
-
-    uint materialIdx = emitterDrawInfo[inEmitterIdx].materialIdx;
-
-    vec2 tileSize = vec2(1.0f / emitterDrawInfo[inEmitterIdx].flipBookSizeX, 1.0f / emitterDrawInfo[inEmitterIdx].flipBookSizeY);
-    uint tileCount = emitterDrawInfo[inEmitterIdx].flipBookSizeX * emitterDrawInfo[inEmitterIdx].flipBookSizeY;
-    float currentTileIdx = inAge * tileCount;
-    uint currentTileIdxU32 = uint(currentTileIdx);
-
-    MaterialInfo firstMaterialInfo = fetchMaterial(computeTexCoords(tileSize, currentTileIdxU32), materialIdx, inTBN, vec3(0.0f) /* world pos (unused) */);
-    MaterialInfo nextMaterialInfo = fetchMaterial(computeTexCoords(tileSize, currentTileIdxU32 + 1), materialIdx, inTBN, vec3(0.0f) /* world pos (unused) */);
-
     if (firstMaterialInfo.shadingMode == 2) // 6 ways lighting
     {
         vec4 lightmap0 = mix(firstMaterialInfo.sixWaysLightmap0, nextMaterialInfo.sixWaysLightmap0, currentTileIdx - uint(currentTileIdx));
@@ -100,8 +82,7 @@ void main()
 
             if (minRayLength < 0)
             {
-                outColor = vec4(0.0);
-                return;
+                return vec4(0.0);
             }
             
             for (uint rayMarchStep = 0; rayMarchStep < RAY_MARCH_STEP_COUNT; ++rayMarchStep)
@@ -118,12 +99,47 @@ void main()
             accumulatedLighting += accumaledLightmap * sumShadows / float(RAY_MARCH_STEP_COUNT);
         }
 
-        outColor = vec4(accumulatedLighting.rrr, lightmap0.w * opacity);
+        return vec4(accumulatedLighting.rrr, lightmap0.w * opacity);
     }
     else
     {
         vec4 albedo = mix(firstMaterialInfo.albedo, nextMaterialInfo.albedo, currentTileIdx - uint(currentTileIdx));
 
-        outColor = vec4(albedo.rgb, albedo.w * opacity);
+        return vec4(albedo.rgb, albedo.w * opacity);
     }
+}
+
+void main() 
+{
+    float opacityIdxFloat = inAge * OPACITY_VALUE_COUNT;
+    uint firstOpacityIdx = uint(trunc(opacityIdxFloat));
+    float lerpValue = opacityIdxFloat - float(firstOpacityIdx);
+
+    if (firstOpacityIdx == OPACITY_VALUE_COUNT - 1)
+    {
+        firstOpacityIdx--;
+        lerpValue = 1.0f;
+    }
+
+    float firstOpacity = emitterDrawInfo[inEmitterIdx].opacity[firstOpacityIdx];
+    float nextOpacity = emitterDrawInfo[inEmitterIdx].opacity[firstOpacityIdx + 1];
+
+    float opacity = mix(firstOpacity, nextOpacity, lerpValue);
+
+    uint materialIdx = emitterDrawInfo[inEmitterIdx].materialIdx;
+
+    vec2 tileSize = vec2(1.0f / emitterDrawInfo[inEmitterIdx].flipBookSizeX, 1.0f / emitterDrawInfo[inEmitterIdx].flipBookSizeY);
+    uint tileCount = emitterDrawInfo[inEmitterIdx].flipBookSizeX * emitterDrawInfo[inEmitterIdx].flipBookSizeY;
+    float currentTileIdx = inAge * tileCount;
+    uint currentTileIdxU32 = uint(currentTileIdx);
+
+    MaterialInfo firstMaterialInfo = fetchMaterial(computeTexCoords(tileSize, currentTileIdxU32), materialIdx, inTBN, vec3(0.0f) /* world pos (unused) */);
+    MaterialInfo nextMaterialInfo = fetchMaterial(computeTexCoords(tileSize, currentTileIdxU32 + 1), materialIdx, inTBN, vec3(0.0f) /* world pos (unused) */);
+
+    vec4 litValue = computeLighting(firstMaterialInfo, nextMaterialInfo, currentTileIdx, opacity);
+
+    if (ubDisplay.displayType == DISPLAY_TYPE_LIGHTING)
+        outColor = litValue;
+    else
+        outColor = vec4(1.0f, 1.0f, 1.0f, litValue.w);
 }

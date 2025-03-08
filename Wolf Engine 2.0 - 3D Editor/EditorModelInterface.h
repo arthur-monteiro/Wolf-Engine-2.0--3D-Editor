@@ -31,6 +31,7 @@ public:
 	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 
 	virtual Wolf::AABB getAABB() const = 0;
+	virtual Wolf::BoundingSphere getBoundingSphere() const = 0;
 	virtual const glm::mat4& getTransform() const { return m_transform; }
 	glm::vec3 getPosition() const { return m_translationParam; }
 	glm::mat3 computeRotationMatrix() const;

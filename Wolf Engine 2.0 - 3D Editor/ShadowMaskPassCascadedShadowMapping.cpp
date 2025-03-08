@@ -28,15 +28,15 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 		Wolf::ShaderParser::MaterialFetchProcedure(), shaderCodeToAdd));
 
 	// Resource to compute shadow
-	m_outputComputeDescriptorSetLayoutGenerator.addImages(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 1); // input depth
-	m_outputComputeDescriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,                            1);
-	m_outputComputeDescriptorSetLayoutGenerator.addImages(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 2, CascadedShadowMapsPass::CASCADE_COUNT); // cascade depth images
-	m_outputComputeDescriptorSetLayoutGenerator.addSampler(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,                                  3);
-	m_outputComputeDescriptorSetLayoutGenerator.addCombinedImageSampler(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,                     4); // noise map
+	m_outputComputeDescriptorSetLayoutGenerator.addImages(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT, 0, 1); // input depth
+	m_outputComputeDescriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT,                            1);
+	m_outputComputeDescriptorSetLayoutGenerator.addImages(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT, 2, CascadedShadowMapsPass::CASCADE_COUNT); // cascade depth images
+	m_outputComputeDescriptorSetLayoutGenerator.addSampler(Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT,                                  3);
+	m_outputComputeDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT,                     4); // noise map
 	m_outputComputeDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_outputComputeDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	// Resource only for this pass
-	m_descriptorSetLayoutGenerator.addStorageImage(VK_SHADER_STAGE_COMPUTE_BIT, 0); // output mask
+	m_descriptorSetLayoutGenerator.addStorageImage(Wolf::ShaderStageFlagBits::COMPUTE, 0); // output mask
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(ShadowUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
@@ -82,7 +82,7 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 	m_outputComputeDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_outputComputeDescriptorSetLayout));
 	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
 
-	m_outputMaskDescriptorSetLayoutGenerator.addStorageImage(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+	m_outputMaskDescriptorSetLayoutGenerator.addStorageImage(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
 	m_outputMaskDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_outputMaskDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	m_outputMaskDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_outputMaskDescriptorSetLayout));
@@ -215,13 +215,14 @@ void ShadowMaskPassCascadedShadowMapping::createPipeline()
 
 	Wolf::ShaderCreateInfo computeShaderCreateInfo;
 	computeShaderCreateInfo.shaderCode = computeShaderCode;
-	computeShaderCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	computeShaderCreateInfo.stage = Wolf::ShaderStageFlagBits::COMPUTE;
 
 	std::vector<Wolf::ResourceReference<const Wolf::DescriptorSetLayout>> descriptorSetLayouts;
 	descriptorSetLayouts.reserve(3);
 	descriptorSetLayouts.emplace_back(m_outputComputeDescriptorSetLayout.createConstNonOwnerResource());
 	descriptorSetLayouts.emplace_back(m_descriptorSetLayout.createConstNonOwnerResource());
 	descriptorSetLayouts.emplace_back(Wolf::GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource());
+
 	m_pipeline.reset(Wolf::Pipeline::createComputePipeline(computeShaderCreateInfo, descriptorSetLayouts));
 }
 

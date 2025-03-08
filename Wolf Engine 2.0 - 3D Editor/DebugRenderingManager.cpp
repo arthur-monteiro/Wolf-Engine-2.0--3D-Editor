@@ -16,7 +16,7 @@ DebugRenderingManager::DebugRenderingManager()
 	// Lines
 	{
 		m_linesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
-		m_linesDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0); // transform
+		m_linesDescriptorSetLayoutGenerator->addUniformBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0); // transform
 
 		m_linesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_linesDescriptorSetLayoutGenerator->getDescriptorLayouts()));
 
@@ -26,9 +26,9 @@ DebugRenderingManager::DebugRenderingManager()
 
 		pipelineInfo.shaderInfos.resize(2);
 		pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/debug/lines.vert";
-		pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 		pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/debug/lines.frag";
-		pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 		// IA
 		DebugVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
@@ -118,55 +118,8 @@ DebugRenderingManager::DebugRenderingManager()
 
 	// Spheres
 	{
-		m_spheresDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
-		m_spheresDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-
-		m_spheresDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_spheresDescriptorSetLayoutGenerator->getDescriptorLayouts()));
-
-		m_spheresPipelineSet.reset(new Wolf::PipelineSet);
-
-		Wolf::PipelineSet::PipelineInfo pipelineInfo;
-
-		pipelineInfo.shaderInfos.resize(4);
-		pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/debug/sphere.vert";
-		pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-		pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/debug/sphere.tesc";
-		pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-		pipelineInfo.shaderInfos[2].shaderFilename = "Shaders/debug/sphere.tese";
-		pipelineInfo.shaderInfos[2].stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-		pipelineInfo.shaderInfos[3].shaderFilename = "Shaders/debug/sphere.frag";
-		pipelineInfo.shaderInfos[3].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-		// IA
-		DebugVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
-
-		pipelineInfo.vertexInputBindingDescriptions.resize(1);
-		DebugVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
-
-		pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
-		pipelineInfo.patchControlPoint = 4;
-		pipelineInfo.cullMode = VK_CULL_MODE_NONE;
-
-		// Resources
-		pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
-
-		// Color Blend
-		pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
-
-		// Dynamic states
-		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-
-		m_spheresPipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
-		const uint32_t pipelineIdx = m_spheresPipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
-		if (pipelineIdx != CommonPipelineIndices::PIPELINE_IDX_FORWARD)
-			Wolf::Debug::sendError("Unexpected pipeline idx");
-
-		m_spheresDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_spheresDescriptorSetLayout));
-
-		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_spheresDescriptorSetLayoutGenerator->getDescriptorLayouts());
-		m_spheresUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(SpheresUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-		descriptorSetGenerator.setBuffer(0, *m_spheresUniformBuffer);
-		m_spheresDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+		m_filledSphereData.init(Wolf::PolygonMode::FILL);
+		m_wiredSphereData.init(Wolf::PolygonMode::LINE);
 	}
 
 	// Rectangles
@@ -188,7 +141,7 @@ DebugRenderingManager::DebugRenderingManager()
 		m_rectangleMesh.reset(new Wolf::Mesh(rectangleVertices, rectangleIndices));
 
 		m_rectanglesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
-		m_rectanglesDescriptorSetLayoutGenerator->addUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0);
+		m_rectanglesDescriptorSetLayoutGenerator->addUniformBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0);
 
 		m_rectanglesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_rectanglesDescriptorSetLayoutGenerator->getDescriptorLayouts()));
 
@@ -198,9 +151,9 @@ DebugRenderingManager::DebugRenderingManager()
 
 		pipelineInfo.shaderInfos.resize(2);
 		pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/debug/rectangle.vert";
-		pipelineInfo.shaderInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 		pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/debug/rectangle.frag";
-		pipelineInfo.shaderInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 		// IA
 		DebugVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
@@ -239,7 +192,8 @@ void DebugRenderingManager::clearBeforeFrame()
 	for (uint32_t i = 0; i < m_customLinesInfoArrayCount; ++i)
 		m_customLinesInfoArray[i].mesh = m_cubeLineMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
 	m_customLinesInfoArrayCount = 0;
-	m_sphereCount = 0;
+	m_filledSphereData.clear();
+	m_wiredSphereData.clear();
 	m_rectanglesCount = 0;
 }
 
@@ -273,15 +227,12 @@ void DebugRenderingManager::addCustomGroupOfLines(const Wolf::ResourceNonOwner<W
 
 void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color)
 {
-	if (m_sphereCount >= MAX_SPHERE_COUNT)
-	{
-		Wolf::Debug::sendError("Max sphere count reached");
-		return;
-	}
+	m_filledSphereData.add(worldPos, radius, color);
+}
 
-	m_spheresData.worldPosAndRadius[m_sphereCount] = glm::vec4(worldPos, radius);
-	m_spheresData.colors[m_sphereCount] = glm::vec4(color, 1.0f);
-	m_sphereCount++;
+void DebugRenderingManager::addWiredSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color)
+{
+	m_wiredSphereData.add(worldPos, radius, color);
 }
 
 void DebugRenderingManager::addRectangle(const glm::mat4& transform)
@@ -327,16 +278,8 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 		renderMeshList->addTransientMesh(meshToRenderInfo);
 	}
 
-	if (m_sphereCount > 0)
-	{
-		m_spheresUniformBuffer->transferCPUMemory(&m_spheresData, sizeof(SpheresUBData));
-
-		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {m_cubeQuadMesh.createNonOwnerResource(), m_spheresPipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
-		meshToRenderInfo.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_spheresDescriptorSet.createConstNonOwnerResource(),
-			m_spheresDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
-
-		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_sphereCount);
-	}
+	m_filledSphereData.registerMeshes(renderMeshList, m_cubeQuadMesh);
+	m_wiredSphereData.registerMeshes(renderMeshList, m_cubeQuadMesh);
 
 	if (m_rectanglesCount > 0)
 	{
@@ -360,4 +303,90 @@ DebugRenderingManager::PerGroupOfLines::PerGroupOfLines(const Wolf::ResourceNonO
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(linesDescriptorSetLayoutGenerator->getDescriptorLayouts());
 	descriptorSetGenerator.setBuffer(0, *linesUniformBuffer);
 	linesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+}
+
+void DebugRenderingManager::PerSpherePipeline::init(Wolf::PolygonMode polygonMode)
+{
+	m_descriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
+	m_descriptorSetLayoutGenerator->addUniformBuffer(Wolf::ShaderStageFlagBits::TESSELLATION_EVALUATION | Wolf::ShaderStageFlagBits::FRAGMENT, 0);
+
+	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator->getDescriptorLayouts()));
+
+	m_pipelineSet.reset(new Wolf::PipelineSet);
+
+	Wolf::PipelineSet::PipelineInfo pipelineInfo;
+
+	pipelineInfo.shaderInfos.resize(4);
+	pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/debug/sphere.vert";
+	pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
+	pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/debug/sphere.tesc";
+	pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::TESSELLATION_CONTROL;
+	pipelineInfo.shaderInfos[2].shaderFilename = "Shaders/debug/sphere.tese";
+	pipelineInfo.shaderInfos[2].stage = Wolf::ShaderStageFlagBits::TESSELLATION_EVALUATION;
+	pipelineInfo.shaderInfos[3].shaderFilename = "Shaders/debug/sphere.frag";
+	pipelineInfo.shaderInfos[3].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
+
+	// IA
+	DebugVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+
+	pipelineInfo.vertexInputBindingDescriptions.resize(1);
+	DebugVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+
+	pipelineInfo.polygonMode = polygonMode;
+	pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+	pipelineInfo.patchControlPoint = 4;
+	pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+
+	// Resources
+	pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
+
+	// Color Blend
+	pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
+
+	// Dynamic states
+	pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+
+	m_pipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
+	const uint32_t pipelineIdx = m_pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
+	if (pipelineIdx != CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+		Wolf::Debug::sendError("Unexpected pipeline idx");
+
+	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
+
+	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator->getDescriptorLayouts());
+	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(SpheresUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	descriptorSetGenerator.setBuffer(0, *m_uniformBuffer);
+	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+}
+
+void DebugRenderingManager::PerSpherePipeline::add(const glm::vec3& worldPos, float radius, const glm::vec3& color)
+{
+	if (m_count >= MAX_SPHERE_COUNT)
+	{
+		Wolf::Debug::sendError("Max sphere count reached");
+		return;
+	}
+
+	m_uniformData.worldPosAndRadius[m_count] = glm::vec4(worldPos, radius);
+	m_uniformData.colors[m_count] = glm::vec4(color, 1.0f);
+	m_count++;
+}
+
+void DebugRenderingManager::PerSpherePipeline::registerMeshes(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList, Wolf::ResourceUniqueOwner<Wolf::Mesh>& cubeQuadMesh)
+{
+	if (m_count > 0)
+	{
+		m_uniformBuffer->transferCPUMemory(&m_uniformData, sizeof(SpheresUBData));
+
+		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {cubeQuadMesh.createNonOwnerResource(), m_pipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
+		meshToRenderInfo.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(),
+			m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
+
+		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_count);
+	}
+}
+
+void DebugRenderingManager::PerSpherePipeline::clear()
+{
+	m_count = 0;
 }

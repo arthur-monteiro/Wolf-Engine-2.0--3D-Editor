@@ -49,3 +49,14 @@ void EntityContainer::clear()
 	m_currentEntities.clear();
 	m_newEntities.clear();
 }
+
+void EntityContainer::findEntitiesWithCenterInSphere(const Wolf::BoundingSphere& sphere, std::vector<Wolf::ResourceNonOwner<Entity>>& out)
+{
+	for (Wolf::ResourceUniqueOwner<Entity>& entity : m_currentEntities)
+	{
+		if (glm::distance(entity->getBoundingSphere().getCenter(), sphere.getCenter()) < sphere.getRadius())
+		{
+			out.push_back(entity.createNonOwnerResource());
+		}
+	}
+}

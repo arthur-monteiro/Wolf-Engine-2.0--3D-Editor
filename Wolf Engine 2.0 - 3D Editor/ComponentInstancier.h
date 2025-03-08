@@ -9,6 +9,7 @@
 #include "ContaminationEmitter.h"
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
+#include "EntityContainer.h"
 #include "GasCylinderComponent.h"
 #include "MaterialComponent.h"
 #include "TextureSetComponent.h"
@@ -27,7 +28,8 @@ class ComponentInstancier
 public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
-		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager);
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
+		const Wolf::ResourceNonOwner<EntityContainer>& entityContainer);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -41,6 +43,7 @@ private:
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
+	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
 
 	struct ComponentInfo
 	{
@@ -84,7 +87,7 @@ private:
 			PlayerComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback, m_entityContainer));
 			}
 		},
 		ComponentInfo
@@ -156,7 +159,7 @@ private:
 			GasCylinderComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new GasCylinderComponent());
+				return static_cast<ComponentInterface*>(new GasCylinderComponent(m_physicsManager));
 			}
 		}
 	};

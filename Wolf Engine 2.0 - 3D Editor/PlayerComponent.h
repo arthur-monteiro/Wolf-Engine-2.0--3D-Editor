@@ -4,7 +4,9 @@
 
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
+#include "EntityContainer.h"
 #include "GasCylinderComponent.h"
+#include "ParticleEmitter.h"
 
 class AnimatedModel;
 
@@ -14,7 +16,7 @@ public:
 	static inline std::string ID = "playerComponent";
 	std::string getId() const override { return ID; }
 
-	PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback);
+	PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -36,6 +38,7 @@ private:
 
 	inline static const std::string TAB = "Player component";
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
 
 	EditorParamFloat m_speed = EditorParamFloat("Speed", TAB, "Movement", 1.0f, 10.0f);
 
@@ -45,10 +48,13 @@ private:
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_contaminationEmitterEntity;
 	void onContaminationEmitterChanged();
 	EditorParamString m_contaminationEmitterParam = EditorParamString("Contamination Emitter", TAB, "Shoot", [this]() { onContaminationEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
+	Wolf::NullableResourceNonOwner<ParticleEmitter> m_smokeEmitterComponent;
+	void onSmokeEmitterChanged();
+	EditorParamString m_smokeEmitterParam = EditorParamString("Smoke Emitter", TAB, "Shoot", [this]() { onSmokeEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
 	std::unique_ptr<Wolf::ResourceNonOwner<GasCylinderComponent>> m_gasCylinderComponent;
 	void onGasCylinderChanged();
-	bool m_needCheckForNewGasCylinder = false;
+	bool m_needCheckForNewLinkedEntities = false;
 	EditorParamString m_gasCylinderParam = EditorParamString("Gas cylinder", TAB, "Gas cylinder", [this]() { onGasCylinderChanged(); }, EditorParamString::ParamStringType::ENTITY);
 	EditorParamEnum m_gasCylinderTopBone = EditorParamEnum({}, "Top bone", TAB, "Gas cylinder");
 	EditorParamVector3 m_gasCylinderTopBoneOffset = EditorParamVector3("Top bone offset", TAB, "Gas cylinder", -1.0f, 1.0f);
@@ -62,7 +68,7 @@ private:
 	EditorParamEnum m_animationWalk = EditorParamEnum({ "Default" }, "Walk animation", TAB, "Animations");
 	EditorParamEnum m_animationRun = EditorParamEnum({ "Default" }, "Run animation", TAB, "Animations");
 
-	std::array<EditorParamInterface*, 14> m_editorParams =
+	std::array<EditorParamInterface*, 15> m_editorParams =
 	{
 		&m_speed,
 		&m_gamepadIdx,
@@ -70,6 +76,7 @@ private:
 		&m_shootAngle,
 		&m_gunPositionOffset,
 		&m_contaminationEmitterParam,
+		&m_smokeEmitterParam,
 		&m_animationIdle,
 		&m_animationWalk,
 		&m_animationRun,
@@ -88,6 +95,9 @@ private:
 	glm::vec3 getGunPosition() const;
 	bool canShoot() const;
 	bool isShooting() const;
+
+	// Gas cylinder management
+	bool m_isWaitingForGasCylinderButtonRelease = false;
 
 	// Debug
 	void buildShootDebugMesh();

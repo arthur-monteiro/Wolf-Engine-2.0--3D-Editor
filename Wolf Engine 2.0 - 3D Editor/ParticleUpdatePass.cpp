@@ -20,9 +20,9 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(UniformBufferData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 	createNoiseBuffer();
 
-	m_descriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 0);
-	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 1);
-	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 2);
+	m_descriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 0);
+	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 1);
+	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 2);
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
@@ -209,7 +209,7 @@ void ParticleUpdatePass::addEmitterInfoUpdate(const ParticleEmitter* emitter, ui
 void ParticleUpdatePass::createPipeline()
 {
 	Wolf::ShaderCreateInfo computeShaderInfo;
-	computeShaderInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	computeShaderInfo.stage = Wolf::ShaderStageFlagBits::COMPUTE;
 	m_computeShaderParser->readCompiledShader(computeShaderInfo.shaderCode);
 
 	std::vector<Wolf::ResourceReference<const Wolf::DescriptorSetLayout>> descriptorSetLayouts = { m_descriptorSetLayout.createConstNonOwnerResource() };

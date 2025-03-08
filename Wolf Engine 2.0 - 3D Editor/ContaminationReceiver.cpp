@@ -56,7 +56,7 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<DrawManager::DrawMes
 						{
 							for (Wolf::PipelineSet::PipelineInfo::ShaderInfo& shaderInfo : newPipelineInfo.shaderInfos)
 							{
-								if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+								if (shaderInfo.stage == Wolf::ShaderStageFlagBits::FRAGMENT)
 								{
 									shaderInfo.materialFetchProcedure.codeString = "";
 

@@ -28,8 +28,8 @@ ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<Renderin
 	m_contaminationIdsImage.reset(Wolf::Image::createImage(createImageInfo));
 	m_contaminationIdsImage->setImageLayout(Wolf::Image::SampledInFragmentShader());
 
-	m_descriptorSetLayoutGenerator.addCombinedImageSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-	m_descriptorSetLayoutGenerator.addStorageBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 1);
+	m_descriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
+	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 1);
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
@@ -157,7 +157,7 @@ void ContaminationEmitter::ContaminationMaterial::updateBeforeFrame(const Wolf::
 {
 	if (m_materialEntity && !m_materialNotificationRegistered)
 	{
-		if (const Wolf::ResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
+		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
 		{
 			materialComponent->subscribe(this, [this]() { notifySubscribers(); });
 			m_materialNotificationRegistered = true;
@@ -191,7 +191,7 @@ uint32_t ContaminationEmitter::ContaminationMaterial::getMaterialIdx() const
 {
 	if (m_materialEntity)
 	{
-		if (const Wolf::ResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
+		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
 		{
 			return materialComponent->getMaterialIdx();
 		}

@@ -9,7 +9,7 @@ public:
 	static inline std::string ID = "gasCylinderComponent";
 	std::string getId() const override { return ID; }
 
-	GasCylinderComponent();
+	GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -26,9 +26,11 @@ public:
 	bool isEmpty() const { return m_currentStorage == 0.0f; }
 	void addShootRequest(const Wolf::Timer& globalTimer);
 	void setLinkPositions(const glm::vec3& topPos, const glm::vec3& botPos);
+	void onPlayerRelease(); // called when the player is not more linked to the gas cylinder
 
 private:
 	inline static const std::string TAB = "Gas cylinder";
+	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
 
 	EditorParamUInt m_maxStorage = EditorParamUInt("Max storage", TAB, "Gameplay", 1, 1000);
 	EditorParamFloat m_currentStorage = EditorParamFloat("Current storage", TAB, "Gameplay", 0.0f, 1.0f);
@@ -59,8 +61,5 @@ private:
 		glm::vec2 padding;
 	};
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_uniformBuffer;
-
-	glm::mat4 m_forcedTransform;
-	bool m_usedForcedTransform = false;
 };
 

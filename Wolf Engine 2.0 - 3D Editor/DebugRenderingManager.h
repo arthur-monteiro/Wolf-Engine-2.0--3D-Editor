@@ -60,6 +60,7 @@ public:
 	void addAABB(const Wolf::AABB& box);
 	void addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data);
 	void addSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color);
+	void addWiredSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color);
 	void addRectangle(const glm::mat4& transform);
 
 	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
@@ -94,19 +95,32 @@ private:
 	std::vector<PerGroupOfLines> m_customLinesInfoArray;
 
 	// Spheres
-	Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_spheresPipelineSet;
-	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_spheresDescriptorSetLayoutGenerator;
-	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_spheresDescriptorSetLayout;
-	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_spheresDescriptorSet;
 	static constexpr uint32_t MAX_SPHERE_COUNT = 128;
 	struct SpheresUBData
 	{
 		glm::vec4 worldPosAndRadius[MAX_SPHERE_COUNT];
 		glm::vec4 colors[MAX_SPHERE_COUNT];
 	};
-	SpheresUBData m_spheresData;
-	uint32_t m_sphereCount = 0;
-	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_spheresUniformBuffer;
+
+	class PerSpherePipeline
+	{
+	public:
+		void init(Wolf::PolygonMode polygonMode);
+		void add(const glm::vec3& worldPos, float radius, const glm::vec3& color);
+		void registerMeshes(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList, Wolf::ResourceUniqueOwner<Wolf::Mesh>& cubeQuadMesh);
+		void clear();
+
+	private:
+		Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_pipelineSet;
+		std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_descriptorSetLayoutGenerator;
+		Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
+		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
+		SpheresUBData m_uniformData;
+		uint32_t m_count = 0;
+		Wolf::ResourceUniqueOwner<Wolf::Buffer> m_uniformBuffer;
+	};
+	PerSpherePipeline m_filledSphereData;
+	PerSpherePipeline m_wiredSphereData;
 
 	// Rectangles
 	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_rectangleMesh;

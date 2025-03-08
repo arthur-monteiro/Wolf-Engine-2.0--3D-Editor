@@ -9,9 +9,9 @@
 #include "ModelLoader.h"
 #include "StaticModel.h"
 
-GasCylinderComponent::GasCylinderComponent()
+GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager) : m_physicsManager(physicsManager)
 {
-	m_descriptorSetLayoutGenerator.addUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+	m_descriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
@@ -51,9 +51,9 @@ void GasCylinderComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 	uniformData.color = static_cast<glm::vec3>(m_color);
 	uniformData.currentValue = m_currentStorage;
 
-	Wolf::AABB aabb = m_entity->getAABB() * m_forcedTransform;
-	uniformData.minY = aabb.getMin().y;
-	uniformData.maxY = aabb.getMax().y;
+	Wolf::BoundingSphere boundingSphere = m_entity->getBoundingSphere();
+	uniformData.minY = boundingSphere.getCenter().y - boundingSphere.getRadius();
+	uniformData.maxY = boundingSphere.getCenter().y + boundingSphere.getRadius();
 
 	m_uniformBuffer->transferCPUMemory(&uniformData, sizeof(UniformData), 0);
 }
@@ -80,7 +80,7 @@ void GasCylinderComponent::alterMeshesToRender(std::vector<DrawManager::DrawMesh
 				{
 					for (Wolf::PipelineSet::PipelineInfo::ShaderInfo& shaderInfo : newPipelineInfo.shaderInfos)
 					{
-						if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+						if (shaderInfo.stage == Wolf::ShaderStageFlagBits::FRAGMENT)
 						{
 							shaderInfo.shaderFilename = "Shaders/gasCylinder/shader.frag";
 						}
@@ -93,26 +93,14 @@ void GasCylinderComponent::alterMeshesToRender(std::vector<DrawManager::DrawMesh
 		meshToRender.pipelineSet = replacePipelineSet.createConstNonOwnerResource();
 		meshToRender.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), 
 			DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
-
-		if (m_usedForcedTransform)
-		{
-			glm::vec3 scale;
-			glm::quat quatRotation;
-			glm::vec3 translation;
-			glm::vec3 skew;
-			glm::vec4 perspective;
-			glm::decompose(drawMeshInfo.instanceData.transform, scale, quatRotation, translation, skew, perspective);
-
-			drawMeshInfo.instanceData.transform = glm::scale(m_forcedTransform, scale);
-		}
 	}
 }
 
 void GasCylinderComponent::addShootRequest(const Wolf::Timer& globalTimer)
 {
-	static constexpr uint32_t COST_PER_FRAME = 1; // TODO: make it time based instead of per frame
-	int32_t currentTotalStorage = static_cast<int32_t>(static_cast<float>(m_maxStorage) * m_currentStorage);
-	currentTotalStorage -= COST_PER_FRAME;
+	static constexpr float COST_PER_MS = 1.0f / 7.0f;
+	float currentTotalStorage = static_cast<float>(static_cast<float>(m_maxStorage) * m_currentStorage);
+	currentTotalStorage -= static_cast<float>(globalTimer.getElapsedTimeSinceLastUpdateInMs()) * COST_PER_MS;
 	if (currentTotalStorage < 0)
 		currentTotalStorage = 0;
 	m_currentStorage = static_cast<float>(currentTotalStorage) / static_cast<float>(m_maxStorage);
@@ -120,8 +108,25 @@ void GasCylinderComponent::addShootRequest(const Wolf::Timer& globalTimer)
 
 void GasCylinderComponent::setLinkPositions(const glm::vec3& topPos, const glm::vec3& botPos)
 {
-	computeTransformFromTwoPoints(botPos, topPos, m_forcedTransform);
-	m_usedForcedTransform = true;
+	glm::vec3 t, r;
+
+	computeTransformFromTwoPoints(botPos, topPos, t, r);
+	m_entity->setPosition(t);
+	m_entity->setRotation(r);
 
 	notifySubscribers();
+}
+
+void GasCylinderComponent::onPlayerRelease()
+{
+	Wolf::Physics::PhysicsManager::RayCastResult rayCastResult = m_physicsManager->rayCastClosestHit(m_entity->getPosition(), m_entity->getPosition() - glm::vec3(0.0f, 10.0f, 0.0f));
+	if (!rayCastResult.collision)
+	{
+		Wolf::Debug::sendError("Gas cylinder didn't find surface to drop on");
+	}
+	else
+	{
+		m_entity->setPosition(rayCastResult.hitPoint + m_entity->getBoundingSphere().getRadius() / 2.0f);
+		m_entity->setRotation(glm::vec3(0.0f));
+	}
 }

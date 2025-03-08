@@ -12,7 +12,6 @@
 
 #include "MaterialListFakeEntity.h"
 
-enum class BrowseToFileOption;
 using namespace Wolf;
 
 SystemManager::SystemManager()
@@ -50,7 +49,8 @@ SystemManager::SystemManager()
 		},
 		m_configuration.createNonOwnerResource(),
 		m_resourceManager.createNonOwnerResource(),
-		m_wolfInstance->getPhysicsManager()));
+		m_wolfInstance->getPhysicsManager(),
+		m_entityContainer.createNonOwnerResource()));
 	
 	if (!m_configuration->getDefaultScene().empty())
 	{
@@ -86,9 +86,14 @@ void SystemManager::run()
 		FrameMark;
 	}
 
+	m_wolfInstance->waitIdle();
+
 	m_renderer->clear();
 	m_wolfInstance->getRenderMeshList()->clear();
-	m_wolfInstance->waitIdle();
+	m_drawManager->clear();
+	m_debugRenderingManager->clearBeforeFrame();
+	m_selectedEntity.reset(nullptr);
+	m_entityContainer->clear();
 }
 
 void SystemManager::createWolfInstance()
@@ -630,7 +635,12 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	if (m_selectedEntity && (*m_selectedEntity)->hasModelComponent())
-		m_debugRenderingManager->addAABB((*m_selectedEntity)->getAABB());
+	{
+		//m_debugRenderingManager->addAABB((*m_selectedEntity)->getAABB());
+
+		Wolf::BoundingSphere boundingSphere = (*m_selectedEntity)->getBoundingSphere();
+		m_debugRenderingManager->addWiredSphere(boundingSphere.getCenter(), boundingSphere.getRadius(), glm::vec3(1.0f));
+	}
 
 	m_resourceManager->updateBeforeFrame();
 

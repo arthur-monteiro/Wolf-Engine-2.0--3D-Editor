@@ -29,6 +29,7 @@ public:
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
 	Wolf::AABB getAABB() const override;
+	Wolf::BoundingSphere getBoundingSphere() const override;
 	std::string getTypeString() override { return "staticMesh"; }
 
 	bool requiresInputs() const override { return false; }

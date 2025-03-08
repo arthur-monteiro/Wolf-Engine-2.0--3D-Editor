@@ -63,7 +63,7 @@ void computeTransform(const glm::vec3& scale, const glm::vec3& rotation, const g
 	outTransform = glm::scale(outTransform, static_cast<glm::vec3>(scale));
 }
 
-void computeTransformFromTwoPoints(const glm::vec3& p0, const glm::vec3& p1, glm::mat4& outTransform)
+void computeTransformFromTwoPoints(const glm::vec3& p0, const glm::vec3& p1, glm::vec3& outTranslation, glm::vec3& outRotation)
 {
 	glm::vec3 d = glm::normalize(p1 - p0);
 
@@ -74,7 +74,11 @@ void computeTransformFromTwoPoints(const glm::vec3& p0, const glm::vec3& p1, glm
 		beta = glm::pi<float>() - beta;
 	}
 
-	glm::mat3 rx = glm::mat3(1, 0, 0,
+	outRotation = glm::vec3(alpha, 0.0f, -beta);
+	outTranslation = p0;
+
+	// Re-enable to compute directly the transform
+	/*glm::mat3 rx = glm::mat3(1, 0, 0,
 		0, glm::cos(alpha), glm::sin(alpha),
 		0, -glm::sin(alpha), glm::cos(alpha));
 
@@ -82,7 +86,6 @@ void computeTransformFromTwoPoints(const glm::vec3& p0, const glm::vec3& p1, glm
 		-glm::sin(beta), glm::cos(beta), 0,
 		0, 0, 1);
 
-	glm::mat4 t = glm::translate(glm::mat4(1.0f), p0);
-
-	outTransform = t * glm::mat4(glm::transpose(rz * rx));
+	glm::mat4 t = glm::translate(glm::mat4(1.0f), p0);*/
+	//outTransform = t * glm::mat4(glm::transpose(rz * rx));
 }

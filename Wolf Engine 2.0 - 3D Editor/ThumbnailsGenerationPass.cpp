@@ -65,9 +65,9 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 
 	pipelineCreateInfo.shaderCreateInfos.resize(2);
 	m_vertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);
-	pipelineCreateInfo.shaderCreateInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+	pipelineCreateInfo.shaderCreateInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 	m_fragmentShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[1].shaderCode);
-	pipelineCreateInfo.shaderCreateInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pipelineCreateInfo.shaderCreateInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 	// IA
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
