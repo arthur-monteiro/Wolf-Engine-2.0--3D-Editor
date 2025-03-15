@@ -180,14 +180,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;TRACY_ENABLE;TRACY_ON_DEMAND;RESOURCE_DEBUG;RESOURCE_TRACKING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Common;..\..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Public;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GifEncoder\egif;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Common;..\..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Public;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\x64\Debug;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Lib\Windows\x64\Debug\VS2017;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\lib-vc2019;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Lib;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Wolf Engine\lib;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;LibOVR.lib;UltralightCore.lib;Ultralight.lib;WebCore.lib;AppCore.lib;Engine Core.lib;Common.lib;Graphic API Broker.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;LibOVR.lib;UltralightCore.lib;Ultralight.lib;WebCore.lib;AppCore.lib;Engine Core.lib;Common.lib;Graphic API Broker.lib;GifEncoder.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - No debug resource|x64'">
@@ -244,6 +244,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AnimatedModel.cpp" />
+    <ClCompile Include="AnimationHelper.cpp" />
     <ClCompile Include="CascadedShadowMapsPass.cpp" />
     <ClCompile Include="ComponentInstancier.cpp" />
     <ClCompile Include="ComponentInterface.cpp" />
@@ -292,6 +293,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AnimatedModel.h" />
+    <ClInclude Include="AnimationHelper.h" />
     <ClInclude Include="CascadedShadowMapsPass.h" />
     <ClInclude Include="CommonLayouts.h" />
     <ClInclude Include="ComponentInstancier.h" />

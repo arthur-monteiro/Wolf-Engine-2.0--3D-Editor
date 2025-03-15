@@ -26,7 +26,6 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 
 	auto findParamObject = [&root, paramCount](const std::string& paramName, const std::string& paramCategory)
 		{
-			uint32_t paramFoundCount = 0;
 			for (uint32_t i = 0; i < paramCount; ++i)
 			{
 				Wolf::JSONReader::JSONObjectInterface* paramObject = root->getArrayObjectItem("params", i);

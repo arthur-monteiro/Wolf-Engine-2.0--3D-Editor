@@ -45,9 +45,9 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 	// Noise
 	Wolf::CreateImageInfo noiseImageCreateInfo;
 	noiseImageCreateInfo.extent = { NOISE_TEXTURE_SIZE_PER_SIDE, NOISE_TEXTURE_SIZE_PER_SIDE, NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE };
-	noiseImageCreateInfo.format = VK_FORMAT_R32G32_SFLOAT;
+	noiseImageCreateInfo.format = Wolf::Format::R32G32_SFLOAT;
 	noiseImageCreateInfo.mipLevelCount = 1;
-	noiseImageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	noiseImageCreateInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
 	m_noiseImage.reset(Wolf::Image::createImage(noiseImageCreateInfo));
 
 	std::vector<float> noiseData(static_cast<size_t>(NOISE_TEXTURE_SIZE_PER_SIDE) * NOISE_TEXTURE_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * 2u);
@@ -150,7 +150,7 @@ void ShadowMaskPassCascadedShadowMapping::record(const Wolf::RecordContext& cont
 	m_commandBuffer->bindDescriptorSet(camera->getDescriptorSet(), 2, *m_pipeline);
 	m_commandBuffer->bindPipeline(m_pipeline.get());
 
-	constexpr VkExtent3D dispatchGroups = { 16, 16, 1 };
+	constexpr Wolf::Extent3D dispatchGroups = { 16, 16, 1 };
 	const uint32_t groupSizeX = m_outputMask->getExtent().width % dispatchGroups.width != 0 ? m_outputMask->getExtent().width / dispatchGroups.width + 1 : m_outputMask->getExtent().width / dispatchGroups.width;
 	const uint32_t groupSizeY = m_outputMask->getExtent().height % dispatchGroups.height != 0 ? m_outputMask->getExtent().height / dispatchGroups.height + 1 : m_outputMask->getExtent().height / dispatchGroups.height;
 	m_commandBuffer->dispatch(groupSizeX, groupSizeY, dispatchGroups.depth);
@@ -199,10 +199,10 @@ void ShadowMaskPassCascadedShadowMapping::createOutputImages(uint32_t width, uin
 {
 	Wolf::CreateImageInfo createImageInfo;
 	createImageInfo.extent = { width, height, 1 };
-	createImageInfo.format = VK_FORMAT_R32G32_SFLOAT;
+	createImageInfo.format = Wolf::Format::R32G32_SFLOAT;
 	createImageInfo.mipLevelCount = 1;
 	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-	createImageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	createImageInfo.usage = Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::SAMPLED;
 	m_outputMask.reset(Wolf::Image::createImage(createImageInfo));
 	m_outputMask->setImageLayout({ VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
 }

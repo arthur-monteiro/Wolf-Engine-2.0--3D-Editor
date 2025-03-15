@@ -46,18 +46,25 @@ void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 	if (isShooting())
 	{
 		// Send info to contamination emitter to update the 3D texture
-		if (m_contaminationEmitterEntity)
+		uint64_t elapsedTimeSinceLastRequest = globalTimer.getCurrentCachedMillisecondsDuration() - m_lastShootRequestSentToContaminationEmitterTimer;
+		static constexpr uint64_t MIN_DELAY_MS = 250;
+		if (elapsedTimeSinceLastRequest > MIN_DELAY_MS)
 		{
-			if (const Wolf::ResourceNonOwner<ContaminationEmitter> contaminationEmitterComponent = (*m_contaminationEmitterEntity)->getComponent<ContaminationEmitter>())
+			if (m_contaminationEmitterEntity)
 			{
-				contaminationEmitterComponent->addShootRequest(ShootRequest{ getGunPosition(), glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY)), m_shootLength, glm::radians(static_cast<float>(m_shootAngle)) });
+				if (const Wolf::ResourceNonOwner<ContaminationEmitter> contaminationEmitterComponent = (*m_contaminationEmitterEntity)->getComponent<ContaminationEmitter>())
+				{
+					contaminationEmitterComponent->addShootRequest(ShootRequest{ getGunPosition(), glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY)), m_shootLength, glm::radians(static_cast<float>(m_shootAngle)),
+					static_cast<uint32_t>(globalTimer.getCurrentCachedMillisecondsDuration()) });
+				}
 			}
+			m_lastShootRequestSentToContaminationEmitterTimer = globalTimer.getCurrentCachedMillisecondsDuration();
 		}
 
 		// Send info to gas cylinder to update current storage
 		if (m_gasCylinderComponent)
 		{
-			(*m_gasCylinderComponent)->addShootRequest(globalTimer);
+			m_gasCylinderComponent->addShootRequest(globalTimer);
 		}
 
 		m_currentShootX = m_currentShootY = 0.0f; // reset to avoid sending the info twice
@@ -74,7 +81,7 @@ void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		glm::vec3 topBoneOffset = modelTransform * m_gasCylinderTopBoneOffset;
 		glm::vec3 botBoneOffset = modelTransform * m_gasCylinderBottomBoneOffset;
 
-		(*m_gasCylinderComponent)->setLinkPositions(topBonePosition + topBoneOffset, botBonePosition + botBoneOffset);
+		m_gasCylinderComponent->setLinkPositions(topBonePosition + topBoneOffset, botBonePosition + botBoneOffset);
 	}
 }
 
@@ -168,6 +175,7 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 		{
 			m_smokeEmitterComponent->requestEmission();
 			m_smokeEmitterComponent->setSpawnPosition(getGunPosition());
+			m_smokeEmitterComponent->setColor(m_gasCylinderComponent->getColor());
 
 			const glm::vec3 shootDirection = glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY));
 			m_smokeEmitterComponent->setDirection(shootDirection);
@@ -275,6 +283,10 @@ void PlayerComponent::onSmokeEmitterChanged()
 			m_smokeEmitterComponent = particleEmitter;
 		}
 	}
+	else
+	{
+		m_smokeEmitterComponent = Wolf::NullableResourceNonOwner<ParticleEmitter>();
+	}
 }
 
 void PlayerComponent::onGasCylinderChanged()
@@ -286,18 +298,18 @@ void PlayerComponent::onGasCylinderChanged()
 	{
 		if (m_gasCylinderComponent)
 		{
-			(*m_gasCylinderComponent)->onPlayerRelease();
+			m_gasCylinderComponent->onPlayerRelease();
 		}
-		m_gasCylinderComponent.reset(nullptr);
+		m_gasCylinderComponent = Wolf::NullableResourceNonOwner<GasCylinderComponent>();
 	}
 	else if (Wolf::NullableResourceNonOwner<GasCylinderComponent> gasCylinder = m_getEntityFromLoadingPathCallback(m_gasCylinderParam)->getComponent<GasCylinderComponent>())
 	{
-		m_gasCylinderComponent.reset(new Wolf::ResourceNonOwner<GasCylinderComponent>(gasCylinder));
+		m_gasCylinderComponent = gasCylinder;
 	}
 	else
 	{
 		Wolf::Debug::sendError("Entity linked to player component doesn't have a gas cylinder component");
-		m_gasCylinderComponent.reset(nullptr);
+		m_gasCylinderComponent = Wolf::NullableResourceNonOwner<GasCylinderComponent>();
 	}
 }
 
@@ -308,7 +320,7 @@ glm::vec3 PlayerComponent::getGunPosition() const
 
 bool PlayerComponent::canShoot() const
 {
-	return m_gasCylinderComponent != nullptr && !(*m_gasCylinderComponent)->isEmpty();
+	return m_gasCylinderComponent && !m_gasCylinderComponent->isEmpty();
 }
 
 bool PlayerComponent::isShooting() const

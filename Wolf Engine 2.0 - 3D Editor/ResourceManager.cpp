@@ -9,10 +9,11 @@
 #include "MeshResourceEditor.h"
 #include "RenderMeshList.h"
 
-ResourceManager::ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, 
-                                 const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
-	: m_addResourceToUICallback(addResourceToUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration), m_materialsGPUManager(materialsGPUManager),
-	m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass())
+ResourceManager::ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback, 
+	const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
+	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+	: m_addResourceToUICallback(addResourceToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration),
+      m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass())
 {
 }
 
@@ -101,18 +102,27 @@ ResourceManager::ResourceId ResourceManager::addModel(const std::string& loading
 	}
 
 	std::string iconFullPath = computeIconPath(loadingPath);
+	bool iconFileExists = false;
 	if (const std::ifstream iconFile(iconFullPath.c_str()); iconFile.good())
 	{
 		iconFullPath = iconFullPath.substr(3, iconFullPath.size()); // remove "UI/"
+		iconFileExists = true;
 	}
 	else
 	{
-		iconFullPath = "media/resourceIcon/no_icon.png";
+		if (loadingPath.substr(loadingPath.find_last_of('.') + 1) == "dae")
+		{
+			iconFullPath = "media/resourceIcon/no_icon.gif";
+		}
+		else
+		{
+			iconFullPath = "media/resourceIcon/no_icon.png";
+		}
 	}
 
-	m_meshes.emplace_back(new Mesh(loadingPath, iconFullPath == "media/resourceIcon/no_icon.png"));
+	ResourceId resourceId = static_cast<uint32_t>(m_meshes.size()) + MESH_RESOURCE_IDX_OFFSET;
 
-	ResourceId resourceId = static_cast<uint32_t>(m_meshes.size()) - 1 + MESH_RESOURCE_IDX_OFFSET;
+	m_meshes.emplace_back(new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback));
 	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath, resourceId);
 
 	return resourceId;
@@ -159,7 +169,7 @@ std::string ResourceManager::computeModelFullIdentifier(const std::string& loadi
 
 std::string ResourceManager::computeIconPath(const std::string& loadingPath)
 {
-	return "UI/media/resourceIcon/" + computeModelFullIdentifier(loadingPath) + ".png";
+	return "UI/media/resourceIcon/" + computeModelFullIdentifier(loadingPath) + ((loadingPath.substr(loadingPath.find_last_of('.') + 1) == "dae") ? ".gif" : ".png");
 }
 
 MeshResourceEditor* ResourceManager::findMeshResourceEditorInResourceEditionToSave(ResourceId resourceId)
@@ -215,7 +225,8 @@ void ResourceManager::onResourceEditionChanged(ResourceId resourceId, MeshResour
 	m_meshes[resourceId]->onChanged();
 }
 
-ResourceManager::ResourceInterface::ResourceInterface(std::string loadingPath) : m_loadingPath(std::move(loadingPath))
+ResourceManager::ResourceInterface::ResourceInterface(std::string loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback) 
+	: m_loadingPath(std::move(loadingPath)), m_resourceId(resourceId), m_updateResourceInUICallback(updateResourceInUICallback)
 {
 }
 
@@ -237,7 +248,8 @@ void ResourceManager::ResourceInterface::onChanged()
 	notifySubscribers();
 }
 
-ResourceManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration) : ResourceInterface(loadingPath)
+ResourceManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback)
+	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback)
 {
 	m_modelLoadingRequested = true;
 	m_thumbnailGenerationRequested = needThumbnailsGeneration;
@@ -281,9 +293,10 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 		materialsGPUManager->addNewMaterial(materialInfo);
 	}
 
-	if (m_thumbnailGenerationRequested && m_modelData.animationData == nullptr /* TODO: animated meshes thumbnail generation is not supported yet */)
+	if (m_thumbnailGenerationRequested)
 	{
-		thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, computeIconPath(m_loadingPath) }); // TODO: once generated, refresh the icon
+		thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, computeIconPath(m_loadingPath), 
+			[this]() { m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath).substr(3, computeIconPath(m_loadingPath).size()), m_resourceId); } });
 		m_thumbnailGenerationRequested = false;
 	}
 }

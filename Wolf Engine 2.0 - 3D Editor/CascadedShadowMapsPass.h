@@ -23,7 +23,7 @@ private:
 
 	void recordDraws(const Wolf::RecordContext& context) override;
 	const Wolf::CommandBuffer& getCommandBuffer(const Wolf::RecordContext& context) override;
-	VkImageUsageFlags getAdditionalUsages() override { return VK_IMAGE_USAGE_SAMPLED_BIT; }
+	Wolf::ImageUsageFlags getAdditionalUsages() override { return Wolf::ImageUsageFlagBits::SAMPLED; }
 	VkImageLayout getFinalLayout() override { return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; }
 
 	/* Shared resources */

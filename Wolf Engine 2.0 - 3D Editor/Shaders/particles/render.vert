@@ -3,12 +3,15 @@
 struct ParticleInfoGPU
 {
 	vec3 position;
-	uint createdFrameIdx;
+	uint createdTimer;
 
 	uint emitterIdx;
 	float age;
 	float orientationAngle;
 	float sizeMultiplier;
+
+	vec3 direction;
+	vec3 color;
 };
 
 const uint MAX_TOTAL_PARTICLES = 262144;
@@ -31,6 +34,8 @@ layout(location = 5) out float outAge;
 layout(location = 6) out vec3 outWorldPos;
 layout(location = 7) out vec3 outParticlePos;
 layout(location = 8) out float outSize;
+layout(location = 9) out uint outParticleIdx;
+layout(location = 10) out vec3 outColor;
 
 vec3 quadVertices[6] = 
 { 
@@ -59,7 +64,7 @@ void main()
 	uint particleIdx = gl_VertexIndex / 6;
 	uint vertexIdx = gl_VertexIndex % 6;
 
-	if (particlesInfo[particleIdx].createdFrameIdx == 0)
+	if (particlesInfo[particleIdx].createdTimer == 0)
 	{
 		gl_Position = vec4(0.0);
 		return;
@@ -102,4 +107,6 @@ void main()
 	outWorldPos = worldPos.xyz;
 	outParticlePos = particlesInfo[particleIdx].position;
 	outSize = size;
+	outParticleIdx = particleIdx;
+	outColor = particlesInfo[particleIdx].color;
 }

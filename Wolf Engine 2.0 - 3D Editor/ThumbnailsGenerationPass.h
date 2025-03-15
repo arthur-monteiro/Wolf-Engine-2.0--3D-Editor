@@ -5,6 +5,8 @@
 #include <CommandRecordBase.h>
 #include <ShaderParser.h>
 
+#include <GifEncoder.h>
+
 #include "FirstPersonCamera.h"
 #include "ModelLoader.h"
 
@@ -20,16 +22,27 @@ public:
 
 	void addCameraForThisFrame(Wolf::CameraList& cameraList) const;
 
-	struct Request
+	class Request
 	{
-		Wolf::ModelData* modelData = nullptr;
-		std::string outputFullFilepath;
+	public:
+		Request(Wolf::ModelData* modelData, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback) : m_modelData(modelData), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback) {}
+
+	private:
+		friend ThumbnailsGenerationPass;
+
+		Wolf::ModelData* m_modelData = nullptr;
+		std::string m_outputFullFilepath;
+		uint32_t m_imageLeftToDraw = 0;
+		std::function<void()> m_onGeneratedCallback;
 	};
 	void addRequestBeforeFrame(const Request& request);
 
 private:
+	static uint32_t computeTotalImageToDraw(const Request& request);
+
 	static constexpr uint32_t OUTPUT_SIZE = 100;
-	static constexpr VkFormat OUTPUT_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
+	static constexpr Wolf::Format OUTPUT_FORMAT = Wolf::Format::R8G8B8A8_UNORM;
+	static constexpr float DELAY_BETWEEN_ICON_FRAMES_MS = 40.0f;
 
 	std::deque<Request> m_pendingRequests;
 	std::deque<Request> m_currentRequests;
@@ -41,10 +54,18 @@ private:
 	std::unique_ptr<Wolf::Image> m_copyImage;
 	std::unique_ptr<Wolf::Image> m_depthImage;
 
-	std::unique_ptr<Wolf::ShaderParser> m_vertexShaderParser;
 	std::unique_ptr<Wolf::ShaderParser> m_fragmentShaderParser;
-	std::unique_ptr<Wolf::Pipeline> m_pipeline;
+	std::unique_ptr<Wolf::ShaderParser> m_staticVertexShaderParser;
+	std::unique_ptr<Wolf::Pipeline> m_staticPipeline;
+	std::unique_ptr<Wolf::ShaderParser> m_animatedVertexShaderParser;
+	std::unique_ptr<Wolf::Pipeline> m_animatedPipeline;
+	Wolf::DescriptorSetLayoutGenerator m_animationDescriptorSetGenerator;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_animationDescriptorSetLayout;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_animationDescriptorSet;
+	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_bonesBuffer;
 
 	std::unique_ptr<Wolf::FirstPersonCamera> m_camera;
+
+	GifEncoder m_gifEncoder;
 };
 

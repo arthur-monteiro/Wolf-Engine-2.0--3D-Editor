@@ -81,7 +81,8 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<DrawManager::DrawMes
 				}
 
 				meshToRender.pipelineSet = replacePipelineSet.createConstNonOwnerResource();
-				meshToRender.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
+				meshToRender.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), 
+					contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
 			}
 		}
 	}

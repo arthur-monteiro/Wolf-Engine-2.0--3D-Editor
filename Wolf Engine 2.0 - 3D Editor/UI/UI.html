@@ -425,12 +425,19 @@
 	}
 
 	function addResourceToList(name, iconPath, id) {
-		let resourceInfoDiv = "<div class='resourceMesh' onmousedown=\"onMouseDownResource(event, '" + id + "');\">";
+		let resourceInfoDiv = "<div id='resource_" + id + "' class='resourceMesh' onmousedown=\"onMouseDownResource(event, '" + id + "');\">";
 		resourceInfoDiv += "<div class='resourceIcon'><img src='" + iconPath + "'/></div>";
 		resourceInfoDiv += "<div class='resourceName'>" + name + "</div>";
 		resourceInfoDiv += "</div>";
 
 		document.getElementById('resourceBrowser').innerHTML += resourceInfoDiv;
+	}
+
+	function updateResource(name, iconPath, id)
+	{
+		let resourceElement = document.getElementById("resource_" + id);
+		resourceElement.getElementsByClassName("resourceName")[0].innerHTML = name;
+		resourceElement.getElementsByClassName("resourceIcon")[0].innerHTML = "<img src='" + iconPath + "'/>";
 	}
 
 	function makeID(length) {

@@ -53,7 +53,8 @@ void PreDepthPass::record(const Wolf::RecordContext& context)
 	copyRegion.dstSubresource.layerCount = 1;
 	copyRegion.dstOffset = { 0, 0, 0 };
 
-	copyRegion.extent = m_copyImage->getExtent();
+	Wolf::Extent3D extent = m_copyImage->getExtent();
+	copyRegion.extent = { extent.width, extent.height, extent.depth };
 
 	m_depthImage->setImageLayoutWithoutOperation(getFinalLayout()); // at this point, render pass should have set final layout
 
@@ -76,7 +77,7 @@ void PreDepthPass::submit(const Wolf::SubmitContext& context)
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 }
 
-void PreDepthPass::createCopyImage(VkFormat format)
+void PreDepthPass::createCopyImage(Wolf::Format format)
 {
 	Wolf::CreateImageInfo depthCopyImageCreateInfo;
 	depthCopyImageCreateInfo.format = format;
@@ -85,7 +86,7 @@ void PreDepthPass::createCopyImage(VkFormat format)
 	depthCopyImageCreateInfo.extent.depth = 1;
 	depthCopyImageCreateInfo.mipLevelCount = 1;
 	depthCopyImageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-	depthCopyImageCreateInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	depthCopyImageCreateInfo.usage = Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_DST;
 	m_copyImage.reset(Wolf::Image::createImage(depthCopyImageCreateInfo));
 }
 

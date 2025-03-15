@@ -32,7 +32,11 @@ SystemManager::SystemManager()
 	m_resourceManager.reset(new ResourceManager([this](const std::string& resourceName, const std::string& iconPath, ResourceManager::ResourceId resourceId)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("addResourceToList(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(resourceId) + "\");");
-		}, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, m_configuration.createNonOwnerResource()));
+		}, [this](const std::string& resourceName, const std::string& iconPath, ResourceManager::ResourceId resourceId)
+		{
+			m_wolfInstance->evaluateUserInterfaceScript("updateResource(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(resourceId) + "\");");
+		}
+		, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, m_configuration.createNonOwnerResource()));
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, 

@@ -60,23 +60,23 @@ void ParticleSeparateRenderPass::submit(const Wolf::SubmitContext& context)
 Wolf::Attachment ParticleSeparateRenderPass::setupColorAttachment(const Wolf::InitializationContext& context)
 {
 	Wolf::CreateImageInfo depthImageCreateInfo;
-	depthImageCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+	depthImageCreateInfo.format = Wolf::Format::R8G8B8A8_UNORM;
 	depthImageCreateInfo.extent.width = context.swapChainWidth;
 	depthImageCreateInfo.extent.height = context.swapChainHeight;
 	depthImageCreateInfo.extent.depth = 1;
 	depthImageCreateInfo.mipLevelCount = 1;
 	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-	depthImageCreateInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT;
 	m_outputImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
 
-	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, m_outputImage->getDefaultImageView());
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, Wolf::Format::R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
+		Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, m_outputImage->getDefaultImageView());
 }
 
 Wolf::Attachment ParticleSeparateRenderPass::setupDepthAttachment(const Wolf::InitializationContext& context)
 {
 	Wolf::Attachment depth({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, m_preDepthPass->getOutput()->getDefaultImageView());
+		Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_preDepthPass->getOutput()->getDefaultImageView());
 	depth.loadOperation = VK_ATTACHMENT_LOAD_OP_LOAD;
 	depth.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 

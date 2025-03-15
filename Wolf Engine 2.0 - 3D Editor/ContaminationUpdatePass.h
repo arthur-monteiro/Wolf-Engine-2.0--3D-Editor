@@ -52,6 +52,7 @@ private:
 	};
 	std::vector<PerEmitterInfo> m_contaminationEmitters;
 	std::mutex m_contaminationEmitterLock;
+	std::vector<ShootRequest> m_newShootRequests;
 	std::vector<ShootRequest> m_shootRequests;
 	std::mutex m_shootRequestsLock;
 
@@ -60,9 +61,10 @@ private:
 		uint32_t shootRequestCount;
 		glm::vec3 padding;
 
-		static constexpr uint32_t MAX_SHOOT_REQUEST = 8;
+		static constexpr uint32_t MAX_SHOOT_REQUEST = 16;
 		glm::vec4 startPointAndLength[MAX_SHOOT_REQUEST];
 		glm::vec4 directionAndRadius[MAX_SHOOT_REQUEST];
+		glm::vec4 startPointOffset[MAX_SHOOT_REQUEST]; // yzw unused
 
 	};
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_shootRequestBuffer;

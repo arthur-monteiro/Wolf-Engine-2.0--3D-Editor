@@ -2,7 +2,6 @@
 
 #include "EditorParamsHelper.h"
 #include "Entity.h"
-#include "Particle.h"
 #include "ParticleUpdatePass.h"
 
 ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback) :
@@ -18,6 +17,7 @@ ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineI
 	m_particleMinSizeMultiplier = 1.0f;
 	m_particleMaxSizeMultiplier = 1.0f;
 	m_isEmitting = true;
+	m_particleColor = glm::vec3(1.0f);
 }
 
 ParticleEmitter::~ParticleEmitter()
@@ -43,6 +43,12 @@ void ParticleEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 {
+	if (m_needCheckForNewLinkedEntities)
+	{
+		onParticleEntityChanged();
+		m_needCheckForNewLinkedEntities = false;
+	}
+
 	// Set next idx from previous spawn
 	m_nextParticleToSpawnIdx = (m_nextParticleToSpawnIdx + m_nextParticleToSpawnCount) % m_maxParticleCount;
 
@@ -61,15 +67,12 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 		m_nextParticleToSpawnCount = 0;
 	}
 
-	if (!m_particleNotificationRegistered && m_particleEntity)
+	if (!m_particleNotificationRegistered && m_particleComponent)
 	{
-		if (const Wolf::NullableResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>())
-		{
-			particleComponent->subscribe(this, [this]() { onParticleDataChanged(); });
-			m_particleNotificationRegistered = true;
+		m_particleComponent->subscribe(this, [this]() { onParticleDataChanged(); });
+		m_particleNotificationRegistered = true;
 
-			onParticleDataChanged();
-		}
+		onParticleDataChanged();
 	}
 }
 
@@ -158,6 +161,11 @@ float ParticleEmitter::getSpawnBoxDepth() const
 	return m_spawnBoxDepth;
 }
 
+void ParticleEmitter::onEntityRegistered()
+{
+	m_needCheckForNewLinkedEntities = true;
+}
+
 void ParticleEmitter::forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString)
 {
 	for (EditorParamInterface* editorParam : m_alwaysVisibleEditorParams)
@@ -205,6 +213,16 @@ void ParticleEmitter::forAllVisibleParams(const std::function<void(EditorParamIn
 	}
 }
 
+void ParticleEmitter::onUsedTileCountInFlipBookChanged()
+{
+	m_firstFlipBookRandomRange = std::min(static_cast<uint32_t>(m_firstFlipBookRandomRange), m_flipBookSizeX * m_flipBookSizeY - m_usedTileCountInFlipBook);
+	m_firstFlipBookRandomRange.setMax(m_flipBookSizeX * m_flipBookSizeY - m_usedTileCountInFlipBook);
+
+	m_particleUpdatePass->updateEmitter(this);
+
+	m_requestReloadCallback(this);
+}
+
 void ParticleEmitter::updateNormalizedDirection()
 {
 	if (static_cast<glm::vec3>(m_directionConeDirection) != glm::vec3(0.0f))
@@ -225,16 +243,37 @@ void ParticleEmitter::onParticleOpacityChanged()
 
 void ParticleEmitter::onParticleEntityChanged()
 {
+	if (!m_entity)
+		return;
+
 	if (!static_cast<std::string>(m_particleEntityParam).empty())
-		m_particleEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_particleEntityParam)));
+	{
+		if (Wolf::NullableResourceNonOwner<Particle> particleComponent = m_getEntityFromLoadingPathCallback(m_particleEntityParam)->getComponent<Particle>())
+		{
+			m_particleComponent = particleComponent;
+			//m_usedTileCountInFlipBook = 0; // will be set to max in 'onParticleDataChanged'
+			m_particleNotificationRegistered = false;
+		}
+	}
+	else
+	{
+		m_particleComponent = Wolf::NullableResourceNonOwner<Particle>();
+		m_firstFlipBookIdx.setMax(1);
+	}
 }
 
 void ParticleEmitter::onParticleDataChanged()
 {
-	const Wolf::NullableResourceNonOwner<Particle> particleComponent = (*m_particleEntity)->getComponent<Particle>();
-	m_materialIdx = particleComponent->getMaterialIdx();
-	m_flipBookSizeX = particleComponent->getFlipBookSizeX();
-	m_flipBookSizeY = particleComponent->getFlipBookSizeY();
+	m_materialIdx = m_particleComponent->getMaterialIdx();
+	m_flipBookSizeX = m_particleComponent->getFlipBookSizeX();
+	m_flipBookSizeY = m_particleComponent->getFlipBookSizeY();
+	m_firstFlipBookIdx.setMax(m_flipBookSizeX * m_flipBookSizeY);
+	m_firstFlipBookRandomRange.setMax(m_flipBookSizeX * m_flipBookSizeY);
+	m_usedTileCountInFlipBook.setMax(m_flipBookSizeX * m_flipBookSizeY);
+	if (m_usedTileCountInFlipBook == 0)
+	{
+		m_usedTileCountInFlipBook = m_flipBookSizeX * m_flipBookSizeY;
+	}
 
 	m_particleUpdatePass->updateEmitter(this);
 

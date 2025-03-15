@@ -55,7 +55,7 @@ void ParticleUpdatePass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->bindPipeline(m_computePipeline.createConstNonOwnerResource());
 	m_commandBuffer->bindDescriptorSet(m_descriptorSet.createConstNonOwnerResource(), 0, *m_computePipeline);
 
-	constexpr VkExtent3D dispatchGroups = { 256, 1, 1 };
+	constexpr Wolf::Extent3D dispatchGroups = { 256, 1, 1 };
 	const uint32_t groupSizeX = m_particleCount % dispatchGroups.width == 0 ? m_particleCount / dispatchGroups.width : (m_particleCount / dispatchGroups.width) + 1;
 	constexpr uint32_t groupSizeY = 1;
 	constexpr uint32_t groupSizeZ = 1;
@@ -140,6 +140,8 @@ void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer)
 
 		if (i == 1 && emitterInfo.nextParticleToSpawnCount == 0)
 			emitterInfo.nextParticleToSpawnCount = 1;
+
+		emitterInfo.color = emitter->getParticleColor();
 	}
 
 	m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));
@@ -193,6 +195,9 @@ void ParticleUpdatePass::addEmitterInfoUpdate(const ParticleEmitter* emitter, ui
 	emitterDrawInfoUpdate.data.materialIdx = emitter->getMaterialIdx();
 	emitterDrawInfoUpdate.data.flipBookSizeX = emitter->getFlipBookSizeX();
 	emitterDrawInfoUpdate.data.flipBookSizeY = emitter->getFlipBookSizeY();
+	emitterDrawInfoUpdate.data.firstFlipBookIdx = emitter->getFirstFlipBookIdx();
+	emitterDrawInfoUpdate.data.firstFlipBookRandomRange = emitter->getFirstFlipBookRandomRange();
+	emitterDrawInfoUpdate.data.usedTileCountInFlipBook = emitter->getUsedTileCountInFlipBook();
 
 	std::vector<float> opacity;
 	emitter->computeOpacity(opacity, EmitterDrawInfo::OPACITY_VALUE_COUNT);

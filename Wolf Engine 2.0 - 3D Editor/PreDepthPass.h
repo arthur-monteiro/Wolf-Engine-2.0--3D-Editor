@@ -25,11 +25,11 @@ public:
 	Wolf::Image* getCopy() const { return m_copyImage.get(); }
 
 private:
-	void createCopyImage(VkFormat format);
+	void createCopyImage(Wolf::Format format);
 
 	uint32_t getWidth() override { return m_swapChainWidth; }
 	uint32_t getHeight() override { return m_swapChainHeight; }
-	VkImageUsageFlags getAdditionalUsages() override { return VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT; }
+	Wolf::ImageUsageFlags getAdditionalUsages() override { return Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_SRC; }
 	VkImageLayout getFinalLayout() override { return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; }
 
 	void recordDraws(const Wolf::RecordContext& context) override;

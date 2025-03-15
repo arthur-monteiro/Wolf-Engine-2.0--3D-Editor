@@ -8,4 +8,6 @@ struct ShootRequest
 	glm::vec3 direction;
 	float length;
 	float radius;
+
+	uint32_t startTimerInMs;
 };

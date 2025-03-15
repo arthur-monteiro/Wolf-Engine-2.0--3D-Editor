@@ -16,8 +16,9 @@ public:
 	using ResourceId = uint32_t;
 	static constexpr ResourceId NO_RESOURCE = -1;
 
-	ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+	ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback, 
+		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 
 	void updateBeforeFrame();
 	void save();
@@ -40,13 +41,14 @@ private:
 	void onResourceEditionChanged(ResourceId resourceId, MeshResourceEditor* meshResourceEditor);
 
 	std::function<void(const std::string&, const std::string&, ResourceId)> m_addResourceToUICallback;
+	std::function<void(const std::string&, const std::string&, ResourceId)> m_updateResourceInUICallback;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 
 	class ResourceInterface : public Notifier
 	{
 	public:
-		ResourceInterface(std::string loadingPath);
+		ResourceInterface(std::string loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback);
 		ResourceInterface(const ResourceInterface&) = delete;
 		virtual ~ResourceInterface() = default;
 
@@ -60,12 +62,14 @@ private:
 
 	protected:
 		std::string m_loadingPath;
+		ResourceId m_resourceId = NO_RESOURCE;
+		std::function<void(const std::string&, const std::string&, ResourceId)> m_updateResourceInUICallback;
 	};
 
 	class Mesh : public ResourceInterface
 	{
 	public:
-		Mesh(const std::string& loadingPath, bool needThumbnailsGeneration);
+		Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback);
 		Mesh(const Mesh&) = delete;
 		~Mesh() override = default;
 

@@ -28,6 +28,8 @@ public:
 	void setLinkPositions(const glm::vec3& topPos, const glm::vec3& botPos);
 	void onPlayerRelease(); // called when the player is not more linked to the gas cylinder
 
+	glm::vec3 getColor() const { return m_color; }
+
 private:
 	inline static const std::string TAB = "Gas cylinder";
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;

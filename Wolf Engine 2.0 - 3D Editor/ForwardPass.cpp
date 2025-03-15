@@ -45,11 +45,13 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 	{
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::VERTEX,                                       0); // particles buffer
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::VERTEX, 1); // emitters buffer
+		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::VERTEX, 2); // noise buffer
 		m_particlesDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		DescriptorSetGenerator descriptorSetGenerator(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, m_particlesUpdatePass->getParticleBuffer());
 		descriptorSetGenerator.setBuffer(1, m_particlesUpdatePass->getEmittersBuffer());
+		descriptorSetGenerator.setBuffer(2, m_particlesUpdatePass->getNoiseBuffer());
 
 		m_particlesDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_particlesDescriptorSetLayout));
 		m_particlesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -207,7 +209,7 @@ void ForwardPass::submit(const SubmitContext& context)
 
 Attachment ForwardPass::setupColorAttachment(const InitializationContext& context)
 {
-	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
 		nullptr);
 }
 
@@ -220,11 +222,11 @@ Attachment ForwardPass::setupDepthAttachment(const InitializationContext& contex
 	depthImageCreateInfo.extent.depth = 1;
 	depthImageCreateInfo.mipLevelCount = 1;
 	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-	depthImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
 	m_depthImage.reset(Image::createImage(depthImageCreateInfo));
 
 	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, m_depthImage->getDefaultImageView());
+		Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_depthImage->getDefaultImageView());
 }
 
 void ForwardPass::initializeFramesBuffers(const InitializationContext& context, Attachment& colorAttachment, Attachment& depthAttachment)

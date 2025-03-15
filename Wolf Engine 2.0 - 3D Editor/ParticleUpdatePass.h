@@ -21,6 +21,7 @@ public:
 	uint32_t getParticleCount() const { return m_particleCount; }
 	const Wolf::Buffer& getParticleBuffer() const { return *m_particlesBuffer; }
 	const Wolf::Buffer& getEmittersBuffer() const { return *m_emitterDrawInfoBuffer; }
+	const Wolf::Buffer& getNoiseBuffer() const { return *m_noiseBuffer; }
 
 	void registerEmitter(ParticleEmitter* emitter);
 	void unregisterEmitter(ParticleEmitter* emitter);
@@ -47,8 +48,10 @@ private:
 		float age;
 		float orientationAngle;
 		float sizeMultiplier;
+
+		glm::vec3 direction;
+		glm::vec3 color;
 	};
-	static_assert(sizeof(ParticleInfoGPU) == 32);
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_particlesBuffer;
 
 	// Emitter draw info buffer
@@ -61,10 +64,13 @@ private:
 		float opacity[OPACITY_VALUE_COUNT];
 
 		static constexpr uint32_t SIZE_VALUE_COUNT = 32;
-		float size[OPACITY_VALUE_COUNT];
+		float size[SIZE_VALUE_COUNT];
 
 		uint32_t flipBookSizeX;
 		uint32_t flipBookSizeY;
+		uint32_t firstFlipBookIdx;
+		uint32_t firstFlipBookRandomRange;
+		uint32_t usedTileCountInFlipBook;
 	};
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_emitterDrawInfoBuffer;
 
@@ -103,6 +109,9 @@ private:
 		float minSizeMultiplier;
 		float maxSizeMultiplier;
 		float padding;
+
+		glm::vec3 color;
+		float pad1;
 	};
 
 	struct UniformBufferData

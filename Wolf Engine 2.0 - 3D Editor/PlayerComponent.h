@@ -52,7 +52,7 @@ private:
 	void onSmokeEmitterChanged();
 	EditorParamString m_smokeEmitterParam = EditorParamString("Smoke Emitter", TAB, "Shoot", [this]() { onSmokeEmitterChanged(); }, EditorParamString::ParamStringType::ENTITY);
 
-	std::unique_ptr<Wolf::ResourceNonOwner<GasCylinderComponent>> m_gasCylinderComponent;
+	Wolf::NullableResourceNonOwner<GasCylinderComponent> m_gasCylinderComponent;
 	void onGasCylinderChanged();
 	bool m_needCheckForNewLinkedEntities = false;
 	EditorParamString m_gasCylinderParam = EditorParamString("Gas cylinder", TAB, "Gas cylinder", [this]() { onGasCylinderChanged(); }, EditorParamString::ParamStringType::ENTITY);
@@ -105,5 +105,6 @@ private:
 	bool m_shootDebugMeshRebuildRequested = false;
 	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_shootDebugMesh;
 	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_newShootDebugMesh; // new mesh kept here until the debug mesh is no more used
+	uint64_t m_lastShootRequestSentToContaminationEmitterTimer = 0;
 };
 

@@ -7,6 +7,8 @@ layout (location = 5) in float inAge;
 layout (location = 6) in vec3 inWorldPos;
 layout (location = 7) in vec3 inParticlePos;
 layout (location = 8) in float inSize;
+layout (location = 9) flat in uint inParticleIdx;
+layout (location = 10) in vec3 inColor;
 
 #include "particleBuffer.glsl"
 
@@ -99,7 +101,7 @@ vec4 computeLighting(MaterialInfo firstMaterialInfo, MaterialInfo nextMaterialIn
             accumulatedLighting += accumaledLightmap * sumShadows / float(RAY_MARCH_STEP_COUNT);
         }
 
-        return vec4(accumulatedLighting.rrr, lightmap0.w * opacity);
+        return vec4(inColor * accumulatedLighting.r, lightmap0.w * opacity);
     }
     else
     {
@@ -129,8 +131,9 @@ void main()
     uint materialIdx = emitterDrawInfo[inEmitterIdx].materialIdx;
 
     vec2 tileSize = vec2(1.0f / emitterDrawInfo[inEmitterIdx].flipBookSizeX, 1.0f / emitterDrawInfo[inEmitterIdx].flipBookSizeY);
-    uint tileCount = emitterDrawInfo[inEmitterIdx].flipBookSizeX * emitterDrawInfo[inEmitterIdx].flipBookSizeY;
-    float currentTileIdx = inAge * tileCount;
+    uint tileCount = emitterDrawInfo[inEmitterIdx].usedTileCountInFlipBook;
+    uint firstFlipBookIdx = uint(getRandomFloat(inParticleIdx) * float(emitterDrawInfo[inEmitterIdx].firstFlipBookRandomRange)) + emitterDrawInfo[inEmitterIdx].firstFlipBookIdx;
+    float currentTileIdx = inAge * tileCount + firstFlipBookIdx;
     uint currentTileIdxU32 = uint(currentTileIdx);
 
     MaterialInfo firstMaterialInfo = fetchMaterial(computeTexCoords(tileSize, currentTileIdxU32), materialIdx, inTBN, vec3(0.0f) /* world pos (unused) */);
@@ -141,5 +144,5 @@ void main()
     if (ubDisplay.displayType == DISPLAY_TYPE_LIGHTING)
         outColor = litValue;
     else
-        outColor = vec4(1.0f, 1.0f, 1.0f, litValue.w);
+        outColor = vec4(inColor, litValue.w);
 }

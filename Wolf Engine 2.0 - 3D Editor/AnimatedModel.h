@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AnimationHelper.h"
 #include "EditorModelInterface.h"
 #include "EditorTypesTemplated.h"
 #include "ParameterGroupInterface.h"
@@ -41,7 +42,6 @@ public:
 private:
 	void addBonesToDebug(const Wolf::AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager);
 	void addBoneNamesAndIndices(const Wolf::AnimationData::Bone* bone);
-	static void findMaxTimer(const Wolf::AnimationData::Bone* bone, float& maxTimer);
 
 	inline static const std::string TAB = "Model";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
@@ -128,22 +128,13 @@ private:
 	/* Rendering */
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, AnimatedModel>> m_defaultPipelineSet;
 
-	struct BoneInfoGPU
-	{
-		glm::mat4 transform;
-	};
 	uint32_t m_boneCount = 0;
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_bonesBuffer;
 	std::vector<BoneInfoGPU> m_bonesInfoGPU;
-	struct BoneInfoCPU
-	{
-		glm::vec3 position;
-	};
 	std::vector<BoneInfoCPU> m_bonesInfoCPU;
-	void computeBonesInfo(const Wolf::AnimationData::Bone* bone, glm::mat4 currentTransform, float time);
-
+	
 	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
-	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, AnimatedModel>> m_descriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
 };
 

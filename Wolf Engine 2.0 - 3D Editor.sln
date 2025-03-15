@@ -7,6 +7,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Wolf Engine 2.0 - 3D Editor
 	ProjectSection(ProjectDependencies) = postProject
 		{192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F} = {192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F}
 		{3846443B-0E65-4851-9679-39B56090C24E} = {3846443B-0E65-4851-9679-39B56090C24E}
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE} = {6E2B73A6-0008-467E-A6C6-13ABA1E058DE}
 		{ECFE9463-62C8-42A3-B685-47C7FABE66FB} = {ECFE9463-62C8-42A3-B685-47C7FABE66FB}
 	EndProjectSection
 EndProject
@@ -24,6 +25,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Graphic API Broker", "..\Wo
 	ProjectSection(ProjectDependencies) = postProject
 		{A8D174DE-F302-480C-B9FC-507286640034} = {A8D174DE-F302-480C-B9FC-507286640034}
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GifEncoder", "GifEncoder\GifEncoder.vcxproj", "{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -73,6 +76,14 @@ Global
 		{ECFE9463-62C8-42A3-B685-47C7FABE66FB}.Release|x64.Build.0 = Release|x64
 		{ECFE9463-62C8-42A3-B685-47C7FABE66FB}.Release|x86.ActiveCfg = Release|Win32
 		{ECFE9463-62C8-42A3-B685-47C7FABE66FB}.Release|x86.Build.0 = Release|Win32
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Debug|x64.ActiveCfg = Debug|x64
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Debug|x64.Build.0 = Debug|x64
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Debug|x86.ActiveCfg = Debug|Win32
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Debug|x86.Build.0 = Debug|Win32
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Release|x64.ActiveCfg = Release|x64
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Release|x64.Build.0 = Release|x64
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Release|x86.ActiveCfg = Release|Win32
+		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

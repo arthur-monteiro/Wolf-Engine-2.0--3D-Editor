@@ -4,6 +4,7 @@
 
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
+#include "Particle.h"
 #include "TextureSetEditor.h"
 #include "RenderingPipelineInterface.h"
 
@@ -13,7 +14,8 @@ public:
 	static inline std::string ID = "particleEmitter";
 	std::string getId() const override { return ID; }
 
-	ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback);
+	ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, 
+		const std::function<void(ComponentInterface*)>& requestReloadCallback);
 	~ParticleEmitter() override;
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -33,6 +35,9 @@ public:
 	void stopEmission() { m_isEmitting = false; }
 	void setSpawnPosition(const glm::vec3& position);
 	void setDirection(const glm::vec3& direction);
+
+	// Particle
+	void setColor(const glm::vec3& color) { m_particleColor = color; }
 
 	uint32_t getMaxParticleCount() const { return m_maxParticleCount; }
 
@@ -58,18 +63,23 @@ public:
 	uint32_t getMaterialIdx() const { return m_materialIdx; }
 	uint32_t getFlipBookSizeX() const { return m_flipBookSizeX; }
 	uint32_t getFlipBookSizeY() const { return m_flipBookSizeY; }
+	uint32_t getFirstFlipBookIdx() const { return m_firstFlipBookIdx; }
+	uint32_t getFirstFlipBookRandomRange() const { return m_firstFlipBookRandomRange; }
+	uint32_t getUsedTileCountInFlipBook() const { return m_usedTileCountInFlipBook; }
 	void computeOpacity(std::vector<float>& outValues, uint32_t valueCount) const { m_particleOpacity.computeValues(outValues, valueCount); }
 	void computeSize(std::vector<float>& outValues, uint32_t valueCount) const { m_particleSize.computeValues(outValues, valueCount); }
 	float getMinSizeMultiplier() const { return m_particleMinSizeMultiplier; }
 	float getMaxSizeMultiplier() const { return m_particleMaxSizeMultiplier; }
 	float getOrientationMinAngle() const { return m_particleOrientationMinAngle; }
 	float getOrientationMaxAngle() const { return m_particleOrientationMaxAngle; }
+	glm::vec3 getParticleColor() const { return m_particleColor; }
 
 	uint64_t getNextSpawnTimerInMs() const { return m_nextSpawnMsTimer; }
 	uint32_t getNextParticleToSpawnIdx() const { return m_nextParticleToSpawnIdx; }
 	uint32_t getNextParticleToSpawnCount() const { return m_nextParticleToSpawnCount; }
 
 private:
+	void onEntityRegistered() override;
 	void forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString);
 
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
@@ -77,6 +87,10 @@ private:
 
 	// ----- Spawn -----
 	EditorParamBool m_isEmitting = EditorParamBool("Emits", TAB, "Spawn");
+	EditorParamUInt m_firstFlipBookIdx = EditorParamUInt("First flip-book index", TAB, "Spawn", 0, 1);
+	EditorParamUInt m_firstFlipBookRandomRange = EditorParamUInt("First flip-book random range", TAB, "Spawn", 0, 1);
+	void onUsedTileCountInFlipBookChanged();
+	EditorParamUInt m_usedTileCountInFlipBook = EditorParamUInt("Number of tiles used in flip-book", TAB, "Spawn", 0, 1, [this]() { onUsedTileCountInFlipBookChanged(); });
 	static constexpr uint32_t SPAWN_CYLINDER_SHAPE = 0;
 	static constexpr uint32_t SPAWN_BOX_SHAPE = 1;
 	EditorParamEnum m_spawnShape = EditorParamEnum({ "Cylinder", "Box" }, "Shape", TAB, "Spawn", [this]() { m_requestReloadCallback(this); });
@@ -138,14 +152,18 @@ private:
 	EditorParamCurve m_particleOpacity = EditorParamCurve("Opacity", TAB, "Particle", [this]() { onParticleOpacityChanged(); });
 	EditorParamFloat m_particleOrientationMinAngle = EditorParamFloat("Orientation min (rad)", TAB, "Particle", 0.0f, glm::pi<float>());
 	EditorParamFloat m_particleOrientationMaxAngle = EditorParamFloat("Orientation max (rad)", TAB, "Particle", 0.0f, glm::pi<float>());
-	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_particleEntity;
+	Wolf::NullableResourceNonOwner<Particle> m_particleComponent;
 	void onParticleEntityChanged();
 	void onParticleDataChanged();
 	EditorParamString m_particleEntityParam = EditorParamString("Particle entity", TAB, "Particle", [this]() { onParticleEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
+	EditorParamVector3 m_particleColor = EditorParamVector3("Color", TAB, "Particle", 0.0f, 1.0f);
 
-	std::array<EditorParamInterface*, 24> m_allEditorParams =
+	std::array<EditorParamInterface*, 28> m_allEditorParams =
 	{
 		&m_isEmitting,
+		&m_firstFlipBookIdx,
+		&m_firstFlipBookRandomRange,
+		&m_usedTileCountInFlipBook,
 		&m_spawnShape,
 
 		&m_spawnCylinderCenterPosition,
@@ -174,12 +192,16 @@ private:
 		&m_particleOrientationMinAngle,
 		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
-		&m_particleEntityParam
+		&m_particleEntityParam,
+		&m_particleColor
 	};
 
-	std::array<EditorParamInterface*, 16> m_alwaysVisibleEditorParams =
+	std::array<EditorParamInterface*, 20> m_alwaysVisibleEditorParams =
 	{
 		&m_isEmitting,
+		&m_firstFlipBookIdx,
+		&m_firstFlipBookRandomRange,
+		&m_usedTileCountInFlipBook,
 		&m_spawnShape,
 
 		&m_maxParticleCount,
@@ -198,7 +220,8 @@ private:
 		&m_particleOrientationMinAngle,
 		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
-		&m_particleEntityParam
+		&m_particleEntityParam,
+		&m_particleColor
 	};
 
 	Wolf::ResourceNonOwner<ParticleUpdatePass> m_particleUpdatePass;
@@ -217,4 +240,5 @@ private:
 	uint32_t m_flipBookSizeY = 1;
 
 	bool m_particleNotificationRegistered = false;
+	bool m_needCheckForNewLinkedEntities = true;
 };

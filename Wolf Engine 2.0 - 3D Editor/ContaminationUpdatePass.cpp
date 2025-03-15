@@ -36,16 +36,41 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 		return;
 	}
 
-	ShootRequestGPUInfo shootRequestGPUInfo{};
+	static constexpr float SHOOT_DURATION_MS = 1000.0f;
+
+	// Remove old requests
+	for (int32_t i = static_cast<int32_t>(m_shootRequests.size()) - 1; i >= 0; --i)
+	{
+		if (static_cast<uint32_t>(context.globalTimer->getCurrentCachedMillisecondsDuration()) - m_shootRequests[i].startTimerInMs > static_cast<uint32_t>(SHOOT_DURATION_MS))
+		{
+			m_shootRequests.erase(m_shootRequests.begin() + i);
+		}
+	}
+
+	// Add new request to requests
 	m_shootRequestsLock.lock();
+	for (const ShootRequest& shootRequest : m_newShootRequests)
+	{
+		m_shootRequests.emplace_back(shootRequest);
+	}
+	m_newShootRequests.clear();
+	m_shootRequestsLock.unlock();
+
+	if (m_shootRequests.size() > ShootRequestGPUInfo::MAX_SHOOT_REQUEST)
+	{
+		Wolf::Debug::sendCriticalError("Too many shoot requests");
+	}
+
+	// Add requests to the GPU
+	ShootRequestGPUInfo shootRequestGPUInfo{};
 	for (const ShootRequest& shootRequest : m_shootRequests)
 	{
-		shootRequestGPUInfo.startPointAndLength[shootRequestGPUInfo.shootRequestCount] = glm::vec4(shootRequest.startPoint, shootRequest.length);
+		float shootRequestLength = shootRequest.length * (static_cast<float>(static_cast<uint32_t>(context.globalTimer->getCurrentCachedMillisecondsDuration()) - shootRequest.startTimerInMs) / SHOOT_DURATION_MS);
+
+		shootRequestGPUInfo.startPointAndLength[shootRequestGPUInfo.shootRequestCount] = glm::vec4(shootRequest.startPoint, shootRequestLength);
 		shootRequestGPUInfo.directionAndRadius[shootRequestGPUInfo.shootRequestCount] = glm::vec4(shootRequest.direction, shootRequest.radius);
 		shootRequestGPUInfo.shootRequestCount++;
 	}
-	m_shootRequests.clear();
-	m_shootRequestsLock.unlock();
 	m_shootRequestBuffer->transferCPUMemory(&shootRequestGPUInfo, sizeof(shootRequestGPUInfo));
 
 	m_commandBuffer->beginCommandBuffer();
@@ -58,7 +83,7 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->bindPipeline(m_computePipeline.createConstNonOwnerResource());
 	m_commandBuffer->bindDescriptorSet(m_contaminationEmitters[0].getUpdateDescriptorSet().createConstNonOwnerResource(), 0, *m_computePipeline);
 
-	constexpr VkExtent3D dispatchGroups = { 8, 8, 8 };
+	constexpr Wolf::Extent3D dispatchGroups = { 8, 8, 8 };
 	constexpr uint32_t groupSizeX = ContaminationEmitter::CONTAMINATION_IDS_IMAGE_SIZE / dispatchGroups.width;
 	constexpr uint32_t groupSizeY = ContaminationEmitter::CONTAMINATION_IDS_IMAGE_SIZE / dispatchGroups.height;
 	constexpr uint32_t groupSizeZ = ContaminationEmitter::CONTAMINATION_IDS_IMAGE_SIZE / dispatchGroups.depth;
@@ -116,7 +141,7 @@ void ContaminationUpdatePass::unregisterEmitter(const ContaminationEmitter* comp
 void ContaminationUpdatePass::swapShootRequests(std::vector<ShootRequest>& shootRequests)
 {
 	m_shootRequestsLock.lock();
-	m_shootRequests.swap(shootRequests);
+	m_newShootRequests.swap(shootRequests);
 	m_shootRequestsLock.unlock();
 }
 

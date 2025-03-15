@@ -6,9 +6,7 @@
 #include <ProfilerCommon.h>
 
 #include "CommonLayouts.h"
-#include "DebugRenderingManager.h" // TEMP
 #include "DrawManager.h"
-#include "DynamicResourceUniqueOwnerArray.h"
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 #include "Entity.h"

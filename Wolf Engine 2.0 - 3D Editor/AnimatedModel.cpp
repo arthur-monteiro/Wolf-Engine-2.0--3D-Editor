@@ -74,6 +74,16 @@ AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUMana
 
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
 		}));
+
+	m_descriptorSetLayoutGenerator.reset();
+	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0);
+
+	m_descriptorSetLayout.reset(new Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, AnimatedModel>([this](Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& descriptorSetLayout)
+		{
+			descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
+		}));
+
+	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout->getResource()));
 }
 
 void AnimatedModel::loadParams(Wolf::JSONReader& jsonReader)
@@ -102,15 +112,6 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			m_bonesInfoGPU.resize(m_boneCount);
 			m_bonesInfoCPU.resize(m_boneCount);
 			m_updateMaxTimerRequested = true;
-
-			if (!m_descriptorSetLayout)
-			{
-				m_descriptorSetLayoutGenerator.reset();
-				m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0);
-				m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
-
-				m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
-			}
 
 			Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 			descriptorSetGenerator.setBuffer(0, *m_bonesBuffer);
@@ -149,7 +150,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 				{
 					timer = m_forceTimer;
 				}
-				computeBonesInfo(animationData->rootBones.data(), glm::mat4(1.0f), timer);
+				computeBonesInfo(animationData->rootBones.data(), glm::mat4(1.0f), timer, m_transform, m_bonesInfoGPU, m_bonesInfoCPU);
 			}
 			else
 			{
@@ -206,7 +207,7 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 
 	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelData(m_meshResourceId)->mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
-	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), 1);
+	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
 	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
 	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].emplace_back(descriptorSetBindInfo);
 
@@ -317,19 +318,6 @@ void AnimatedModel::addBoneNamesAndIndices(const Wolf::AnimationData::Bone* bone
 	for (const Wolf::AnimationData::Bone& childBone : bone->children)
 	{
 		addBoneNamesAndIndices(&childBone);
-	}
-}
-
-void AnimatedModel::findMaxTimer(const Wolf::AnimationData::Bone* bone, float& maxTimer)
-{
-	if (!bone->poses.empty() && bone->poses.back().time > maxTimer)
-	{
-		maxTimer = bone->poses.back().time;
-	}
-
-	for (const Wolf::AnimationData::Bone& childBone : bone->children)
-	{
-		findMaxTimer(&childBone, maxTimer);
 	}
 }
 
@@ -470,48 +458,4 @@ void AnimatedModel::updateAnimationsOptions()
 	m_requestReloadCallback(this);
 
 	notifySubscribers();
-}
-
-void AnimatedModel::computeBonesInfo(const Wolf::AnimationData::Bone* bone, glm::mat4 currentTransform, float time)
-{
-	glm::mat4 poseTransform(1.0f);
-	if (!bone->poses.empty())
-	{
-		int32_t poseIdx;
-		float lerpValue = 0.0f;
-		for (poseIdx = 1; poseIdx < static_cast<int32_t>(bone->poses.size()); ++poseIdx)
-		{
-			if (time < bone->poses[poseIdx].time)
-			{
-				lerpValue = (time - bone->poses[poseIdx - 1].time) / (bone->poses[poseIdx].time - bone->poses[poseIdx - 1].time);
-				break;
-			}
-		}
-		if (poseIdx >= static_cast<int32_t>(bone->poses.size()))
-		{
-			poseIdx = 1;
-			lerpValue = 0.0f;
-		}
-		if (lerpValue < 0.0f || lerpValue > 1.0f)
-		{
-			Wolf::Debug::sendError("Wrong lerp value");
-		}
-
-
-		glm::vec3 translation = glm::mix(bone->poses[poseIdx - 1].translation, bone->poses[poseIdx].translation, lerpValue);
-		glm::quat orientation = glm::slerp(bone->poses[poseIdx - 1].orientation, bone->poses[poseIdx].orientation, lerpValue);
-		glm::vec3 scale = glm::mix(bone->poses[poseIdx - 1].scale, bone->poses[poseIdx].scale, lerpValue);
-
-		poseTransform = glm::translate(glm::mat4(1.0f), translation) * glm::toMat4(orientation) * glm::scale(glm::mat4(1.0f), scale);
-	}
-	currentTransform = currentTransform * poseTransform;
-	m_bonesInfoGPU[bone->idx].transform = currentTransform * bone->offsetMatrix;
-
-	glm::vec3 offset = glm::inverse(bone->offsetMatrix) * glm::vec4(1.0f);
-	m_bonesInfoCPU[bone->idx].position = m_transform * (m_bonesInfoGPU[bone->idx].transform * glm::vec4(offset, 1.0f));
-
-	for (const Wolf::AnimationData::Bone& childBone : bone->children)
-	{
-		computeBonesInfo(&childBone, currentTransform, time);
-	}
 }
