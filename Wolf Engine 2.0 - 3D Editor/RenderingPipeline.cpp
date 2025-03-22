@@ -42,6 +42,7 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance)
 	PROFILE_FUNCTION
 
 	std::vector<Wolf::ResourceNonOwner<Wolf::CommandRecordBase>> passes;
+	passes.reserve(8);
 	passes.push_back(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_cascadedShadowMapsPass.createNonOwnerResource<Wolf::CommandRecordBase>());

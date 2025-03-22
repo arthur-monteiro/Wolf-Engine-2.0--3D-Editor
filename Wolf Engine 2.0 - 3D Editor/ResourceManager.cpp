@@ -76,9 +76,9 @@ Wolf::ResourceNonOwner<Entity> ResourceManager::computeResourceEditor(ResourceId
 	m_transientEditionEntity->setIncludeEntityParams(false);
 	if (!meshResourceEditor)
 	{
-		meshResourceEditor = new MeshResourceEditor(m_requestReloadCallback);
-
 		Wolf::ModelData* modelData = getModelData(resourceId);
+		meshResourceEditor = new MeshResourceEditor(m_requestReloadCallback, modelData->isMeshCentered);
+
 		for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->physicsShapes)
 		{
 			meshResourceEditor->addShape(shape);

@@ -69,6 +69,8 @@ std::string EditorParamInterface::getTypeAsString() const
 			return "Time";
 		case Type::BUTTON:
 			return "Button";
+		case Type::LABEL:
+			return "Label";
 		default:
 			Wolf::Debug::sendError("Undefined type");
 			return "Undefined_type";
@@ -583,4 +585,22 @@ void EditorParamCurve::setValueJSCallback(const ultralight::JSObject& thisObject
 
 	if (m_callbackValueChanged)
 		m_callbackValueChanged();
+}
+
+void EditorLabel::activate()
+{
+	EditorParamInterface::activate();
+}
+
+void EditorLabel::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	// Remove ',' as there no other property
+	out = out.substr(0, out.size() - 2);
+	out += "\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
 }

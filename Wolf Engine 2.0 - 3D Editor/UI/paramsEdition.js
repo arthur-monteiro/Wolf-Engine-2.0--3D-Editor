@@ -283,6 +283,9 @@ function computeInput(param, isLast) {
     else if (param.type == "Button") {
         htmlToAdd += "<button type='button' class='actionButton' onclick='change" + nameForCallback + "()'>" + param.name + "</button>";
     }
+    else if (param.type == "Label") {
+        htmlToAdd += "<div>" + param.name + "</di>";
+    }
 
     htmlToAdd += "</div>"
     return htmlToAdd;

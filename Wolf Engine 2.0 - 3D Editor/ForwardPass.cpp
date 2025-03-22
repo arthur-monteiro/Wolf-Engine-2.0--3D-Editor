@@ -14,30 +14,28 @@
 #include "LightManager.h"
 #include "Vertex2DTextured.h"
 
-using namespace Wolf;
-
-void ForwardPass::initializeResources(const InitializationContext& context)
+void ForwardPass::initializeResources(const Wolf::InitializationContext& context)
 {
-	Attachment color = setupColorAttachment(context);
-	Attachment depth = setupDepthAttachment(context);
+	Wolf::Attachment color = setupColorAttachment(context);
+	Wolf::Attachment depth = setupDepthAttachment(context);
 
-	m_renderPass.reset(RenderPass::createRenderPass({ color, depth }));
-	m_commandBuffer.reset(CommandBuffer::createCommandBuffer(QueueType::GRAPHIC, false /* isTransient */));
+	m_renderPass.reset(Wolf::RenderPass::createRenderPass({ color, depth }));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false /* isTransient */));
 	initializeFramesBuffers(context, color, depth);
 	
-	m_semaphore.reset(Semaphore::createSemaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
+	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
 
 	// Shared resources
 	{
-		m_displayOptionsUniformBuffer.reset(Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+		m_displayOptionsUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
-		m_commonDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+		m_commonDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
-		DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
+		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, *m_displayOptionsUniformBuffer);
 
-		m_commonDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_commonDescriptorSetLayout));
+		m_commonDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_commonDescriptorSetLayout));
 		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 	}
 
@@ -46,33 +44,33 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::VERTEX,                                       0); // particles buffer
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::VERTEX, 1); // emitters buffer
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::VERTEX, 2); // noise buffer
-		m_particlesDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+		m_particlesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
-		DescriptorSetGenerator descriptorSetGenerator(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts());
+		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, m_particlesUpdatePass->getParticleBuffer());
 		descriptorSetGenerator.setBuffer(1, m_particlesUpdatePass->getEmittersBuffer());
 		descriptorSetGenerator.setBuffer(2, m_particlesUpdatePass->getNoiseBuffer());
 
-		m_particlesDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_particlesDescriptorSetLayout));
+		m_particlesDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_particlesDescriptorSetLayout));
 		m_particlesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
-		m_particlesVertexShaderParser.reset(new ShaderParser("Shaders/particles/render.vert", {}, 1));
-		ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
+		m_particlesVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.vert", {}, 1));
+		Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
 		m_shadowMaskPass->addShaderCode(shaderCodeToAdd, SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
-		m_particlesFragmentShaderParser.reset(new ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3, ShaderParser::MaterialFetchProcedure(),
-			shaderCodeToAdd));
+		m_particlesFragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3, Wolf::ShaderParser::MaterialFetchProcedure(),
+		                                                             shaderCodeToAdd));
 	}
 
 	// UI resources
 	{
 		m_userInterfaceDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
-		m_userInterfaceDescriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+		m_userInterfaceDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
-		DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
-		m_userInterfaceSampler.reset(Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 11, VK_FILTER_LINEAR));
+		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
+		m_userInterfaceSampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 11, VK_FILTER_LINEAR));
 		descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, context.userInterfaceImage->getDefaultImageView(), *m_userInterfaceSampler);
 
-		m_userInterfaceDescriptorSet.reset(DescriptorSet::createDescriptorSet(*m_userInterfaceDescriptorSetLayout));
+		m_userInterfaceDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_userInterfaceDescriptorSetLayout));
 		m_userInterfaceDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 		// Load fullscreen rect
@@ -90,10 +88,10 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 			2, 3, 1
 		};
 
-		m_fullscreenRect.reset(new Mesh(vertices, indices));
+		m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices));
 
-		m_userInterfaceVertexShaderParser.reset(new ShaderParser("Shaders/UI/UI.vert"));
-		m_userInterfaceFragmentShaderParser.reset(new ShaderParser("Shaders/UI/UI.frag"));
+		m_userInterfaceVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/UI/UI.vert"));
+		m_userInterfaceFragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/UI/UI.frag"));
 	}
 
 	m_renderWidth = context.swapChainWidth;
@@ -101,15 +99,15 @@ void ForwardPass::initializeResources(const InitializationContext& context)
 	createPipelines();
 }
 
-void ForwardPass::resize(const InitializationContext& context)
+void ForwardPass::resize(const Wolf::InitializationContext& context)
 {
 	m_renderPass->setExtent({ context.swapChainWidth, context.swapChainHeight });
 
-	Attachment color = setupColorAttachment(context);
-	Attachment depth = setupDepthAttachment(context);
+	Wolf::Attachment color = setupColorAttachment(context);
+	Wolf::Attachment depth = setupDepthAttachment(context);
 	initializeFramesBuffers(context, color, depth);
 
-	DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
+	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
 	descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, context.userInterfaceImage->getDefaultImageView(), *m_userInterfaceSampler);
 	m_userInterfaceDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
@@ -118,7 +116,7 @@ void ForwardPass::resize(const InitializationContext& context)
 	createPipelines(); // may be overkill but resets the viewport for UI
 }
 
-void ForwardPass::record(const RecordContext& context)
+void ForwardPass::record(const Wolf::RecordContext& context)
 {
 	PROFILE_FUNCTION
 
@@ -128,9 +126,9 @@ void ForwardPass::record(const RecordContext& context)
 
 	m_commandBuffer->beginCommandBuffer();
 
-	DebugMarker::beginRegion(m_commandBuffer.get(), DebugMarker::renderPassDebugColor, "Forward pass");
+	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "Forward pass");
 
-	std::vector<VkClearValue> clearValues(2);
+	std::vector<Wolf::ClearValue> clearValues(2);
 	clearValues[0] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	clearValues[1] = { 1.0f };
 	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffers[frameBufferIdx], clearValues);
@@ -140,10 +138,10 @@ void ForwardPass::record(const RecordContext& context)
 	displayOptions.displayType = static_cast<uint32_t>(gameContext->displayType);
 	m_displayOptionsUniformBuffer->transferCPUMemory(&displayOptions, sizeof(displayOptions), 0);
 
-	const Viewport renderViewport = m_editorParams->getRenderViewport();
+	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
 	m_commandBuffer->setViewport(renderViewport);
 
-	DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_FORWARD_COMMON);
+	Wolf::DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_FORWARD_COMMON);
 
 	std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
 	descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo, 0);
@@ -169,16 +167,16 @@ void ForwardPass::record(const RecordContext& context)
 	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
 	m_commandBuffer->bindDescriptorSet(m_userInterfaceDescriptorSet.get(), 0, *m_userInterfacePipeline);
 
-	m_fullscreenRect->draw(*m_commandBuffer, RenderMeshList::NO_CAMERA_IDX);
+	m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
 
 	m_commandBuffer->endRenderPass();
 
-	DebugMarker::endRegion(m_commandBuffer.get());
+	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
 	m_commandBuffer->endCommandBuffer();
 }
 
-void ForwardPass::submit(const SubmitContext& context)
+void ForwardPass::submit(const Wolf::SubmitContext& context)
 {
 	std::vector waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
 	if (m_contaminationUpdatePass->wasEnabledThisFrame())
@@ -189,7 +187,7 @@ void ForwardPass::submit(const SubmitContext& context)
 		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
 	else
 		waitSemaphores.push_back(m_preDepthPass->getSemaphore());
-	const std::vector<const Semaphore*> signalSemaphores{ m_semaphore.get() };
+	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
 
 	bool anyShaderModified = m_userInterfaceVertexShaderParser->compileIfFileHasBeenModified();
@@ -207,15 +205,15 @@ void ForwardPass::submit(const SubmitContext& context)
 	}
 }
 
-Attachment ForwardPass::setupColorAttachment(const InitializationContext& context)
+Wolf::Attachment ForwardPass::setupColorAttachment(const Wolf::InitializationContext& context)
 {
-	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
 		nullptr);
 }
 
-Attachment ForwardPass::setupDepthAttachment(const InitializationContext& context)
+Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationContext& context)
 {
-	CreateImageInfo depthImageCreateInfo;
+	Wolf::CreateImageInfo depthImageCreateInfo;
 	depthImageCreateInfo.format = context.depthFormat;
 	depthImageCreateInfo.extent.width = context.swapChainWidth;
 	depthImageCreateInfo.extent.height = context.swapChainHeight;
@@ -223,20 +221,20 @@ Attachment ForwardPass::setupDepthAttachment(const InitializationContext& contex
 	depthImageCreateInfo.mipLevelCount = 1;
 	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
-	m_depthImage.reset(Image::createImage(depthImageCreateInfo));
+	m_depthImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
 
-	return Attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
-		Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_depthImage->getDefaultImageView());
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
+	                        Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_depthImage->getDefaultImageView());
 }
 
-void ForwardPass::initializeFramesBuffers(const InitializationContext& context, Attachment& colorAttachment, Attachment& depthAttachment)
+void ForwardPass::initializeFramesBuffers(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment)
 {
 	m_frameBuffers.clear();
 	m_frameBuffers.resize(context.swapChainImageCount);
 	for (uint32_t i = 0; i < context.swapChainImageCount; ++i)
 	{
 		colorAttachment.imageView = context.swapChainImages[i]->getDefaultImageView();
-		m_frameBuffers[i].reset(FrameBuffer::createFrameBuffer(*m_renderPass, { colorAttachment,  depthAttachment }));
+		m_frameBuffers[i].reset(Wolf::FrameBuffer::createFrameBuffer(*m_renderPass, { colorAttachment,  depthAttachment }));
 	}
 }
 
@@ -244,7 +242,7 @@ void ForwardPass::createPipelines()
 {
 	// Particles
 	{
-		RenderingPipelineCreateInfo pipelineCreateInfo;
+		Wolf::RenderingPipelineCreateInfo pipelineCreateInfo;
 		pipelineCreateInfo.renderPass = m_renderPass.get();
 
 		// Programming stages
@@ -264,15 +262,15 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.descriptorSetLayouts = 
 		{
 			m_particlesDescriptorSetLayout.get(),
-			GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
-			MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(),
-			LightManager::getDescriptorSetLayout().createConstNonOwnerResource(),
+			Wolf::GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
+			Wolf::MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(),
+			Wolf::LightManager::getDescriptorSetLayout().createConstNonOwnerResource(),
 			m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSetLayout(),
 			m_commonDescriptorSetLayout.createConstNonOwnerResource()
 		};
 
 		// Color Blend
-		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ADD };
+		pipelineCreateInfo.blendModes = {Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ADD };
 
 		// Depth testing
 		pipelineCreateInfo.enableDepthWrite = false;
@@ -280,20 +278,20 @@ void ForwardPass::createPipelines()
 		// Dynamic state
 		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 
-		m_particlesPipeline.reset(Pipeline::createRenderingPipeline(pipelineCreateInfo));
+		m_particlesPipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 	}
 
 	// UI
 	{
-		RenderingPipelineCreateInfo pipelineCreateInfo;
+		Wolf::RenderingPipelineCreateInfo pipelineCreateInfo;
 		pipelineCreateInfo.renderPass = m_renderPass.get();
 
 		// Programming stages
 		pipelineCreateInfo.shaderCreateInfos.resize(2);
 		m_userInterfaceVertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[0].stage = ShaderStageFlagBits::VERTEX;
+		pipelineCreateInfo.shaderCreateInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 		m_userInterfaceFragmentShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[1].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[1].stage = ShaderStageFlagBits::FRAGMENT;
+		pipelineCreateInfo.shaderCreateInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 		// IA
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
@@ -312,8 +310,8 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.descriptorSetLayouts = { m_userInterfaceDescriptorSetLayout.get() };
 
 		// Color Blend
-		pipelineCreateInfo.blendModes = { RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
+		pipelineCreateInfo.blendModes = {Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
 
-		m_userInterfacePipeline.reset(Pipeline::createRenderingPipeline(pipelineCreateInfo));
+		m_userInterfacePipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 	}
 }

@@ -10,7 +10,7 @@ class MeshResourceEditor : public ComponentInterface
 {
 public:
 	std::string getId() const override { return "meshResourceEditor"; }
-	MeshResourceEditor(const std::function<void(ComponentInterface*)>& requestReloadCallback);
+	MeshResourceEditor(const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override {}
 	void addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape);
@@ -81,9 +81,16 @@ private:
 	void onPhysicsMeshAdded();
 	EditorParamArray<PhysicMesh> m_physicsMeshes = EditorParamArray<PhysicMesh>("Physics meshes", TAB, "Physics", MAX_PHYSICS_MESHES, [this] { onPhysicsMeshAdded(); }, false);
 
-	std::array<EditorParamInterface*, 1> m_editorParams =
+	EditorLabel m_isCenteredLabel = EditorLabel("Placeholder", TAB, "Mesh");
+	void centerMesh();
+	EditorParamButton m_centerMesh = EditorParamButton("Center mesh", TAB, "Mesh", [this]() { centerMesh(); });
+
+	std::array<EditorParamInterface*, 3> m_editorParams =
 	{
-		&m_physicsMeshes
+		&m_physicsMeshes,
+
+		&m_isCenteredLabel,
+		&m_centerMesh
 	};
 };
 

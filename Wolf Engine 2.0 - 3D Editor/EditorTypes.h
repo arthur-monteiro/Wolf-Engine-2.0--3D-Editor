@@ -29,8 +29,9 @@ public:
 	virtual void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const = 0;
 
 	void setCategory(const std::string& category) { m_category = category; }
+	void setName(const std::string& name) { m_name = name; }
 
-	enum class Type { FLOAT, VECTOR2, VECTOR3, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON };
+	enum class Type { FLOAT, VECTOR2, VECTOR3, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON, LABEL };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 	const std::string& getCategory() const { return m_category; }
@@ -329,4 +330,13 @@ private:
 	};
 	std::vector<LineData> m_lines;
 	float m_endPointY = 1.0f;
+};
+
+class EditorLabel : public EditorParamInterface
+{
+public:
+	EditorLabel(const std::string& name, const std::string& tab, const std::string& category) : EditorParamInterface(Type::LABEL, name, tab, category, false, false) {}
+
+	void activate() override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
 };

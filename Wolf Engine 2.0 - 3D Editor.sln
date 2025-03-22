@@ -13,6 +13,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Wolf Engine 2.0 - 3D Editor
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Engine Core", "..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0.vcxproj", "{192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F}"
 	ProjectSection(ProjectDependencies) = postProject
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA} = {46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}
 		{A8D174DE-F302-480C-B9FC-507286640034} = {A8D174DE-F302-480C-B9FC-507286640034}
 		{ECFE9463-62C8-42A3-B685-47C7FABE66FB} = {ECFE9463-62C8-42A3-B685-47C7FABE66FB}
 	EndProjectSection
@@ -27,6 +28,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Graphic API Broker", "..\Wo
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GifEncoder", "GifEncoder\GifEncoder.vcxproj", "{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerateCodeFileHashes", "..\Wolf Engine 2.0\Wolf Engine 2.0\GenerateCodeFileHashes\GenerateCodeFileHashes.vcxproj", "{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -84,6 +87,14 @@ Global
 		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Release|x64.Build.0 = Release|x64
 		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Release|x86.ActiveCfg = Release|Win32
 		{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}.Release|x86.Build.0 = Release|Win32
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Debug|x64.ActiveCfg = Debug|x64
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Debug|x64.Build.0 = Debug|x64
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Debug|x86.ActiveCfg = Debug|Win32
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Debug|x86.Build.0 = Debug|Win32
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Release|x64.ActiveCfg = Release|x64
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Release|x64.Build.0 = Release|x64
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Release|x86.ActiveCfg = Release|Win32
+		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

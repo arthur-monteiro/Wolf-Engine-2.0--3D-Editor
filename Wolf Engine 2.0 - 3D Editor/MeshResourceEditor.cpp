@@ -4,8 +4,16 @@
 
 #include "MathsUtilsEditor.h"
 
-MeshResourceEditor::MeshResourceEditor(const std::function<void(ComponentInterface*)>& requestReloadCallback) : m_requestReloadCallback(requestReloadCallback)
+MeshResourceEditor::MeshResourceEditor(const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered) : m_requestReloadCallback(requestReloadCallback)
 {
+	if (isMeshCentered)
+	{
+		m_isCenteredLabel.setName("Mesh is centered");
+	}
+	else
+	{
+		m_isCenteredLabel.setName("Mesh is not centered");
+	}
 }
 
 void MeshResourceEditor::addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape)
@@ -142,4 +150,9 @@ void MeshResourceEditor::onPhysicsMeshAdded()
 {
 	m_requestReloadCallback(this);
 	m_physicsMeshes.back().subscribe(this, [this]() { notifySubscribers(); });
+}
+
+void MeshResourceEditor::centerMesh()
+{
+	// TODO: write the info to a file then reload the mesh
 }
