@@ -167,7 +167,10 @@ function computeInput(param, isLast) {
             + "let value = document.getElementById('nameInput" + nameForCallback + "').value;"
             + "change" + nameForCallback + "(value); " 
             + (param.drivesCategoryName ? "document.getElementById('" + formatStringForFunctionName(param.category) + "').innerHTML = value;" : "")
-            + "})()\"/>";
+            + "})()\"";
+        if (param.isReadOnly)
+            htmlToAdd += " disabled";
+        htmlToAdd += "/>";
     }
     else if (param.type == "Vector2" || param.type == "Vector3" || param.type == "UInt" || param.type == "Float") {
         htmlToAdd += addBottomBorder ? "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom:1px solid white;'>" : "" ;

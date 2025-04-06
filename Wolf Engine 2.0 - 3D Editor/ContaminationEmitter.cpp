@@ -3,6 +3,7 @@
 #include <fstream>
 #include <random>
 
+#include "ContaminationMaterial.h"
 #include "ContaminationReceiver.h"
 #include "ContaminationUpdatePass.h"
 #include "DebugRenderingManager.h"
@@ -10,12 +11,13 @@
 #include "EditorParamsHelper.h"
 #include "MaterialComponent.h"
 #include "RenderingPipelineInterface.h"
+#include "UpdateGPUBuffersPass.h"
 
 ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
                                            const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, 
                                            const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager)
 	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
-      m_physicsManager(physicsManager)
+      m_physicsManager(physicsManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass())
 {
 	m_requestReloadCallback = requestReloadCallback;
 
@@ -58,7 +60,7 @@ ContaminationEmitter::~ContaminationEmitter()
 
 void ContaminationEmitter::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams<ContaminationMaterial>(jsonReader, ID, m_savedEditorParams);
+	::loadParams<ContaminationMaterialArrayItem<TAB>>(jsonReader, ID, m_savedEditorParams);
 }
 
 void ContaminationEmitter::activateParams()
@@ -77,14 +79,14 @@ void ContaminationEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCou
 	}
 }
 
-void ContaminationEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void ContaminationEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	if (m_transferInfoToBufferRequested)
 		transferInfoToBuffer();
 
 	for (uint32_t i = 0; i < m_contaminationMaterials.size(); ++i)
 	{
-		ContaminationMaterial& materialEditor = m_contaminationMaterials[i];
+		ContaminationMaterialArrayItem<TAB>& materialEditor = m_contaminationMaterials[i];
 		materialEditor.updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
 	}
 
@@ -148,74 +150,11 @@ void ContaminationEmitter::onEntityRegistered()
 	input.close();
 }
 
-ContaminationEmitter::ContaminationMaterial::ContaminationMaterial() : ParameterGroupInterface(ContaminationEmitter::TAB)
-{
-	m_name = DEFAULT_NAME;
-}
-
-void ContaminationEmitter::ContaminationMaterial::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
-{
-	if (m_materialEntity && !m_materialNotificationRegistered)
-	{
-		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
-		{
-			materialComponent->subscribe(this, [this]() { notifySubscribers(); });
-			m_materialNotificationRegistered = true;
-
-			notifySubscribers();
-		}
-	}
-}
-
-void ContaminationEmitter::ContaminationMaterial::setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
-{
-	m_getEntityFromLoadingPathCallback = getEntityFromLoadingPathCallback;
-}
-
-void ContaminationEmitter::ContaminationMaterial::getAllParams(std::vector<EditorParamInterface*>& out) const
-{
-	std::copy(m_editorParams.data(), &m_editorParams.back() + 1, std::back_inserter(out));
-}
-
-void ContaminationEmitter::ContaminationMaterial::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
-{
-	std::copy(m_editorParams.data(), &m_editorParams.back() + 1, std::back_inserter(out));
-}
-
-bool ContaminationEmitter::ContaminationMaterial::hasDefaultName() const
-{
-	return std::string(m_name) == DEFAULT_NAME;
-}
-
-uint32_t ContaminationEmitter::ContaminationMaterial::getMaterialIdx() const
-{
-	if (m_materialEntity)
-	{
-		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
-		{
-			return materialComponent->getMaterialIdx();
-		}
-	}
-
-	return 0;
-}
-
-void ContaminationEmitter::ContaminationMaterial::onMaterialEntityChanged()
-{
-	if (static_cast<std::string>(m_materialEntityParam).empty())
-	{
-		m_materialEntity.reset(nullptr);
-		return;
-	}
-
-	m_materialEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_materialEntityParam)));
-	m_materialNotificationRegistered = false;
-}
-
 void ContaminationEmitter::onMaterialAdded()
 {
 	m_contaminationMaterials.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
-	m_contaminationMaterials.back().subscribe(this, [this]() { onParamChanged(); });
+	m_contaminationMaterials.back().subscribe(this, [this](Flags) { onParamChanged(); });
+	m_contaminationMaterials.back().setIndex(static_cast<uint32_t>(m_contaminationMaterials.size()) - 1);
 	m_requestReloadCallback(this);
 }
 
@@ -334,7 +273,9 @@ void ContaminationEmitter::transferInfoToBuffer()
 	{
 		contaminationInfo.materialIds[i] = m_contaminationMaterials[i].getMaterialIdx();
 	}
-	m_contaminationInfoBuffer->transferCPUMemoryWithStagingBuffer(&contaminationInfo, sizeof(ContaminationInfo));
+
+	UpdateGPUBuffersPass::Request request(&contaminationInfo, sizeof(ContaminationInfo), m_contaminationInfoBuffer.createNonOwnerResource(), 0);
+	m_updateGPUBuffersPass->addRequestBeforeFrame(request);
 
 	m_transferInfoToBufferRequested = false;
 }

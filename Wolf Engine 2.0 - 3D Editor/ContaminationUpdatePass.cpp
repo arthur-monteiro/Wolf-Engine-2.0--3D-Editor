@@ -11,7 +11,7 @@ void ContaminationUpdatePass::initializeResources(const Wolf::InitializationCont
 	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
 
 	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/contamination/update.comp"));
-	m_shootRequestBuffer.reset(Wolf::Buffer::createBuffer(sizeof(ShootRequestGPUInfo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	m_shootRequestBuffer.reset(new Wolf::UniformBuffer(sizeof(ShootRequestGPUInfo)));
 
 	m_descriptorSetLayoutGenerator.addStorageImage(Wolf::ShaderStageFlagBits::COMPUTE, 0); // Contamination Ids
 	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 1); // Contamination info
@@ -69,6 +69,9 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 
 		shootRequestGPUInfo.startPointAndLength[shootRequestGPUInfo.shootRequestCount] = glm::vec4(shootRequest.startPoint, shootRequestLength);
 		shootRequestGPUInfo.directionAndRadius[shootRequestGPUInfo.shootRequestCount] = glm::vec4(shootRequest.direction, shootRequest.radius);
+
+		float offset = shootRequestLength - shootRequest.smokeParticleSize;
+		shootRequestGPUInfo.startPointOffsetAndMaterialsCleanedFlags[shootRequestGPUInfo.shootRequestCount] = glm::vec4(offset, std::bit_cast<float>(shootRequest.materialsCleanedFlags), -1.0f, -1.0f);
 		shootRequestGPUInfo.shootRequestCount++;
 	}
 	m_shootRequestBuffer->transferCPUMemory(&shootRequestGPUInfo, sizeof(shootRequestGPUInfo));
@@ -157,14 +160,14 @@ void ContaminationUpdatePass::createPipeline()
 }
 
 ContaminationUpdatePass::PerEmitterInfo::PerEmitterInfo(ContaminationEmitter* contaminationEmitter, const Wolf::DescriptorSetLayoutGenerator& descriptorSetLayoutGenerator, const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& descriptorSetLayout,
-	const Wolf::ResourceUniqueOwner<Wolf::Buffer>& shootRequestsBuffer)
+	const Wolf::ResourceUniqueOwner<Wolf::UniformBuffer>& shootRequestsBuffer)
 {
 	m_componentPtr = contaminationEmitter;
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(descriptorSetLayoutGenerator.getDescriptorLayouts());
 	descriptorSetGenerator.setImage(0, { VK_IMAGE_LAYOUT_GENERAL, contaminationEmitter->getContaminationIdsImage()->getDefaultImageView() });
 	descriptorSetGenerator.setBuffer(1, *contaminationEmitter->getContaminationInfoBuffer());
-	descriptorSetGenerator.setBuffer(2, *shootRequestsBuffer);
+	descriptorSetGenerator.setUniformBuffer(2, *shootRequestsBuffer);
 
 	m_updateDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*descriptorSetLayout));
 	m_updateDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());

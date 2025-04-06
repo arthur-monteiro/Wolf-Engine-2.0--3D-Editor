@@ -35,8 +35,6 @@ public:
 	virtual void activateParams() const;
 	virtual void fillJSONForParams(std::string& outJSON);
 
-	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const;
-
 	virtual void save() const;
 
 	virtual const std::string& getName() const { return m_nameParam; }
@@ -100,8 +98,6 @@ private:
 
 	// Light related
 	std::vector<Wolf::ResourceNonOwner<EditorLightInterface>> m_lightComponents;
-
-	bool m_requiresInputs = false;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });
 	std::array<EditorParamInterface*, 1> m_entityParams =

@@ -24,11 +24,10 @@ class EditorModelInterface : public ComponentInterface
 public:
 	EditorModelInterface();
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	virtual bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) = 0;
 	virtual bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) = 0;
 
-	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 
 	virtual Wolf::AABB getAABB() const = 0;
 	virtual Wolf::BoundingSphere getBoundingSphere() const = 0;

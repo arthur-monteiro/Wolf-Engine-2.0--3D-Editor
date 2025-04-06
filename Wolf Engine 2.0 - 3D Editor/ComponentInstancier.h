@@ -7,6 +7,7 @@
 #include "AnimatedModel.h"
 #include "ComponentInterface.h"
 #include "ContaminationEmitter.h"
+#include "ContaminationMaterial.h"
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
 #include "EntityContainer.h"
@@ -52,7 +53,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 12> m_componentsInfo =
+	std::array<ComponentInfo, 13> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -87,7 +88,7 @@ private:
 			PlayerComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback, m_entityContainer));
+				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback, m_entityContainer, m_renderingPipeline));
 			}
 		},
 		ComponentInfo
@@ -159,7 +160,16 @@ private:
 			GasCylinderComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new GasCylinderComponent(m_physicsManager));
+				return static_cast<ComponentInterface*>(new GasCylinderComponent(m_physicsManager, m_getEntityFromLoadingPathCallback, m_requestReloadCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Contamination material",
+			ContaminationMaterial::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new ContaminationMaterial(m_getEntityFromLoadingPathCallback));
 			}
 		}
 	};

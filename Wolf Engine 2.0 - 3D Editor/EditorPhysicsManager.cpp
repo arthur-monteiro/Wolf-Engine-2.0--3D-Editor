@@ -11,6 +11,8 @@ void EditorPhysicsManager::addMeshes(const std::vector<PhysicsMeshInfo>& physics
 {
 	removeMeshesForEntity(entity);
 
+	m_meshMutex.lock();
+
 	for (const PhysicsMeshInfo& physicsMeshInfo : physicsMeshes)
 	{
 		Wolf::Physics::PhysicsShapeType shapeType = physicsMeshInfo.shape->getType();
@@ -42,10 +44,14 @@ void EditorPhysicsManager::addMeshes(const std::vector<PhysicsMeshInfo>& physics
 			Wolf::Debug::sendError("Unhandled shape type");
 		}
 	}
+
+	m_meshMutex.unlock();
 }
 
 void EditorPhysicsManager::removeMeshesForEntity(Entity* entity)
 {
+	m_meshMutex.lock();
+
 	if (m_infoByEntityArray.contains(entity))
 	{
 		const std::vector<InfoByEntity>& infoForEntity = m_infoByEntityArray[entity];
@@ -57,6 +63,8 @@ void EditorPhysicsManager::removeMeshesForEntity(Entity* entity)
 
 		m_infoByEntityArray[entity].clear();
 	}
+
+	m_meshMutex.unlock();
 }
 
 void EditorPhysicsManager::addDebugInfo(DebugRenderingManager& debugRenderingManager)

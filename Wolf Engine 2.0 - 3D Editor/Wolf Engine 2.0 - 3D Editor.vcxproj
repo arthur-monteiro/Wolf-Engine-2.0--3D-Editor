@@ -178,7 +178,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;TRACY_ENABLE;TRACY_ON_DEMAND;RESOURCE_DEBUG;RESOURCE_TRACKING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;TRACY_ENABLE;TRACY_ON_DEMAND;RESOURCE_DEBUG;RESOURCE_TRACKING;CUSTOM_PUSH_DATA_TO_GPU;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\GifEncoder\egif;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\glm;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Common;..\..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Public;..\..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\stb_image;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\tiny_obj;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\GLFW\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\OVR\Include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\xxhash64;..\..\Wolf Engine 2.0\Wolf Engine 2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -249,6 +249,7 @@
     <ClCompile Include="ComponentInstancier.cpp" />
     <ClCompile Include="ComponentInterface.cpp" />
     <ClCompile Include="ContaminationEmitter.cpp" />
+    <ClCompile Include="ContaminationMaterial.cpp" />
     <ClCompile Include="ContaminationReceiver.cpp" />
     <ClCompile Include="ContaminationUpdatePass.cpp" />
     <ClCompile Include="DebugRenderingManager.cpp" />
@@ -299,6 +300,7 @@
     <ClInclude Include="ComponentInstancier.h" />
     <ClInclude Include="ComponentInterface.h" />
     <ClInclude Include="ContaminationEmitter.h" />
+    <ClInclude Include="ContaminationMaterial.h" />
     <ClInclude Include="ContaminationReceiver.h" />
     <ClInclude Include="ContaminationUpdatePass.h" />
     <ClInclude Include="DebugRenderingManager.h" />

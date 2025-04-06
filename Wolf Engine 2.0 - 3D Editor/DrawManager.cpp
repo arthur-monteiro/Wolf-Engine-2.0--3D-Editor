@@ -12,6 +12,8 @@ DrawManager::DrawManager(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& ren
 
 void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRender, Entity* entity)
 {
+	m_meshMutex.lock();
+
 	if (m_infoByEntities.contains(entity))
 	{
 		const std::vector<InfoByEntity>& infoForEntity = m_infoByEntities[entity];
@@ -34,6 +36,7 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 				m_updateGPUBuffersPass->addRequestBeforeFrame(request);
 			}
 
+			m_meshMutex.unlock();
 			return;
 		}
 		else
@@ -73,10 +76,14 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 			m_infoByEntities[entity].push_back({ static_cast<uint32_t>(m_instancedMeshesRegistered.size()) - 1, 0 });
 		}
 	}
+
+	m_meshMutex.unlock();
 }
 
 void DrawManager::removeMeshesForEntity(Entity* entity)
 {
+	m_meshMutex.lock();
+
 	if (m_infoByEntities.contains(entity))
 	{
 		const std::vector<InfoByEntity>& infoForEntity = m_infoByEntities[entity];
@@ -86,12 +93,18 @@ void DrawManager::removeMeshesForEntity(Entity* entity)
 		}
 		m_infoByEntities[entity].clear();
 	}
+
+	m_meshMutex.unlock();
 }
 
 void DrawManager::clear()
 {
+	m_meshMutex.lock();
+
 	m_instancedMeshesRegistered.clear();
 	m_infoByEntities.clear();
+
+	m_meshMutex.unlock();
 }
 
 void DrawManager::addInstanceDataToBuffer(InstancedMeshRegistered& instancedMeshRegistered, uint32_t instanceIdx, const InstanceData& instanceData)
@@ -102,7 +115,9 @@ void DrawManager::addInstanceDataToBuffer(InstancedMeshRegistered& instancedMesh
 		instancedMeshRegistered.setInstancedMeshIdx(m_renderMeshList->registerInstancedMesh(instancedMesh, MAX_INSTANCE_PER_MESH, instanceIdx));
 	}
 	else
+	{
 		m_renderMeshList->addInstance(instancedMeshRegistered.getInstancedMeshIdx(), instanceIdx);
+	}
 
 	UpdateGPUBuffersPass::Request request(&instanceData, sizeof(InstanceData), instancedMeshRegistered.getInstanceBuffer().createNonOwnerResource(), instanceIdx * sizeof(InstanceData));
 	m_updateGPUBuffersPass->addRequestBeforeFrame(request);

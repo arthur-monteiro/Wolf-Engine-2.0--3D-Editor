@@ -103,5 +103,7 @@ private:
 		uint32_t instanceIdx;
 	};
 	std::map<Entity*, std::vector<InfoByEntity>> m_infoByEntities;
+
+	std::mutex m_meshMutex;
 };
 

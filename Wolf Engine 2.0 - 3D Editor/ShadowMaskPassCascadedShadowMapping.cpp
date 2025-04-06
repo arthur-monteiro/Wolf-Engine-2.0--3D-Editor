@@ -39,7 +39,7 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 	m_descriptorSetLayoutGenerator.addStorageImage(Wolf::ShaderStageFlagBits::COMPUTE, 0); // output mask
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
-	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(ShadowUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(ShadowUBData)));
 	m_shadowMapsSampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 1.0f, VK_FILTER_LINEAR));
 
 	// Noise
@@ -234,7 +234,7 @@ void ShadowMaskPassCascadedShadowMapping::updateDescriptorSet() const
 	preDepthImageDesc.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	preDepthImageDesc.imageView = m_preDepthPass->getOutput()->getDefaultImageView();
 	outputDescriptorSetGenerator.setImage(0, preDepthImageDesc);
-	outputDescriptorSetGenerator.setBuffer(1, *m_uniformBuffer);
+	outputDescriptorSetGenerator.setUniformBuffer(1, *m_uniformBuffer);
 	std::vector<Wolf::DescriptorSetGenerator::ImageDescription> shadowMapImageDescriptions(CascadedShadowMapsPass::CASCADE_COUNT);
 	for (uint32_t i = 0; i < CascadedShadowMapsPass::CASCADE_COUNT; ++i)
 	{

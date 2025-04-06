@@ -34,7 +34,7 @@ void MaterialComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	}
 }
 
-void MaterialComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void MaterialComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	std::vector<uint32_t> delayedIndices;
 	for (uint32_t indexOfTextureSetInMaterial : m_textureSetChangedIndices)
@@ -59,8 +59,10 @@ void MaterialComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
 			materialInfo.textureSetInfos[indexOfTextureSetInMaterial].textureSetIdx = textureSetGPUIdx;
 			materialInfo.textureSetInfos[indexOfTextureSetInMaterial].strength = strength;
 
+			m_materialsGPUManager->lockMaterials();
 			m_materialIdx = m_materialsGPUManager->getCurrentMaterialCount();
 			m_materialsGPUManager->addNewMaterial(materialInfo);
+			m_materialsGPUManager->unlockMaterials();
 
 			notifySubscribers();
 
@@ -148,7 +150,7 @@ void MaterialComponent::TextureSet::onTextureSetEntityChanged()
 
 		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
 		{
-			textureSetComponent->subscribe(this, [this]() { notifySubscribers(); });
+			textureSetComponent->subscribe(this, [this](Flags) { notifySubscribers(); });
 		}
 	}
 
@@ -160,7 +162,7 @@ void MaterialComponent::onTextureSetAdded()
 	m_textureSets.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
 
 	uint32_t idx = static_cast<uint32_t>(m_textureSets.size()) - 1;
-	m_textureSets.back().subscribe(this, [this, idx]() { onTextureSetChanged(idx); });
+	m_textureSets.back().subscribe(this, [this, idx](Flags) { onTextureSetChanged(idx); });
 
 	m_requestReloadCallback(this);
 }

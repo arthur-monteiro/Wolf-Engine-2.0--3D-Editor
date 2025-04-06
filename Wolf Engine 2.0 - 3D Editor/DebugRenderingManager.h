@@ -73,7 +73,7 @@ private:
 	struct PerGroupOfLines
 	{
 		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> linesDescriptorSet;
-		Wolf::ResourceUniqueOwner<Wolf::Buffer> linesUniformBuffer;
+		Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> linesUniformBuffer;
 		Wolf::ResourceNonOwner<Wolf::Mesh> mesh;
 
 		PerGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, 
@@ -91,8 +91,9 @@ private:
 	std::vector<PerGroupOfLines> m_AABBInfoArray;
 
 	// Custom lines
-	uint32_t m_customLinesInfoArrayCount = 0;
-	std::vector<PerGroupOfLines> m_customLinesInfoArray;
+	std::vector<uint32_t> m_customLinesInfoArrayCount;
+	std::vector<std::vector<PerGroupOfLines>> m_customLinesInfoArray;
+	std::mutex m_customLinesMutex;
 
 	// Spheres
 	static constexpr uint32_t MAX_SPHERE_COUNT = 128;
@@ -117,7 +118,7 @@ private:
 		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
 		SpheresUBData m_uniformData;
 		uint32_t m_count = 0;
-		Wolf::ResourceUniqueOwner<Wolf::Buffer> m_uniformBuffer;
+		Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_uniformBuffer;
 	};
 	PerSpherePipeline m_filledSphereData;
 	PerSpherePipeline m_wiredSphereData;
@@ -135,7 +136,7 @@ private:
 	};
 	RectanglesUBData m_rectanglesData;
 	uint32_t m_rectanglesCount = 0;
-	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_rectanglesUniformBuffer;
+	Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_rectanglesUniformBuffer;
 
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::RenderMeshList::MeshToRender>> m_meshesToRender;
 };

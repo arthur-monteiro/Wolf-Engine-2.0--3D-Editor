@@ -9,21 +9,25 @@
 class MeshResourceEditor : public ComponentInterface
 {
 public:
+	enum class ResourceEditorNotificationFlagBits : uint32_t
+	{
+		PHYSICS = 1 << 0,
+		MESH = 1 << 1
+	};
+
 	std::string getId() const override { return "meshResourceEditor"; }
-	MeshResourceEditor(const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered);
+	MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override {}
 	void addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape);
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer) override {}
-	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
-	bool requiresInputs() const override { return false; }
 	void saveCustom() const override {}
 
 	void computeOutputJSON(std::string& out);
@@ -36,6 +40,8 @@ private:
 	inline static const std::string TAB = "Mesh Resource";
 
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
+
+	EditorParamString m_filepath = EditorParamString("Filepath", TAB, "General", EditorParamString::ParamStringType::STRING, false, false, true);
 
 	class PhysicMesh : public ParameterGroupInterface, public Notifier
 	{
@@ -85,8 +91,10 @@ private:
 	void centerMesh();
 	EditorParamButton m_centerMesh = EditorParamButton("Center mesh", TAB, "Mesh", [this]() { centerMesh(); });
 
-	std::array<EditorParamInterface*, 3> m_editorParams =
+	std::array<EditorParamInterface*, 4> m_editorParams =
 	{
+		&m_filepath,
+
 		&m_physicsMeshes,
 
 		&m_isCenteredLabel,

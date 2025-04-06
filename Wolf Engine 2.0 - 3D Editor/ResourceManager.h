@@ -31,14 +31,14 @@ public:
 	Wolf::ModelData* getModelData(ResourceId modelResourceId) const;
 	uint32_t getFirstMaterialIdx(ResourceId modelResourceId) const;
 	uint32_t getFirstTextureSetIdx(ResourceId modelResourceId) const;
-	void subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void()>& callback) const;
+	void subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
 	static std::string computeIconPath(const std::string& loadingPath);
 	MeshResourceEditor* findMeshResourceEditorInResourceEditionToSave(ResourceId resourceId);
 	void addCurrentResourceEditionToSave();
-	void onResourceEditionChanged(ResourceId resourceId, MeshResourceEditor* meshResourceEditor);
+	void onResourceEditionChanged(Notifier::Flags flags);
 
 	std::function<void(const std::string&, const std::string&, ResourceId)> m_addResourceToUICallback;
 	std::function<void(const std::string&, const std::string&, ResourceId)> m_updateResourceInUICallback;
@@ -74,6 +74,7 @@ private:
 		~Mesh() override = default;
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
+		void forceReload(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass);
 
 		bool isLoaded() const override;
 		Wolf::ModelData* getModelData() { return &m_modelData; }
@@ -89,6 +90,8 @@ private:
 
 		uint32_t m_firstTextureSetIdx = 0;
 		uint32_t m_firstMaterialIdx = 0;
+
+		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_meshToKeepInMemory;
 	};
 
 	static constexpr uint32_t MESH_RESOURCE_IDX_OFFSET = 0;
@@ -110,6 +113,8 @@ private:
 	uint32_t m_resourceEditedParamsToSaveCount = 0;
 
 	Wolf::ResourceUniqueOwner<Entity> m_transientEditionEntity;
+	Wolf::NullableResourceNonOwner<MeshResourceEditor> m_meshResourceEditor;
 	ResourceId m_currentResourceInEdition = NO_RESOURCE;
+	uint32_t m_currentResourceNeedRebuildFlags = 0;
 };
 

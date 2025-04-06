@@ -9,15 +9,17 @@
 #include "ModelLoader.h"
 #include "StaticModel.h"
 
-GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager) : m_physicsManager(physicsManager)
+GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
+	const std::function<void(ComponentInterface*)>& requestReloadCallback)
+	: m_physicsManager(physicsManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback), m_requestReloadCallback(requestReloadCallback)
 {
 	m_descriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 
-	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(UniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-	descriptorSetGenerator.setBuffer(0, *m_uniformBuffer);
+	m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(UniformData)));
+	descriptorSetGenerator.setUniformBuffer(0, *m_uniformBuffer);
 
 	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -25,7 +27,7 @@ GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Ph
 
 void GasCylinderComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_editorParams);
+	::loadParams<ContaminationMaterialArrayItem<TAB>>(jsonReader, ID, m_editorParams);
 }
 
 void GasCylinderComponent::activateParams()
@@ -44,7 +46,7 @@ void GasCylinderComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCou
 	}
 }
 
-void GasCylinderComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void GasCylinderComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	UniformData uniformData{};
 
@@ -129,4 +131,25 @@ void GasCylinderComponent::onPlayerRelease()
 		m_entity->setPosition(rayCastResult.hitPoint + m_entity->getBoundingSphere().getRadius() / 2.0f);
 		m_entity->setRotation(glm::vec3(0.0f));
 	}
+}
+
+void GasCylinderComponent::onMaterialAdded()
+{
+	m_contaminationMaterials.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
+	m_contaminationMaterials.back().subscribe(this, [this](Flags) { onMaterialChanged(); });
+	m_requestReloadCallback(this);
+}
+
+void GasCylinderComponent::onMaterialChanged()
+{
+	m_color = glm::vec3(0.0f);
+	m_cleanFlags = 0;
+
+	for (uint32_t i = 0; i < m_contaminationMaterials.size(); ++i)
+	{
+		m_color += m_contaminationMaterials[i].getColor();
+		m_cleanFlags |= (1 << m_contaminationMaterials[i].getIdxInContaminationEmitter());
+	}
+
+	m_color /= static_cast<float>(m_contaminationMaterials.size());
 }

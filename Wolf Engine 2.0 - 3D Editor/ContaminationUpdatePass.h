@@ -6,8 +6,10 @@
 #include <Pipeline.h>
 #include <ResourceUniqueOwner.h>
 #include <ShaderParser.h>
+#include <UniformBuffer.h>
 
-#include "DescriptorSetLayoutGenerator.h"
+#include <DescriptorSetLayoutGenerator.h>
+
 #include "ShootInfo.h"
 
 class ContaminationEmitter;
@@ -39,7 +41,7 @@ private:
 	{
 	public:
 		PerEmitterInfo(ContaminationEmitter* contaminationEmitter, const Wolf::DescriptorSetLayoutGenerator& descriptorSetLayoutGenerator, const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& descriptorSetLayout,
-			const Wolf::ResourceUniqueOwner<Wolf::Buffer>& shootRequestsBuffer);
+			const Wolf::ResourceUniqueOwner<Wolf::UniformBuffer>& shootRequestsBuffer);
 
 		bool isSame(const ContaminationEmitter* contaminationEmitter) const { return m_componentPtr == contaminationEmitter; }
 		Wolf::ResourceUniqueOwner<Wolf::DescriptorSet>& getUpdateDescriptorSet() { return m_updateDescriptorSet; }
@@ -64,10 +66,10 @@ private:
 		static constexpr uint32_t MAX_SHOOT_REQUEST = 16;
 		glm::vec4 startPointAndLength[MAX_SHOOT_REQUEST];
 		glm::vec4 directionAndRadius[MAX_SHOOT_REQUEST];
-		glm::vec4 startPointOffset[MAX_SHOOT_REQUEST]; // yzw unused
+		glm::vec4 startPointOffsetAndMaterialsCleanedFlags[MAX_SHOOT_REQUEST]; // zw unused
 
 	};
-	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_shootRequestBuffer;
+	Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_shootRequestBuffer;
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_stagingShootRequestBuffer;
 
 	bool m_wasEnabledThisFrame = false;

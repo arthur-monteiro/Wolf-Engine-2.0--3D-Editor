@@ -50,7 +50,7 @@ void CascadedShadowMapsPass::initializeResources(const Wolf::InitializationConte
 	}
 
 	const float near = 0.1f; // context.camera->getNear();
-	const float far = 50.0f; // context.camera->getFar(); // we don't render shadows on all the range
+	const float far = 500.0f; // context.camera->getFar(); // we don't render shadows on all the range
 	uint32_t cascadeIdx = 0;
 	for (float i(1.0f / CASCADE_COUNT); i <= 1.0f; i += 1.0f / CASCADE_COUNT)
 	{

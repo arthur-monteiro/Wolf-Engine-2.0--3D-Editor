@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ComponentInterface.h"
+#include "ContaminationMaterial.h"
 #include "DescriptorSetLayoutGenerator.h"
 #include "EditorConfiguration.h"
 #include "EditorTypesTemplated.h"
@@ -29,13 +30,10 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override;
 
-	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
-
-	bool requiresInputs() const override { return false; }
 	void saveCustom() const override;
 
 	void addShootRequest(ShootRequest shootRequest);
@@ -56,36 +54,7 @@ private:
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
-
-	class ContaminationMaterial : public ParameterGroupInterface, public Notifier
-	{
-	public:
-		ContaminationMaterial();
-		ContaminationMaterial(const ContaminationMaterial&) = delete;
-
-		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
-
-		void setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
-		
-		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
-		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
-		bool hasDefaultName() const override;
-		uint32_t getMaterialIdx() const;
-
-	private:
-		inline static const std::string DEFAULT_NAME = "New material";
-		std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
-
-		std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_materialEntity;
-		void onMaterialEntityChanged();
-		bool m_materialNotificationRegistered = false;
-
-		EditorParamString m_materialEntityParam = EditorParamString("Material entity", TAB, "Material", [this]() { onMaterialEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
-		std::array<EditorParamInterface*, 1> m_editorParams =
-		{
-			&m_materialEntityParam,
-		};
-	};
+	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 
 	void onMaterialAdded();
 	void onFillSceneWithValueChanged() const;
@@ -96,7 +65,7 @@ private:
 	void buildEmitter();
 
 	static constexpr uint32_t MAX_MATERIALS = 8;
-	EditorParamArray<ContaminationMaterial> m_contaminationMaterials = EditorParamArray<ContaminationMaterial>("Contamination materials", TAB, "Materials", MAX_MATERIALS, [this] { onMaterialAdded(); });
+	EditorParamArray<ContaminationMaterialArrayItem<TAB>> m_contaminationMaterials = EditorParamArray<ContaminationMaterialArrayItem<TAB>>("Contamination materials", TAB, "Materials", MAX_MATERIALS, [this] { onMaterialAdded(); });
 
 	EditorParamFloat m_size = EditorParamFloat("Size", TAB, "General", 1.0f, 64.0f, [this]() { onParamChanged(); });
 	EditorParamVector3 m_offset = EditorParamVector3("Offset", TAB, "General", -64.0f, 64.0f, [this]() { onParamChanged(); });

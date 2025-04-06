@@ -19,7 +19,7 @@ public:
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
 	bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
@@ -32,7 +32,6 @@ public:
 	Wolf::BoundingSphere getBoundingSphere() const override;
 	std::string getTypeString() override { return "staticMesh"; }
 
-	bool requiresInputs() const override { return false; }
 	void saveCustom() const override {}
 
 private:

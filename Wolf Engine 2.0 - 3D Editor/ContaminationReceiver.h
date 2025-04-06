@@ -18,13 +18,10 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer) override {}
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
-	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
-
-	bool requiresInputs() const override { return false; }
 	void saveCustom() const override {}
 
 private:

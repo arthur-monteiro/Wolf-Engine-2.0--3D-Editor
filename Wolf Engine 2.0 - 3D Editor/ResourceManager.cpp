@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+#include <ProfilerCommon.h>
 #include <Timer.h>
 
 #include "EditorConfiguration.h"
@@ -19,9 +20,42 @@ ResourceManager::ResourceManager(const std::function<void(const std::string&, co
 
 void ResourceManager::updateBeforeFrame()
 {
+	PROFILE_FUNCTION
+
 	for (Wolf::ResourceUniqueOwner<Mesh>& mesh : m_meshes)
 	{
 		mesh->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
+	}
+
+	if (m_currentResourceNeedRebuildFlags != 0)
+	{
+		if (m_currentResourceNeedRebuildFlags & static_cast<uint32_t>(MeshResourceEditor::ResourceEditorNotificationFlagBits::MESH))
+		{
+			m_meshes[m_currentResourceInEdition]->forceReload(m_materialsGPUManager, m_thumbnailsGenerationPass);
+		}
+		if (m_currentResourceNeedRebuildFlags & static_cast<uint32_t>(MeshResourceEditor::ResourceEditorNotificationFlagBits::PHYSICS))
+		{
+			Wolf::ModelData* modelData = m_meshes[m_currentResourceInEdition]->getModelData();
+			modelData->physicsShapes.clear();
+
+			for (uint32_t i = 0; i < m_meshResourceEditor->getMeshCount(); ++i)
+			{
+				Wolf::Physics::PhysicsShapeType shapeType = m_meshResourceEditor->getShapeType(i);
+
+				if (shapeType == Wolf::Physics::PhysicsShapeType::Rectangle)
+				{
+					glm::vec3 p0;
+					glm::vec3 s1;
+					glm::vec3 s2;
+					m_meshResourceEditor->computeInfoForRectangle(i, p0, s1, s2);
+
+					modelData->physicsShapes.emplace_back(new Wolf::Physics::Rectangle(m_meshResourceEditor->getShapeName(i), p0, s1, s2));
+				}
+			}
+		}
+		m_meshes[m_currentResourceInEdition]->onChanged();
+
+		m_currentResourceNeedRebuildFlags = 0;
 	}
 }
 
@@ -77,16 +111,17 @@ Wolf::ResourceNonOwner<Entity> ResourceManager::computeResourceEditor(ResourceId
 	if (!meshResourceEditor)
 	{
 		Wolf::ModelData* modelData = getModelData(resourceId);
-		meshResourceEditor = new MeshResourceEditor(m_requestReloadCallback, modelData->isMeshCentered);
+		meshResourceEditor = new MeshResourceEditor(m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData->isMeshCentered);
 
 		for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->physicsShapes)
 		{
 			meshResourceEditor->addShape(shape);
 		}
 
-		meshResourceEditor->subscribe(this, [this, resourceId, meshResourceEditor]() { onResourceEditionChanged(resourceId, meshResourceEditor); });
+		meshResourceEditor->subscribe(this, [this](Notifier::Flags flags) { onResourceEditionChanged(flags); });
 	}
 	m_transientEditionEntity->addComponent(meshResourceEditor);
+	m_meshResourceEditor = m_transientEditionEntity->getComponent<MeshResourceEditor>();
 
 	return m_transientEditionEntity.createNonOwnerResource();
 }
@@ -148,7 +183,7 @@ uint32_t ResourceManager::getFirstTextureSetIdx(ResourceId modelResourceId) cons
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getFirstTextureSetIdx();
 }
 
-void ResourceManager::subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void()>& callback) const
+void ResourceManager::subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const
 {
 	m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->subscribe(instance, callback);
 }
@@ -202,27 +237,9 @@ void ResourceManager::addCurrentResourceEditionToSave()
 	}
 }
 
-void ResourceManager::onResourceEditionChanged(ResourceId resourceId, MeshResourceEditor* meshResourceEditor)
+void ResourceManager::onResourceEditionChanged(Notifier::Flags flags)
 {
-	Wolf::ModelData* modelData = m_meshes[resourceId]->getModelData();
-	modelData->physicsShapes.clear();
-
-	for (uint32_t i = 0; i < meshResourceEditor->getMeshCount(); ++i)
-	{
-		Wolf::Physics::PhysicsShapeType shapeType = meshResourceEditor->getShapeType(i);
-
-		if (shapeType == Wolf::Physics::PhysicsShapeType::Rectangle)
-		{
-			glm::vec3 p0;
-			glm::vec3 s1;
-			glm::vec3 s2;
-			meshResourceEditor->computeInfoForRectangle(i, p0, s1, s2);
-
-			modelData->physicsShapes.emplace_back(new Wolf::Physics::Rectangle(meshResourceEditor->getShapeName(i), p0, s1, s2));
-		}
-	}
-
-	m_meshes[resourceId]->onChanged();
+	m_currentResourceNeedRebuildFlags |= flags;
 }
 
 ResourceManager::ResourceInterface::ResourceInterface(std::string loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback) 
@@ -262,6 +279,20 @@ void ResourceManager::Mesh::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf:
 		loadModel(materialsGPUManager, thumbnailsGenerationPass);
 		m_modelLoadingRequested = false;
 	}
+
+	if (m_meshToKeepInMemory)
+	{
+		m_meshToKeepInMemory.reset(nullptr);
+	}
+}
+
+void ResourceManager::Mesh::forceReload(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+	const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+{
+	m_meshToKeepInMemory.reset(m_modelData.mesh.release());
+
+	loadModel(materialsGPUManager, thumbnailsGenerationPass);
+	m_modelLoadingRequested = false;
 }
 
 bool ResourceManager::Mesh::isLoaded() const
@@ -282,6 +313,9 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 	modelLoadingInfo.textureSetLayout = Wolf::TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
 	Wolf::ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
+	materialsGPUManager->lockMaterials();
+	materialsGPUManager->lockTextureSets();
+
 	m_firstTextureSetIdx = m_modelData.textureSets.empty() ? 0 : materialsGPUManager->getCurrentTextureSetCount();
 	m_firstMaterialIdx = m_modelData.textureSets.empty() ? 0 : materialsGPUManager->getCurrentMaterialCount();
 	for (const Wolf::MaterialsGPUManager::TextureSetInfo& textureSetInfo : m_modelData.textureSets)
@@ -292,6 +326,9 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 		materialInfo.textureSetInfos[0].textureSetIdx = materialsGPUManager->getTextureSetsCacheInfo().back().textureSetIdx;
 		materialsGPUManager->addNewMaterial(materialInfo);
 	}
+
+	materialsGPUManager->unlockTextureSets();
+	materialsGPUManager->unlockMaterials();
 
 	if (m_thumbnailGenerationRequested)
 	{

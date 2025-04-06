@@ -20,6 +20,7 @@ public:
 	void run();
 
 private:
+	static constexpr uint32_t THREAD_COUNT_BEFORE_FRAME = 6;
 	void createWolfInstance();
 	void createRenderer();
 	void updateBeforeFrame();
@@ -78,6 +79,8 @@ private:
 
 	std::string m_currentSceneName = "Unknown scene";
 
+	GameContext m_inModificationGameContext;
+	std::mutex m_contextMutex;
 	std::vector<GameContext> m_gameContexts;
 	bool m_entityPickingEnabled = true;
 	Wolf::ResourceUniqueOwner<EntityContainer> m_entityContainer;

@@ -30,7 +30,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	createRenderTargetInfo.format = OUTPUT_FORMAT;
 	createRenderTargetInfo.mipLevelCount = 1;
 	m_renderTargetImage.reset(Wolf::Image::createImage(createRenderTargetInfo));
-	Wolf::Attachment color = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, OUTPUT_FORMAT, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
+	Wolf::Attachment color = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, OUTPUT_FORMAT, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
 		Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, m_renderTargetImage->getDefaultImageView());
 
 	Wolf::CreateImageInfo depthImageCreateInfo;
@@ -42,7 +42,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
 	m_depthImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
-	Wolf::Attachment depth = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, context.depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
+	Wolf::Attachment depth = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
 		Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_depthImage->getDefaultImageView());
 
 	Wolf::CreateImageInfo createCopyInfo;

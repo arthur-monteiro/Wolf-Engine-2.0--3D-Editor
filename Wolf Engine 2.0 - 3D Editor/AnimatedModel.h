@@ -18,7 +18,7 @@ public:
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
 	bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
@@ -31,7 +31,6 @@ public:
 	Wolf::BoundingSphere getBoundingSphere() const override;
 	std::string getTypeString() override { return ID; }
 
-	bool requiresInputs() const override { return false; }
 	void saveCustom() const override {}
 
 	void getAnimationOptions(std::vector<std::string>& out);

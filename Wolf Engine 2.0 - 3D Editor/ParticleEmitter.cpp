@@ -41,7 +41,7 @@ void ParticleEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	forAllVisibleParams([tabCount](EditorParamInterface* e, std::string& inOutJSON) mutable  { e->addToJSON(inOutJSON, tabCount, false); }, outJSON);
 }
 
-void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	if (m_needCheckForNewLinkedEntities)
 	{
@@ -69,7 +69,7 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer)
 
 	if (!m_particleNotificationRegistered && m_particleComponent)
 	{
-		m_particleComponent->subscribe(this, [this]() { onParticleDataChanged(); });
+		m_particleComponent->subscribe(this, [this](Flags) { onParticleDataChanged(); });
 		m_particleNotificationRegistered = true;
 
 		onParticleDataChanged();

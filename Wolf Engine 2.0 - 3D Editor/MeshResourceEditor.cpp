@@ -1,11 +1,14 @@
 #include "MeshResourceEditor.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include <ConfigurationHelper.h>
 
+#include "EditorConfiguration.h"
 #include "MathsUtilsEditor.h"
 
-MeshResourceEditor::MeshResourceEditor(const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered) : m_requestReloadCallback(requestReloadCallback)
+MeshResourceEditor::MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered) : m_requestReloadCallback(requestReloadCallback)
 {
+	m_filepath = filepath;
+
 	if (isMeshCentered)
 	{
 		m_isCenteredLabel.setName("Mesh is centered");
@@ -143,16 +146,19 @@ Wolf::Physics::PhysicsShapeType MeshResourceEditor::PhysicMesh::getType() const
 
 void MeshResourceEditor::PhysicMesh::onValueChanged()
 {
-	notifySubscribers();
+	notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::PHYSICS));
 }
 
 void MeshResourceEditor::onPhysicsMeshAdded()
 {
 	m_requestReloadCallback(this);
-	m_physicsMeshes.back().subscribe(this, [this]() { notifySubscribers(); });
+	m_physicsMeshes.back().subscribe(this, [this](Notifier::Flags) { notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::PHYSICS)); });
 }
 
 void MeshResourceEditor::centerMesh()
 {
-	// TODO: write the info to a file then reload the mesh
+	std::string fullFilepath = g_editorConfiguration->computeFullPathFromLocalPath(m_filepath) + ".config";
+	Wolf::ConfigurationHelper::writeInfoToFile(fullFilepath, "forceCenter", true);
+
+	notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::MESH));
 }

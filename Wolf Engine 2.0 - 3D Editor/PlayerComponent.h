@@ -16,18 +16,16 @@ public:
 	static inline std::string ID = "playerComponent";
 	std::string getId() const override { return ID; }
 
-	PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer);
+	PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer) override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override;
 
-	void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
-	bool requiresInputs() const override { return true; }
 	void saveCustom() const override {}
 
 protected:
@@ -39,6 +37,7 @@ private:
 	inline static const std::string TAB = "Player component";
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
+	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 
 	EditorParamFloat m_speed = EditorParamFloat("Speed", TAB, "Movement", 1.0f, 10.0f);
 
@@ -91,20 +90,22 @@ private:
 
 	// Shoot
 	float m_currentShootX = 0.0f, m_currentShootY = 0.0f;
-
 	glm::vec3 getGunPosition() const;
 	bool canShoot() const;
 	bool isShooting() const;
 
 	// Gas cylinder management
 	bool m_isWaitingForGasCylinderButtonRelease = false;
+	uint32_t getGasCylinderCleanFlags() const;
+
+	// Smoke
+	float getMaxParticleSize() const;
 
 	// Debug
 	void buildShootDebugMesh();
 
 	bool m_shootDebugMeshRebuildRequested = false;
 	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_shootDebugMesh;
-	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_newShootDebugMesh; // new mesh kept here until the debug mesh is no more used
 	uint64_t m_lastShootRequestSentToContaminationEmitterTimer = 0;
 };
 

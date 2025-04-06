@@ -1,6 +1,6 @@
 #include "Notifier.h"
 
-void Notifier::subscribe(const void* instance, const std::function<void()>& callback)
+void Notifier::subscribe(const void* instance, const std::function<void(Flags)>& callback)
 {
 	m_subscriptions.push_back({ instance, callback });
 }
@@ -16,10 +16,10 @@ void Notifier::unsubscribe(const void* instance)
 	}
 }
 
-void Notifier::notifySubscribers() const
+void Notifier::notifySubscribers(Flags flags) const
 {
 	for (const Subscription& subscription : m_subscriptions)
 	{
-		subscription.callback();
+		subscription.callback(flags);
 	}
 }

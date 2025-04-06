@@ -85,11 +85,9 @@ void StaticModel::loadParams(Wolf::JSONReader& jsonReader)
 	subscribeToAllSubMeshes();
 }
 
-void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
-	PROFILE_FUNCTION
-
-	EditorModelInterface::updateBeforeFrame(globalTimer);
+	EditorModelInterface::updateBeforeFrame(globalTimer, inputHandler);
 
 	if (m_isWaitingForMeshLoading)
 	{
@@ -202,7 +200,7 @@ void StaticModel::subscribeToAllSubMeshes()
 {
 	for (uint32_t i = 0; i < m_subMeshes.size(); ++i)
 	{
-		m_subMeshes[i].subscribe(this, [this]() { onSubMeshChanged(); });
+		m_subMeshes[i].subscribe(this, [this](Flags) { onSubMeshChanged(); });
 	}
 }
 
@@ -213,7 +211,7 @@ void StaticModel::requestModelLoading()
 		m_subMeshes.clear();
 
 		m_meshResourceId = m_resourceManager->addModel(std::string(m_loadingPathParam));
-		m_resourceManager->subscribeToResource(m_meshResourceId, this, [this]() { notifySubscribers(); });
+		m_resourceManager->subscribeToResource(m_meshResourceId, this, [this](Flags) { notifySubscribers(); });
 		m_isWaitingForMeshLoading = true;
 		notifySubscribers();
 	}
@@ -260,8 +258,10 @@ void StaticModel::SubMesh::update(const Wolf::ResourceNonOwner<Wolf::MaterialsGP
 			materialInfo.textureSetInfos[indexOfTextureSetInMaterial].textureSetIdx = textureSetGPUIdx;
 			materialInfo.textureSetInfos[indexOfTextureSetInMaterial].strength = strength;
 
+			materialsGPUManager->lockMaterials();
 			m_materialIdx = materialsGPUManager->getCurrentMaterialCount();
 			materialsGPUManager->addNewMaterial(materialInfo);
+			materialsGPUManager->unlockMaterials();
 
 			// TODO: delay the rest
 		}
@@ -397,7 +397,7 @@ void StaticModel::SubMesh::onTextureSetAdded()
 	m_textureSets.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
 
 	uint32_t idx = static_cast<uint32_t>(m_textureSets.size()) - 1;
-	m_textureSets.back().subscribe(this, [this, idx]() { onTextureSetChanged(idx); });
+	m_textureSets.back().subscribe(this, [this, idx](Flags) { onTextureSetChanged(idx); });
 
 	if (m_reloadEntityCallback)
 		m_reloadEntityCallback();

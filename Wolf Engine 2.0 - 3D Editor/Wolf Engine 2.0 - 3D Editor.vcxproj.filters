@@ -156,6 +156,9 @@
     <ClCompile Include="AnimationHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ContaminationMaterial.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vertex2DTextured.h">
@@ -309,6 +312,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AnimationHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ContaminationMaterial.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

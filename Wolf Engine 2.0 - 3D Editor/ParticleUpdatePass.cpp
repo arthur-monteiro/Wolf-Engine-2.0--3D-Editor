@@ -6,6 +6,7 @@
 
 #include "DebugMarker.h"
 #include "Pipeline.h"
+#include "UpdateGPUBuffersPass.h"
 
 void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& context)
 {
@@ -17,7 +18,7 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	m_particlesBuffer.reset(Wolf::Buffer::createBuffer(MAX_TOTAL_PARTICLES * sizeof(ParticleInfoGPU), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 	m_emitterDrawInfoBuffer.reset(Wolf::Buffer::createBuffer(MAX_EMITTER_COUNT * sizeof(EmitterDrawInfo), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 
-	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(UniformBufferData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(UniformBufferData)));
 	createNoiseBuffer();
 
 	m_descriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 0);
@@ -26,7 +27,7 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
-	descriptorSetGenerator.setBuffer(0, *m_uniformBuffer);
+	descriptorSetGenerator.setUniformBuffer(0, *m_uniformBuffer);
 	descriptorSetGenerator.setBuffer(1, *m_particlesBuffer);
 	descriptorSetGenerator.setBuffer(2, *m_noiseBuffer);
 
@@ -82,14 +83,15 @@ void ParticleUpdatePass::submit(const Wolf::SubmitContext& context)
 	}
 }
 
-void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<UpdateGPUBuffersPass>& updateGPUBuffersPass)
 {
 	// Emitter info
 	if (!m_emitterDrawInfoUpdates.empty())
 	{
 		for (const EmitterDrawInfoUpdate& emitterDrawInfoUpdate : m_emitterDrawInfoUpdates)
 		{
-			m_emitterDrawInfoBuffer->transferCPUMemoryWithStagingBuffer(&emitterDrawInfoUpdate.data, sizeof(EmitterDrawInfo), 0, emitterDrawInfoUpdate.emitterIdx * sizeof(EmitterDrawInfo));
+			UpdateGPUBuffersPass::Request request(&emitterDrawInfoUpdate.data, sizeof(EmitterDrawInfo), m_emitterDrawInfoBuffer.createNonOwnerResource(), emitterDrawInfoUpdate.emitterIdx * sizeof(EmitterDrawInfo));
+			updateGPUBuffersPass->addRequestBeforeFrame(request);
 		}
 
 		m_emitterDrawInfoUpdates.clear();

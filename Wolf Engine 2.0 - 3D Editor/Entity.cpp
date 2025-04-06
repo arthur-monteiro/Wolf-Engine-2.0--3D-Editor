@@ -57,12 +57,9 @@ void Entity::addComponent(ComponentInterface* component)
 		m_lightComponents.push_back(componentAsLight);
 	}
 
-	if (m_components.back()->requiresInputs())
-		m_requiresInputs = true;
-
-	component->subscribe(this, [this]() { m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true; });
 	if (m_modelComponent)
 	{
+		component->subscribe(this, [this](Flags) { m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true; });
 		m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true;
 	}
 
@@ -87,14 +84,7 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 {
 	PROFILE_FUNCTION
 
-	if (m_requiresInputs)
-	{
-		inputHandler->lockCache(this);
-		inputHandler->pushDataToCache(this);
-		inputHandler->unlockCache(this);
-	}
-
-	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame(globalTimer);)
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame(globalTimer, inputHandler);)
 
 	if (m_modelComponent)
 	{
@@ -181,22 +171,6 @@ void Entity::fillJSONForParams(std::string& outJSON)
 	}
 	outJSON += "\t]\n";
 	outJSON += "}";
-}
-
-void Entity::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) const
-{
-	PROFILE_FUNCTION
-
-	if (m_requiresInputs)
-		inputHandler->lockCache(this);
-
-	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateDuringFrame(inputHandler);)
-
-	if (m_requiresInputs)
-	{
-		inputHandler->clearCache(this);
-		inputHandler->unlockCache(this);
-	}
 }
 
 void Entity::save() const

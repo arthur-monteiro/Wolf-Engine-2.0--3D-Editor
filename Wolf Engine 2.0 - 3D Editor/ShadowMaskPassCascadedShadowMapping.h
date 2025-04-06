@@ -70,7 +70,7 @@ private:
 
 		glm::float_t noiseRotation;
 	};
-	std::unique_ptr<Wolf::Buffer> m_uniformBuffer;
+	std::unique_ptr<Wolf::UniformBuffer> m_uniformBuffer;
 	std::unique_ptr<Wolf::Sampler> m_shadowMapsSampler;
 
 	// Noise

@@ -33,7 +33,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
 {
 	m_cascadedShadowMapsPass->addCamerasForThisFrame(wolfInstance->getCameraList());
-	m_particleUpdatePass->updateBeforeFrame(wolfInstance->getGlobalTimer());
+	m_particleUpdatePass->updateBeforeFrame(wolfInstance->getGlobalTimer(), m_updateGPUBuffersPass.createNonOwnerResource());
 	m_thumbnailsGenerationPass->addCameraForThisFrame(wolfInstance->getCameraList());
 }
 

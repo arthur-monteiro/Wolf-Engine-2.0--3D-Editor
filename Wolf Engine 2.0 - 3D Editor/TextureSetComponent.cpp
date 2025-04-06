@@ -7,7 +7,7 @@ TextureSetComponent::TextureSetComponent(const Wolf::ResourceNonOwner<Wolf::Mate
                                          const std::function<void(ComponentInterface*)>& requestReloadCallback)
 	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_requestReloadCallback(requestReloadCallback)
 {
-	m_textureSet.get().subscribe(this, [this]() { });
+	m_textureSet.get().subscribe(this, [this](Flags) { });
 
 	m_textureCoordsScale = glm::vec2(1.0f);
 	m_triplanarScale = glm::vec3(1.0f);
@@ -16,7 +16,7 @@ TextureSetComponent::TextureSetComponent(const Wolf::ResourceNonOwner<Wolf::Mate
 void TextureSetComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
 	::loadParams<TextureSet>(jsonReader, ID, m_allParams);
-	m_textureSet.get().subscribe(this, [this]() { m_requestReloadCallback(this); });
+	m_textureSet.get().subscribe(this, [this](Flags) { m_requestReloadCallback(this); });
 
 	m_paramsLoaded = true;
 }
@@ -53,7 +53,7 @@ void TextureSetComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCoun
 	}
 }
 
-void TextureSetComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void TextureSetComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	if (m_paramsLoaded)
 	{
@@ -117,7 +117,7 @@ TextureSetComponent::TextureSet::TextureSet() : ParameterGroupInterface(TextureS
 	m_name = "Material";
 
 	//m_materialCacheInfo.materialInfo = m_materialsInfo.data();
-	m_textureSetEditor.subscribe(this, [this]() { notifySubscribers(); });
+	m_textureSetEditor.subscribe(this, [this](Flags) { notifySubscribers(); });
 }
 
 void TextureSetComponent::TextureSet::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)

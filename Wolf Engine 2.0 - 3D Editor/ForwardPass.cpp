@@ -27,13 +27,13 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 
 	// Shared resources
 	{
-		m_displayOptionsUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(DisplayOptionsUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+		m_displayOptionsUniformBuffer.reset(new Wolf::UniformBuffer(sizeof(DisplayOptionsUBData)));
 
 		m_commonDescriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
 		m_commonDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
 		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_commonDescriptorSetLayoutGenerator.getDescriptorLayouts());
-		descriptorSetGenerator.setBuffer(0, *m_displayOptionsUniformBuffer);
+		descriptorSetGenerator.setUniformBuffer(0, *m_displayOptionsUniformBuffer);
 
 		m_commonDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_commonDescriptorSetLayout));
 		m_commonDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
@@ -207,7 +207,7 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 
 Wolf::Attachment ForwardPass::setupColorAttachment(const Wolf::InitializationContext& context)
 {
-	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
 		nullptr);
 }
 
@@ -223,7 +223,7 @@ Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationCon
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
 	m_depthImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
 
-	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_STORE_OP_STORE,
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
 	                        Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_depthImage->getDefaultImageView());
 }
 

@@ -16,7 +16,7 @@ public:
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer);
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<UpdateGPUBuffersPass>& updateGPUBuffersPass);
 
 	uint32_t getParticleCount() const { return m_particleCount; }
 	const Wolf::Buffer& getParticleBuffer() const { return *m_particlesBuffer; }
@@ -125,7 +125,7 @@ private:
 		EmitterUpdateInfo emittersInfo[MAX_EMITTER_COUNT];
 		static_assert(sizeof(EmitterUpdateInfo) % sizeof(glm::vec4) == 0);
 	};
-	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_uniformBuffer;
+	Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_uniformBuffer;
 
 	// Noise
 	static constexpr uint32_t NOISE_POINT_COUNT = 1024;

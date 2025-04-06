@@ -7,9 +7,10 @@
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
 #include "Entity.h"
+#include "UpdateGPUBuffersPass.h"
 
-PlayerComponent::PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer)
-	: m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)), m_entityContainer(entityContainer)
+PlayerComponent::PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+	: m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)), m_entityContainer(entityContainer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass())
 {
 }
 
@@ -34,82 +35,14 @@ void PlayerComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	}
 }
 
-void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer)
-{
-	if (m_needCheckForNewLinkedEntities)
-	{
-		onGasCylinderChanged();
-		onSmokeEmitterChanged();
-		m_needCheckForNewLinkedEntities = false;
-	}
-
-	if (isShooting())
-	{
-		// Send info to contamination emitter to update the 3D texture
-		uint64_t elapsedTimeSinceLastRequest = globalTimer.getCurrentCachedMillisecondsDuration() - m_lastShootRequestSentToContaminationEmitterTimer;
-		static constexpr uint64_t MIN_DELAY_MS = 250;
-		if (elapsedTimeSinceLastRequest > MIN_DELAY_MS)
-		{
-			if (m_contaminationEmitterEntity)
-			{
-				if (const Wolf::ResourceNonOwner<ContaminationEmitter> contaminationEmitterComponent = (*m_contaminationEmitterEntity)->getComponent<ContaminationEmitter>())
-				{
-					contaminationEmitterComponent->addShootRequest(ShootRequest{ getGunPosition(), glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY)), m_shootLength, glm::radians(static_cast<float>(m_shootAngle)),
-					static_cast<uint32_t>(globalTimer.getCurrentCachedMillisecondsDuration()) });
-				}
-			}
-			m_lastShootRequestSentToContaminationEmitterTimer = globalTimer.getCurrentCachedMillisecondsDuration();
-		}
-
-		// Send info to gas cylinder to update current storage
-		if (m_gasCylinderComponent)
-		{
-			m_gasCylinderComponent->addShootRequest(globalTimer);
-		}
-
-		m_currentShootX = m_currentShootY = 0.0f; // reset to avoid sending the info twice
-	}
-
-	if (m_animatedModel && m_gasCylinderComponent && !(*m_animatedModel)->getBoneNamesAndIndices().empty())
-	{
-		const std::vector<std::pair<std::string, uint32_t>>& boneNamesAndIndices = (*m_animatedModel)->getBoneNamesAndIndices();
-
-		glm::vec3 topBonePosition = (*m_animatedModel)->getBonePosition(boneNamesAndIndices[m_gasCylinderTopBone].second);
-		glm::vec3 botBonePosition = (*m_animatedModel)->getBonePosition(boneNamesAndIndices[m_gasCylinderBottomBone].second);
-
-		glm::mat3 modelTransform = (*m_animatedModel)->computeRotationMatrix();
-		glm::vec3 topBoneOffset = modelTransform * m_gasCylinderTopBoneOffset;
-		glm::vec3 botBoneOffset = modelTransform * m_gasCylinderBottomBoneOffset;
-
-		m_gasCylinderComponent->setLinkPositions(topBonePosition + topBoneOffset, botBonePosition + botBoneOffset);
-	}
-}
-
-void PlayerComponent::addDebugInfo(DebugRenderingManager& debugRenderingManager)
-{
-	if (isShooting())
-	{
-		if (m_newShootDebugMesh)
-			m_shootDebugMesh.reset(m_newShootDebugMesh.release());
-
-		const bool useNewMesh = m_shootDebugMeshRebuildRequested;
-		if (m_shootDebugMeshRebuildRequested)
-			buildShootDebugMesh();
-
-		DebugRenderingManager::LinesUBData uniformData{};
-		uniformData.transform = glm::mat4(1.0f);
-		debugRenderingManager.addCustomGroupOfLines(useNewMesh ? m_newShootDebugMesh.createNonOwnerResource() : m_shootDebugMesh.createNonOwnerResource(), uniformData);
-	}
-}
-
-void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
+void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	if (!m_entity)
 		Wolf::Debug::sendCriticalError("Entity not set");
 
 	// Move player
 	float moveX, moveY;
-	inputHandler->getJoystickSpeedForGamepad(static_cast<uint8_t>(m_gamepadIdx), 0, moveX, moveY, m_entity);
+	inputHandler->getJoystickSpeedForGamepad(static_cast<uint8_t>(m_gamepadIdx), 0, moveX, moveY);
 
 	const auto now = std::chrono::high_resolution_clock::now();
 	const long long millisecondsDuration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_lastUpdateTimePoint).count();
@@ -120,7 +53,7 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 
 	float speed = m_speed;
 	bool isRunning = false;
-	if (inputHandler->getTriggerValueForGamepad(static_cast<uint8_t>(m_gamepadIdx), 1, m_entity) > 0.0f)
+	if (inputHandler->getTriggerValueForGamepad(static_cast<uint8_t>(m_gamepadIdx), 1) > 0.0f)
 	{
 		speed *= 2.0f;
 		isRunning = true;
@@ -165,7 +98,7 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 	}
 
 	// Shoot
-	inputHandler->getJoystickSpeedForGamepad(static_cast<uint8_t>(m_gamepadIdx), 1, m_currentShootX, m_currentShootY, m_entity);
+	inputHandler->getJoystickSpeedForGamepad(static_cast<uint8_t>(m_gamepadIdx), 1, m_currentShootX, m_currentShootY);
 
 	if (isShooting())
 	{
@@ -192,12 +125,12 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 	// Take or drop gas cylinder
 	if (m_isWaitingForGasCylinderButtonRelease)
 	{
-		if (!inputHandler->isGamepadButtonPressed(static_cast<uint8_t>(m_gamepadIdx), 2, m_entity))
+		if (!inputHandler->isGamepadButtonPressed(static_cast<uint8_t>(m_gamepadIdx), 2))
 		{
 			m_isWaitingForGasCylinderButtonRelease = false;
 		}
 	}
-	else if (inputHandler->isGamepadButtonPressed(static_cast<uint8_t>(m_gamepadIdx), 2, m_entity))
+	else if (inputHandler->isGamepadButtonPressed(static_cast<uint8_t>(m_gamepadIdx), 2))
 	{
 		m_isWaitingForGasCylinderButtonRelease = true;
 
@@ -228,14 +161,75 @@ void PlayerComponent::updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::Input
 			}
 		}
 	}
+
+	if (m_needCheckForNewLinkedEntities)
+	{
+		onGasCylinderChanged();
+		onSmokeEmitterChanged();
+		m_needCheckForNewLinkedEntities = false;
+	}
+
+	if (isShooting())
+	{
+		// Send info to contamination emitter to update the 3D texture
+		uint64_t elapsedTimeSinceLastRequest = globalTimer.getCurrentCachedMillisecondsDuration() - m_lastShootRequestSentToContaminationEmitterTimer;
+		static constexpr uint64_t MIN_DELAY_MS = 250;
+		if (elapsedTimeSinceLastRequest > MIN_DELAY_MS)
+		{
+			if (m_contaminationEmitterEntity)
+			{
+				if (const Wolf::ResourceNonOwner<ContaminationEmitter> contaminationEmitterComponent = (*m_contaminationEmitterEntity)->getComponent<ContaminationEmitter>())
+				{
+					contaminationEmitterComponent->addShootRequest(ShootRequest{ getGunPosition(), glm::normalize(glm::vec3(m_currentShootX, 0, m_currentShootY)), m_shootLength, 
+						glm::radians(static_cast<float>(m_shootAngle)), getMaxParticleSize(), getGasCylinderCleanFlags(), static_cast<uint32_t>(globalTimer.getCurrentCachedMillisecondsDuration())});
+				}
+			}
+			m_lastShootRequestSentToContaminationEmitterTimer = globalTimer.getCurrentCachedMillisecondsDuration();
+		}
+
+		// Send info to gas cylinder to update current storage
+		if (m_gasCylinderComponent)
+		{
+			m_gasCylinderComponent->addShootRequest(globalTimer);
+		}
+	}
+
+	if (m_animatedModel && m_gasCylinderComponent && !(*m_animatedModel)->getBoneNamesAndIndices().empty())
+	{
+		const std::vector<std::pair<std::string, uint32_t>>& boneNamesAndIndices = (*m_animatedModel)->getBoneNamesAndIndices();
+
+		glm::vec3 topBonePosition = (*m_animatedModel)->getBonePosition(boneNamesAndIndices[m_gasCylinderTopBone].second);
+		glm::vec3 botBonePosition = (*m_animatedModel)->getBonePosition(boneNamesAndIndices[m_gasCylinderBottomBone].second);
+
+		glm::mat3 modelTransform = (*m_animatedModel)->computeRotationMatrix();
+		glm::vec3 topBoneOffset = modelTransform * m_gasCylinderTopBoneOffset;
+		glm::vec3 botBoneOffset = modelTransform * m_gasCylinderBottomBoneOffset;
+
+		m_gasCylinderComponent->setLinkPositions(topBonePosition + topBoneOffset, botBonePosition + botBoneOffset);
+	}
+}
+
+void PlayerComponent::addDebugInfo(DebugRenderingManager& debugRenderingManager)
+{
+	if (isShooting())
+	{
+		if (m_shootDebugMeshRebuildRequested)
+			buildShootDebugMesh();
+
+		DebugRenderingManager::LinesUBData uniformData{};
+		uniformData.transform = glm::mat4(1.0f);
+		debugRenderingManager.addCustomGroupOfLines(m_shootDebugMesh.createNonOwnerResource(), uniformData);
+	}
 }
 
 void PlayerComponent::onEntityRegistered()
 {
 	updateAnimatedModel();
-	m_entity->subscribe(this, [this]() { updateAnimatedModel(); });
+	m_entity->subscribe(this, [this](Flags) { updateAnimatedModel(); });
 
 	m_needCheckForNewLinkedEntities = true;
+
+	buildShootDebugMesh();
 }
 
 void PlayerComponent::updateAnimatedModel()
@@ -245,7 +239,7 @@ void PlayerComponent::updateAnimatedModel()
 		m_animatedModel.reset(new Wolf::ResourceNonOwner<AnimatedModel>(animatedModel));
 
 		animatedModel->unsubscribe(this);
-		animatedModel->subscribe(this, [this]() { updateAnimatedModel(); });
+		animatedModel->subscribe(this, [this](Flags) { updateAnimatedModel(); });
 
 		std::vector<std::string> options;
 		animatedModel->getAnimationOptions(options);
@@ -328,6 +322,16 @@ bool PlayerComponent::isShooting() const
 	return canShoot() && (m_currentShootX != 0.0f || m_currentShootY != 0.0f);
 }
 
+uint32_t PlayerComponent::getGasCylinderCleanFlags() const
+{
+	return m_gasCylinderComponent->getCleanFlags();
+}
+
+float PlayerComponent::getMaxParticleSize() const
+{
+	return m_smokeEmitterComponent->getMaxSizeMultiplier();
+}
+
 void PlayerComponent::buildShootDebugMesh()
 {
 	const glm::vec3 gunPosition = getGunPosition();
@@ -382,7 +386,15 @@ void PlayerComponent::buildShootDebugMesh()
 		indices.push_back(i);
 	}
 
-	m_newShootDebugMesh.reset(new Wolf::Mesh(vertices, indices));
+	if (!m_shootDebugMesh)
+	{
+		m_shootDebugMesh.reset(new Wolf::Mesh(vertices, indices));
+	}
+	else
+	{
+		UpdateGPUBuffersPass::Request request(vertices.data(), static_cast<uint32_t>(vertices.size()) * sizeof(vertices[0]), m_shootDebugMesh->getVertexBuffer(), 0);
+		m_updateGPUBuffersPass->addRequestBeforeFrame(request);
+	}
 
 	m_shootDebugMeshRebuildRequested = false;
 }

@@ -26,6 +26,7 @@ public:
 
 private:
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
+	std::mutex m_meshMutex;
 
 	struct InfoByEntity
 	{

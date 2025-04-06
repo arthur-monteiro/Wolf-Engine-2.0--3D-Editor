@@ -33,13 +33,13 @@ void Particle::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 	}
 }
 
-void Particle::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void Particle::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	if (m_materialEntity && !m_materialNotificationRegistered)
 	{
 		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
 		{
-			materialComponent->subscribe(this, [this]() { notifySubscribers(); });
+			materialComponent->subscribe(this, [this](Flags) { notifySubscribers(); });
 			m_materialNotificationRegistered = true;
 
 			notifySubscribers();

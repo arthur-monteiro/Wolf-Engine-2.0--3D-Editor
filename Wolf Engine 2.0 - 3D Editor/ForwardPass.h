@@ -10,6 +10,7 @@
 #include <RenderPass.h>
 #include <Sampler.h>
 #include <ShaderParser.h>
+#include <UniformBuffer.h>
 
 #include "EditorParams.h"
 #include "ParticleUpdatePass.h"
@@ -52,7 +53,7 @@ private:
 	{
 		uint32_t displayType;
 	};
-	std::unique_ptr<Wolf::Buffer> m_displayOptionsUniformBuffer;
+	std::unique_ptr<Wolf::UniformBuffer> m_displayOptionsUniformBuffer;
 
 	/* Particles resources */
 	Wolf::DescriptorSetLayoutGenerator m_particlesDescriptorSetLayoutGenerator;

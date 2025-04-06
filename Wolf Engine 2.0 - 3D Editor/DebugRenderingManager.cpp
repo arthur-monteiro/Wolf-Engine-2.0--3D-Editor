@@ -180,18 +180,25 @@ DebugRenderingManager::DebugRenderingManager()
 		m_rectanglesDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_rectanglesDescriptorSetLayout));
 
 		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_rectanglesDescriptorSetLayoutGenerator->getDescriptorLayouts());
-		m_rectanglesUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(RectanglesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-		descriptorSetGenerator.setBuffer(0, *m_rectanglesUniformBuffer);
+		m_rectanglesUniformBuffer.reset(new Wolf::UniformBuffer(sizeof(RectanglesUBData)));
+		descriptorSetGenerator.setUniformBuffer(0, *m_rectanglesUniformBuffer);
 		m_rectanglesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 	}
+
+	m_customLinesInfoArray.resize(Wolf::g_configuration->getMaxCachedFrames());
+	m_customLinesInfoArrayCount.resize(Wolf::g_configuration->getMaxCachedFrames());
+	for (uint32_t& customLineCount : m_customLinesInfoArrayCount)
+		customLineCount = 0;
 }
 
 void DebugRenderingManager::clearBeforeFrame()
 {
+	uint32_t requestQueueIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
+
 	m_AABBInfoArrayCount = 0;
-	for (uint32_t i = 0; i < m_customLinesInfoArrayCount; ++i)
-		m_customLinesInfoArray[i].mesh = m_cubeLineMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
-	m_customLinesInfoArrayCount = 0;
+	for (uint32_t i = 0; i < m_customLinesInfoArrayCount[requestQueueIdx]; ++i)
+		m_customLinesInfoArray[requestQueueIdx][i].mesh = m_cubeLineMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
+	m_customLinesInfoArrayCount[requestQueueIdx] = 0;
 	m_filledSphereData.clear();
 	m_wiredSphereData.clear();
 	m_rectanglesCount = 0;
@@ -216,13 +223,19 @@ void DebugRenderingManager::addAABB(const Wolf::AABB& box)
 
 void DebugRenderingManager::addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data)
 {
-	if (m_customLinesInfoArrayCount >= m_customLinesInfoArray.size())
+	uint32_t requestQueueIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
+
+	m_customLinesMutex.lock();
+
+	if (m_customLinesInfoArrayCount[requestQueueIdx] >= m_customLinesInfoArray[requestQueueIdx].size())
 	{
-		m_customLinesInfoArray.emplace_back(mesh, m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
+		m_customLinesInfoArray[requestQueueIdx].emplace_back(mesh, m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
 	}
-	m_customLinesInfoArray[m_customLinesInfoArrayCount].mesh = mesh;
-	m_customLinesInfoArray[m_customLinesInfoArrayCount].linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
-	m_customLinesInfoArrayCount++;
+	m_customLinesInfoArray[requestQueueIdx][m_customLinesInfoArrayCount[requestQueueIdx]].mesh = mesh;
+	m_customLinesInfoArray[requestQueueIdx][m_customLinesInfoArrayCount[requestQueueIdx]].linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
+	m_customLinesInfoArrayCount[requestQueueIdx]++;
+
+	m_customLinesMutex.unlock();
 }
 
 void DebugRenderingManager::addSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color)
@@ -251,6 +264,8 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 {
 	PROFILE_FUNCTION
 
+	uint32_t requestQueueIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
+
 	m_meshesToRender.clear();
 
 	if (!g_editorConfiguration->getEnableDebugDraw())
@@ -267,9 +282,9 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 		renderMeshList->addTransientMesh(meshToRenderInfo);
 	}
 
-	for (uint32_t i = 0; i < m_customLinesInfoArrayCount; ++i)
+	for (uint32_t i = 0; i < m_customLinesInfoArrayCount[requestQueueIdx]; ++i)
 	{
-		PerGroupOfLines& customInfo = m_customLinesInfoArray[i];
+		PerGroupOfLines& customInfo = m_customLinesInfoArray[requestQueueIdx][i];
 
 		Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { customInfo.mesh, m_linesPipelineSet.createConstNonOwnerResource() };
 		meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(customInfo.linesDescriptorSet.createConstNonOwnerResource(), 
@@ -297,11 +312,11 @@ DebugRenderingManager::PerGroupOfLines::PerGroupOfLines(const Wolf::ResourceNonO
 	const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout,
 	const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator) : mesh(mesh)
 {
-	linesUniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(LinesUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	linesUniformBuffer.reset(new Wolf::UniformBuffer(sizeof(LinesUBData)));
 	linesDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*linesDescriptorSetLayout));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(linesDescriptorSetLayoutGenerator->getDescriptorLayouts());
-	descriptorSetGenerator.setBuffer(0, *linesUniformBuffer);
+	descriptorSetGenerator.setUniformBuffer(0, *linesUniformBuffer);
 	linesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }
 
@@ -354,8 +369,8 @@ void DebugRenderingManager::PerSpherePipeline::init(Wolf::PolygonMode polygonMod
 	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator->getDescriptorLayouts());
-	m_uniformBuffer.reset(Wolf::Buffer::createBuffer(sizeof(SpheresUBData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-	descriptorSetGenerator.setBuffer(0, *m_uniformBuffer);
+	m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(SpheresUBData)));
+	descriptorSetGenerator.setUniformBuffer(0, *m_uniformBuffer);
 	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }
 

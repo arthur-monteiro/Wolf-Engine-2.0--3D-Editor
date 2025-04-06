@@ -47,12 +47,9 @@ public:
 	
 	virtual std::string getId() const = 0;
 
-	virtual void updateBeforeFrame(const Wolf::Timer& globalTimer) = 0;
+	virtual void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) = 0;
 	virtual void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) = 0;
 	virtual void addDebugInfo(DebugRenderingManager& debugRenderingManager) = 0;
-
-	virtual void updateDuringFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) = 0;
-	virtual bool requiresInputs() const = 0;
 
 	virtual void saveCustom() const = 0;
 

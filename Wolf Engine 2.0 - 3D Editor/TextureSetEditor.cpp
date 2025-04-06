@@ -24,8 +24,12 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 {
 	if (m_textureSetCacheInfo.textureSetIdx == 0)
 	{
+		materialGPUManager->lockTextureSets();
+
 		m_textureSetCacheInfo.textureSetIdx = materialGPUManager->getCurrentTextureSetCount();
 		materialGPUManager->addNewTextureSet(m_textureSetInfo);
+
+		materialGPUManager->unlockTextureSets();
 	}
 	else if (m_textureChanged) // wait a frame between the creation of the texture set and the texture update
 	{
@@ -46,9 +50,9 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 				outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
 
 				Wolf::TextureSetLoader materialLoader(materialFileInfo, outputLayout, false);
-				m_textureSetInfo.images[0].reset(materialLoader.releaseImage(0));
-				m_textureSetInfo.images[1].reset(materialLoader.releaseImage(1));
-				m_textureSetInfo.images[2].reset(materialLoader.releaseImage(2));
+				materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
+				materialLoader.transferImageTo(1, m_textureSetInfo.images[1]);
+				materialLoader.transferImageTo(2, m_textureSetInfo.images[2]);
 
 				materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
 
@@ -63,8 +67,8 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 			materialFileInfo.tex1 = static_cast<std::string>(m_sixWaysLightmap1).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_sixWaysLightmap1);
 
 			Wolf::TextureSetLoader materialLoader(materialFileInfo, false);
-			m_textureSetInfo.images[0].reset(materialLoader.releaseImage(0));
-			m_textureSetInfo.images[1].reset(materialLoader.releaseImage(1));
+			materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
+			materialLoader.transferImageTo(1, m_textureSetInfo.images[1]);
 
 			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
 
@@ -142,6 +146,6 @@ void TextureSetEditor::onTextureChanged()
 
 void TextureSetEditor::onShadingModeChanged()
 {
-	notifySubscribers();
+	notifySubscribers(0);
 	m_shadingModeChanged = true;
 }

@@ -28,7 +28,7 @@ EditorModelInterface::EditorModelInterface()
 		}));
 }
 
-void EditorModelInterface::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void EditorModelInterface::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 }
 

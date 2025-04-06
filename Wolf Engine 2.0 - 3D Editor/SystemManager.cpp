@@ -11,16 +11,15 @@
 #include <ProfilerCommon.h>
 
 #include "MaterialListFakeEntity.h"
-
-using namespace Wolf;
+#include "RuntimeContext.h"
 
 SystemManager::SystemManager()
 {
 	createWolfInstance();
-	m_editorParams.reset(new EditorParams(g_configuration->getWindowWidth(), g_configuration->getWindowHeight()));
+	m_editorParams.reset(new EditorParams(Wolf::g_configuration->getWindowWidth(), Wolf::g_configuration->getWindowHeight()));
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 
-	m_camera.reset(new FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f, 16.0f / 9.0f));
+	m_camera.reset(new Wolf::FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f, 16.0f / 9.0f));
 	createRenderer();
 
 	std::function<void(ComponentInterface*)> requestReloadCallback = [this](ComponentInterface* component)
@@ -42,13 +41,13 @@ SystemManager::SystemManager()
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, 
 		[this](const std::string& entityLoadingPath)
 		{
-			std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
-			for (ResourceUniqueOwner<Entity>& entity : allEntities)
+			std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+			for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 			{
 				if (!entity->isFake() && entity->getLoadingPath() == entityLoadingPath)
 					return entity.createNonOwnerResource();
 			}
-			Debug::sendCriticalError("Entity not found");
+			Wolf::Debug::sendCriticalError("Entity not found");
 			return allEntities[0].createNonOwnerResource();
 		},
 		m_configuration.createNonOwnerResource(),
@@ -81,7 +80,7 @@ void SystemManager::run()
 		const long long durationInMs = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - m_startTimeFPSCounter).count();
 		if (durationInMs > 1000)
 		{
-			m_stableFPS = static_cast<uint32_t>(std::round((1000.0f * m_currentFramesAccumulated) / static_cast<float>(durationInMs)));
+			m_stableFPS = static_cast<uint32_t>(std::round((1000.0f * static_cast<float>(m_currentFramesAccumulated)) / static_cast<float>(durationInMs)));
 
 			m_currentFramesAccumulated = 0;
 			m_startTimeFPSCounter = currentTime;
@@ -102,7 +101,7 @@ void SystemManager::run()
 
 void SystemManager::createWolfInstance()
 {
-	WolfInstanceCreateInfo wolfInstanceCreateInfo;
+	Wolf::WolfInstanceCreateInfo wolfInstanceCreateInfo;
 	wolfInstanceCreateInfo.configFilename = "config/config.ini";
 	wolfInstanceCreateInfo.debugCallback = std::bind(&SystemManager::debugCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 	wolfInstanceCreateInfo.resizeCallback = [this](uint32_t width, uint32_t height)
@@ -112,13 +111,14 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.htmlURL = "UI/UI.html";
 	wolfInstanceCreateInfo.bindUltralightCallbacks = [this] { bindUltralightCallbacks(); };
 	wolfInstanceCreateInfo.useBindlessDescriptor = true;
+	wolfInstanceCreateInfo.threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
 
-	m_wolfInstance.reset(new WolfEngine(wolfInstanceCreateInfo));
+	m_wolfInstance.reset(new Wolf::WolfEngine(wolfInstanceCreateInfo));
 	bindUltralightCallbacks();
 
-	m_gameContexts.reserve(g_configuration->getMaxCachedFrames());
-	std::vector<void*> contextPtrs(g_configuration->getMaxCachedFrames());
-	for (uint32_t i = 0; i < g_configuration->getMaxCachedFrames(); ++i)
+	m_gameContexts.reserve(Wolf::g_configuration->getMaxCachedFrames());
+	std::vector<void*> contextPtrs(Wolf::g_configuration->getMaxCachedFrames());
+	for (uint32_t i = 0; i < Wolf::g_configuration->getMaxCachedFrames(); ++i)
 	{
 		m_gameContexts.emplace_back();
 		contextPtrs[i] = &m_gameContexts.back();
@@ -137,16 +137,16 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 {
 	switch (severity)
 	{
-	case Debug::Severity::ERROR:
+	case Wolf::Debug::Severity::ERROR:
 		std::cout << "Error : ";
 		break;
-	case Debug::Severity::WARNING:
+	case Wolf::Debug::Severity::WARNING:
 		std::cout << "Warning : ";
 		break;
-	case Debug::Severity::INFO:
+	case Wolf::Debug::Severity::INFO:
 		std::cout << "Info : ";
 		break;
-	case Debug::Severity::VERBOSE:
+	case Wolf::Debug::Severity::VERBOSE:
 		return;
 	}
 
@@ -171,16 +171,16 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 		{
 			switch (severity)
 			{
-			case Debug::Severity::ERROR:
+			case Wolf::Debug::Severity::ERROR:
 				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logError"))");
 				break;
-			case Debug::Severity::WARNING:
+			case Wolf::Debug::Severity::WARNING:
 				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logWarning"))");
 				break;
-			case Debug::Severity::INFO:
+			case Wolf::Debug::Severity::INFO:
 				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logInfo"))");
 				break;
-			case Debug::Severity::VERBOSE:
+			case Wolf::Debug::Severity::VERBOSE:
 				return;
 			}
 		}
@@ -233,13 +233,13 @@ ultralight::JSValue SystemManager::getFrameRateJSCallback(const ultralight::JSOb
 
 ultralight::JSValue SystemManager::getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const std::string vramRequestedStr = std::to_string(GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
+	const std::string vramRequestedStr = std::to_string(Wolf::GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
 	return { vramRequestedStr.c_str() };
 }
 
 ultralight::JSValue SystemManager::getVRAMUsedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const std::string vramUsedStr = std::to_string(GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
+	const std::string vramUsedStr = std::to_string(Wolf::GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
 	return { vramUsedStr.c_str() };
 }
 
@@ -248,8 +248,8 @@ std::string exec(const char* cmd)
 	std::array<char, 128> buffer{};
 	std::string result;
 	FILE* pipe = _popen(cmd, "r");
-	if (!pipe) 
-		Debug::sendError("Can't open " + std::string(cmd));
+	if (!pipe)
+		Wolf::Debug::sendError("Can't open " + std::string(cmd));
 	
 	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) 
 	{
@@ -258,7 +258,7 @@ std::string exec(const char* cmd)
 
 	if(_pclose(pipe) < 0)
 	{
-		Debug::sendError("Error with command " + std::string(cmd) + ": " + result);
+		Wolf::Debug::sendError("Error with command " + std::string(cmd) + ": " + result);
 		return "";
 	}
 
@@ -343,12 +343,12 @@ void SystemManager::selectEntityByNameJSCallback(const ultralight::JSObject& thi
 {
 	const std::string name = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 
-	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
-	for (ResourceUniqueOwner<Entity>& entity : allEntities)
+	std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
 		if(entity->getName() == name)
 		{
-			m_selectedEntity.reset(new ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
+			m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
 			selectEntity();
 			break;
 		}
@@ -384,9 +384,9 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	outputFile << "\t\t\"theta\": " << m_camera->getTheta() << "\n";
 	outputFile << "\t},\n";
 
-	const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	const std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 	uint32_t entityCountToSave = 0;
-	for (const ResourceUniqueOwner<Entity>& entity : allEntities)
+	for (const Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
 		if (!entity->isFake())
 		{
@@ -399,7 +399,7 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	outputFile << "\t\"entities\": [\n";
 	for (uint32_t i = 0; i < allEntities.size(); ++i)
 	{
-		const ResourceUniqueOwner<Entity>& entity = allEntities[i];
+		const Wolf::ResourceUniqueOwner<Entity>& entity = allEntities[i];
 		if (entity->isFake())
 			continue;
 
@@ -424,7 +424,7 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 	m_resourceManager->save();
 
-	Debug::sendInfo("Save successful!");
+	Wolf::Debug::sendInfo("Save successful!");
 }
 
 void SystemManager::loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -435,32 +435,34 @@ void SystemManager::loadSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const uint32_t contextId = m_wolfInstance->getCurrentFrame() % g_configuration->getMaxCachedFrames();
+	m_contextMutex.lock();
+
 	const std::string displayType = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 
-
 	if (displayType == "albedo")
-		m_gameContexts[contextId].displayType = GameContext::DisplayType::ALBEDO;
+		m_inModificationGameContext.displayType = GameContext::DisplayType::ALBEDO;
 	else if (displayType == "normal")
-		m_gameContexts[contextId].displayType = GameContext::DisplayType::NORMAL;
+		m_inModificationGameContext.displayType = GameContext::DisplayType::NORMAL;
 	else if (displayType == "roughness")
-		m_gameContexts[contextId].displayType = GameContext::DisplayType::ROUGHNESS;
+		m_inModificationGameContext.displayType = GameContext::DisplayType::ROUGHNESS;
 	else if (displayType == "metalness")
-		m_gameContexts[contextId].displayType = GameContext::DisplayType::METALNESS;
+		m_inModificationGameContext.displayType = GameContext::DisplayType::METALNESS;
 	else if (displayType == "matAO")
-		m_gameContexts[contextId].displayType = GameContext::DisplayType::MAT_AO;
+		m_inModificationGameContext.displayType = GameContext::DisplayType::MAT_AO;
 	else if (displayType == "anisoStrength")
-		m_gameContexts[contextId].displayType = GameContext::DisplayType::ANISO_STRENGTH;
+		m_inModificationGameContext.displayType = GameContext::DisplayType::ANISO_STRENGTH;
 	else if (displayType == "lighting")
-		m_gameContexts[contextId].displayType = GameContext::DisplayType::LIGHTING;
+		m_inModificationGameContext.displayType = GameContext::DisplayType::LIGHTING;
 	else
-		Debug::sendError("Unsupported display type: " + displayType);
+		Wolf::Debug::sendError("Unsupported display type: " + displayType);
+
+	m_contextMutex.unlock();
 }
 
 void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	if(!g_configuration->getUICommands())
-		Debug::sendWarning("UI Commands are not saved");
+	if(!Wolf::g_configuration->getUICommands())
+		Wolf::Debug::sendWarning("UI Commands are not saved");
 
 	std::ifstream inHTML("UI/UI.html");
 
@@ -477,7 +479,7 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 		{
 			std::erase_if(inLine, isspace);
 			if (inLine != "<body>")
-				Debug::sendError("Body begin declaration is not written on a dedicated line, this behaviour is not supported");
+				Wolf::Debug::sendError("Body begin declaration is not written on a dedicated line, this behaviour is not supported");
 
 			outHTML << "<script type=\"text/javascript\">\n";
 			outHTML << "\twindow.addEventListener('DOMContentLoaded', (event) => {\n";
@@ -539,14 +541,14 @@ void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisOb
 	const std::string previousEntityName = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 	const std::string filepath = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
 
-	std::unique_ptr<ResourceNonOwner<Entity>> entityToDuplicate;
+	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> entityToDuplicate;
 
-	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
-	for (ResourceUniqueOwner<Entity>& entity : allEntities)
+	std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
 		if (entity->getName() == previousEntityName)
 		{
-			entityToDuplicate.reset(new ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
+			entityToDuplicate.reset(new Wolf::ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
 			break;
 		}
 	}
@@ -557,7 +559,7 @@ void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisOb
 	}
 	else
 	{
-		Debug::sendError("Entity to duplicate not found");
+		Wolf::Debug::sendError("Entity to duplicate not found");
 	}
 }
 
@@ -568,7 +570,7 @@ void SystemManager::editResourceJSCallback(const ultralight::JSObject& thisObjec
 
 	m_selectedEntity.reset(nullptr);
 	Wolf::ResourceNonOwner<Entity> entity = m_resourceManager->computeResourceEditor(resourceId);
-	m_selectedEntity.reset(new ResourceNonOwner<Entity>(entity));
+	m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(entity));
 
 	updateUISelectedEntity();
 }
@@ -593,7 +595,7 @@ void SystemManager::goToSelectedEntity() const
 {
 	if ((*m_selectedEntity)->hasModelComponent())
 	{
-		AABB entityAABB = (*m_selectedEntity)->getAABB();
+		Wolf::AABB entityAABB = (*m_selectedEntity)->getAABB();
 		float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
 
 		m_camera->setPosition(entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight));
@@ -611,6 +613,20 @@ void SystemManager::updateBeforeFrame()
 		loadScene();
 	}
 
+	// Context update
+	{
+		const uint32_t contextId = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
+		if (m_contextMutex.try_lock())
+		{
+			m_gameContexts[contextId] = m_inModificationGameContext;
+			m_contextMutex.unlock();
+		}
+		else
+		{
+			m_gameContexts[contextId] = m_gameContexts[(contextId + (Wolf::g_configuration->getMaxCachedFrames() - 1)) % Wolf::g_configuration->getMaxCachedFrames()];
+		}
+	}
+
 	m_debugRenderingManager->clearBeforeFrame();
 
 	m_entityContainer->moveToNextFrame([this](const std::string& componentId)
@@ -622,8 +638,8 @@ void SystemManager::updateBeforeFrame()
 	if (m_entityChanged)
 	{
 		m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");
-		const std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
-		for (const ResourceUniqueOwner<Entity>& entity : allEntities)
+		const std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+		for (const Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\"," + std::to_string(entity->isFake()) + ")");
 		}
@@ -648,37 +664,50 @@ void SystemManager::updateBeforeFrame()
 
 	m_resourceManager->updateBeforeFrame();
 
-	std::vector<ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+	std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 
-	Wolf::ResourceNonOwner<RenderMeshList> renderList = m_wolfInstance->getRenderMeshList();
+	Wolf::ResourceNonOwner<Wolf::RenderMeshList> renderList = m_wolfInstance->getRenderMeshList();
 	Wolf::ResourceNonOwner<Wolf::LightManager> lightManager = m_wolfInstance->getLightManager().createNonOwnerResource();
 	DebugRenderingManager& debugRenderingManager = *m_debugRenderingManager;
-	for (ResourceUniqueOwner<Entity>& entity : allEntities)
-	{
-		entity->addLightToLightManager(lightManager);
-		entity->addDebugInfo(debugRenderingManager);
-	}
+
 	if (m_debugPhysics)
 	{
 		m_editorPhysicsManager->addDebugInfo(debugRenderingManager);
 	}
-	m_debugRenderingManager->addMeshesToRenderList(renderList);
 
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
 	m_camera->setAspect(m_editorParams->getAspect());
 
 	m_renderer->update(m_wolfInstance.get());
 
-	m_wolfInstance->updateBeforeFrame();
-
 	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
 	Wolf::ResourceNonOwner<EditorPhysicsManager> editorPhysicsManager= m_editorPhysicsManager.createNonOwnerResource();
-	Wolf::ResourceNonOwner<InputHandler> inputHandler = m_wolfInstance->getInputHandler();
-	for (ResourceUniqueOwner<Entity>& entity : allEntities)
+	Wolf::ResourceNonOwner<Wolf::InputHandler> inputHandler = m_wolfInstance->getInputHandler();
+	const Wolf::Timer& globalTimer = m_wolfInstance->getGlobalTimer();
+
+	uint32_t startRange = 0;
+	uint32_t elementCountPerThread = static_cast<uint32_t>(allEntities.size()) / THREAD_COUNT_BEFORE_FRAME;
+	for (uint32_t i = 0; i < THREAD_COUNT_BEFORE_FRAME; ++i)
 	{
-		entity->updateBeforeFrame(inputHandler, m_wolfInstance->getGlobalTimer(), drawManager, editorPhysicsManager);
-		entity->updateDuringFrame(inputHandler); // TODO: send this to another thread
+		uint32_t endRange = startRange + elementCountPerThread;
+		if (i == THREAD_COUNT_BEFORE_FRAME - 1)
+			endRange = static_cast<uint32_t>(allEntities.size());
+		m_wolfInstance->addJobBeforeFrame([&allEntities, startRange, endRange, inputHandler, &globalTimer, drawManager, editorPhysicsManager, &debugRenderingManager, lightManager]()
+			{
+				for (uint32_t entityIdx = startRange; entityIdx < endRange; ++entityIdx)
+				{
+					allEntities[entityIdx]->updateBeforeFrame(inputHandler, globalTimer, drawManager, editorPhysicsManager);
+					allEntities[entityIdx]->addDebugInfo(debugRenderingManager);
+					allEntities[entityIdx]->addLightToLightManager(lightManager);
+				}
+			});
+
+		startRange += elementCountPerThread;
 	}
+
+	m_wolfInstance->addJobBeforeFrame([this, renderList]() { m_debugRenderingManager->addMeshesToRenderList(renderList); }, true);
+
+	m_wolfInstance->updateBeforeFrame();
 
 	if (inputHandler->keyPressedThisFrame(GLFW_KEY_ESCAPE))
 	{
@@ -706,17 +735,17 @@ void SystemManager::updateBeforeFrame()
 			const glm::vec3 rayDirection = glm::vec3(glm::inverse(m_camera->getViewMatrix()) * glm::vec4(clipTarget, 0.0f));
 
 			float minDistance = 2'000.0f;
-			for (ResourceUniqueOwner<Entity>& entity : allEntities)
+			for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 			{
 				if (entity->hasModelComponent())
 				{
-					if (float intersectionDistance = entity->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > AABB::NO_INTERSECTION)
+					if (float intersectionDistance = entity->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > Wolf::AABB::NO_INTERSECTION)
 					{
 						intersectionDistance = intersectionDistance > 0.0f ? intersectionDistance : 1'000.0f;
 						if (intersectionDistance < minDistance)
 						{
 							minDistance = intersectionDistance;
-							m_selectedEntity.reset(new ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
+							m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
 						}
 					}
 				}
@@ -758,12 +787,12 @@ void SystemManager::loadScene()
 
 	addFakeEntities();
 
-	JSONReader jsonReader(JSONReader::FileReadInfo { m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest) });
+	Wolf::JSONReader jsonReader(Wolf::JSONReader::FileReadInfo { m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest) });
 
 	const std::string& sceneName = jsonReader.getRoot()->getPropertyString("sceneName");
 
 	// Camera
-	if (JSONReader::JSONObjectInterface* cameraObject = jsonReader.getRoot()->getPropertyObject("defaultCamera"))
+	if (Wolf::JSONReader::JSONObjectInterface* cameraObject = jsonReader.getRoot()->getPropertyObject("defaultCamera"))
 	{
 		float posX = cameraObject->getPropertyFloat("posX");
 		float posY = cameraObject->getPropertyFloat("posY");
@@ -780,7 +809,7 @@ void SystemManager::loadScene()
 	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
 	for(uint32_t entityIdx = 0; entityIdx < entityCount; entityIdx++)
 	{
-		JSONReader::JSONObjectInterface* entityObject = jsonReader.getRoot()->getArrayObjectItem("entities", entityIdx);
+		Wolf::JSONReader::JSONObjectInterface* entityObject = jsonReader.getRoot()->getArrayObjectItem("entities", entityIdx);
 
 		const std::string& entityLoadingPath = entityObject->getPropertyString("loadingPath");
 		std::string deduplicatedLoadingPath;
@@ -835,7 +864,7 @@ void SystemManager::addComponent(const std::string& componentId)
 {
 	if (!m_selectedEntity)
 	{
-		Debug::sendError("No entity selected, can't add component");
+		Wolf::Debug::sendError("No entity selected, can't add component");
 		return;
 	}
 		

@@ -92,11 +92,11 @@ void AnimatedModel::loadParams(Wolf::JSONReader& jsonReader)
 	::loadParams<Animation>(jsonReader, ID, m_editorParams);
 }
 
-void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
+void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 	PROFILE_FUNCTION
 
-	EditorModelInterface::updateBeforeFrame(globalTimer);
+	EditorModelInterface::updateBeforeFrame(globalTimer, inputHandler);
 
 	if (m_waitingForMeshLoadingFrameCount > 0)
 	{
@@ -176,8 +176,10 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer)
 				materialInfo.textureSetInfos[0].textureSetIdx = textureSetGPUIdx;
 				materialInfo.textureSetInfos[0].strength = 1.0f;
 
+				m_materialsGPUManager->lockMaterials();
 				m_materialIdx = m_materialsGPUManager->getCurrentMaterialCount();
 				m_materialsGPUManager->addNewMaterial(materialInfo);
+				m_materialsGPUManager->unlockMaterials();
 			}
 			else
 			{
@@ -444,7 +446,7 @@ void AnimatedModel::Animation::onFileParamChanged()
 void AnimatedModel::onAnimationAdded()
 {
 	m_animationsParam.back().setResourceManager(m_resourceManager);
-	m_animationsParam.back().subscribe(this, [this]() { updateAnimationsOptions(); });
+	m_animationsParam.back().subscribe(this, [this](Flags) { updateAnimationsOptions(); });
 
 	updateAnimationsOptions();
 }
