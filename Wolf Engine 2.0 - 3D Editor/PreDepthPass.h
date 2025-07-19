@@ -22,15 +22,12 @@ public:
 	void submit(const Wolf::SubmitContext& context) override;
 
 	Wolf::Image* getOutput() const override { return m_depthImage.get(); }
-	Wolf::Image* getCopy() const { return m_copyImage.get(); }
 
 private:
-	void createCopyImage(Wolf::Format format);
-
 	uint32_t getWidth() override { return m_swapChainWidth; }
 	uint32_t getHeight() override { return m_swapChainHeight; }
 	Wolf::ImageUsageFlags getAdditionalUsages() override { return Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_SRC; }
-	VkImageLayout getFinalLayout() override { return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; }
+	VkImageLayout getFinalLayout() override { return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; }
 
 	void recordDraws(const Wolf::RecordContext& context) override;
 	const Wolf::CommandBuffer& getCommandBuffer(const Wolf::RecordContext& context) override;
@@ -40,9 +37,6 @@ private:
 	/* Pipeline */
 	uint32_t m_swapChainWidth = 0;
 	uint32_t m_swapChainHeight = 0;
-
-	/* Resources */
-	std::unique_ptr<Wolf::Image> m_copyImage;
 
 	/* Params */
 	bool m_copyOutput;

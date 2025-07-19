@@ -8,6 +8,7 @@ layout(location = 4) in uint inSubMeshIdx;
 
 layout(location = 5) in mat4 inTransform;
 layout(location = 9) in uint inFirstMaterialIdx;
+layout(location = 10) in uint inEntityId;
 
 layout(location = 0) out vec3 outViewPos;
 layout(location = 1) out vec2 outTexCoord;
@@ -15,6 +16,10 @@ layout(location = 2) out uint outMaterialIdx;
 layout(location = 3) out mat3 outTBN;
 layout(location = 6) out vec3 outWorldSpaceNormal;
 layout(location = 7) out vec3 outWorldSpacePos;
+
+#ifdef OUTPUT_IDS
+layout(location = 8) out uint outEntityId;
+#endif
  
 out gl_PerVertex
 {

@@ -5,6 +5,7 @@
 #include "CascadedShadowMapsPass.h"
 #include "ContaminationUpdatePass.h"
 #include "ForwardPass.h"
+#include "GPUBufferToGPUBufferCopyPass.h"
 #include "ParticleUpdatePass.h"
 #include "PreDepthPass.h"
 #include "RenderingPipelineInterface.h"
@@ -39,4 +40,5 @@ private:
 	Wolf::ResourceUniqueOwner<ParticleUpdatePass> m_particleUpdatePass;
 	Wolf::ResourceUniqueOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
 	Wolf::ResourceUniqueOwner<ForwardPass> m_forwardPass;
+	Wolf::ResourceUniqueOwner<GPUBufferToGPUBufferCopyPass> m_gpuBufferToGpuBufferCopyPass;
 };

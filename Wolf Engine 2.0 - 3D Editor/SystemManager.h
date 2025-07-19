@@ -62,6 +62,10 @@ private:
 	void editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void debugPhysicsCheckboxChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void onGoToEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void toggleAABBDisplayForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue isAABBShowedForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void toggleBoundingSphereDisplayForSelectedEntity(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue isBoundingSphereShowedForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 
 	void selectEntity() const;
 	void goToSelectedEntity() const;
@@ -97,6 +101,8 @@ private:
 	bool m_entityReloadRequested = false;
 	bool m_isCameraLocked = true;
 	bool m_debugPhysics = false;
+	bool m_showAABBForSelectedEntity = false;
+	bool m_showBoundingSphereForSelectedEntity = false;
 
 	Wolf::ResourceUniqueOwner<DebugRenderingManager> m_debugRenderingManager;
 

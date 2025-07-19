@@ -45,16 +45,24 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 
 			if (m_textureSetCacheInfo.imageNames.empty() || m_textureSetCacheInfo.imageNames[0] != materialFileInfo.albedo.substr(materialFileInfo.albedo.size() - m_textureSetCacheInfo.imageNames[0].size()))
 			{
-				Wolf::TextureSetLoader::OutputLayout outputLayout;
+				Wolf::TextureSetLoader::OutputLayout outputLayout{};
 				outputLayout.albedoCompression = m_enableAlpha ? Wolf::ImageCompression::Compression::BC3 : Wolf::ImageCompression::Compression::BC1;
 				outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
 
 				Wolf::TextureSetLoader materialLoader(materialFileInfo, outputLayout, false);
-				materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
-				materialLoader.transferImageTo(1, m_textureSetInfo.images[1]);
-				materialLoader.transferImageTo(2, m_textureSetInfo.images[2]);
 
+				materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
+				m_textureSetInfo.slicesFolders[0] = materialLoader.getOutputSlicesFolder(0);
+
+				materialLoader.transferImageTo(1, m_textureSetInfo.images[1]);
+				m_textureSetInfo.slicesFolders[1] = materialLoader.getOutputSlicesFolder(1);
+
+				materialLoader.transferImageTo(2, m_textureSetInfo.images[2]);
+				m_textureSetInfo.slicesFolders[2] = materialLoader.getOutputSlicesFolder(2);
+
+				materialGPUManager->lockTextureSets();
 				materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
+				materialGPUManager->unlockTextureSets();
 
 				notifySubscribers();
 			}

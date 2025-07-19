@@ -1,5 +1,8 @@
 #version 460
+#define GLSL
+
 #define COMPUTE_SHADER
+
 layout(binding = 0, set = 2) uniform UniformBufferCamera
 {
 	mat4 view;
@@ -64,6 +67,11 @@ vec3 computeWorldPosFromViewPos(in const vec3 viewPos)
 {
 	return (getInvViewMatrix() * vec4(viewPos, 1.0)).xyz;
 }
+
+vec3 getCameraPos()
+{
+	return ubCamera.invView[3].xyz;
+}
 #extension GL_EXT_nonuniform_qualifier : enable
 
 const float BIAS = 0.0; // defined in the pipeline
@@ -126,7 +134,11 @@ float computeShadowOcclusionForCascade(in uint cascadeIndex, in vec4 worldPos, i
 		mat2 rotation = mat2(cos(ub.noiseRotation), -sin(ub.noiseRotation),
 							 sin(ub.noiseRotation), cos(ub.noiseRotation));
 
+#ifdef COMPUTE_SHADER
 		vec2 noise = rotation * (texture(noiseTexture, vec3((gl_GlobalInvocationID.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), i / float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT))).rg / ub.cascadeTextureSize[cascadeIndex]);
+#else
+		vec2 noise = rotation * (texture(noiseTexture, vec3((gl_FragCoord.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), i / float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT))).rg / ub.cascadeTextureSize[cascadeIndex]);
+#endif
 		noise *= 4.0f; // replace by distance with occluder
 		noise *= getCascadeScale(cascadeIndex);
 

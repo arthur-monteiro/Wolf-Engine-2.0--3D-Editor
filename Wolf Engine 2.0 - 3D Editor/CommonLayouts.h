@@ -17,6 +17,7 @@ namespace CommonPipelineIndices
 	constexpr uint32_t PIPELINE_IDX_PRE_DEPTH = 0;
 	constexpr uint32_t PIPELINE_IDX_SHADOW_MAP = 1;
 	constexpr uint32_t PIPELINE_IDX_FORWARD = 2;
+	constexpr uint16_t PIPELINE_IDX_OUTPUT_IDS = 3;
 }
 
 namespace DescriptorSetSlots

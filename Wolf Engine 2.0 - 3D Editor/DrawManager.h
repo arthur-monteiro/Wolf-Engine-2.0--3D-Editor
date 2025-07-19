@@ -1,9 +1,9 @@
 #pragma once
 
+#include <DynamicStableArray.h>
 #include <RenderMeshList.h>
 #include <ResourceUniqueOwner.h>
 
-#include "DynamicStableArray.h"
 #include "RenderingPipelineInterface.h"
 
 class Entity;
@@ -12,6 +12,7 @@ struct InstanceData
 {
 	glm::mat4 transform;
 	uint32_t firstMaterialIdx;
+	uint32_t entityId;
 
 	static void getBindingDescription(VkVertexInputBindingDescription& bindingDescription, uint32_t binding)
 	{
@@ -23,7 +24,7 @@ struct InstanceData
 	static void getAttributeDescriptions(std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
 	{
 		const uint32_t attributeDescriptionCountBefore = static_cast<uint32_t>(attributeDescriptions.size());
-		attributeDescriptions.resize(attributeDescriptionCountBefore + 5);
+		attributeDescriptions.resize(attributeDescriptionCountBefore + 6);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 0].location = attributeDescriptionCountBefore + 0;
@@ -49,6 +50,11 @@ struct InstanceData
 		attributeDescriptions[attributeDescriptionCountBefore + 4].location = attributeDescriptionCountBefore + 4;
 		attributeDescriptions[attributeDescriptionCountBefore + 4].format = VK_FORMAT_R32_UINT;
 		attributeDescriptions[attributeDescriptionCountBefore + 4].offset = offsetof(InstanceData, firstMaterialIdx);
+
+		attributeDescriptions[attributeDescriptionCountBefore + 5].binding = binding;
+		attributeDescriptions[attributeDescriptionCountBefore + 5].location = attributeDescriptionCountBefore + 5;
+		attributeDescriptions[attributeDescriptionCountBefore + 5].format = VK_FORMAT_R32_UINT;
+		attributeDescriptions[attributeDescriptionCountBefore + 5].offset = offsetof(InstanceData, entityId);
 	}
 };
 

@@ -28,9 +28,9 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 		Wolf::ShaderParser::MaterialFetchProcedure(), shaderCodeToAdd));
 
 	// Resource to compute shadow
-	m_outputComputeDescriptorSetLayoutGenerator.addImages(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT, 0, 1); // input depth
+	m_outputComputeDescriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT, 0, 1); // input depth
 	m_outputComputeDescriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT,                            1);
-	m_outputComputeDescriptorSetLayoutGenerator.addImages(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT, 2, CascadedShadowMapsPass::CASCADE_COUNT); // cascade depth images
+	m_outputComputeDescriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT, 2, CascadedShadowMapsPass::CASCADE_COUNT); // cascade depth images
 	m_outputComputeDescriptorSetLayoutGenerator.addSampler(Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT,                                  3);
 	m_outputComputeDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::COMPUTE | Wolf::ShaderStageFlagBits::FRAGMENT,                     4); // noise map
 	m_outputComputeDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_outputComputeDescriptorSetLayoutGenerator.getDescriptorLayouts()));
@@ -184,7 +184,7 @@ void ShadowMaskPassCascadedShadowMapping::addShaderCode(Wolf::ShaderParser::Shad
 	std::string line;
 	while (std::getline(inFile, line))
 	{
-		const std::string& descriptorSlotToken = "£CSM_DESCRIPTOR_SLOT";
+		const std::string& descriptorSlotToken = "@CSM_DESCRIPTOR_SLOT";
 		size_t descriptorSlotTokenPos = line.find(descriptorSlotToken);
 		while (descriptorSlotTokenPos != std::string::npos)
 		{

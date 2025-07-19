@@ -411,6 +411,22 @@ span {
     left: 0;
 }
 
+#viewBotRightElements {
+    position: absolute;
+    bottom: 250px; /* 50px for FPS + 200px for resource browser + 5px for slider */
+    height: 25px;
+    padding-right: 10px;
+    padding-bottom: 10px;
+}
+
+#AABBIcon {
+    cursor: pointer;
+}
+
+#boundingSphereIcon {
+    cursor: pointer;
+}
+
 #actionButtons {
     width: calc(100% - 17px);
     height: 42;

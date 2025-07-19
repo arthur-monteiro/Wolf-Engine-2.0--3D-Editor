@@ -66,8 +66,16 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 
 			// Dynamic states
 			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+			pipelineInfo.enableDepthWrite = false;
+			pipelineInfo.depthCompareOp = VK_COMPARE_OP_EQUAL;
 
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
+
+			// Output Ids
+			pipelineInfo.shaderInfos[0].conditionBlocksToInclude.push_back("OUTPUT_IDS");
+
+			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/outputIds.frag";
+			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
 		}));
 }
 
@@ -138,7 +146,7 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
 		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
-	outList.push_back({ meshToRenderInfo, { m_transform, firstMaterialIdx }});
+	outList.push_back({ meshToRenderInfo, { m_transform, firstMaterialIdx, m_entity->getId() }});
 
 	return true;
 }

@@ -9,6 +9,7 @@ layout(location = 5) in vec4 inBoneWeights;
 
 layout(location = 6) in mat4 inTransform;
 layout(location = 10) in uint inFirstMaterialIdx;
+layout(location = 11) in uint inEntityId;
 
 layout(location = 0) out vec3 outViewPos;
 layout(location = 1) out vec2 outTexCoord;
@@ -24,7 +25,7 @@ struct BoneInfo
 
 const uint MAX_BONE_COUNT = 128;
 layout(std430, set = 
-#if FORWARD
+#ifdef FORWARD
 5
 #else
 1

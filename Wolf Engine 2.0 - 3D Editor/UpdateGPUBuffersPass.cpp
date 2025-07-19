@@ -14,9 +14,22 @@ void Wolf::pushDataToGPUBuffer(const void* data, uint32_t size, const ResourceNo
 	g_updateGPUBufferPassInst->addRequestBeforeFrame({ data, size, outputBuffer, outputOffset });
 }
 
-void Wolf::pushDataToGPUImage(const unsigned char* pixels, const ResourceNonOwner<Image>& outputImage, const Image::TransitionLayoutInfo& finalLayout, uint32_t mipLevel)
+void Wolf::fillGPUBuffer(uint32_t fillValue, uint32_t size, const ResourceNonOwner<Buffer>& outputBuffer, uint32_t outputOffset)
 {
-	g_updateGPUBufferPassInst->addRequestBeforeFrame({ pixels, outputImage, finalLayout, mipLevel });
+	g_updateGPUBufferPassInst->addRequestBeforeFrame({ fillValue, size, outputBuffer, outputOffset });
+}
+
+void Wolf::pushDataToGPUImage(const unsigned char* pixels, const ResourceNonOwner<Image>& outputImage, const Image::TransitionLayoutInfo& finalLayout, uint32_t mipLevel,
+	const glm::ivec2& copySize, const glm::ivec2& imageOffset)
+{
+	glm::ivec2 realCopySize = copySize;
+	if (realCopySize.x == 0 && realCopySize.y == 0)
+	{
+		const Wolf::Extent3D imageExtent = { outputImage->getExtent().width >> mipLevel, outputImage->getExtent().height >> mipLevel, outputImage->getExtent().depth };
+		realCopySize = glm::ivec2(imageExtent.width, imageExtent.height);
+	}
+
+	g_updateGPUBufferPassInst->addRequestBeforeFrame({ pixels, outputImage, finalLayout, mipLevel, realCopySize, imageOffset });
 }
 
 UpdateGPUBuffersPass::UpdateGPUBuffersPass()
@@ -46,7 +59,7 @@ void UpdateGPUBuffersPass::record(const Wolf::RecordContext& context)
 	m_currentRequestsQueues[requestQueueIdx].swap(m_addRequestsQueue);
 	m_addRequestsQueue.clear();
 
-	if (m_currentRequestsQueues.empty())
+	if (m_currentRequestsQueues[requestQueueIdx].empty())
 	{
 		m_transferRecordedThisFrame = false;
 		return;
@@ -87,27 +100,47 @@ void UpdateGPUBuffersPass::clear()
 
 void UpdateGPUBuffersPass::InternalRequest::recordCommands(const Wolf::CommandBuffer* commandBuffer) const
 {
-	switch (m_request.getResourceType())
+	if (m_mode == Mode::FILL)
 	{
-		case Request::ResourceType::BUFFER:
-			recordCopyToBuffer(commandBuffer);
-			break;
-		case Request::ResourceType::IMAGE:
-			recordCopyToImage(commandBuffer);
-			break;
-		default:
-			Wolf::Debug::sendCriticalError("Unhandled resource type");
+		if (m_request.getResourceType() != Request::ResourceType::BUFFER)
+			Wolf::Debug::sendCriticalError("Filling something else than a buffer is not supported");
+
+		recordFillBuffer(commandBuffer);
+	}
+	else
+	{
+		switch (m_request.getResourceType())
+		{
+			case Request::ResourceType::BUFFER:
+				recordCopyToBuffer(commandBuffer);
+				break;
+			case Request::ResourceType::IMAGE:
+				recordCopyToImage(commandBuffer);
+				break;
+			default:
+				Wolf::Debug::sendCriticalError("Unhandled resource type");
+		}
 	}
 }
 
 void UpdateGPUBuffersPass::InternalRequest::recordCopyToBuffer(const Wolf::CommandBuffer* commandBuffer) const
 {
-	Wolf::Buffer::BufferCopy bufferCopy;
+	Wolf::Buffer::BufferCopy bufferCopy{};
 	bufferCopy.srcOffset = 0;
 	bufferCopy.dstOffset = m_request.getOutputOffset();
 	bufferCopy.size = m_request.getSize();
 
 	m_request.getOutputBuffer()->recordTransferGPUMemory(commandBuffer, *m_stagingBuffer, bufferCopy);
+}
+
+void UpdateGPUBuffersPass::InternalRequest::recordFillBuffer(const Wolf::CommandBuffer* commandBuffer) const
+{
+	Wolf::Buffer::BufferFill bufferFill{};
+	bufferFill.dstOffset = m_request.getOutputOffset();
+	bufferFill.size = m_request.getSize();
+	bufferFill.data = m_request.getFillData();
+
+	m_request.getOutputBuffer()->recordFillBuffer(commandBuffer, bufferFill);
 }
 
 void UpdateGPUBuffersPass::InternalRequest::recordCopyToImage(const Wolf::CommandBuffer* commandBuffer) const
@@ -116,16 +149,16 @@ void UpdateGPUBuffersPass::InternalRequest::recordCopyToImage(const Wolf::Comman
 
 	Wolf::Image::BufferImageCopy bufferImageCopy;
 	bufferImageCopy.bufferOffset = 0;
-	bufferImageCopy.bufferRowLength = extent.width;
-	bufferImageCopy.bufferImageHeight = extent.height;
+	bufferImageCopy.bufferRowLength = m_request.getCopySize().x;
+	bufferImageCopy.bufferImageHeight = m_request.getCopySize().y;
 
 	bufferImageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	bufferImageCopy.imageSubresource.mipLevel = m_request.getMipLevel();
 	bufferImageCopy.imageSubresource.baseArrayLayer = 0;
 	bufferImageCopy.imageSubresource.layerCount = 1;
 
-	bufferImageCopy.imageOffset = { 0, 0, 0 };
-	bufferImageCopy.imageExtent = extent;
+	bufferImageCopy.imageOffset = { m_request.getImageOffset().x, m_request.getImageOffset().y, 0 };
+	bufferImageCopy.imageExtent = { static_cast<uint32_t>(m_request.getCopySize().x), static_cast<uint32_t>(m_request.getCopySize().y), 1};
 
 	m_request.getOutputImage()->recordCopyGPUBuffer(*commandBuffer, *m_stagingBuffer, bufferImageCopy, m_request.getImageFinalLayout());
 }

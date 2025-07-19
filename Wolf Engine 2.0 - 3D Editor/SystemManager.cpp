@@ -215,6 +215,10 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["editResource"] = std::bind(&SystemManager::editResourceJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["debugPhysicsCheckboxChanged"] = std::bind(&SystemManager::debugPhysicsCheckboxChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["goToEntity"] = std::bind(&SystemManager::onGoToEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["toggleAABBDisplayForSelectedEntity"] = std::bind(&SystemManager::toggleAABBDisplayForSelectedEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["isAABBShowedForSelectedEntity"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::isAABBShowedForSelectedEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["toggleBoundingSphereDisplayForSelectedEntity"] = std::bind(&SystemManager::toggleBoundingSphereDisplayForSelectedEntity, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["isBoundingSphereShowedForSelectedEntity"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::isBoundingSphereShowedForSelectedEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -586,6 +590,27 @@ void SystemManager::onGoToEntityJSCallback(const ultralight::JSObject& thisObjec
 	goToSelectedEntity();
 }
 
+void SystemManager::toggleAABBDisplayForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	m_showAABBForSelectedEntity = !m_showAABBForSelectedEntity;
+}
+
+ultralight::JSValue SystemManager::isAABBShowedForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
+{
+	return m_showAABBForSelectedEntity ? "true" : "false";
+}
+
+void SystemManager::toggleBoundingSphereDisplayForSelectedEntity(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	m_showBoundingSphereForSelectedEntity = !m_showBoundingSphereForSelectedEntity;
+}
+
+ultralight::JSValue SystemManager::isBoundingSphereShowedForSelectedEntityJSCallback(
+	const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
+{
+	return m_showBoundingSphereForSelectedEntity ? "true" : "false";
+}
+
 void SystemManager::selectEntity() const
 {
 	updateUISelectedEntity();
@@ -656,10 +681,16 @@ void SystemManager::updateBeforeFrame()
 
 	if (m_selectedEntity && (*m_selectedEntity)->hasModelComponent())
 	{
-		//m_debugRenderingManager->addAABB((*m_selectedEntity)->getAABB());
+		if (m_showAABBForSelectedEntity)
+		{
+			m_debugRenderingManager->addAABB((*m_selectedEntity)->getAABB());
+		}
 
-		Wolf::BoundingSphere boundingSphere = (*m_selectedEntity)->getBoundingSphere();
-		m_debugRenderingManager->addWiredSphere(boundingSphere.getCenter(), boundingSphere.getRadius(), glm::vec3(1.0f));
+		if (m_showBoundingSphereForSelectedEntity)
+		{
+			Wolf::BoundingSphere boundingSphere = (*m_selectedEntity)->getBoundingSphere();
+			m_debugRenderingManager->addWiredSphere(boundingSphere.getCenter(), boundingSphere.getRadius(), glm::vec3(1.0f));
+		}
 	}
 
 	m_resourceManager->updateBeforeFrame();
@@ -716,7 +747,7 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	// Select object by click
-	if (m_entityPickingEnabled && inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	if (false && m_entityPickingEnabled && inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
 	{
 		const glm::vec3 rayOrigin = m_camera->getPosition();
 

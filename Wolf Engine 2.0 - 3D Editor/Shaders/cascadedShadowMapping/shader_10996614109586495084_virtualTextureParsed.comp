@@ -1,4 +1,5 @@
 #version 460
+#define COMPUTE_SHADER
 
 layout(binding = 0, set = 2) uniform UniformBufferCamera
 {
@@ -64,6 +65,11 @@ vec3 computeWorldPosFromViewPos(in const vec3 viewPos)
 {
 	return (getInvViewMatrix() * vec4(viewPos, 1.0)).xyz;
 }
+
+vec3 getCameraPos()
+{
+	return ubCamera.invView[3].xyz;
+}
 #extension GL_EXT_nonuniform_qualifier : enable
 
 const float BIAS = 0.0; // defined in the pipeline
@@ -75,11 +81,13 @@ const uint NOISE_TEXTURE_SIZE_PER_SIDE = 128;
 const uint NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE = 4;
 const uint NOISE_TEXTURE_PATTERN_PIXEL_COUNT = NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE;
 
+#ifdef COMPUTE_SHADER
 const uint LOCAL_SIZE = 16;
 shared vec2 sharedStablePositionLightSpace[LOCAL_SIZE][LOCAL_SIZE]; 
+#endif
 
-layout (binding = 0, set = 0) uniform texture2D depthImage;
-layout (binding = 1, set = 0, std140) uniform UniformBuffer
+layout (binding = 0, set = £CSM_DESCRIPTOR_SLOT) uniform texture2D depthImage;
+layout (binding = 1, set = £CSM_DESCRIPTOR_SLOT, std140) uniform UniformBuffer
 {
 	uvec2 viewportOffset;
     uvec2 viewportSize;
@@ -90,9 +98,9 @@ layout (binding = 1, set = 0, std140) uniform UniformBuffer
 	uvec4 cascadeTextureSize;
 	float noiseRotation;
 } ub;
-layout (binding = 2, set = 0) uniform texture2D[] shadowMaps;
-layout (binding = 3, set = 0) uniform sampler shadowMapsSampler;
-layout (binding = 4, set = 0) uniform sampler3D noiseTexture;
+layout (binding = 2, set = £CSM_DESCRIPTOR_SLOT) uniform texture2D[] shadowMaps;
+layout (binding = 3, set = £CSM_DESCRIPTOR_SLOT) uniform sampler shadowMapsSampler;
+layout (binding = 4, set = £CSM_DESCRIPTOR_SLOT) uniform sampler3D noiseTexture;
 
 const mat4 biasMat = mat4( 
 	0.5, 0.0, 0.0, 0.0,
@@ -124,7 +132,11 @@ float computeShadowOcclusionForCascade(in uint cascadeIndex, in vec4 worldPos, i
 		mat2 rotation = mat2(cos(ub.noiseRotation), -sin(ub.noiseRotation),
 							 sin(ub.noiseRotation), cos(ub.noiseRotation));
 
+#ifdef COMPUTE_SHADER
 		vec2 noise = rotation * (texture(noiseTexture, vec3((gl_GlobalInvocationID.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), i / float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT))).rg / ub.cascadeTextureSize[cascadeIndex]);
+#else
+		vec2 noise = rotation * (texture(noiseTexture, vec3((gl_FragCoord.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), i / float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT))).rg / ub.cascadeTextureSize[cascadeIndex]);
+#endif
 		noise *= 4.0f; // replace by distance with occluder
 		noise *= getCascadeScale(cascadeIndex);
 
@@ -154,6 +166,7 @@ float computeShadowOcclusion(in vec3 viewPos, in vec4 worldPos)
 		return 1.0;
 	}
 
+#ifdef COMPUTE_SHADER
     sharedStablePositionLightSpace[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = (biasMat * ub.lightSpaceMatrices[0] * vec4(worldPos.xyz, 1.0)).xy;
 
     memoryBarrierShared(); // allow every threads to compute stable pos
@@ -161,6 +174,9 @@ float computeShadowOcclusion(in vec3 viewPos, in vec4 worldPos)
 
     uvec2 firstPixelOnQuad = 2 * (gl_LocalInvocationID.xy / 2);
     vec2 dStablePositionLightSpace = sharedStablePositionLightSpace[firstPixelOnQuad.x + 1][firstPixelOnQuad.y + 0] - sharedStablePositionLightSpace[firstPixelOnQuad.x + 0][firstPixelOnQuad.y + 1];
+#else
+	vec2 dStablePositionLightSpace = vec2(0);
+#endif
 
     float shadow = computeShadowOcclusionForCascade(cascadeIndex, worldPos, dStablePositionLightSpace);
 

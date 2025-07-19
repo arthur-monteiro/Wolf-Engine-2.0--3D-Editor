@@ -14,8 +14,8 @@ const uint LOCAL_SIZE = 16;
 shared vec2 sharedStablePositionLightSpace[LOCAL_SIZE][LOCAL_SIZE]; 
 #endif
 
-layout (binding = 0, set = £CSM_DESCRIPTOR_SLOT) uniform texture2D depthImage;
-layout (binding = 1, set = £CSM_DESCRIPTOR_SLOT, std140) uniform UniformBuffer
+layout (binding = 0, set = @CSM_DESCRIPTOR_SLOT) uniform texture2D depthImage;
+layout (binding = 1, set = @CSM_DESCRIPTOR_SLOT, std140) uniform UniformBuffer
 {
 	uvec2 viewportOffset;
     uvec2 viewportSize;
@@ -26,9 +26,9 @@ layout (binding = 1, set = £CSM_DESCRIPTOR_SLOT, std140) uniform UniformBuffer
 	uvec4 cascadeTextureSize;
 	float noiseRotation;
 } ub;
-layout (binding = 2, set = £CSM_DESCRIPTOR_SLOT) uniform texture2D[] shadowMaps;
-layout (binding = 3, set = £CSM_DESCRIPTOR_SLOT) uniform sampler shadowMapsSampler;
-layout (binding = 4, set = £CSM_DESCRIPTOR_SLOT) uniform sampler3D noiseTexture;
+layout (binding = 2, set = @CSM_DESCRIPTOR_SLOT) uniform texture2D[] shadowMaps;
+layout (binding = 3, set = @CSM_DESCRIPTOR_SLOT) uniform sampler shadowMapsSampler;
+layout (binding = 4, set = @CSM_DESCRIPTOR_SLOT) uniform sampler3D noiseTexture;
 
 const mat4 biasMat = mat4( 
 	0.5, 0.0, 0.0, 0.0,

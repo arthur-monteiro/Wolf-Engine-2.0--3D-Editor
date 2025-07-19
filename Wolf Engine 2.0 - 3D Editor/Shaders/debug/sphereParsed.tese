@@ -1,4 +1,7 @@
 #version 460
+#define GLSL
+
+
 
 layout(binding = 0, set = 0) uniform UniformBufferCamera
 {

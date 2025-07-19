@@ -28,6 +28,9 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
 		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
+	m_gpuBufferToGpuBufferCopyPass.reset(new GPUBufferToGPUBufferCopyPass(m_forwardPass.createConstNonOwnerResource()));
+	wolfInstance->initializePass(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 }
 
 void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
@@ -51,8 +54,9 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance)
 	passes.push_back(m_particleUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_thumbnailsGenerationPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	passes.push_back(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	wolfInstance->frame(passes, m_forwardPass->getSemaphore());
+	wolfInstance->frame(passes, m_gpuBufferToGpuBufferCopyPass->isCurrentQueueEmpty() ? m_forwardPass->getSemaphore() : m_gpuBufferToGpuBufferCopyPass->getSemaphore());
 }
 
 void RenderingPipeline::clear()

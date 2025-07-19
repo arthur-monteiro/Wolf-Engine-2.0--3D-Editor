@@ -48,6 +48,24 @@
 		<div id="sliderInfo" onmousedown="resizeInfo()"></div>
 		<div id="sliderList" onmousedown="resizeList()"></div>
 		<div id="sliderResourceBrowser" onmousedown="resizeList()"></div>
+
+		<div id="viewBotRightElements">
+			<img id="AABBIcon"
+				src="media/interfaceIcon/aabb.svg"
+				alt="Show AABB for selected entity"
+				height="25"
+				width="25"
+				style="opacity: 0.5;"
+				onclick="onToggleAABBSelectedEntityClick()"/>
+
+			<img id="boundingSphereIcon"
+				src="media/interfaceIcon/bounding_sphere.svg"
+				alt="Show bounding sphere for selected entity"
+				height="25"
+				width="25"
+				style="opacity: 0.5;"
+				onclick="onToggleBoundingSphereSelectedEntityClick()"/>
+		</div>
 	</div>
 
 	<div id="addEntityWindow" class="modalWindow" style="display: none;">
@@ -236,6 +254,8 @@
 
 		document.getElementById('sliderList').style.left = String(parseInt(getRenderOffsetLeft()) + parseInt(getRenderWidth()) - 2) + "px";
 		document.getElementById('sliderList').style.height = getRenderHeight() + "px";
+
+		document.getElementById('viewBotRightElements').style.right = String(parseInt(getRenderOffsetRight())) + "px";
 	}
 
 	function openModalWindow() {
@@ -422,6 +442,22 @@
 			document.getElementById("resourceContextMenu").style.left = e.clientX;
 			document.getElementById("resourceContextMenu").style.top = e.clientY;
 		}
+	}
+
+	function onToggleAABBSelectedEntityClick()
+	{
+		toggleAABBDisplayForSelectedEntity();
+
+		let opacity = isAABBShowedForSelectedEntity() == "true" ? 1.0 : 0.5;
+		document.getElementById("AABBIcon").style.opacity = opacity;
+	}
+
+	function onToggleBoundingSphereSelectedEntityClick()
+	{
+		toggleBoundingSphereDisplayForSelectedEntity();
+
+		let opacity = isBoundingSphereShowedForSelectedEntity() == "true" ? 1.0 : 0.5;
+		document.getElementById("boundingSphereIcon").style.opacity = opacity;
 	}
 
 	function addResourceToList(name, iconPath, id) {

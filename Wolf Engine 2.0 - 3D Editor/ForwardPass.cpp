@@ -130,7 +130,6 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 
 	std::vector<Wolf::ClearValue> clearValues(2);
 	clearValues[0] = { 0.1f, 0.1f, 0.1f, 1.0f };
-	clearValues[1] = { 1.0f };
 	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffers[frameBufferIdx], clearValues);
 
 	/* Shared resources */
@@ -223,8 +222,11 @@ Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationCon
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
 	m_depthImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
 
-	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
-	                        Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_depthImage->getDefaultImageView());
+	Wolf::Attachment attachment({context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_preDepthPass->getOutput()->getDefaultImageView());
+	attachment.loadOperation = Wolf::AttachmentLoadOp::LOAD;
+
+	return attachment;
 }
 
 void ForwardPass::initializeFramesBuffers(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment)

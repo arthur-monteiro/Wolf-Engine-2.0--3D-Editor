@@ -28,6 +28,7 @@ public:
 
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
+	void setId(uint32_t id) { m_id = id; }
 
 	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager);
 	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
@@ -41,6 +42,7 @@ public:
 	const std::string& getLoadingPath() const { return m_filepath; }
 	virtual std::string computeEscapedLoadingPath() const;
 	virtual bool isFake() const { return false; }
+	bool getId() const { return m_id; }
 
 	void setIncludeEntityParams(bool value) { m_includeEntityParams = value; }
 
@@ -106,4 +108,7 @@ private:
 	};
 
 	bool m_includeEntityParams = true;
+
+	static constexpr uint32_t INVALID_ID = -1;
+	uint32_t m_id = INVALID_ID;
 };

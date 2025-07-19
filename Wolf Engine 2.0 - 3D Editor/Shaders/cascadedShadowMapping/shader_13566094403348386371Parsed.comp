@@ -1,5 +1,8 @@
 #version 460
+#define GLSL
+
 #define COMPUTE_SHADER
+
 
 layout(binding = 0, set = 2) uniform UniformBufferCamera
 {
