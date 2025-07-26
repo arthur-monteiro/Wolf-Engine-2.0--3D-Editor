@@ -15,14 +15,17 @@
 #include "EditorParams.h"
 #include "ParticleUpdatePass.h"
 #include "PreDepthPass.h"
+#include "RayTracedWorldDebugPass.h"
 #include "ShadowMaskPassInterface.h"
 
 class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
 	ForwardPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<const ContaminationUpdatePass>& contaminationUpdatePass, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass,
-		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass)
-	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass) {}
+		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass)
+	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass),
+	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass)
+	{}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -38,7 +41,6 @@ private:
 
 	std::unique_ptr<Wolf::RenderPass> m_renderPass;
 	std::vector<std::unique_ptr<Wolf::FrameBuffer>> m_frameBuffers;
-	std::unique_ptr<Wolf::Image> m_depthImage;
 
 	uint32_t m_renderWidth;
 	uint32_t m_renderHeight;
@@ -82,5 +84,6 @@ private:
 	Wolf::ResourceNonOwner<const ParticleUpdatePass> m_particlesUpdatePass;
 	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
 	Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
+	Wolf::ResourceNonOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
 };
 

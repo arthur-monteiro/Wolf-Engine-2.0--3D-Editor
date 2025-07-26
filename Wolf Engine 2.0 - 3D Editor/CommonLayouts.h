@@ -23,7 +23,7 @@ namespace CommonPipelineIndices
 namespace DescriptorSetSlots
 {
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_CAMERA = 0;
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_FORWARD_COMMON = 1; // for all in forward pass
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_PASS_INFO = 1; // for all in forward pass
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_BINDLESS = 2; // for textured meshes (not debug mesh) in forward pass
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_MESH_DEBUG = 2; // used for matrices for debug meshes
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_LIGHT_INFO = 3;

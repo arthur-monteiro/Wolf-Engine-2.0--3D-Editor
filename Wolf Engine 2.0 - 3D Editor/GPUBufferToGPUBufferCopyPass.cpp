@@ -14,7 +14,8 @@ void Wolf::requestGPUBufferReadbackRecord(const ResourceNonOwner<Buffer>& srcBuf
     g_GPUBufferToGPUBufferCopyPassInst->addRequestBeforeFrame({ srcBuffer, srcOffset, readableBuffer, size });
 }
 
-GPUBufferToGPUBufferCopyPass::GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const ForwardPass>& forwardPass) : m_forwardPass(forwardPass)
+GPUBufferToGPUBufferCopyPass::GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<const DrawIdsPass>& drawIdsPass)
+: m_forwardPass(forwardPass), m_drawIdsPass(drawIdsPass)
 {
     g_GPUBufferToGPUBufferCopyPassInst = this;
 }
@@ -68,7 +69,7 @@ void GPUBufferToGPUBufferCopyPass::submit(const Wolf::SubmitContext& context)
 {
     if (m_commandsRecordedThisFrame)
     {
-        std::vector<const Wolf::Semaphore*> waitSemaphores{ m_forwardPass->getSemaphore() };
+        std::vector<const Wolf::Semaphore*> waitSemaphores{ m_drawIdsPass->isEnabledThisFrame() ? m_drawIdsPass->getSemaphore() : m_forwardPass->getSemaphore() };
         const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
         m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
     }

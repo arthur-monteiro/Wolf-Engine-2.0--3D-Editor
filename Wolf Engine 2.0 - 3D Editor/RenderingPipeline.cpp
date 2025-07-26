@@ -25,11 +25,17 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_thumbnailsGenerationPass.reset(new ThumbnailsGenerationPass);
 	wolfInstance->initializePass(m_thumbnailsGenerationPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
+	m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(m_preDepthPass.createNonOwnerResource()));
+	wolfInstance->initializePass(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
-		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource()));
+		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource(), m_rayTracedWorldDebugPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_gpuBufferToGpuBufferCopyPass.reset(new GPUBufferToGPUBufferCopyPass(m_forwardPass.createConstNonOwnerResource()));
+	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
+	wolfInstance->initializePass(m_drawIdsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
+	m_gpuBufferToGpuBufferCopyPass.reset(new GPUBufferToGPUBufferCopyPass(m_forwardPass.createConstNonOwnerResource(), m_drawIdsPass.createConstNonOwnerResource()));
 	wolfInstance->initializePass(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 }
 
@@ -45,7 +51,7 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance)
 	PROFILE_FUNCTION
 
 	std::vector<Wolf::ResourceNonOwner<Wolf::CommandRecordBase>> passes;
-	passes.reserve(8);
+	passes.reserve(11);
 	passes.push_back(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_cascadedShadowMapsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
@@ -53,15 +59,30 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance)
 	passes.push_back(m_contaminationUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_particleUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_thumbnailsGenerationPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		passes.push_back(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
 	passes.push_back(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	passes.push_back(m_drawIdsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	wolfInstance->frame(passes, m_gpuBufferToGpuBufferCopyPass->isCurrentQueueEmpty() ? m_forwardPass->getSemaphore() : m_gpuBufferToGpuBufferCopyPass->getSemaphore());
+	const Wolf::Semaphore* finalSemaphore = m_forwardPass->getSemaphore();
+	if (!m_gpuBufferToGpuBufferCopyPass->isCurrentQueueEmpty())
+		finalSemaphore = m_gpuBufferToGpuBufferCopyPass->getSemaphore();
+	else if (m_drawIdsPass->isEnabledThisFrame())
+		finalSemaphore = m_drawIdsPass->getSemaphore();
+	wolfInstance->frame(passes, finalSemaphore);
 }
 
 void RenderingPipeline::clear()
 {
 	m_updateGPUBuffersPass->clear();
+}
+
+void RenderingPipeline::setTopLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::TopLevelAccelerationStructure>& topLevelAccelerationStructure)
+{
+	m_rayTracedWorldDebugPass->setTLAS(topLevelAccelerationStructure);
 }
 
 Wolf::ResourceNonOwner<ContaminationUpdatePass> RenderingPipeline::getContaminationUpdatePass()
@@ -82,4 +103,9 @@ Wolf::ResourceNonOwner<ThumbnailsGenerationPass> RenderingPipeline::getThumbnail
 Wolf::ResourceNonOwner<UpdateGPUBuffersPass> RenderingPipeline::getUpdateGPUBuffersPass()
 {
 	return m_updateGPUBuffersPass.createNonOwnerResource();
+}
+
+void RenderingPipeline::requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const
+{
+	m_drawIdsPass->requestPixelBeforeFrame(posX, posY, callback);
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <BottomLevelAccelerationStructure.h>
 #include <ModelLoader.h>
 
 #include "ComponentInterface.h"
@@ -29,6 +30,7 @@ public:
 	ResourceId addModel(const std::string& loadingPath);
 	bool isModelLoaded(ResourceId modelResourceId) const;
 	Wolf::ModelData* getModelData(ResourceId modelResourceId) const;
+	Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(ResourceId modelResourceId);
 	uint32_t getFirstMaterialIdx(ResourceId modelResourceId) const;
 	uint32_t getFirstTextureSetIdx(ResourceId modelResourceId) const;
 	void subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
@@ -78,15 +80,18 @@ private:
 
 		bool isLoaded() const override;
 		Wolf::ModelData* getModelData() { return &m_modelData; }
+		Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS() { return m_bottomLevelAccelerationStructure.createNonOwnerResource(); }
 		uint32_t getFirstMaterialIdx() const { return m_firstMaterialIdx; }
 		uint32_t getFirstTextureSetIdx() const { return m_firstTextureSetIdx; }
 
 	private:
 		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& m_thumbnailsGenerationPass);
+		void buildBLAS();
 
 		bool m_modelLoadingRequested = false;
 		bool m_thumbnailGenerationRequested = false;
 		Wolf::ModelData m_modelData;
+		Wolf::ResourceUniqueOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
 
 		uint32_t m_firstTextureSetIdx = 0;
 		uint32_t m_firstMaterialIdx = 0;

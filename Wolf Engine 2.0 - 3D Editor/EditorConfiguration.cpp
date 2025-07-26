@@ -27,6 +27,8 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 				m_defaultScene = line;
 			else if (token == "enableDebugDraw")
 				m_enableDebugDraw = std::stoi(line);
+			else if (token == "enableRayTracing")
+				m_enableRayTracing = std::stoi(line);
 		}
 	}
 

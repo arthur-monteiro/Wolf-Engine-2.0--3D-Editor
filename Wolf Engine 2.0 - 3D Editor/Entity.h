@@ -14,6 +14,7 @@
 #include "GameContext.h"
 #include "LightManager.h"
 #include "Notifier.h"
+#include "RayTracedWorldManager.h"
 
 class EditorPhysicsManager;
 class EditorConfiguration;
@@ -28,11 +29,12 @@ public:
 
 	void addComponent(ComponentInterface* component);
 	void removeAllComponents();
-	void setId(uint32_t id) { m_id = id; }
+	void setIdx(uint32_t idx) { m_idx = idx; }
 
 	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager);
 	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
+	bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::TLASInfo::InstanceInfo>& instanceInfos);
 	virtual void activateParams() const;
 	virtual void fillJSONForParams(std::string& outJSON);
 
@@ -42,7 +44,7 @@ public:
 	const std::string& getLoadingPath() const { return m_filepath; }
 	virtual std::string computeEscapedLoadingPath() const;
 	virtual bool isFake() const { return false; }
-	bool getId() const { return m_id; }
+	uint32_t getIdx() const { return m_idx; }
 
 	void setIncludeEntityParams(bool value) { m_includeEntityParams = value; }
 
@@ -110,5 +112,5 @@ private:
 	bool m_includeEntityParams = true;
 
 	static constexpr uint32_t INVALID_ID = -1;
-	uint32_t m_id = INVALID_ID;
+	uint32_t m_idx = INVALID_ID;
 };

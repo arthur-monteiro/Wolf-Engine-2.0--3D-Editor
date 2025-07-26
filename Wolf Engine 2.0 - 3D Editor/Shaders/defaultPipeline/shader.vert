@@ -16,10 +16,7 @@ layout(location = 2) out uint outMaterialIdx;
 layout(location = 3) out mat3 outTBN;
 layout(location = 6) out vec3 outWorldSpaceNormal;
 layout(location = 7) out vec3 outWorldSpacePos;
-
-#ifdef OUTPUT_IDS
 layout(location = 8) out uint outEntityId;
-#endif
  
 out gl_PerVertex
 {
@@ -50,4 +47,5 @@ void main()
 	outMaterialIdx = inFirstMaterialIdx + inSubMeshIdx;
 	outWorldSpaceNormal = normalize(inNormal);
 	outWorldSpacePos =  (inTransform * vec4(inPosition, 1.0)).xyz;
+	outEntityId = inEntityId;
 } 

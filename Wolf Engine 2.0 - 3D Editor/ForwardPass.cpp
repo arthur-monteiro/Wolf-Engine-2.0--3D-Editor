@@ -128,7 +128,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 
 	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "Forward pass");
 
-	std::vector<Wolf::ClearValue> clearValues(2);
+	std::vector<Wolf::ClearValue> clearValues(1);
 	clearValues[0] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffers[frameBufferIdx], clearValues);
 
@@ -140,7 +140,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
 	m_commandBuffer->setViewport(renderViewport);
 
-	Wolf::DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_FORWARD_COMMON);
+	Wolf::DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
 
 	std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
 	descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo, 0);
@@ -162,8 +162,17 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		m_commandBuffer->draw(particleCount * 6, 1, 0, 0);
 	}
 
-	/* UI */
+	/* UI and draw rects */
 	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
+
+	m_commandBuffer->setViewport(renderViewport);
+	if (gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_DEPTH && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
+	{
+		m_rayTracedWorldDebugPass->bindDescriptorSetToDrawOutput(*m_commandBuffer, *m_userInterfacePipeline);
+		m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
+	}
+
+	m_commandBuffer->setViewport({ 0, 0, static_cast<float>(context.swapchainImage->getExtent().width), static_cast<float>(context.swapchainImage->getExtent().height), 0, 1.0f });
 	m_commandBuffer->bindDescriptorSet(m_userInterfaceDescriptorSet.get(), 0, *m_userInterfacePipeline);
 
 	m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
@@ -186,6 +195,9 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
 	else
 		waitSemaphores.push_back(m_preDepthPass->getSemaphore());
+	if (m_rayTracedWorldDebugPass->wasEnabledThisFrame())
+		waitSemaphores.push_back(m_rayTracedWorldDebugPass->getSemaphore());
+
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
 
@@ -212,18 +224,9 @@ Wolf::Attachment ForwardPass::setupColorAttachment(const Wolf::InitializationCon
 
 Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationContext& context)
 {
-	Wolf::CreateImageInfo depthImageCreateInfo;
-	depthImageCreateInfo.format = context.depthFormat;
-	depthImageCreateInfo.extent.width = context.swapChainWidth;
-	depthImageCreateInfo.extent.height = context.swapChainHeight;
-	depthImageCreateInfo.extent.depth = 1;
-	depthImageCreateInfo.mipLevelCount = 1;
-	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
-	m_depthImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
-
 	Wolf::Attachment attachment({context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_preDepthPass->getOutput()->getDefaultImageView());
+	attachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;;
 	attachment.loadOperation = Wolf::AttachmentLoadOp::LOAD;
 
 	return attachment;
@@ -308,11 +311,17 @@ void ForwardPass::createPipelines()
 		// Viewport
 		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
 
+		// Depth
+		pipelineCreateInfo.enableDepthWrite = false;
+
 		// Resources
 		pipelineCreateInfo.descriptorSetLayouts = { m_userInterfaceDescriptorSetLayout.get() };
 
+		// Dynamic state
+		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+
 		// Color Blend
-		pipelineCreateInfo.blendModes = {Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
+		pipelineCreateInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
 
 		m_userInterfacePipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 	}

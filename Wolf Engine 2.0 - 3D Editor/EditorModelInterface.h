@@ -11,6 +11,7 @@
 #include "DrawManager.h"
 #include "EditorPhysicsManager.h"
 #include "EditorTypes.h"
+#include "RayTracedWorldManager.h"
 
 namespace Wolf
 {
@@ -26,6 +27,7 @@ public:
 
 	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	virtual bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) = 0;
+	virtual bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::TLASInfo::InstanceInfo>& instanceInfos) { return true; }
 	virtual bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) = 0;
 
 

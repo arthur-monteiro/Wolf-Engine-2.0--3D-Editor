@@ -12,7 +12,9 @@ struct GameContext
 		METALNESS = 3,
 		MAT_AO = 4,
 		ANISO_STRENGTH = 5,
-		LIGHTING = 6
+		LIGHTING = 6,
+		ENTITY_IDX = 7,
+		RAY_TRACED_WORLD_DEBUG_DEPTH = 8,
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 };

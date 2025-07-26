@@ -9,7 +9,7 @@
 #include "EditorParams.h"
 #include "EntityContainer.h"
 #include "GameContext.h"
-#include "LightManager.h"
+#include "RayTracedWorldManager.h"
 #include "RenderingPipeline.h"
 #include "ResourceManager.h"
 
@@ -56,7 +56,7 @@ private:
 	void displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
-	void enableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void requestEntitySelectionJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void disableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -86,11 +86,13 @@ private:
 	GameContext m_inModificationGameContext;
 	std::mutex m_contextMutex;
 	std::vector<GameContext> m_gameContexts;
-	bool m_entityPickingEnabled = true;
+	bool m_entitySelectionRequested = false;
 	Wolf::ResourceUniqueOwner<EntityContainer> m_entityContainer;
 	Wolf::ResourceUniqueOwner<ComponentInstancier> m_componentInstancier;
 	std::unique_ptr<Wolf::FirstPersonCamera> m_camera;
 	Wolf::ResourceUniqueOwner<DrawManager> m_drawManager;
+	Wolf::ResourceUniqueOwner<RayTracedWorldManager> m_rayTracedWorldManager;
+	bool m_rayTracedWorldBuildNeeded = false;
 	Wolf::ResourceUniqueOwner<EditorPhysicsManager> m_editorPhysicsManager;
 
 	std::unique_ptr<EditorParams> m_editorParams;

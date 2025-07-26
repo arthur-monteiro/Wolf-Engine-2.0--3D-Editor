@@ -12,7 +12,8 @@ EntityContainer::~EntityContainer()
 
 void EntityContainer::addEntity(Entity* entity)
 {
-	entity->setId(m_currentEntities.size() + m_newEntities.size());
+	uint32_t idx = m_currentEntities.size() + m_newEntities.size();
+	entity->setIdx(idx);
 	m_newEntities.emplace_back(entity);
 }
 

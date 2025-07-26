@@ -12,7 +12,7 @@ struct InstanceData
 {
 	glm::mat4 transform;
 	uint32_t firstMaterialIdx;
-	uint32_t entityId;
+	uint32_t entityIdx;
 
 	static void getBindingDescription(VkVertexInputBindingDescription& bindingDescription, uint32_t binding)
 	{
@@ -54,7 +54,7 @@ struct InstanceData
 		attributeDescriptions[attributeDescriptionCountBefore + 5].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 5].location = attributeDescriptionCountBefore + 5;
 		attributeDescriptions[attributeDescriptionCountBefore + 5].format = VK_FORMAT_R32_UINT;
-		attributeDescriptions[attributeDescriptionCountBefore + 5].offset = offsetof(InstanceData, entityId);
+		attributeDescriptions[attributeDescriptionCountBefore + 5].offset = offsetof(InstanceData, entityIdx);
 	}
 };
 

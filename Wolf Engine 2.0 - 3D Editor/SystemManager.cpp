@@ -64,6 +64,11 @@ SystemManager::SystemManager()
 	m_drawManager.reset(new DrawManager(m_wolfInstance->getRenderMeshList(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>()));
 	m_editorPhysicsManager.reset(new EditorPhysicsManager(m_wolfInstance->getPhysicsManager()));
 
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		m_rayTracedWorldManager.reset(new RayTracedWorldManager);
+	}
+
 	addFakeEntities();
 }
 
@@ -209,8 +214,7 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openUIInBrowser"] = std::bind(&SystemManager::openUIInBrowserJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["getAllComponentTypes"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getAllComponentTypesJSCallback, this, std::placeholders::_1, std::placeholders::_2));
-	jsObject["enableEntityPicking"] = std::bind(&SystemManager::enableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["disableEntityPicking"] = std::bind(&SystemManager::disableEntityPickingJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["requestEntitySelection"] = std::bind(&SystemManager::requestEntitySelectionJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["duplicateEntity"] = std::bind(&SystemManager::duplicateEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["editResource"] = std::bind(&SystemManager::editResourceJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["debugPhysicsCheckboxChanged"] = std::bind(&SystemManager::debugPhysicsCheckboxChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -457,6 +461,19 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_inModificationGameContext.displayType = GameContext::DisplayType::ANISO_STRENGTH;
 	else if (displayType == "lighting")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::LIGHTING;
+	else if (displayType == "entityIdx")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::ENTITY_IDX;
+	else if (displayType == "rayTracedWorldDebugDepth")
+	{
+		if (!g_editorConfiguration->getEnableRayTracing())
+		{
+			Wolf::Debug::sendError("Can't display ray traced debug because ray tracing is not enabled");
+		}
+		else
+		{
+			m_inModificationGameContext.displayType = GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_DEPTH;
+		}
+	}
 	else
 		Wolf::Debug::sendError("Unsupported display type: " + displayType);
 
@@ -528,16 +545,9 @@ ultralight::JSValue SystemManager::getAllComponentTypesJSCallback(const ultralig
 		return R"({ "components": [ ] })";
 }
 
-void SystemManager::enableEntityPickingJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args)
+void SystemManager::requestEntitySelectionJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	m_entityPickingEnabled = true;
-}
-
-void SystemManager::disableEntityPickingJSCallback(const ultralight::JSObject& thisObject,
-	const ultralight::JSArgs& args)
-{
-	m_entityPickingEnabled = false;
+	m_entitySelectionRequested = true;
 }
 
 void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -697,6 +707,28 @@ void SystemManager::updateBeforeFrame()
 
 	std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 
+	if (m_rayTracedWorldBuildNeeded)
+	{
+		RayTracedWorldManager::TLASInfo tlasInfo;
+
+		bool errorEncountered = false;
+		for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
+		{
+			if (!entity->getInstancesForRayTracedWorld(tlasInfo.m_instances))
+			{
+				errorEncountered = true;
+				break;
+			}
+		}
+
+		if (!errorEncountered)
+		{
+			m_rayTracedWorldManager->buildTLAS(tlasInfo);
+			m_renderer->setTopLevelAccelerationStructure(m_rayTracedWorldManager->getTopLevelAccelerationStructure());
+			m_rayTracedWorldBuildNeeded = false;
+		}
+	}
+
 	Wolf::ResourceNonOwner<Wolf::RenderMeshList> renderList = m_wolfInstance->getRenderMeshList();
 	Wolf::ResourceNonOwner<Wolf::LightManager> lightManager = m_wolfInstance->getLightManager().createNonOwnerResource();
 	DebugRenderingManager& debugRenderingManager = *m_debugRenderingManager;
@@ -747,46 +779,22 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	// Select object by click
-	if (false && m_entityPickingEnabled && inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	if (m_entitySelectionRequested && inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
 	{
-		const glm::vec3 rayOrigin = m_camera->getPosition();
-
 		float currentMousePosX, currentMousePosY;
 		inputHandler->getMousePosition(currentMousePosX, currentMousePosY);
-
-		const float renderPosX = currentMousePosX - static_cast<float>(m_editorParams->getRenderOffsetLeft());
-		const float renderPosY = currentMousePosY - static_cast<float>(m_editorParams->getRenderOffsetBot());
-
-		if (renderPosX >= 0.0f && renderPosX < static_cast<float>(m_editorParams->getRenderWidth()) && renderPosY >= 0.0f && renderPosY < static_cast<float>(m_editorParams->getRenderHeight()))
+		m_renderer->requestPixelId(currentMousePosX, currentMousePosY, [this](uint32_t entityIdx)
 		{
-			const float renderPosClipSpaceX = (renderPosX / static_cast<float>(m_editorParams->getRenderWidth())) * 2.0f - 1.0f;
-			const float renderPosClipSpaceY = (renderPosY / static_cast<float>(m_editorParams->getRenderHeight())) * 2.0f - 1.0f;
-
-			const glm::vec3 clipTarget = glm::vec3(glm::inverse(m_camera->getProjectionMatrix()) * glm::vec4(renderPosClipSpaceX, renderPosClipSpaceY, 1.0f, 1.0f));
-			const glm::vec3 rayDirection = glm::vec3(glm::inverse(m_camera->getViewMatrix()) * glm::vec4(clipTarget, 0.0f));
-
-			float minDistance = 2'000.0f;
-			for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
+			if (entityIdx != -1)
 			{
-				if (entity->hasModelComponent())
-				{
-					if (float intersectionDistance = entity->getAABB().intersect(rayOrigin, rayDirection); intersectionDistance > Wolf::AABB::NO_INTERSECTION)
-					{
-						intersectionDistance = intersectionDistance > 0.0f ? intersectionDistance : 1'000.0f;
-						if (intersectionDistance < minDistance)
-						{
-							minDistance = intersectionDistance;
-							m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(entity.createNonOwnerResource()));
-						}
-					}
-				}
-			}
-
-			if (m_selectedEntity)
-			{
+				m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_entityContainer->getEntities()[entityIdx].createNonOwnerResource()));
 				updateUISelectedEntity();
 			}
-		}
+
+			m_wolfInstance->evaluateUserInterfaceScript("finishEntitySelection();");
+		});
+
+		m_entitySelectionRequested = false;
 	}
 
 	const glm::vec3 cameraPosition = m_camera->getPosition();
@@ -880,6 +888,11 @@ Entity* SystemManager::addEntity(const std::string& filePath)
 
 	const std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\", \"" + newEntity->computeEscapedLoadingPath() + "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
+
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		m_rayTracedWorldBuildNeeded = true;
+	}
 
 	return newEntity;
 }

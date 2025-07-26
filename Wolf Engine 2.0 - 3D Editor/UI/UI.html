@@ -50,6 +50,14 @@
 		<div id="sliderResourceBrowser" onmousedown="resizeList()"></div>
 
 		<div id="viewBotRightElements">
+			<img id="selectEntityIcon"
+				src="media/interfaceIcon/select.svg"
+				alt="Select an entity by click"
+				height="25"
+				width="25"
+				style="opacity: 0.5;"
+				onclick="selectEntityByClick()"/>
+
 			<img id="AABBIcon"
 				src="media/interfaceIcon/aabb.svg"
 				alt="Show AABB for selected entity"
@@ -138,6 +146,8 @@
 							<option value="matAO">Material AO</option>
 							<option value="anisoStrength">Anisotropy Strength</option>
 							<option value="lighting">Lighting</option>
+							<option value="entityIdx">Entity Idx</option>
+							<option value="rayTracedWorldDebugDepth">Ray Traced World Debug: Depth</option>
 						</select>
 					</div>
 					<div style="padding-top: 12px;">
@@ -259,11 +269,9 @@
 	}
 
 	function openModalWindow() {
-		disableEntityPicking();
 	}
 
 	function closeModalWindow() {
-		enableEntityPicking();
 	}
 
 	function openEntityAdd() {
@@ -442,6 +450,20 @@
 			document.getElementById("resourceContextMenu").style.left = e.clientX;
 			document.getElementById("resourceContextMenu").style.top = e.clientY;
 		}
+	}
+
+	function selectEntityByClick()
+	{
+		requestEntitySelection();
+
+		let opacity = 1.0;
+		document.getElementById("selectEntityIcon").style.opacity = opacity;
+	}
+
+	function finishEntitySelection()
+	{
+		let opacity = 0.5;
+		document.getElementById("selectEntityIcon").style.opacity = opacity;
 	}
 
 	function onToggleAABBSelectedEntityClick()

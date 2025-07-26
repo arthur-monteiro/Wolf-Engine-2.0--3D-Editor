@@ -72,8 +72,8 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
 
 			// Output Ids
-			pipelineInfo.shaderInfos[0].conditionBlocksToInclude.push_back("OUTPUT_IDS");
-
+			pipelineInfo.bindlessDescriptorSlot = -1;
+			pipelineInfo.lightDescriptorSlot = -1;
 			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/outputIds.frag";
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
 		}));
@@ -146,7 +146,25 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
 		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
-	outList.push_back({ meshToRenderInfo, { m_transform, firstMaterialIdx, m_entity->getId() }});
+
+	InstanceData instanceData{};
+	instanceData.transform = m_transform;
+	instanceData.firstMaterialIdx = firstMaterialIdx;
+	instanceData.entityIdx = m_entity->getIdx();
+	outList.push_back({ meshToRenderInfo, instanceData});
+
+	return true;
+}
+
+bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::TLASInfo::InstanceInfo>& instanceInfos)
+{
+	PROFILE_FUNCTION
+
+	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
+		return false;
+
+	RayTracedWorldManager::TLASInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId), m_transform };
+	instanceInfos.push_back(instanceInfo);
 
 	return true;
 }

@@ -6,6 +6,7 @@ layout (location = 2) flat in uint inMaterialID;
 layout (location = 3) in mat3 inTBN;
 layout (location = 6) in vec3 inWorldSpaceNormal;
 layout (location = 7) in vec3 inWorldSpacePos;
+layout (location = 8) flat in uint inEntityId;
 
 layout (location = 0) out vec4 outColor;
 
@@ -23,6 +24,7 @@ const uint DISPLAY_TYPE_METALNESS = 3;
 const uint DISPLAY_TYPE_MAT_AO = 4;
 const uint DISPLAY_TYPE_MAT_ANISO_STRENGTH = 5;
 const uint DISPLAY_TYPE_LIGHTING = 6;
+const uint DISPLAY_TYPE_ENTITY_IDX = 7;
 
 const float PI = 3.14159265359;
 
@@ -118,6 +120,13 @@ void main()
         outColor = vec4(materialInfo.anisoStrength.rrr, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_LIGHTING)
         outColor = computeLighting(materialInfo);
+    else if (ubDisplay.displayType == DISPLAY_TYPE_ENTITY_IDX)
+    {
+        uvec3 col = (inEntityId) * uvec3(158, 2 * 156, 3 * 159);
+        col = col % uvec3(255, 253, 256); // skips some channel values
+
+        outColor = vec4(vec3(col) / 255.0, 1.0);
+    }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

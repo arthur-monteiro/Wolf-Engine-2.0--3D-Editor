@@ -173,6 +173,11 @@ Wolf::ModelData* ResourceManager::getModelData(ResourceId modelResourceId) const
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getModelData();
 }
 
+Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> ResourceManager::getBLAS(ResourceId modelResourceId)
+{
+	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getBLAS();
+}
+
 uint32_t ResourceManager::getFirstMaterialIdx(ResourceId modelResourceId) const
 {
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getFirstMaterialIdx();
@@ -311,6 +316,12 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 	modelLoadingInfo.mtlFolder = fullFilePath.substr(0, fullFilePath.find_last_of('\\'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.textureSetLayout = Wolf::TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		VkBufferUsageFlags rayTracingFlags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		modelLoadingInfo.additionalVertexBufferUsages |= rayTracingFlags;
+		modelLoadingInfo.additionalIndexBufferUsages |= rayTracingFlags;
+	}
 	Wolf::ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
 	materialsGPUManager->lockMaterials();
@@ -336,4 +347,26 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 			[this]() { m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath).substr(3, computeIconPath(m_loadingPath).size()), m_resourceId); } });
 		m_thumbnailGenerationRequested = false;
 	}
+
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		buildBLAS();
+	}
+}
+
+void ResourceManager::Mesh::buildBLAS()
+{
+	Wolf::GeometryInfo geometryInfo;
+	geometryInfo.mesh.vertexBuffer = &*m_modelData.mesh->getVertexBuffer();
+	geometryInfo.mesh.vertexCount = m_modelData.mesh->getVertexCount();
+	geometryInfo.mesh.vertexSize = m_modelData.mesh->getVertexSize();
+	geometryInfo.mesh.vertexFormat = Wolf::Format::R32G32B32_SFLOAT;
+	geometryInfo.mesh.indexBuffer = &m_modelData.mesh->getIndexBuffer();
+	geometryInfo.mesh.indexCount = m_modelData.mesh->getIndexCount();
+
+	Wolf::BottomLevelAccelerationStructureCreateInfo createInfo{};
+	createInfo.geometryInfos = { &geometryInfo, 1 };
+	createInfo.buildFlags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+
+	m_bottomLevelAccelerationStructure.reset(Wolf::BottomLevelAccelerationStructure::createBottomLevelAccelerationStructure(createInfo));
 }

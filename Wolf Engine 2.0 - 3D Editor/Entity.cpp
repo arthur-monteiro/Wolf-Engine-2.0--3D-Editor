@@ -80,7 +80,8 @@ std::string Entity::computeEscapedLoadingPath() const
 	return escapedLoadingPath;
 }
 
-void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager)
+void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager,
+	const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager)
 {
 	PROFILE_FUNCTION
 
@@ -141,6 +142,15 @@ void Entity::addDebugInfo(DebugRenderingManager& debugRenderingManager) const
 	PROFILE_FUNCTION
 
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->addDebugInfo(debugRenderingManager);)
+}
+
+bool Entity::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::TLASInfo::InstanceInfo>& instanceInfos)
+{
+	if (m_modelComponent)
+	{
+		return (*m_modelComponent)->getInstancesForRayTracedWorld(instanceInfos);
+	}
+	return true;
 }
 
 void Entity::activateParams() const

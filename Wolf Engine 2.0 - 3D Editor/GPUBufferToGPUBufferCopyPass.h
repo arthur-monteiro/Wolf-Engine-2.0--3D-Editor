@@ -7,12 +7,13 @@
 #include <DynamicResourceUniqueOwnerArray.h>
 #include <ReadableBuffer.h>
 
+#include "DrawIdsPass.h"
 #include "ForwardPass.h"
 
 class GPUBufferToGPUBufferCopyPass: public Wolf::CommandRecordBase
 {
 public:
-    GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const ForwardPass>& forwardPass);
+    GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<const DrawIdsPass>& drawIdsPass);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
@@ -42,6 +43,7 @@ public:
 
 private:
     Wolf::ResourceNonOwner<const ForwardPass> m_forwardPass;
+    Wolf::ResourceNonOwner<const DrawIdsPass> m_drawIdsPass;
 
     static constexpr uint32_t RequestsBatchSize = 4;
     static constexpr uint32_t QueuesBatchSize = 2;
