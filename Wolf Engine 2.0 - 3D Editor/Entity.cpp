@@ -144,7 +144,7 @@ void Entity::addDebugInfo(DebugRenderingManager& debugRenderingManager) const
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->addDebugInfo(debugRenderingManager);)
 }
 
-bool Entity::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::TLASInfo::InstanceInfo>& instanceInfos)
+bool Entity::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos)
 {
 	if (m_modelComponent)
 	{

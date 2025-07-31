@@ -709,7 +709,7 @@ void SystemManager::updateBeforeFrame()
 
 	if (m_rayTracedWorldBuildNeeded)
 	{
-		RayTracedWorldManager::TLASInfo tlasInfo;
+		RayTracedWorldManager::RayTracedWorldInfo tlasInfo;
 
 		bool errorEncountered = false;
 		for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
@@ -723,7 +723,7 @@ void SystemManager::updateBeforeFrame()
 
 		if (!errorEncountered)
 		{
-			m_rayTracedWorldManager->buildTLAS(tlasInfo);
+			m_rayTracedWorldManager->build(tlasInfo);
 			m_renderer->setTopLevelAccelerationStructure(m_rayTracedWorldManager->getTopLevelAccelerationStructure());
 			m_rayTracedWorldBuildNeeded = false;
 		}

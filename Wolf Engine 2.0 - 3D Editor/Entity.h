@@ -34,7 +34,7 @@ public:
 	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager);
 	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
-	bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::TLASInfo::InstanceInfo>& instanceInfos);
+	bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos);
 	virtual void activateParams() const;
 	virtual void fillJSONForParams(std::string& outJSON);
 

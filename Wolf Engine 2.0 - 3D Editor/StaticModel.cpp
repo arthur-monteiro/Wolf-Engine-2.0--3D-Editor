@@ -156,14 +156,18 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	return true;
 }
 
-bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::TLASInfo::InstanceInfo>& instanceInfos)
+bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos)
 {
 	PROFILE_FUNCTION
 
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
 		return false;
 
-	RayTracedWorldManager::TLASInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId), m_transform };
+	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
+	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
+		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
+
+	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId), m_transform, firstMaterialIdx, m_resourceManager->getModelData(m_meshResourceId)->mesh.createNonOwnerResource() };
 	instanceInfos.push_back(instanceInfo);
 
 	return true;

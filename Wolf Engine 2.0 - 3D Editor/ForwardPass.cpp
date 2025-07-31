@@ -56,7 +56,7 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 
 		m_particlesVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.vert", {}, 1));
 		Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
-		m_shadowMaskPass->addShaderCode(shaderCodeToAdd, SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
+		m_shadowMaskPass->addComputeShadowsShaderCode(shaderCodeToAdd, SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
 		m_particlesFragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3, Wolf::ShaderParser::MaterialFetchProcedure(),
 		                                                             shaderCodeToAdd));
 	}

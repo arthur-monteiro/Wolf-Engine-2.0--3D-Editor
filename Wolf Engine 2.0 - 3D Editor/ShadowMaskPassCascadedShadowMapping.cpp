@@ -23,7 +23,7 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
 
 	Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
-	addShaderCode(shaderCodeToAdd, 0);
+	addComputeShadowsShaderCode(shaderCodeToAdd, 0);
 	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/cascadedShadowMapping/shader.comp", {}, 2, -1, -1, 
 		Wolf::ShaderParser::MaterialFetchProcedure(), shaderCodeToAdd));
 
@@ -178,7 +178,7 @@ void ShadowMaskPassCascadedShadowMapping::submit(const Wolf::SubmitContext& cont
 	}
 }
 
-void ShadowMaskPassCascadedShadowMapping::addShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const
+void ShadowMaskPassCascadedShadowMapping::addComputeShadowsShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const
 {
 	std::ifstream inFile("Shaders/cascadedShadowMapping/computeShadows.glsl");
 	std::string line;

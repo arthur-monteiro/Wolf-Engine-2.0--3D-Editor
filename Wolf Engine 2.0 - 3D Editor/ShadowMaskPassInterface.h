@@ -47,7 +47,7 @@ public:
 			bindingSlot
 		};
 	}
-	virtual void addShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const = 0;
+	virtual void addComputeShadowsShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const = 0;
 
 protected:
 	// Mask resources

@@ -25,7 +25,7 @@ public:
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
 
-	void addShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const override;
+	void addComputeShadowsShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const override;
 
 	Wolf::Image* getOutput() override { return m_outputMask.get(); }
 	const Wolf::Semaphore* getSemaphore() const override { return Wolf::CommandRecordBase::getSemaphore(); }
