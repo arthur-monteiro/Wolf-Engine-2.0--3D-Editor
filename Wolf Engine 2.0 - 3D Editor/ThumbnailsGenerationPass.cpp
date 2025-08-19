@@ -64,7 +64,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 
 	// Programming stages
 	m_staticVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/thumbnailsGeneration/staticShader.vert", {}, 0));
-	m_fragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/thumbnailsGeneration/defaultShader.frag", {}, -1, 1));
+	m_fragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/thumbnailsGeneration/defaultShader.frag", {}, 0 /* needed for virtual texture */, 1));
 
 	pipelineCreateInfo.shaderCreateInfos.resize(2);
 	m_staticVertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);

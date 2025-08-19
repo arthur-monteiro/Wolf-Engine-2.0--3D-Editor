@@ -253,6 +253,7 @@
     <ClCompile Include="ContaminationReceiver.cpp" />
     <ClCompile Include="ContaminationUpdatePass.cpp" />
     <ClCompile Include="DebugRenderingManager.cpp" />
+    <ClCompile Include="DrawIdsPass.cpp" />
     <ClCompile Include="DrawManager.cpp" />
     <ClCompile Include="EditorConfiguration.cpp" />
     <ClCompile Include="EditorLightInterface.cpp" />
@@ -269,6 +270,8 @@
     <ClCompile Include="MaterialComponent.cpp" />
     <ClCompile Include="MathsUtilsEditor.cpp" />
     <ClCompile Include="MeshResourceEditor.cpp" />
+    <ClCompile Include="RayTracedWorldDebugPass.cpp" />
+    <ClCompile Include="RayTracedWorldManager.cpp" />
     <ClCompile Include="TextureSetComponent.cpp" />
     <ClCompile Include="MaterialListFakeEntity.cpp" />
     <ClCompile Include="Particle.cpp" />
@@ -305,6 +308,7 @@
     <ClInclude Include="ContaminationReceiver.h" />
     <ClInclude Include="ContaminationUpdatePass.h" />
     <ClInclude Include="DebugRenderingManager.h" />
+    <ClInclude Include="DrawIdsPass.h" />
     <ClInclude Include="DrawManager.h" />
     <ClInclude Include="EditorConfiguration.h" />
     <ClInclude Include="EditorLightInterface.h" />
@@ -322,6 +326,8 @@
     <ClInclude Include="MaterialComponent.h" />
     <ClInclude Include="MathsUtilsEditor.h" />
     <ClInclude Include="MeshResourceEditor.h" />
+    <ClInclude Include="RayTracedWorldDebugPass.h" />
+    <ClInclude Include="RayTracedWorldManager.h" />
     <ClInclude Include="TextureSetComponent.h" />
     <ClInclude Include="MaterialListFakeEntity.h" />
     <ClInclude Include="Particle.h" />

@@ -109,7 +109,7 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 				{
 					m_subMeshes.emplace_back();
 					m_subMeshes.back().setReloadEntityCallback([this]() { reloadEntity(); });
-					m_subMeshes.back().init(subMeshIdx, textureSetInfo[subMeshIdx].materialName, m_getEntityFromLoadingPathCallback);
+					m_subMeshes.back().init(subMeshIdx, textureSetInfo[subMeshIdx].name, m_getEntityFromLoadingPathCallback);
 					m_subMeshes.back().reset();
 				}
 

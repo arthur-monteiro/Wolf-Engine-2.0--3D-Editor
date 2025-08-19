@@ -20,7 +20,7 @@ layout(binding = 0, set = 0) uniform UniformBufferCamera
 
 	float near;
 	float far;
-	
+	uint  frameIndex;
 } ubCamera;
 
 mat4 getViewMatrix()
@@ -71,6 +71,11 @@ vec3 computeWorldPosFromViewPos(in const vec3 viewPos)
 vec3 getCameraPos()
 {
 	return ubCamera.invView[3].xyz;
+}
+
+uint getCameraFrameIndex()
+{
+	return ubCamera.frameIndex;
 }
 layout (vertices = 4) out;
 

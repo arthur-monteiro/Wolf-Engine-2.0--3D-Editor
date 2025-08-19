@@ -1,2 +1,2 @@
-width = 4
+width = 4height = 4
 height = 4
