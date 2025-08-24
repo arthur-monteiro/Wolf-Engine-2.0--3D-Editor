@@ -219,6 +219,7 @@ void SystemManager::bindUltralightCallbacks()
 	jsObject["editResource"] = std::bind(&SystemManager::editResourceJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["debugPhysicsCheckboxChanged"] = std::bind(&SystemManager::debugPhysicsCheckboxChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["goToEntity"] = std::bind(&SystemManager::onGoToEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["removeEntity"] = std::bind(&SystemManager::onRemoveEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["toggleAABBDisplayForSelectedEntity"] = std::bind(&SystemManager::toggleAABBDisplayForSelectedEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["isAABBShowedForSelectedEntity"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::isAABBShowedForSelectedEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["toggleBoundingSphereDisplayForSelectedEntity"] = std::bind(&SystemManager::toggleBoundingSphereDisplayForSelectedEntity, this, std::placeholders::_1, std::placeholders::_2);
@@ -597,7 +598,14 @@ void SystemManager::debugPhysicsCheckboxChangedJSCallback(const ultralight::JSOb
 
 void SystemManager::onGoToEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
+	selectEntityByNameJSCallback(thisObject, args);
 	goToSelectedEntity();
+}
+
+void SystemManager::onRemoveEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	selectEntityByNameJSCallback(thisObject, args);
+	m_requestRemoveSelectedEntity = true;
 }
 
 void SystemManager::toggleAABBDisplayForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -639,6 +647,15 @@ void SystemManager::goToSelectedEntity() const
 	}
 }
 
+void SystemManager::removeSelectedEntity()
+{
+	Wolf::ResourceNonOwner<Entity>* selectedEntity = m_selectedEntity.release();
+	m_entityContainer->removeEntity(selectedEntity->operator->());
+	delete selectedEntity;
+
+	m_entityChanged = true; // this is a way to reload entity list
+}
+
 void SystemManager::updateBeforeFrame()
 {
 	PROFILE_FUNCTION
@@ -663,6 +680,12 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	m_debugRenderingManager->clearBeforeFrame();
+
+	if (m_requestRemoveSelectedEntity)
+	{
+		removeSelectedEntity();
+		m_requestRemoveSelectedEntity = false;
+	}
 
 	m_entityContainer->moveToNextFrame([this](const std::string& componentId)
 		{

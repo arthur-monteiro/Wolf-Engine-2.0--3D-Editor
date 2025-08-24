@@ -13,6 +13,7 @@
 		<ul class="menuList">
 			<li class="menuItem" id="duplicate">Duplicate</li>
 			<li class="menuItem" id="goTo">Go To</li>
+			<li class="menuItem" id="remove">Remove</li>
 		</ul>
 	</div>
 
@@ -387,6 +388,10 @@
 		goToEntity(selectedEntityName);
 	}
 
+	function onRemove() {
+		removeEntity(selectedEntityName);
+	}
+
 	function onMouseDownEntity(e, entityName) {
 		let isRightClick = getMouseButtons(e) == RMB;
 
@@ -404,6 +409,7 @@
         	old_element.parentNode.replaceChild(new_element, old_element);
 			document.getElementById("duplicate").addEventListener("click", onDuplicate);
 			document.getElementById("goTo").addEventListener("click", onGoTo);
+			document.getElementById("remove").addEventListener("click", onRemove);
 		}
 		else
 			selectEntityByName(entityName);

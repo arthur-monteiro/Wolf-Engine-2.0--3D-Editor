@@ -62,3 +62,15 @@ void EntityContainer::findEntitiesWithCenterInSphere(const Wolf::BoundingSphere&
 		}
 	}
 }
+
+void EntityContainer::removeEntity(Entity* entity)
+{
+	for (uint32_t i = 0; i < m_currentEntities.size(); ++i)
+	{
+		if (m_currentEntities[i].isSame(entity))
+		{
+			m_currentEntities.erase(m_currentEntities.begin() + i);
+			return;
+		}
+	}
+}

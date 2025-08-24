@@ -62,6 +62,7 @@ private:
 	void editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void debugPhysicsCheckboxChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void onGoToEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void onRemoveEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void toggleAABBDisplayForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue isAABBShowedForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 	void toggleBoundingSphereDisplayForSelectedEntity(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -69,6 +70,7 @@ private:
 
 	void selectEntity() const;
 	void goToSelectedEntity() const;
+	void removeSelectedEntity();
 	void updateUISelectedEntity() const;
 
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
@@ -105,6 +107,7 @@ private:
 	bool m_debugPhysics = false;
 	bool m_showAABBForSelectedEntity = false;
 	bool m_showBoundingSphereForSelectedEntity = false;
+	bool m_requestRemoveSelectedEntity = false;
 
 	Wolf::ResourceUniqueOwner<DebugRenderingManager> m_debugRenderingManager;
 
