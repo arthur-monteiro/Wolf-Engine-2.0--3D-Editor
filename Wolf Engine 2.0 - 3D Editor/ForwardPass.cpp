@@ -6,6 +6,7 @@
 #include <GraphicCameraInterface.h>
 #include <Image.h>
 #include <ProfilerCommon.h>
+#include <stb_image_write.h>
 
 #include "CommonLayouts.h"
 #include "ContaminationUpdatePass.h"
@@ -182,6 +183,8 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
 	m_commandBuffer->endCommandBuffer();
+
+	m_lastSwapchainImage = context.swapchainImage;
 }
 
 void ForwardPass::submit(const Wolf::SubmitContext& context)
@@ -214,6 +217,29 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 		context.graphicAPIManager->waitIdle();
 		createPipelines();
 	}
+}
+
+void ForwardPass::saveSwapChainToFile()
+{
+	std::vector<uint8_t> fullImageData;
+	m_lastSwapchainImage->exportToBuffer(fullImageData);
+
+	uint32_t channelCount = 3;
+
+	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
+	std::vector<uint8_t> renderImageData(renderViewport.width * renderViewport.height * channelCount);
+
+	for (uint32_t y = 0; y < static_cast<uint32_t>(renderViewport.height); y++)
+	{
+		uint32_t offsetInFullImageData = ((y + static_cast<uint32_t>(renderViewport.y)) * m_lastSwapchainImage->getExtent().width * channelCount) + static_cast<uint32_t>(renderViewport.x) * channelCount;
+		uint8_t* src = &fullImageData[offsetInFullImageData];
+		uint8_t* dst = &renderImageData[y * renderViewport.width * channelCount];
+		uint32_t lineCopySize = renderViewport.width * channelCount;
+
+		memcpy(dst, src, lineCopySize);
+	}
+
+	stbi_write_png("screenshot.png", renderViewport.width, renderViewport.height, channelCount, renderImageData.data(), renderViewport.width * channelCount);
 }
 
 Wolf::Attachment ForwardPass::setupColorAttachment(const Wolf::InitializationContext& context)

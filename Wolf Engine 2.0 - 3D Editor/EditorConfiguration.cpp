@@ -1,6 +1,7 @@
 #include "EditorConfiguration.h"
 
 #include <fstream>
+#include <ranges>
 
 #include "Debug.h"
 
@@ -29,6 +30,8 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 				m_enableDebugDraw = std::stoi(line);
 			else if (token == "enableRayTracing")
 				m_enableRayTracing = std::stoi(line);
+			else if (token == "takeScreenshotAfterFrameCount")
+				m_takeScreenshotAfterFrameCount = std::stoi(line);
 		}
 	}
 

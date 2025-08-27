@@ -8,26 +8,26 @@ file(GLOB SRC
 )
 
 # Includes Wolf libs
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/Common")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/GraphicAPIBroker/Public")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/Wolf Engine 2.0")
+include_directories("../dependencies/Wolf Engine 2.0/Common")
+include_directories("../dependencies/Wolf Engine 2.0/GraphicAPIBroker/Public")
+include_directories("../dependencies/Wolf Engine 2.0/Wolf Engine 2.0")
 
 # Includes third parties
-include_directories("./../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/xxh64")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/glm")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/GLFW/include")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/tiny_obj")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/FrustumCull")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/stb_image")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/UltraLight/include")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/vulkan/Include")
-include_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/Tracy/tracy")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/xxh64")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/glm")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/GLFW/include")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/tiny_obj")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/FrustumCull")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/stb_image")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/UltraLight/include")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/vulkan/Include")
+include_directories("../dependencies/Wolf Engine 2.0/ThirdParty/Tracy/tracy")
 include_directories("../GifEncoder/egif")
 
-link_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/x64/Debug/lib")
-link_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/vulkan/Lib")
-link_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/GLFW/lib-vc2019")
-link_directories("../../Wolf Engine 2.0/Wolf Engine 2.0/ThirdParty/UltraLight/lib")
+link_directories("../dependencies/Wolf Engine 2.0/x64/Debug/lib")
+link_directories("../dependencies/Wolf Engine 2.0/ThirdParty/vulkan/Lib")
+link_directories("../dependencies/Wolf Engine 2.0/ThirdParty/GLFW/lib-vc2019")
+link_directories("../dependencies/Wolf Engine 2.0/ThirdParty/UltraLight/lib")
 link_directories("../x64/Debug")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -51,11 +51,4 @@ target_link_libraries(WolfEngine_3DEditor GifEncoder.lib)
 
 set_target_properties(WolfEngine_3DEditor
         PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "../../x64/Debug/exe")
-
-#add_dependencies(WolfEngine_3DEditor
-#        BrowseToFile
-#        Engine Core
-#        GifEncoder
-#        "Graphic API Broker"
-#)
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../x64/Debug/exe")

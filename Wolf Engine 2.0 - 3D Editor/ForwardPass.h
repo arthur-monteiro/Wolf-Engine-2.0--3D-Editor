@@ -32,6 +32,8 @@ public:
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
 
+	void saveSwapChainToFile();
+
 private:
 	static Wolf::Attachment setupColorAttachment(const Wolf::InitializationContext& context);
 	Wolf::Attachment setupDepthAttachment(const Wolf::InitializationContext& context);
@@ -50,7 +52,7 @@ private:
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_commonDescriptorSet;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_commonDescriptorSetLayout;
 
-	// Display options
+	/* Display options */
 	struct DisplayOptionsUBData
 	{
 		uint32_t displayType;
@@ -85,5 +87,8 @@ private:
 	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
 	Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceNonOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
+
+	/* Cached resources */
+	Wolf::Image* m_lastSwapchainImage = nullptr;
 };
 

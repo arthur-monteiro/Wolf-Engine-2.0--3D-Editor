@@ -76,8 +76,14 @@ void SystemManager::run()
 {
 	while (!m_wolfInstance->windowShouldClose() /* check if the window should close (for example if the user pressed alt+f4)*/)
 	{
+		bool doScreenShot = false;
+		if (g_editorConfiguration->getTakeScreenshotAfterFrameCount() != 0 && Wolf::g_runtimeContext->getCurrentCPUFrameNumber() == g_editorConfiguration->getTakeScreenshotAfterFrameCount())
+		{
+			doScreenShot = true;
+		}
+
 		updateBeforeFrame();
-		m_renderer->frame(m_wolfInstance.get());
+		m_renderer->frame(m_wolfInstance.get(), doScreenShot);
 
 		/* Update FPS counter */
 		const auto currentTime = std::chrono::steady_clock::now();
@@ -92,6 +98,9 @@ void SystemManager::run()
 		}
 
 		FrameMark;
+
+		if (doScreenShot)
+			break;
 	}
 
 	m_wolfInstance->waitIdle();

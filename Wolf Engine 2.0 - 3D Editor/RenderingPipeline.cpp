@@ -46,7 +46,7 @@ void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
 	m_thumbnailsGenerationPass->addCameraForThisFrame(wolfInstance->getCameraList());
 }
 
-void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance)
+void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot)
 {
 	PROFILE_FUNCTION
 
@@ -73,6 +73,12 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance)
 	else if (m_drawIdsPass->isEnabledThisFrame())
 		finalSemaphore = m_drawIdsPass->getSemaphore();
 	wolfInstance->frame(passes, finalSemaphore);
+
+	if (doScreenShot)
+	{
+		wolfInstance->waitIdle();
+		m_forwardPass->saveSwapChainToFile();
+	}
 }
 
 void RenderingPipeline::clear()

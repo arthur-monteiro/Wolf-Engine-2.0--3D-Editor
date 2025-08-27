@@ -25,7 +25,7 @@ public:
 	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams);
 
 	void update(Wolf::WolfEngine* wolfInstance);
-	void frame(Wolf::WolfEngine* wolfInstance);
+	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot = false);
 	void clear();
 
 	void setTopLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::TopLevelAccelerationStructure>& topLevelAccelerationStructure);

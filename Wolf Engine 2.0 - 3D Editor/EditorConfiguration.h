@@ -11,6 +11,7 @@ public:
 	[[nodiscard]] const std::string& getDefaultScene() const { return m_defaultScene; }
 	[[nodiscard]] bool getEnableDebugDraw() const { return m_enableDebugDraw; }
 	[[nodiscard]] bool getEnableRayTracing() const { return m_enableRayTracing; }
+	[[nodiscard]] uint32_t getTakeScreenshotAfterFrameCount() const { return m_takeScreenshotAfterFrameCount; }
 
 	[[nodiscard]] std::string computeFullPathFromLocalPath(const std::string& localPath) const { return m_dataFolderPath + '/' + localPath; }
 	[[nodiscard]] std::string computeLocalPathFromFullPath(const std::string& fullPath) const { return fullPath.substr(m_dataFolderPath.size() + 1); }
@@ -24,6 +25,7 @@ private:
 	std::string m_defaultScene;
 	bool m_enableDebugDraw = false;
 	bool m_enableRayTracing = false;
+	uint32_t m_takeScreenshotAfterFrameCount = 0;
 };
 
 extern const EditorConfiguration* g_editorConfiguration;
