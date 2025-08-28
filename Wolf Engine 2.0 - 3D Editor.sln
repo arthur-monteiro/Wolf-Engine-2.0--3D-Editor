@@ -11,7 +11,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Wolf Engine 2.0 - 3D Editor
 		{ECFE9463-62C8-42A3-B685-47C7FABE66FB} = {ECFE9463-62C8-42A3-B685-47C7FABE66FB}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Engine Core", "..\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0.vcxproj", "{192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Engine Core", "Dependencies\Wolf Engine 2.0\Wolf Engine 2.0\Wolf Engine 2.0.vcxproj", "{192BCBA7-1C5A-42F7-9A5C-4E4C2F09F89F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA} = {46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}
 		{A8D174DE-F302-480C-B9FC-507286640034} = {A8D174DE-F302-480C-B9FC-507286640034}
@@ -20,16 +20,16 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Engine Core", "..\Wolf Engi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BrowseToFile", "BrowseToFile\BrowseToFile.vcxproj", "{3846443B-0E65-4851-9679-39B56090C24E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "..\Wolf Engine 2.0\Wolf Engine 2.0\Common\Common.vcxproj", "{A8D174DE-F302-480C-B9FC-507286640034}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "Dependencies\Wolf Engine 2.0\Common\Common.vcxproj", "{A8D174DE-F302-480C-B9FC-507286640034}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Graphic API Broker", "..\Wolf Engine 2.0\Wolf Engine 2.0\GraphicAPIBroker\Graphic API Broker.vcxproj", "{ECFE9463-62C8-42A3-B685-47C7FABE66FB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Graphic API Broker", "Dependencies\Wolf Engine 2.0\GraphicAPIBroker\Graphic API Broker.vcxproj", "{ECFE9463-62C8-42A3-B685-47C7FABE66FB}"
 	ProjectSection(ProjectDependencies) = postProject
 		{A8D174DE-F302-480C-B9FC-507286640034} = {A8D174DE-F302-480C-B9FC-507286640034}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GifEncoder", "GifEncoder\GifEncoder.vcxproj", "{6E2B73A6-0008-467E-A6C6-13ABA1E058DE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerateCodeFileHashes", "..\Wolf Engine 2.0\Wolf Engine 2.0\GenerateCodeFileHashes\GenerateCodeFileHashes.vcxproj", "{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GenerateCodeFileHashes", "Dependencies\Wolf Engine 2.0\GenerateCodeFileHashes\GenerateCodeFileHashes.vcxproj", "{46BAAE2C-A25F-4A32-9A5F-2DE307BFFFDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
