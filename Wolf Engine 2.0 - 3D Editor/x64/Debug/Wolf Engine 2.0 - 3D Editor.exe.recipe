@@ -2,12 +2,6 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>F:\Code\Wolf Engine 2.0 - 3D Editor\x64\Debug\GenerateCodeFileHashes.exe</FullPath>
-    </ProjectOutput>
-    <ProjectOutput>
-      <FullPath>F:\Code\Wolf Engine 2.0 - 3D Editor\x64\Debug\BrowseToFile.exe</FullPath>
-    </ProjectOutput>
-    <ProjectOutput>
       <FullPath>F:\Code\Wolf Engine 2.0 - 3D Editor\x64\Debug\Wolf Engine 2.0 - 3D Editor.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>

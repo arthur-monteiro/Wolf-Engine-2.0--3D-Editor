@@ -108,7 +108,7 @@ void SystemManager::run()
 	m_renderer->clear();
 	m_wolfInstance->getRenderMeshList()->clear();
 	m_drawManager->clear();
-	m_debugRenderingManager->clearBeforeFrame();
+	m_debugRenderingManager->clearAll();
 	m_selectedEntity.reset(nullptr);
 	m_entityContainer->clear();
 }

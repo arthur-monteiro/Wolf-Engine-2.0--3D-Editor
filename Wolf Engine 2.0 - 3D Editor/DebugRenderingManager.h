@@ -51,6 +51,7 @@ public:
 
 	DebugRenderingManager();
 
+	void clearAll();
 	void clearBeforeFrame();
 
 	struct LinesUBData
@@ -66,6 +67,8 @@ public:
 	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
 
 private:
+	void clearForQueueIdx(uint32_t queueIndex);
+
 	Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_linesPipelineSet;
 	std::unique_ptr<Wolf::DescriptorSetLayoutGenerator> m_linesDescriptorSetLayoutGenerator;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_linesDescriptorSetLayout;

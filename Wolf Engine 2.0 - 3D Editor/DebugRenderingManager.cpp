@@ -191,17 +191,19 @@ DebugRenderingManager::DebugRenderingManager()
 		customLineCount = 0;
 }
 
+void DebugRenderingManager::clearAll()
+{
+	for (uint32_t queueIdx = 0; queueIdx < Wolf::g_configuration->getMaxCachedFrames(); ++queueIdx)
+	{
+		clearForQueueIdx(queueIdx);
+	}
+}
+
 void DebugRenderingManager::clearBeforeFrame()
 {
 	uint32_t requestQueueIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
 
-	m_AABBInfoArrayCount = 0;
-	for (uint32_t i = 0; i < m_customLinesInfoArrayCount[requestQueueIdx]; ++i)
-		m_customLinesInfoArray[requestQueueIdx][i].mesh = m_cubeLineMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
-	m_customLinesInfoArrayCount[requestQueueIdx] = 0;
-	m_filledSphereData.clear();
-	m_wiredSphereData.clear();
-	m_rectanglesCount = 0;
+	clearForQueueIdx(requestQueueIdx);
 }
 
 void DebugRenderingManager::addAABB(const Wolf::AABB& box)
@@ -308,9 +310,20 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 	}
 }
 
+void DebugRenderingManager::clearForQueueIdx(uint32_t queueIndex)
+{
+	m_AABBInfoArrayCount = 0;
+	for (uint32_t i = 0; i < m_customLinesInfoArrayCount[queueIndex]; ++i)
+		m_customLinesInfoArray[queueIndex][i].mesh = m_cubeLineMesh.createNonOwnerResource(); // stop using the custom mesh as it can be deleted
+	m_customLinesInfoArrayCount[queueIndex] = 0;
+	m_filledSphereData.clear();
+	m_wiredSphereData.clear();
+	m_rectanglesCount = 0;
+}
+
 DebugRenderingManager::PerGroupOfLines::PerGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh,
-	const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout,
-	const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator) : mesh(mesh)
+                                                        const Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& linesDescriptorSetLayout,
+                                                        const std::unique_ptr<Wolf::DescriptorSetLayoutGenerator>& linesDescriptorSetLayoutGenerator) : mesh(mesh)
 {
 	linesUniformBuffer.reset(new Wolf::UniformBuffer(sizeof(LinesUBData)));
 	linesDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*linesDescriptorSetLayout));
