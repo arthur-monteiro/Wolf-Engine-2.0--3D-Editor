@@ -166,7 +166,7 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 
 	std::cout << message << '\n';
 
-	if (!m_isLoading)
+	if (!m_isLoading && m_configuration && m_configuration->getDisplayLogsToUI())
 	{
 		std::string escapedMessage;
 		for (const char character : message)

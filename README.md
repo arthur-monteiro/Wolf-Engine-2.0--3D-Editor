@@ -14,3 +14,17 @@ Currently in development.
 2. Create an environment variable `WOLF_ENGINE_PATH` with the path of the Wolf Engine
 3. Run `setup_wolf_engine.bat`
 4. If you use visual studio, you can use `Wolf Engine 2.0 - 3D Editor.sln` otherwise you can use the `CMakeLists.txt` in the folder `Wolf Engine 2.0 - 3D Editor`
+
+## Features
+
+### Particles
+
+<p align="center">
+  <img src="./Screenshots/particles.gif"  width="1080"/>
+</p>
+
+### Animations
+
+<p align="center">
+  <img src="./Screenshots/animations.gif"  width="1080"/>
+</p>

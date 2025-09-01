@@ -32,6 +32,8 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 				m_enableRayTracing = std::stoi(line);
 			else if (token == "takeScreenshotAfterFrameCount")
 				m_takeScreenshotAfterFrameCount = std::stoi(line);
+			else if (token == "displayLogsToUI")
+				m_displayLogsToUI = std::stoi(line);
 		}
 	}
 

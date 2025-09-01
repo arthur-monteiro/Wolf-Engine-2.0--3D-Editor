@@ -227,6 +227,7 @@ void ParticleUpdatePass::createPipeline()
 void ParticleUpdatePass::createNoiseBuffer()
 {
 	static std::default_random_engine generator;
+	generator.seed(0);
 	static std::uniform_real_distribution distrib(0.0f, 1.0f);
 
 	float randomData[NOISE_POINT_COUNT];
