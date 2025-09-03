@@ -28,3 +28,10 @@ Currently in development.
 <p align="center">
   <img src="./Screenshots/animations.gif"  width="1080"/>
 </p>
+
+### Texture streaming
+Textures are divided into mutliple slices to only load what's visible on screen.
+
+<p align="center">
+  <img src="./Screenshots/texture_slices_loading.gif"  width="1080"/>
+</p>
