@@ -144,7 +144,12 @@ void SystemManager::createWolfInstance()
 
 void SystemManager::createRenderer()
 {
-	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), m_rayTracedWorldManager ? m_rayTracedWorldManager.createNonOwnerResource() : nullptr));
+	Wolf::NullableResourceNonOwner<RayTracedWorldManager> rayTracedWorldManager;
+	if (m_rayTracedWorldManager)
+	{
+		rayTracedWorldManager = m_rayTracedWorldManager.createNonOwnerResource();
+	}
+	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), rayTracedWorldManager));
 }
 
 void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const

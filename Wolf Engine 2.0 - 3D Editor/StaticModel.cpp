@@ -411,7 +411,7 @@ void StaticModel::SubMesh::TextureSet::onTextureSetEntityChanged()
 {
 	if (static_cast<std::string>(m_textureSetEntityParam).empty())
 	{
-		m_textureSetEntity = nullptr;
+		m_textureSetEntity = Wolf::NullableResourceNonOwner<Entity>();
 	}
 	else
 	{

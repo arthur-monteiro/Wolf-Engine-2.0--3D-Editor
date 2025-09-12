@@ -31,9 +31,14 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 		wolfInstance->initializePass(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
 
+	Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass> rayTracedWorldDebugPass;
+	if (m_rayTracedWorldDebugPass)
+	{
+		rayTracedWorldDebugPass = m_rayTracedWorldDebugPass.createNonOwnerResource();
+	}
+
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
-		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource(),
-		m_rayTracedWorldDebugPass ? m_rayTracedWorldDebugPass.createNonOwnerResource() : nullptr));
+		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource(), rayTracedWorldDebugPass));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
