@@ -1,10 +1,33 @@
 #extension GL_EXT_ray_tracing : require
-#extension GL_EXT_samplerless_texture_functions : require
 
-layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
-layout(binding = 1, set = 0, r32f) uniform image2D image;
+layout(binding = 0, set = 0, r32f) uniform image2D image;
+layout(binding = 1, set = 0, std140) uniform readonly UniformBufferDisplay
+{
+	uint displayType;
+} ubDisplay;
 
-layout(location = 0) rayPayloadEXT float hitDistance;
+#include "../common/displayTypes.glsl"
+
+struct Payload
+{
+    float hitDistance;
+    uint instanceId;
+    uint primitiveId;
+    vec3 albedo;
+};
+layout(location = 0) rayPayloadEXT Payload payload;
+
+float rand2(vec2 co)
+{
+    return max(fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453), 0.25);
+}
+
+vec3 randomColor(uint seed)
+{
+    seed %= 1024;
+    vec2 co = vec2(float(seed), float(seed / 4952000));
+    return vec3(rand2(co), rand2(co + vec2(47)), rand2(co + vec2(29214)));
+}
 
 void main() 
 {
@@ -19,9 +42,34 @@ void main()
     uint rayFlags = gl_RayFlagsOpaqueEXT;
     uint cullMask = 0xff;
     float tmin = 0.001;
-    float tmax = 100.0;
+    float tmax = 1000.0;
 
-    traceRayEXT(topLevelAS, rayFlags, cullMask, 0 /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, 0 /*missIndex*/, origin.xyz, tmin, direction.xyz, tmax, 0 /*payload*/);
+    traceRay(rayFlags, cullMask, 0 /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, 0 /*missIndex*/, origin.xyz, tmin, direction.xyz, tmax);
 
-    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(hitDistance / tmax), 1.0));
+    if (ubDisplay.displayType == DISPLAY_TYPE_RAY_TRACED_WORLD_DEBUG_ALBEDO)
+    {
+        imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(payload.albedo, 1.0));
+    }
+    else if (ubDisplay.displayType == DISPLAY_TYPE_RAY_TRACED_WORLD_DEBUG_INSTANCE_ID)
+    {
+        if (payload.instanceId == -1)
+        {
+            imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(0.1), 1.0));
+        }
+        else
+        {
+            imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(randomColor(payload.instanceId), 1.0));
+        }
+    }
+    else if (ubDisplay.displayType == DISPLAY_TYPE_RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID)
+    {
+        if (payload.primitiveId == -1)
+        {
+            imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(0.1), 1.0));
+        }
+        else
+        {
+            imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(randomColor(payload.primitiveId), 1.0));
+        }
+    }
 }

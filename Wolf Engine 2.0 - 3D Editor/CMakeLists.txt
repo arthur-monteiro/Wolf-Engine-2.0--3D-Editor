@@ -37,6 +37,7 @@ add_executable(WolfEngine_3DEditor ${SRC})
 target_compile_definitions(WolfEngine_3DEditor PUBLIC WOLF_VULKAN)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC MATERIAL_DEBUG)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC TRACY_ENABLE)
+target_compile_definitions(WolfEngine_3DEditor PUBLIC TRACY_ON_DEMAND)
 
 target_link_libraries(WolfEngine_3DEditor vulkan-1.lib)
 target_link_libraries(WolfEngine_3DEditor glfw3.lib)

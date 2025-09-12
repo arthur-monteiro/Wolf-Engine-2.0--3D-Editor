@@ -2,7 +2,7 @@
 
 #include <ProfilerCommon.h>
 
-RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams)
+RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
 {
 	m_updateGPUBuffersPass.reset(new UpdateGPUBuffersPass);
 	wolfInstance->initializePass(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
@@ -25,11 +25,15 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_thumbnailsGenerationPass.reset(new ThumbnailsGenerationPass);
 	wolfInstance->initializePass(m_thumbnailsGenerationPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(m_preDepthPass.createNonOwnerResource()));
-	wolfInstance->initializePass(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	if (rayTracedWorldManager)
+	{
+		m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(m_preDepthPass.createNonOwnerResource(), rayTracedWorldManager));
+		wolfInstance->initializePass(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
 
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
-		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource(), m_rayTracedWorldDebugPass.createNonOwnerResource()));
+		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource(),
+		m_rayTracedWorldDebugPass ? m_rayTracedWorldDebugPass.createNonOwnerResource() : nullptr));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
@@ -59,7 +63,7 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot)
 	passes.push_back(m_contaminationUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_particleUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_thumbnailsGenerationPass.createNonOwnerResource<Wolf::CommandRecordBase>());
-	if (g_editorConfiguration->getEnableRayTracing())
+	if (m_rayTracedWorldDebugPass)
 	{
 		passes.push_back(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
@@ -84,11 +88,6 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot)
 void RenderingPipeline::clear()
 {
 	m_updateGPUBuffersPass->clear();
-}
-
-void RenderingPipeline::setTopLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::TopLevelAccelerationStructure>& topLevelAccelerationStructure)
-{
-	m_rayTracedWorldDebugPass->setTLAS(topLevelAccelerationStructure);
 }
 
 Wolf::ResourceNonOwner<ContaminationUpdatePass> RenderingPipeline::getContaminationUpdatePass()

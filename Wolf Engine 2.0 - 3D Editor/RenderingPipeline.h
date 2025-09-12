@@ -10,6 +10,7 @@
 #include "ParticleUpdatePass.h"
 #include "PreDepthPass.h"
 #include "RayTracedWorldDebugPass.h"
+#include "RayTracedWorldManager.h"
 #include "RenderingPipelineInterface.h"
 #include "ShadowMaskPassCascadedShadowMapping.h"
 #include "ThumbnailsGenerationPass.h"
@@ -22,13 +23,11 @@ class EditorParams;
 class RenderingPipeline : public RenderingPipelineInterface
 {
 public:
-	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams);
+	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
 	void update(Wolf::WolfEngine* wolfInstance);
 	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot = false);
 	void clear();
-
-	void setTopLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::TopLevelAccelerationStructure>& topLevelAccelerationStructure);
 
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;

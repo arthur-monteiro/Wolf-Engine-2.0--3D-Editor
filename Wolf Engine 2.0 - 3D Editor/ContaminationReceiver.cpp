@@ -64,7 +64,7 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<DrawManager::DrawMes
 									std::string line;
 									while (std::getline(inFile, line))
 									{
-										const std::string& descriptorSlotToken = "£CONTAMINATION_DESCRIPTOR_SLOT";
+										const std::string& descriptorSlotToken = "@CONTAMINATION_DESCRIPTOR_SLOT";
 										size_t descriptorSlotTokenPos = line.find(descriptorSlotToken);
 										while (descriptorSlotTokenPos != std::string::npos)
 										{

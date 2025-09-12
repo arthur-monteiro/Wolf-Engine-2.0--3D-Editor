@@ -394,7 +394,7 @@ uint32_t StaticModel::SubMesh::TextureSet::getTextureSetIdx() const
 {
 	if (m_textureSetEntity)
 	{
-		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
+		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = m_textureSetEntity->getComponent<TextureSetComponent>())
 		{
 			return textureSetComponent->getTextureSetIdx();
 		}
@@ -411,11 +411,11 @@ void StaticModel::SubMesh::TextureSet::onTextureSetEntityChanged()
 {
 	if (static_cast<std::string>(m_textureSetEntityParam).empty())
 	{
-		m_textureSetEntity.reset(nullptr);
+		m_textureSetEntity = nullptr;
 	}
 	else
 	{
-		m_textureSetEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_textureSetEntityParam)));
+		m_textureSetEntity = m_getEntityFromLoadingPathCallback(m_textureSetEntityParam);
 	}
 
 	notifySubscribers();

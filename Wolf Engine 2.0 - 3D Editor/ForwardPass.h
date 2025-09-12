@@ -22,7 +22,7 @@ class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
 	ForwardPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<const ContaminationUpdatePass>& contaminationUpdatePass, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass,
-		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass)
+		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass)
 	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass),
 	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass)
 	{}
@@ -86,7 +86,7 @@ private:
 	Wolf::ResourceNonOwner<const ParticleUpdatePass> m_particlesUpdatePass;
 	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
 	Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
-	Wolf::ResourceNonOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
+	Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
 
 	/* Cached resources */
 	Wolf::Image* m_lastSwapchainImage = nullptr;

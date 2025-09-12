@@ -17,14 +17,7 @@ layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 
 layout (binding = 0, set = 4, r32f) uniform image2D shadowMask;
 
-const uint DISPLAY_TYPE_ALBEDO = 0;
-const uint DISPLAY_TYPE_NORMAL = 1;
-const uint DISPLAY_TYPE_ROUGHNESS = 2;
-const uint DISPLAY_TYPE_METALNESS = 3;
-const uint DISPLAY_TYPE_MAT_AO = 4;
-const uint DISPLAY_TYPE_MAT_ANISO_STRENGTH = 5;
-const uint DISPLAY_TYPE_LIGHTING = 6;
-const uint DISPLAY_TYPE_ENTITY_IDX = 7;
+#include "../common/displayTypes.glsl"
 
 const float PI = 3.14159265359;
 

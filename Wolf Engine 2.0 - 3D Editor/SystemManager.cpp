@@ -3,7 +3,6 @@
 #include <ctime>
 #include <chrono>
 #include <fstream>
-#include <glm/gtx/matrix_decompose.hpp>
 #include <iostream>
 
 #include <GPUMemoryDebug.h>
@@ -20,6 +19,12 @@ SystemManager::SystemManager()
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 
 	m_camera.reset(new Wolf::FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f, 16.0f / 9.0f));
+
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		m_rayTracedWorldManager.reset(new RayTracedWorldManager);
+	}
+
 	createRenderer();
 
 	std::function<void(ComponentInterface*)> requestReloadCallback = [this](ComponentInterface* component)
@@ -63,11 +68,6 @@ SystemManager::SystemManager()
 	m_debugRenderingManager.reset(new DebugRenderingManager);
 	m_drawManager.reset(new DrawManager(m_wolfInstance->getRenderMeshList(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>()));
 	m_editorPhysicsManager.reset(new EditorPhysicsManager(m_wolfInstance->getPhysicsManager()));
-
-	if (g_editorConfiguration->getEnableRayTracing())
-	{
-		m_rayTracedWorldManager.reset(new RayTracedWorldManager);
-	}
 
 	addFakeEntities();
 }
@@ -144,7 +144,7 @@ void SystemManager::createWolfInstance()
 
 void SystemManager::createRenderer()
 {
-	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get()));
+	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), m_rayTracedWorldManager ? m_rayTracedWorldManager.createNonOwnerResource() : nullptr));
 }
 
 void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const
@@ -473,7 +473,7 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_inModificationGameContext.displayType = GameContext::DisplayType::LIGHTING;
 	else if (displayType == "entityIdx")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::ENTITY_IDX;
-	else if (displayType == "rayTracedWorldDebugDepth")
+	else if (displayType == "rayTracedWorldDebugAlbedo")
 	{
 		if (!g_editorConfiguration->getEnableRayTracing())
 		{
@@ -481,7 +481,29 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		}
 		else
 		{
-			m_inModificationGameContext.displayType = GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_DEPTH;
+			m_inModificationGameContext.displayType = GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_ALBEDO;
+		}
+	}
+	else if (displayType == "rayTracedWorldDebugInstanceId")
+	{
+		if (!g_editorConfiguration->getEnableRayTracing())
+		{
+			Wolf::Debug::sendError("Can't display ray traced debug because ray tracing is not enabled");
+		}
+		else
+		{
+			m_inModificationGameContext.displayType = GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_INSTANCE_ID;
+		}
+	}
+	else if (displayType == "rayTracedWorldDebugPrimitiveId")
+	{
+		if (!g_editorConfiguration->getEnableRayTracing())
+		{
+			Wolf::Debug::sendError("Can't display ray traced debug because ray tracing is not enabled");
+		}
+		else
+		{
+			m_inModificationGameContext.displayType = GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID;
 		}
 	}
 	else
@@ -739,28 +761,6 @@ void SystemManager::updateBeforeFrame()
 
 	std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 
-	if (m_rayTracedWorldBuildNeeded)
-	{
-		RayTracedWorldManager::RayTracedWorldInfo tlasInfo;
-
-		bool errorEncountered = false;
-		for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
-		{
-			if (!entity->getInstancesForRayTracedWorld(tlasInfo.m_instances))
-			{
-				errorEncountered = true;
-				break;
-			}
-		}
-
-		if (!errorEncountered)
-		{
-			m_rayTracedWorldManager->build(tlasInfo);
-			m_renderer->setTopLevelAccelerationStructure(m_rayTracedWorldManager->getTopLevelAccelerationStructure());
-			m_rayTracedWorldBuildNeeded = false;
-		}
-	}
-
 	Wolf::ResourceNonOwner<Wolf::RenderMeshList> renderList = m_wolfInstance->getRenderMeshList();
 	Wolf::ResourceNonOwner<Wolf::LightManager> lightManager = m_wolfInstance->getLightManager().createNonOwnerResource();
 	DebugRenderingManager& debugRenderingManager = *m_debugRenderingManager;
@@ -801,6 +801,30 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	m_wolfInstance->addJobBeforeFrame([this, renderList]() { m_debugRenderingManager->addMeshesToRenderList(renderList); }, true);
+
+	m_wolfInstance->addJobBeforeFrame([this, &allEntities]()
+	{
+		if (m_rayTracedWorldBuildNeeded)
+		{
+			RayTracedWorldManager::RayTracedWorldInfo tlasInfo;
+
+			bool errorEncountered = false;
+			for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
+			{
+				if (!entity->getInstancesForRayTracedWorld(tlasInfo.m_instances))
+				{
+					errorEncountered = true;
+					break;
+				}
+			}
+
+			if (!errorEncountered)
+			{
+				m_rayTracedWorldManager->build(tlasInfo);
+				m_rayTracedWorldBuildNeeded = false;
+			}
+		}
+	}, true);
 
 	m_wolfInstance->updateBeforeFrame();
 

@@ -361,7 +361,7 @@ void ResourceManager::Mesh::buildBLAS()
 	geometryInfo.mesh.vertexCount = m_modelData.mesh->getVertexCount();
 	geometryInfo.mesh.vertexSize = m_modelData.mesh->getVertexSize();
 	geometryInfo.mesh.vertexFormat = Wolf::Format::R32G32B32_SFLOAT;
-	geometryInfo.mesh.indexBuffer = &m_modelData.mesh->getIndexBuffer();
+	geometryInfo.mesh.indexBuffer = &*m_modelData.mesh->getIndexBuffer();
 	geometryInfo.mesh.indexCount = m_modelData.mesh->getIndexCount();
 
 	Wolf::BottomLevelAccelerationStructureCreateInfo createInfo{};

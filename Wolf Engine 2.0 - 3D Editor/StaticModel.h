@@ -113,7 +113,7 @@ private:
 				&m_strength
 			};
 
-			std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_textureSetEntity;
+			Wolf::NullableResourceNonOwner<Entity> m_textureSetEntity;
 		};
 		static constexpr uint32_t MAX_TEXTURE_SETS = 16;
 		void onTextureSetAdded();

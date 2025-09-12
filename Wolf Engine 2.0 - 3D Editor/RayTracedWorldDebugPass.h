@@ -8,15 +8,15 @@
 #include <Sampler.h>
 #include <ShaderBindingTable.h>
 #include <ShaderParser.h>
+#include <UniformBuffer.h>
 
 #include "PreDepthPass.h"
+#include "RayTracedWorldManager.h"
 
 class RayTracedWorldDebugPass : public Wolf::CommandRecordBase
 {
 public:
-    RayTracedWorldDebugPass(const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass);
-
-    void setTLAS(const Wolf::ResourceNonOwner<Wolf::TopLevelAccelerationStructure>& topLevelAccelerationStructure);
+    RayTracedWorldDebugPass(const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
@@ -31,10 +31,10 @@ private:
     void createRayTracingPipeline();
     void createRayTracingDescriptorSet();
 
-    void createDrawRectPipelineIfNeeded(Wolf::RenderPass* renderPass);
     void createDrawRectDescriptorSet(const Wolf::InitializationContext& context);
 
     Wolf::ResourceUniqueOwner<Wolf::Image> m_outputImage;
+    Wolf::ResourceNonOwner<RayTracedWorldManager> m_rayTracedWorldManager;
 
     Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_rayGenShaderParser;
     Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_rayMissShaderParser;
@@ -42,6 +42,11 @@ private:
     Wolf::ResourceUniqueOwner<Wolf::ShaderBindingTable> m_shaderBindingTable;
     Wolf::ResourceUniqueOwner<Wolf::Pipeline> m_rayTracingPipeline;
 
+    struct DisplayOptionsUBData
+    {
+        uint32_t displayType;
+    };
+    std::unique_ptr<Wolf::UniformBuffer> m_displayOptionsUniformBuffer;
     Wolf::DescriptorSetLayoutGenerator m_rayTracingDescriptorSetLayoutGenerator;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_rayTracingDescriptorSetLayout;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_rayTracingDescriptorSet;
@@ -54,5 +59,4 @@ private:
     bool m_wasEnabledThisFrame = false;
 
     Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
-    Wolf::NullableResourceNonOwner<Wolf::TopLevelAccelerationStructure> m_topLevelAccelerationStructure;
 };

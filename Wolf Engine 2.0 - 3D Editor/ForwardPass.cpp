@@ -167,7 +167,9 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
 
 	m_commandBuffer->setViewport(renderViewport);
-	if (gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_DEPTH && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
+	bool isRayTracedDebugEnabled = gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_ALBEDO || gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_INSTANCE_ID ||
+		gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID;
+	if (isRayTracedDebugEnabled && m_rayTracedWorldDebugPass && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
 	{
 		m_rayTracedWorldDebugPass->bindDescriptorSetToDrawOutput(*m_commandBuffer, *m_userInterfacePipeline);
 		m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
@@ -198,7 +200,7 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
 	else
 		waitSemaphores.push_back(m_preDepthPass->getSemaphore());
-	if (m_rayTracedWorldDebugPass->wasEnabledThisFrame())
+	if (m_rayTracedWorldDebugPass && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
 		waitSemaphores.push_back(m_rayTracedWorldDebugPass->getSemaphore());
 
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };

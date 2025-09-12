@@ -1,6 +1,6 @@
-layout (binding = 0, set = £CONTAMINATION_DESCRIPTOR_SLOT) uniform usampler3D contaminationIds;
+layout (binding = 0, set = @CONTAMINATION_DESCRIPTOR_SLOT) uniform usampler3D contaminationIds;
 const uint MAX_MATERIALS = 8;
-layout(std430, binding = 1, set = £CONTAMINATION_DESCRIPTOR_SLOT) readonly restrict buffer contaminationInfo
+layout(std430, binding = 1, set = @CONTAMINATION_DESCRIPTOR_SLOT) readonly restrict buffer contaminationInfo
 {
     vec3 offset;
     float size;

@@ -5,12 +5,13 @@
 #include <ResourceUniqueOwner.h>
 
 #include <DescriptorSet.h>
-#include <DescriptorSetGenerator.h>
 #include <DescriptorSetLayout.h>
 #include <DescriptorSetLayoutGenerator.h>
+#include <LazyInitSharedResource.h>
 #include <TopLevelAccelerationStructure.h>
 
 #include <Mesh.h>
+#include <ShaderParser.h>
 
 class RayTracedWorldManager
 {
@@ -31,14 +32,17 @@ public:
     };
     void build(const RayTracedWorldInfo& info);
 
-    // TODO: get descriptor set only and add a function to add shader code
-    Wolf::ResourceNonOwner<Wolf::TopLevelAccelerationStructure> getTopLevelAccelerationStructure() { return m_topLevelAccelerationStructure.createNonOwnerResource(); }
-    Wolf::ResourceNonOwner<Wolf::Buffer> getInstanceBuffer() { return m_instanceBuffer.createNonOwnerResource(); }
+    bool hasInstance() const { return static_cast<bool>(m_topLevelAccelerationStructure); };
+    Wolf::ResourceNonOwner<const Wolf::DescriptorSet> getDescriptorSet() { return m_descriptorSet.createConstNonOwnerResource(); }
+    void addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const;
+
+    static Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& getDescriptorSetLayout() { return Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, RayTracedWorldManager>::getResource(); }
 
 private:
     void buildTLAS(const RayTracedWorldInfo& info);
     void populateInstanceBuffer(const RayTracedWorldInfo& info);
-    uint32_t addStorageBufferToBindless(const Wolf::Buffer& buffer);
+    void createDescriptorSet();
+    uint32_t addStorageBuffer(const Wolf::ResourceNonOwner<Wolf::Buffer>& buffer);
 
     Wolf::ResourceUniqueOwner<Wolf::TopLevelAccelerationStructure> m_topLevelAccelerationStructure;
 
@@ -48,11 +52,13 @@ private:
         uint32_t vertexBufferBindlessOffset;
         uint32_t indexBufferBindlessOffset;
     };
-    static constexpr uint32_t MAX_INSTANCES = 1024;
+    static constexpr uint32_t MAX_INSTANCES = 16384;
     Wolf::ResourceUniqueOwner<Wolf::Buffer> m_instanceBuffer;
 
     Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;;
-    Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
+    Wolf::ResourceUniqueOwner<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, RayTracedWorldManager>> m_descriptorSetLayout;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
+
+    std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> m_buffers;
     uint32_t m_currentBindlessCount = 0;
 };
