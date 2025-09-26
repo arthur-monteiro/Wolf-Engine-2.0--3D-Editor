@@ -250,6 +250,19 @@ void ForwardPass::saveSwapChainToFile()
 		memcpy(dst, src, lineCopySize);
 	}
 
+	for (uint32_t pixelIdx = 0; pixelIdx < renderViewport.width * renderViewport.height; pixelIdx++)
+	{
+		uint8_t r = renderImageData[4 * pixelIdx + 2];
+		uint8_t g = renderImageData[4 * pixelIdx + 1];
+		uint8_t b = renderImageData[4 * pixelIdx + 0];
+		uint8_t a = renderImageData[4 * pixelIdx + 3];
+
+		renderImageData[4 * pixelIdx + 0] = r;
+		renderImageData[4 * pixelIdx + 1] = g;
+		renderImageData[4 * pixelIdx + 2] = b;
+		renderImageData[4 * pixelIdx + 3] = a;
+	}
+
 	stbi_write_png("screenshot.png", renderViewport.width, renderViewport.height, channelCount, renderImageData.data(), renderViewport.width * channelCount);
 }
 
