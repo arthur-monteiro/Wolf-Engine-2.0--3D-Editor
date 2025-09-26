@@ -11,7 +11,7 @@
 void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& context)
 {
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false));
-	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/update.comp"));
 
@@ -73,7 +73,7 @@ void ParticleUpdatePass::submit(const Wolf::SubmitContext& context)
 		return;
 
 	const std::vector<const Wolf::Semaphore*> waitSemaphores{  };
-	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
 
 	if (m_computeShaderParser->compileIfFileHasBeenModified())

@@ -20,7 +20,7 @@ void ParticleSeparateRenderPass::initializeResources(const Wolf::InitializationC
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
 	initializeFramesBuffer(context, color, depth);
 
-	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
+	createSemaphores(context, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, false);
 }
 
 void ParticleSeparateRenderPass::resize(const Wolf::InitializationContext& context)

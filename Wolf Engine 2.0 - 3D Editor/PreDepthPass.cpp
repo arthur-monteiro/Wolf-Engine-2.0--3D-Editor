@@ -14,7 +14,7 @@ void PreDepthPass::initializeResources(const Wolf::InitializationContext& contex
 	m_swapChainHeight = context.swapChainHeight;
 
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
-	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	DepthPassBase::initializeResources(context);
 }
@@ -42,9 +42,9 @@ void PreDepthPass::submit(const Wolf::SubmitContext& context)
 {
 	std::vector<const Wolf::Semaphore*> waitSemaphores{ };
 	if (m_updateGPUBuffersPass->transferRecordedThisFrame())
-		waitSemaphores.push_back(m_updateGPUBuffersPass->getSemaphore());
+		waitSemaphores.push_back(m_updateGPUBuffersPass->getSemaphore(context.swapChainImageIndex));
 
-	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 }

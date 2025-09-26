@@ -13,7 +13,7 @@ void DrawIdsPass::initializeResources(const Wolf::InitializationContext& context
     m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false /* isTransient */));
     initializeFramesBuffer(context, color, depth);
 
-    m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
+    createSemaphores(context, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, true);
 }
 
 void DrawIdsPass::resize(const Wolf::InitializationContext& context)
@@ -93,7 +93,7 @@ void DrawIdsPass::record(const Wolf::RecordContext& context)
 
     m_copyImage->recordCopyGPUImage(*m_outputImage, copyRegion, *m_commandBuffer);
     m_outputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL });
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL });
 
     Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -105,9 +105,9 @@ void DrawIdsPass::submit(const Wolf::SubmitContext& context)
     if (!m_recordCommandsThisFrame)
         return;
 
-    std::vector<const Wolf::Semaphore*> waitSemaphores { m_forwardPass->getSemaphore() };
+    std::vector<const Wolf::Semaphore*> waitSemaphores { m_forwardPass->getSemaphore(context.swapChainImageIndex) };
 
-    const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+    const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
     m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
 }
 
@@ -141,7 +141,7 @@ Wolf::Attachment DrawIdsPass::setupColorAttachment(const Wolf::InitializationCon
     createCopyInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     m_copyImage.reset(Wolf::Image::createImage(createCopyInfo));
     m_copyImage->setImageLayout({ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, VK_IMAGE_LAYOUT_UNDEFINED });
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_UNDEFINED });
 
     return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, OUTPUT_FORMAT, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
         Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, m_outputImage->getDefaultImageView());

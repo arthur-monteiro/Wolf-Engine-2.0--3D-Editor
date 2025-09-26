@@ -20,7 +20,7 @@ ShadowMaskPassCascadedShadowMapping::ShadowMaskPassCascadedShadowMapping(EditorP
 void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::InitializationContext& context)
 {
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false /* isTransient */));
-	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
 	addComputeShadowsShaderCode(shaderCodeToAdd, 0);
@@ -167,8 +167,8 @@ void ShadowMaskPassCascadedShadowMapping::submit(const Wolf::SubmitContext& cont
 		return;
 	}
 
-	const std::vector waitSemaphores{ m_csmPass->getSemaphore(), m_preDepthPass->getSemaphore() };
-	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+	const std::vector<const Wolf::Semaphore*> waitSemaphores{ m_csmPass->getSemaphore(context.swapChainImageIndex), m_preDepthPass->getSemaphore(context.swapChainImageIndex) };
+	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore() };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
 
 	if (m_computeShaderParser->compileIfFileHasBeenModified())

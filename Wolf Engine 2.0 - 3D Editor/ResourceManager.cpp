@@ -1,6 +1,8 @@
 #include "ResourceManager.h"
 
 #include <fstream>
+#include <ImageFileLoader.h>
+#include <MipMapGenerator.h>
 
 #include <ProfilerCommon.h>
 #include <Timer.h>
@@ -25,6 +27,11 @@ void ResourceManager::updateBeforeFrame()
 	for (Wolf::ResourceUniqueOwner<Mesh>& mesh : m_meshes)
 	{
 		mesh->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
+	}
+
+	for (Wolf::ResourceUniqueOwner<Image>& image : m_images)
+	{
+		image->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
 	}
 
 	if (m_currentResourceNeedRebuildFlags != 0)
@@ -128,6 +135,12 @@ Wolf::ResourceNonOwner<Entity> ResourceManager::computeResourceEditor(ResourceId
 
 ResourceManager::ResourceId ResourceManager::addModel(const std::string& loadingPath)
 {
+	if (m_meshes.size() >= MAX_MESH_RESOURCE_COUNT)
+	{
+		Wolf::Debug::sendError("Maximum mesh resources reached");
+		return NO_RESOURCE;
+	}
+
 	for (uint32_t i = 0; i < m_meshes.size(); ++i)
 	{
 		if (m_meshes[i]->getLoadingPath() == loadingPath)
@@ -191,6 +204,40 @@ uint32_t ResourceManager::getFirstTextureSetIdx(ResourceId modelResourceId) cons
 void ResourceManager::subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const
 {
 	m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->subscribe(instance, callback);
+}
+
+ResourceManager::ResourceId ResourceManager::addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR)
+{
+	if (m_images.size() >= MAX_IMAGE_RESOURCE_COUNT)
+	{
+		Wolf::Debug::sendError("Maximum image resources reached");
+		return NO_RESOURCE;
+	}
+
+	for (uint32_t i = 0; i < m_images.size(); ++i)
+	{
+		if (m_images[i]->getLoadingPath() == loadingPath)
+		{
+			return i + IMAGE_RESOURCE_IDX_OFFSET;
+		}
+	}
+
+	ResourceId resourceId = static_cast<uint32_t>(m_images.size()) + IMAGE_RESOURCE_IDX_OFFSET;
+
+	m_images.emplace_back(new Image(loadingPath, resourceId, m_updateResourceInUICallback, loadMips, isSRGB, isHDR));
+	m_addResourceToUICallback(m_images.back()->computeName(), "media/resourceIcon/no_icon.png", resourceId);
+
+	return resourceId;
+}
+
+bool ResourceManager::isImageLoaded(ResourceId imageResourceId) const
+{
+	return m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->isLoaded();
+}
+
+Wolf::ResourceNonOwner<Wolf::Image> ResourceManager::getImage(ResourceId imageResourceId) const
+{
+	return m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->getImage();
 }
 
 std::string ResourceManager::computeModelFullIdentifier(const std::string& loadingPath)
@@ -369,4 +416,76 @@ void ResourceManager::Mesh::buildBLAS()
 	createInfo.buildFlags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
 
 	m_bottomLevelAccelerationStructure.reset(Wolf::BottomLevelAccelerationStructure::createBottomLevelAccelerationStructure(createInfo));
+}
+
+ResourceManager::Image::Image(const std::string& loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
+	bool loadMips, bool isSRGB, bool isHDR)
+	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback), m_loadMips(loadMips), m_isSRGB(isSRGB), m_isHDR(isHDR)
+{
+	if (m_isSRGB && m_isHDR)
+	{
+		Wolf::Debug::sendError("Can't use sRGB with HDR");
+	}
+	if (m_loadMips && m_isHDR)
+	{
+		Wolf::Debug::sendError("Mips are not supported with HDR");
+	}
+
+	m_imageLoadingRequested = true;
+}
+
+void ResourceManager::Image::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+{
+	if (m_imageLoadingRequested)
+	{
+		loadImage();
+		m_imageLoadingRequested = false;
+	}
+}
+
+bool ResourceManager::Image::isLoaded() const
+{
+	return static_cast<bool>(m_image);
+}
+
+void ResourceManager::Image::loadImage()
+{
+	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
+	Wolf::ImageFileLoader imageFileLoader(fullFilePath, m_isHDR);
+
+	Wolf::CreateImageInfo createImageInfo;
+	createImageInfo.extent = { imageFileLoader.getWidth(), imageFileLoader.getHeight(), 1 };
+	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+
+	Wolf::Format imageFormat = Wolf::Format::R8G8B8A8_UNORM;
+	if (m_isHDR)
+	{
+		imageFormat = Wolf::Format::R32G32B32A32_SFLOAT;
+	}
+	else if (m_isSRGB)
+	{
+		imageFormat = Wolf::Format::R8G8B8A8_SRGB;
+	}
+
+	Wolf::ResourceUniqueOwner<Wolf::MipMapGenerator> mipMapGenerator;
+	uint32_t mipLevelCount = 1;
+	if (m_loadMips)
+	{
+		mipMapGenerator.reset(new Wolf::MipMapGenerator(imageFileLoader.getPixels(), { imageFileLoader.getWidth(), imageFileLoader.getHeight() }, imageFormat));
+		mipLevelCount = mipMapGenerator->getMipLevelCount();
+	}
+
+	createImageInfo.format = imageFormat;
+	createImageInfo.mipLevelCount = mipLevelCount;
+	createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
+	m_image.reset(Wolf::Image::createImage(createImageInfo));
+	m_image->copyCPUBuffer(imageFileLoader.getPixels(), Wolf::Image::SampledInFragmentShader());
+
+	if (m_loadMips)
+	{
+		for (uint32_t mipLevel = 1; mipLevel < mipMapGenerator->getMipLevelCount(); ++mipLevel)
+		{
+			m_image->copyCPUBuffer(mipMapGenerator->getMipLevel(mipLevel).data(), Wolf::Image::SampledInFragmentShader(mipLevel), mipLevel);
+		}
+	}
 }

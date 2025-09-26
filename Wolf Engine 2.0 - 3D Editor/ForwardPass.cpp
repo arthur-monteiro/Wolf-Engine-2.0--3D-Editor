@@ -23,8 +23,8 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 	m_renderPass.reset(Wolf::RenderPass::createRenderPass({ color, depth }));
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false /* isTransient */));
 	initializeFramesBuffers(context, color, depth);
-	
-	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT));
+
+	createSemaphores(context, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, true);
 
 	// Shared resources
 	{
@@ -141,6 +141,8 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
 	m_commandBuffer->setViewport(renderViewport);
 
+	m_skyBoxManager->drawSkyBox(*m_commandBuffer, *m_renderPass, context);
+
 	Wolf::DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
 
 	std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
@@ -164,18 +166,21 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	}
 
 	/* UI and draw rects */
-	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
-
-	m_commandBuffer->setViewport(renderViewport);
+	m_commandBuffer->setViewport({ 0, 0, static_cast<float>(context.swapchainImage->getExtent().width), static_cast<float>(context.swapchainImage->getExtent().height), 0, 1.0f });
 	bool isRayTracedDebugEnabled = gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_ALBEDO || gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_INSTANCE_ID ||
 		gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID;
 	if (isRayTracedDebugEnabled && m_rayTracedWorldDebugPass && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
 	{
-		m_rayTracedWorldDebugPass->bindDescriptorSetToDrawOutput(*m_commandBuffer, *m_userInterfacePipeline);
+		m_rayTracedWorldDebugPass->bindInfoToDrawOutput(*m_commandBuffer, m_renderPass.get());
+		m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
+	}
+	else if (gameContext->displayType == GameContext::DisplayType::PATH_TRACING && m_pathTracingPass && m_pathTracingPass->wasEnabledThisFrame())
+	{
+		m_pathTracingPass->bindInfoToDrawOutput(*m_commandBuffer, m_renderPass.get());
 		m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
 	}
 
-	m_commandBuffer->setViewport({ 0, 0, static_cast<float>(context.swapchainImage->getExtent().width), static_cast<float>(context.swapchainImage->getExtent().height), 0, 1.0f });
+	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
 	m_commandBuffer->bindDescriptorSet(m_userInterfaceDescriptorSet.get(), 0, *m_userInterfacePipeline);
 
 	m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
@@ -193,17 +198,21 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 {
 	std::vector waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
 	if (m_contaminationUpdatePass->wasEnabledThisFrame())
-		waitSemaphores.push_back(m_contaminationUpdatePass->getSemaphore());
+		waitSemaphores.push_back(m_contaminationUpdatePass->getSemaphore(context.swapChainImageIndex));
 	if (m_particlesUpdatePass->getParticleCount() > 0)
-		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore());
+		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore(context.swapChainImageIndex));
 	if (m_shadowMaskPass->wasEnabledThisFrame())
 		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
 	else
-		waitSemaphores.push_back(m_preDepthPass->getSemaphore());
+		waitSemaphores.push_back(m_preDepthPass->getSemaphore(context.swapChainImageIndex));
 	if (m_rayTracedWorldDebugPass && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
-		waitSemaphores.push_back(m_rayTracedWorldDebugPass->getSemaphore());
+		waitSemaphores.push_back(m_rayTracedWorldDebugPass->getSemaphore(context.swapChainImageIndex));
+	if (m_pathTracingPass && m_pathTracingPass->wasEnabledThisFrame())
+		waitSemaphores.push_back(m_pathTracingPass->getSemaphore(context.swapChainImageIndex));
+	else if (m_computeSkyCubeMapPass->wasEnabledThisFrame())
+		waitSemaphores.push_back({ m_computeSkyCubeMapPass->getSemaphore(context.swapChainImageIndex) });
 
-	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
 
 	bool anyShaderModified = m_userInterfaceVertexShaderParser->compileIfFileHasBeenModified();
@@ -226,7 +235,7 @@ void ForwardPass::saveSwapChainToFile()
 	std::vector<uint8_t> fullImageData;
 	m_lastSwapchainImage->exportToBuffer(fullImageData);
 
-	uint32_t channelCount = 3;
+	uint32_t channelCount = 4;
 
 	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
 	std::vector<uint8_t> renderImageData(renderViewport.width * renderViewport.height * channelCount);

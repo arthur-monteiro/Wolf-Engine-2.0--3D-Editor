@@ -5,21 +5,21 @@ hitAttributeEXT vec2 attribs;
 struct Payload
 {
     float hitDistance;
-    uint instanceId;
-    uint primitiveId;
+    vec3 normal;
     vec3 albedo;
+    float roughness;
+    float metalness;
+    mat3 TBN;
 };
 layout(location = 0) rayPayloadInEXT Payload payload;
 
 void main()
 {
     payload.hitDistance = gl_HitTEXT;
-    payload.instanceId = gl_InstanceCustomIndexEXT;
-    payload.primitiveId = gl_PrimitiveID;
 
-    Vertex vertex = computeVertex(payload.instanceId, payload.primitiveId, attribs);
+    Vertex vertex = computeVertex(gl_InstanceCustomIndexEXT, gl_PrimitiveID, attribs);
 
-    uint materialId = getFirstMaterialIdx(payload.instanceId) + vertex.subMeshIdx;
+    uint materialId = getFirstMaterialIdx(gl_InstanceCustomIndexEXT) + vertex.subMeshIdx;
 
     mat3 usedModelMatrix = transpose(inverse(mat3(gl_WorldToObjectEXT)));
     vec3 n = normalize(usedModelMatrix * vertex.normal);
@@ -31,5 +31,9 @@ void main()
     const vec3 worldPos = vec3(gl_ObjectToWorldEXT * vec4(vertex.pos, 1.0));
 
     MaterialInfo materialInfo = fetchMaterial(vertex.texCoords, materialId, TBN, worldPos);
-    payload.albedo = materialInfo.albedo.rgb;
+    payload.albedo = materialInfo.albedo.xyz;
+    payload.normal = materialInfo.normal.xyz;
+    payload.roughness = materialInfo.roughness;
+    payload.metalness = materialInfo.metalness;
+    payload.TBN = TBN;
 }

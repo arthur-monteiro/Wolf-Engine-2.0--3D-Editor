@@ -15,7 +15,7 @@ layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 	uint displayType;
 } ubDisplay;
 
-layout (binding = 0, set = 4, r32f) uniform image2D shadowMask;
+layout (binding = 0, set = 4, rg32f) uniform image2D shadowMask;
 
 #include "../common/displayTypes.glsl"
 

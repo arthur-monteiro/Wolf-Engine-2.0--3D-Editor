@@ -42,7 +42,7 @@ const Wolf::CommandBuffer& CascadeDepthPass::getCommandBuffer(const Wolf::Record
 void CascadedShadowMapsPass::initializeResources(const Wolf::InitializationContext& context)
 {
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
-	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	for (uint32_t i = 0; i < m_cascadeDepthPasses.size(); ++i)
 	{
@@ -138,7 +138,7 @@ void CascadedShadowMapsPass::submit(const Wolf::SubmitContext& context)
 		return;
 
 	const std::vector<const Wolf::Semaphore*> waitSemaphores{ };
-	const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 }
 

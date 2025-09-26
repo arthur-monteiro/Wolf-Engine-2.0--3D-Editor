@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 class EditorModelInterface;
 
 struct GameContext
@@ -16,8 +18,11 @@ struct GameContext
 		ENTITY_IDX = 7,
 		RAY_TRACED_WORLD_DEBUG_ALBEDO = 8,
 		RAY_TRACED_WORLD_DEBUG_INSTANCE_ID = 9,
-		RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID = 10
+		RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID = 10,
+		PATH_TRACING = 11
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
+
+	std::string currentSceneName;
 };
 

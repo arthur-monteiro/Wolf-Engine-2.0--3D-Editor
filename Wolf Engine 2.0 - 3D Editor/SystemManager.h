@@ -33,7 +33,7 @@ private:
 	void addFakeEntities();
 
 	void debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const;
-	void bindUltralightCallbacks();
+	void bindUltralightCallbacks(ultralight::JSObject& jsObject);
 	void resizeCallback(uint32_t width, uint32_t height) const;
 
 	// JS callbacks

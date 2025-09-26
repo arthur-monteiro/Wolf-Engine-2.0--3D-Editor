@@ -4,6 +4,7 @@
 
 #include "EditorLightInterface.h"
 #include "EditorTypes.h"
+#include "ResourceManager.h"
 
 class SkyLight : public EditorLightInterface
 {
@@ -11,13 +12,13 @@ public:
 	static inline std::string ID = "skyLight";
 	std::string getId() const override { return ID; }
 
-	SkyLight();
+	SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override;
 
@@ -26,8 +27,20 @@ public:
 	void addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const override;
 
 private:
-	inline static const std::string TAB = "Sky light";
+	void forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString);
+	bool updateCubeMap();
 
+	inline static const std::string TAB = "Sky light";
+	std::function<void(ComponentInterface*)> m_requestReloadCallback;
+	Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
+	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
+
+	std::vector<std::string> LIGHT_TYPE_STRING_LIST = { "Realtime", "Baked" };
+	static constexpr uint32_t LIGHT_TYPE_REALTIME_COMPUTE = 0;
+	static constexpr uint32_t LIGHT_TYPE_BAKED = 1;
+	EditorParamEnum m_lightType = EditorParamEnum(LIGHT_TYPE_STRING_LIST, "Light model type", TAB, "General", [this]() { m_requestReloadCallback(this); });
+
+	/* Realtime compute */
 	EditorParamFloat m_sunIntensity = EditorParamFloat("Intensity (cd/m2)", TAB, "Sun", 0.0f, 1000.0f);
 	EditorParamVector3 m_color = EditorParamVector3("Color", TAB, "Sun", 0.0f, 1.0f);
 	EditorParamVector3 m_sunDirection = EditorParamVector3("Sun direction", TAB, "Sun", -10.0f, 10.0f);
@@ -44,7 +57,17 @@ private:
 
 	EditorParamUInt m_currentTime = EditorParamUInt("Current time", TAB, "Current settings", 0, 24 * 60 * 60 - 1, EditorParamUInt::ParamUIntType::TIME);
 
-	std::array<EditorParamInterface*, 8> m_editorParams =
+	/* Baked */
+	void onSphericalMapChanged();
+	ResourceManager::ResourceId m_sphericalMapResourceId = ResourceManager::NO_RESOURCE;
+	EditorParamString m_sphericalMap = EditorParamString("Spherical map", TAB, "Sky", [this] { onSphericalMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
+
+	std::array<EditorParamInterface*, 1> m_alwaysVisibleParams =
+	{
+		&m_lightType
+	};
+
+	std::array<EditorParamInterface*, 8> m_realtimeComputeParams =
 	{
 		&m_sunIntensity,
 		&m_color,
@@ -59,6 +82,13 @@ private:
 
 		&m_currentTime
 	};
+
+	std::array<EditorParamInterface*, 1> m_bakedParams =
+	{
+		&m_sphericalMap
+	};
+
+	bool m_cubeMapUpdateRequested = true;
 
 	// Debug
 	void buildDebugMesh();

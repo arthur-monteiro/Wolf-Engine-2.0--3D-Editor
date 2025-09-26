@@ -28,7 +28,7 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
 		ofn.lpstrFilter = "Animated model (DAE)\0*.dae\0";
 		break;
 	case BrowseToFileFilter::IMG:
-		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga;*.dds\0";
+		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga;*.dds;*.hdr\0";
 		break;
 	}
 	ofn.nFilterIndex = 0;

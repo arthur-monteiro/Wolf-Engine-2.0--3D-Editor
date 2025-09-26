@@ -28,7 +28,7 @@ public:
 	void addComputeShadowsShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const override;
 
 	Wolf::Image* getOutput() override { return m_outputMask.get(); }
-	const Wolf::Semaphore* getSemaphore() const override { return Wolf::CommandRecordBase::getSemaphore(); }
+	Wolf::Semaphore* getSemaphore() const override { return Wolf::CommandRecordBase::getSemaphore(0 /* as this is never used as last semaphore it should be ok */); }
 	void getConditionalBlocksToEnableWhenReadingMask(std::vector<std::string>& conditionalBlocks) const override {}
 	Wolf::Image* getDenoisingPatternImage() override { return nullptr; }
 

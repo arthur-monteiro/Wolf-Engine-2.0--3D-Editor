@@ -14,6 +14,7 @@
 
 #include "EditorParams.h"
 #include "ParticleUpdatePass.h"
+#include "PathTracingPass.h"
 #include "PreDepthPass.h"
 #include "RayTracedWorldDebugPass.h"
 #include "ShadowMaskPassInterface.h"
@@ -22,9 +23,10 @@ class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
 	ForwardPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<const ContaminationUpdatePass>& contaminationUpdatePass, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass,
-		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass)
+		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass,
+		const Wolf::NullableResourceNonOwner<PathTracingPass>& pathTracingPass, const Wolf::ResourceNonOwner<ComputeSkyCubeMapPass>& computeSkyCubeMapPass, const Wolf::ResourceNonOwner<SkyBoxManager>& skyBoxManager)
 	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass),
-	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass)
+	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass), m_pathTracingPass(pathTracingPass), m_computeSkyCubeMapPass(computeSkyCubeMapPass), m_skyBoxManager(skyBoxManager)
 	{}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
@@ -87,6 +89,9 @@ private:
 	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
 	Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
 	Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
+	Wolf::NullableResourceNonOwner<PathTracingPass> m_pathTracingPass;
+	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> m_computeSkyCubeMapPass;
+	Wolf::ResourceNonOwner<SkyBoxManager> m_skyBoxManager;
 
 	/* Cached resources */
 	Wolf::Image* m_lastSwapchainImage = nullptr;

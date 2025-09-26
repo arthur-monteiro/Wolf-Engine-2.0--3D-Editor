@@ -1,35 +1,46 @@
 #include "SkyLight.h"
 
+#include <ImageFileLoader.h>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "ComputeSkyCubeMapPass.h"
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
 
-SkyLight::SkyLight()
+SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+: m_requestReloadCallback(requestReloadCallback), m_resourceManager(resourceManager), m_renderingPipeline(renderingPipeline)
 {
 	m_color = glm::vec3(1.0f, 1.0f, 1.0f);
 }
 
 void SkyLight::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_editorParams);
+	::loadParams(jsonReader, ID, m_alwaysVisibleParams);
+	::loadParams(jsonReader, ID, m_realtimeComputeParams);
+	::loadParams(jsonReader, ID, m_bakedParams);
 
 	buildDebugMesh();
 }
 
 void SkyLight::activateParams()
 {
-	for (EditorParamInterface* editorParam : m_editorParams)
-	{
-		editorParam->activate();
-	}
+	std::string unused;
+	forAllVisibleParams([](EditorParamInterface* e, std::string&) { e->activate(); }, unused);
 }
 
 void SkyLight::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
-	for (const EditorParamInterface* editorParam : m_editorParams)
+	forAllVisibleParams([tabCount](EditorParamInterface* e, std::string& inOutJSON) mutable  { e->addToJSON(inOutJSON, tabCount, false); }, outJSON);
+}
+
+void SkyLight::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
+{
+	if (m_cubeMapUpdateRequested)
 	{
-		editorParam->addToJSON(outJSON, tabCount, false);
+		if (updateCubeMap())
+		{
+			m_cubeMapUpdateRequested = false;
+		}
 	}
 }
 
@@ -51,7 +62,64 @@ void SkyLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 
 void SkyLight::addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
 {
-	lightManager->addSunLightInfoForNextFrame({ computeSunDirectionForTime(m_currentTime), m_color, m_sunIntensity });
+	lightManager->addSunLightInfoForNextFrame({ computeSunDirectionForTime(m_currentTime), 0.1f, m_color, m_sunIntensity });
+}
+
+void SkyLight::forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString)
+{
+	for (EditorParamInterface* editorParam : m_alwaysVisibleParams)
+	{
+		callback(editorParam, inOutString);
+	}
+
+	switch (static_cast<uint32_t>(m_lightType))
+	{
+		case LIGHT_TYPE_REALTIME_COMPUTE:
+			{
+				for (EditorParamInterface* editorParam : m_realtimeComputeParams)
+				{
+					callback(editorParam, inOutString);
+				}
+				break;
+			}
+		case LIGHT_TYPE_BAKED:
+			{
+				for (EditorParamInterface* editorParam : m_bakedParams)
+				{
+					callback(editorParam, inOutString);
+				}
+				break;
+			}
+		default:
+			Wolf::Debug::sendError("Undefined light type");
+			break;
+	}
+}
+
+bool SkyLight::updateCubeMap()
+{
+	switch (static_cast<uint32_t>(m_lightType))
+	{
+		case LIGHT_TYPE_REALTIME_COMPUTE:
+			{
+				// TODO
+				return true;
+			}
+		case LIGHT_TYPE_BAKED:
+			{
+				if (m_sphericalMapResourceId == ResourceManager::NO_RESOURCE || !m_resourceManager->isImageLoaded(m_sphericalMapResourceId))
+					return false;
+
+				m_renderingPipeline->getComputeSkyCubeMapPass()->setInputSphericalMap(m_resourceManager->getImage(m_sphericalMapResourceId));
+
+				return true;
+			}
+		default:
+			Wolf::Debug::sendError("Undefined light type");
+			break;
+	}
+
+	return false;
 }
 
 glm::vec3 SkyLight::computeSunDirectionForTime(uint32_t time) const
@@ -75,6 +143,15 @@ glm::vec3 SkyLight::computeSunDirectionForTime(uint32_t time) const
 void SkyLight::onAngleChanged()
 {
 	m_debugMeshRebuildRequested = true;
+}
+
+void SkyLight::onSphericalMapChanged()
+{
+	if (static_cast<std::string>(m_sphericalMap) != "")
+	{
+		m_sphericalMapResourceId = m_resourceManager->addImage(m_sphericalMap, false, false, true);
+		m_cubeMapUpdateRequested = true;
+	}
 }
 
 void SkyLight::buildDebugMesh()

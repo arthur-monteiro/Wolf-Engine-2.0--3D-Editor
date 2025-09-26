@@ -8,7 +8,7 @@
 void ContaminationUpdatePass::initializeResources(const Wolf::InitializationContext& context)
 {
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false)); // Can't run on compute queue as contamination image ids is on graphic queue
-	m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/contamination/update.comp"));
 	m_shootRequestBuffer.reset(new Wolf::UniformBuffer(sizeof(ShootRequestGPUInfo)));
@@ -81,7 +81,7 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::computePassDebugColor, "Contamination update pass");
 
 	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 
 	m_commandBuffer->bindPipeline(m_computePipeline.createConstNonOwnerResource());
 	m_commandBuffer->bindDescriptorSet(m_contaminationEmitters[0].getUpdateDescriptorSet().createConstNonOwnerResource(), 0, *m_computePipeline);
@@ -93,7 +93,7 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->dispatch(groupSizeX, groupSizeY, groupSizeZ);
 
 	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT,
-		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, VK_IMAGE_LAYOUT_GENERAL });
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_GENERAL });
 
 	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -107,7 +107,7 @@ void ContaminationUpdatePass::submit(const Wolf::SubmitContext& context)
 	if (m_wasEnabledThisFrame)
 	{
 		const std::vector<const Wolf::Semaphore*> waitSemaphores{  };
-		const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+		const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 		m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
 
 		if (m_computeShaderParser->compileIfFileHasBeenModified())

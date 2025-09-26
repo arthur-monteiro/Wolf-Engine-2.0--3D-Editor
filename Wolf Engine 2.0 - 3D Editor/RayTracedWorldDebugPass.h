@@ -10,28 +10,28 @@
 #include <ShaderParser.h>
 #include <UniformBuffer.h>
 
+#include "DrawRectInterface.h"
 #include "PreDepthPass.h"
 #include "RayTracedWorldManager.h"
 
-class RayTracedWorldDebugPass : public Wolf::CommandRecordBase
+class RayTracedWorldDebugPass : public Wolf::CommandRecordBase, public DrawRectInterface
 {
 public:
-    RayTracedWorldDebugPass(const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
+    RayTracedWorldDebugPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
     void record(const Wolf::RecordContext& context) override;
     void submit(const Wolf::SubmitContext& context) override;
 
-    bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame;}
-    void bindDescriptorSetToDrawOutput(const Wolf::CommandBuffer& commandBuffer, const Wolf::Pipeline& pipeline);
+    [[nodiscard]] bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame;}
 
 private:
-    void createOutputImage(const Wolf::InitializationContext& context);
-    void createRayTracingPipeline();
-    void createRayTracingDescriptorSet();
+    Wolf::ResourceUniqueOwner<Wolf::Image>& getOutputImage() override { return m_outputImage;}
 
-    void createDrawRectDescriptorSet(const Wolf::InitializationContext& context);
+    void createOutputImage(const Wolf::InitializationContext& context);
+    void createPipeline();
+    void createDescriptorSet();
 
     Wolf::ResourceUniqueOwner<Wolf::Image> m_outputImage;
     Wolf::ResourceNonOwner<RayTracedWorldManager> m_rayTracedWorldManager;
@@ -40,23 +40,22 @@ private:
     Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_rayMissShaderParser;
     Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_closestHitShaderParser;
     Wolf::ResourceUniqueOwner<Wolf::ShaderBindingTable> m_shaderBindingTable;
-    Wolf::ResourceUniqueOwner<Wolf::Pipeline> m_rayTracingPipeline;
+    Wolf::ResourceUniqueOwner<Wolf::Pipeline> m_pipeline;
 
-    struct DisplayOptionsUBData
+    struct UniformBufferData
     {
         uint32_t displayType;
+        uint32_t screenOffsetX;
+        uint32_t screenOffsetY;
+        uint32_t padding;
     };
     std::unique_ptr<Wolf::UniformBuffer> m_displayOptionsUniformBuffer;
     Wolf::DescriptorSetLayoutGenerator m_rayTracingDescriptorSetLayoutGenerator;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_rayTracingDescriptorSetLayout;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_rayTracingDescriptorSet;
 
-    Wolf::DescriptorSetLayoutGenerator m_drawRectDescriptorSetLayoutGenerator;
-    Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_drawRectDescriptorSetLayout;
-    Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_drawRectDescriptorSet;
-    Wolf::ResourceUniqueOwner<Wolf::Sampler> m_drawRectSampler;
-
     bool m_wasEnabledThisFrame = false;
 
     Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
+    EditorParams* m_editorParams;
 };

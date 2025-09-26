@@ -9,14 +9,19 @@
 #include <JSONReader.h>
 #include <ProfilerCommon.h>
 
+#include "GraphicSettingsFakeEntity.h"
 #include "MaterialListFakeEntity.h"
 #include "RuntimeContext.h"
 
 SystemManager::SystemManager()
 {
-	createWolfInstance();
-	m_editorParams.reset(new EditorParams(Wolf::g_configuration->getWindowWidth(), Wolf::g_configuration->getWindowHeight()));
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
+	m_editorParams.reset(new EditorParams(1920, 1080));
+
+	createWolfInstance();
+
+	m_editorParams->setWindowWidth(Wolf::g_configuration->getWindowWidth());
+	m_editorParams->setWindowHeight(Wolf::g_configuration->getWindowHeight());
 
 	m_camera.reset(new Wolf::FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f, 16.0f / 9.0f));
 
@@ -123,12 +128,11 @@ void SystemManager::createWolfInstance()
 		resizeCallback(width, height);
 	};
 	wolfInstanceCreateInfo.htmlURL = "UI/UI.html";
-	wolfInstanceCreateInfo.bindUltralightCallbacks = [this] { bindUltralightCallbacks(); };
+	wolfInstanceCreateInfo.bindUltralightCallbacks = [this](ultralight::JSObject& jsObject) { bindUltralightCallbacks(jsObject); };
 	wolfInstanceCreateInfo.useBindlessDescriptor = true;
 	wolfInstanceCreateInfo.threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
 
 	m_wolfInstance.reset(new Wolf::WolfEngine(wolfInstanceCreateInfo));
-	bindUltralightCallbacks();
 
 	m_gameContexts.reserve(Wolf::g_configuration->getMaxCachedFrames());
 	std::vector<void*> contextPtrs(Wolf::g_configuration->getMaxCachedFrames());
@@ -150,6 +154,9 @@ void SystemManager::createRenderer()
 		rayTracedWorldManager = m_rayTracedWorldManager.createNonOwnerResource();
 	}
 	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), rayTracedWorldManager));
+
+	m_renderer->getSkyBoxManager()->setOnCubeMapChangedCallback([this](Wolf::ResourceUniqueOwner<Wolf::Image>& image) { m_wolfInstance->getLightManager()->setSkyCubeMap(image.createNonOwnerResource()); });
+	m_wolfInstance->getLightManager()->setSkyCubeMap(m_renderer->getSkyBoxManager()->getCubeMapImage().createNonOwnerResource());
 }
 
 void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::Type type, const std::string& message) const
@@ -206,10 +213,8 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 	}
 }
 
-void SystemManager::bindUltralightCallbacks()
+void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 {
-	ultralight::JSObject jsObject;
-	m_wolfInstance->getUserInterfaceJSObject(jsObject);
 	jsObject["getFrameRate"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getFrameRateJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getVRAMRequested"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMRequestedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getVRAMUsed"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMUsedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
@@ -509,6 +514,17 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		else
 		{
 			m_inModificationGameContext.displayType = GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID;
+		}
+	}
+	else if (displayType == "pathTracing")
+	{
+		if (!g_editorConfiguration->getEnableRayTracing())
+		{
+			Wolf::Debug::sendError("Can't display path tracing because ray tracing is not enabled");
+		}
+		else
+		{
+			m_inModificationGameContext.displayType = GameContext::DisplayType::PATH_TRACING;
 		}
 	}
 	else
@@ -823,7 +839,7 @@ void SystemManager::updateBeforeFrame()
 				}
 			}
 
-			if (!errorEncountered)
+			if (!tlasInfo.m_instances.empty() && !errorEncountered)
 			{
 				m_rayTracedWorldManager->build(tlasInfo);
 				m_rayTracedWorldBuildNeeded = false;
@@ -844,7 +860,7 @@ void SystemManager::updateBeforeFrame()
 	{
 		float currentMousePosX, currentMousePosY;
 		inputHandler->getMousePosition(currentMousePosX, currentMousePosY);
-		m_renderer->requestPixelId(currentMousePosX, currentMousePosY, [this](uint32_t entityIdx)
+		m_renderer->requestPixelId(static_cast<uint32_t>(currentMousePosX), static_cast<uint32_t>(currentMousePosY), [this](uint32_t entityIdx)
 		{
 			if (entityIdx != -1)
 			{
@@ -890,6 +906,7 @@ void SystemManager::loadScene()
 	Wolf::JSONReader jsonReader(Wolf::JSONReader::FileReadInfo { m_configuration->computeFullPathFromLocalPath(m_loadSceneRequest) });
 
 	const std::string& sceneName = jsonReader.getRoot()->getPropertyString("sceneName");
+	m_inModificationGameContext.currentSceneName = sceneName;
 
 	// Camera
 	if (Wolf::JSONReader::JSONObjectInterface* cameraObject = jsonReader.getRoot()->getPropertyObject("defaultCamera"))
@@ -982,6 +999,10 @@ void SystemManager::addFakeEntities()
 	MaterialListFakeEntity* materialListFakeEntity = new MaterialListFakeEntity(m_wolfInstance->getMaterialsManager(), m_configuration.createNonOwnerResource());
 	m_entityContainer->addEntity(materialListFakeEntity);
 	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + materialListFakeEntity->getName() + "\", \"" + materialListFakeEntity->computeEscapedLoadingPath() + "\", true)");
+
+	GraphicSettingsFakeEntity* graphicSettingsFakeEntity = new GraphicSettingsFakeEntity(m_renderer.createNonOwnerResource<RenderingPipelineInterface>());
+	m_entityContainer->addEntity(graphicSettingsFakeEntity);
+	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + graphicSettingsFakeEntity->getName() + "\", \"" + graphicSettingsFakeEntity->computeEscapedLoadingPath() + "\", true)");
 }
 
 void SystemManager::updateUISelectedEntity() const

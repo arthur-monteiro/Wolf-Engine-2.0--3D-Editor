@@ -13,15 +13,15 @@
 #include "GameContext.h"
 #include "Vertex2DTextured.h"
 
-RayTracedWorldDebugPass::RayTracedWorldDebugPass(const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
-: m_preDepthPass(preDepthPass), m_rayTracedWorldManager(rayTracedWorldManager)
+RayTracedWorldDebugPass::RayTracedWorldDebugPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
+    : m_editorParams(editorParams), m_preDepthPass(preDepthPass), m_rayTracedWorldManager(rayTracedWorldManager)
 {
-    m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
 }
 
 void RayTracedWorldDebugPass::initializeResources(const Wolf::InitializationContext& context)
 {
     m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::RAY_TRACING, false /* isTransient */));
+    createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
     Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
     m_rayTracedWorldManager->addRayGenShaderCode(shaderCodeToAdd, 2);
@@ -37,22 +37,19 @@ void RayTracedWorldDebugPass::initializeResources(const Wolf::InitializationCont
     m_rayTracingDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_rayTracingDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
     createOutputImage(context);
-    m_displayOptionsUniformBuffer.reset(new Wolf::UniformBuffer(sizeof(DisplayOptionsUBData)));
-    createRayTracingPipeline();
+    m_displayOptionsUniformBuffer.reset(new Wolf::UniformBuffer(sizeof(UniformBufferData)));
+    createPipeline();
+    createDescriptorSet();
 
-    m_drawRectDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
-    m_drawRectDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_drawRectDescriptorSetLayoutGenerator.getDescriptorLayouts()));
-
-    m_drawRectSampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1, VK_FILTER_LINEAR));
-
-    createDrawRectDescriptorSet(context);
-    createRayTracingDescriptorSet();
+    DrawRectInterface::initializeResources(context);
 }
 
 void RayTracedWorldDebugPass::resize(const Wolf::InitializationContext& context)
 {
     createOutputImage(context);
-    createRayTracingDescriptorSet();
+    createDescriptorSet();
+
+    DrawRectInterface::createDescriptorSet(context);
 }
 
 void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
@@ -66,9 +63,11 @@ void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
         return;
     }
 
-    DisplayOptionsUBData displayOptions{};
-    displayOptions.displayType = static_cast<uint32_t>(gameContext->displayType);
-    m_displayOptionsUniformBuffer->transferCPUMemory(&displayOptions, sizeof(displayOptions), 0);
+    UniformBufferData uniformBufferData{};
+    uniformBufferData.displayType = static_cast<uint32_t>(gameContext->displayType);
+    uniformBufferData.screenOffsetX = m_editorParams->getRenderOffsetLeft();
+    uniformBufferData.screenOffsetY = m_editorParams->getRenderOffsetTop();
+    m_displayOptionsUniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(uniformBufferData), 0);
 
     const Wolf::CameraInterface* camera = context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
 
@@ -76,15 +75,16 @@ void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
 
     Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::rayTracePassDebugColor, "Ray Traced World Debug Pass");
 
-    m_outputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+    m_outputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1,
+        0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 
-    m_commandBuffer->bindPipeline(m_rayTracingPipeline.createConstNonOwnerResource());
-    m_commandBuffer->bindDescriptorSet(m_rayTracingDescriptorSet.createConstNonOwnerResource(), 0, *m_rayTracingPipeline);
-    m_commandBuffer->bindDescriptorSet(camera->getDescriptorSet(), 1, *m_rayTracingPipeline);
-    m_commandBuffer->bindDescriptorSet(m_rayTracedWorldManager->getDescriptorSet(), 2, *m_rayTracingPipeline);
-    m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 3, *m_rayTracingPipeline);
+    m_commandBuffer->bindPipeline(m_pipeline.createConstNonOwnerResource());
+    m_commandBuffer->bindDescriptorSet(m_rayTracingDescriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(camera->getDescriptorSet(), 1, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(m_rayTracedWorldManager->getDescriptorSet(), 2, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 3, *m_pipeline);
 
-    m_commandBuffer->traceRays(m_shaderBindingTable.createConstNonOwnerResource(), { m_outputImage->getExtent().width, m_outputImage->getExtent().height, 1 });
+    m_commandBuffer->traceRays(m_shaderBindingTable.createConstNonOwnerResource(), { m_editorParams->getRenderWidth(), m_editorParams->getRenderHeight(), 1 });
 
     m_outputImage->transitionImageLayout(*m_commandBuffer, Wolf::Image::SampledInFragmentShader(0, VK_IMAGE_LAYOUT_GENERAL));
 
@@ -101,7 +101,7 @@ void RayTracedWorldDebugPass::submit(const Wolf::SubmitContext& context)
         return;
 
     const std::vector<const Wolf::Semaphore*> waitSemaphores{ /*m_preDepthPass->getSemaphore()*/ };
-    const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+    const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
     m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 
     bool anyShaderModified = m_rayGenShaderParser->compileIfFileHasBeenModified();
@@ -113,13 +113,8 @@ void RayTracedWorldDebugPass::submit(const Wolf::SubmitContext& context)
     if (anyShaderModified)
     {
         context.graphicAPIManager->waitIdle();
-        createRayTracingPipeline();
+        createPipeline();
     }
-}
-
-void RayTracedWorldDebugPass::bindDescriptorSetToDrawOutput(const Wolf::CommandBuffer& commandBuffer, const Wolf::Pipeline& pipeline)
-{
-    commandBuffer.bindDescriptorSet(m_drawRectDescriptorSet.createConstNonOwnerResource(), 0, pipeline);
 }
 
 void RayTracedWorldDebugPass::createOutputImage(const Wolf::InitializationContext& context)
@@ -133,7 +128,7 @@ void RayTracedWorldDebugPass::createOutputImage(const Wolf::InitializationContex
     m_outputImage->setImageLayout(Wolf::Image::SampledInFragmentShader(0));
 }
 
-void RayTracedWorldDebugPass::createRayTracingPipeline()
+void RayTracedWorldDebugPass::createPipeline()
 {
     Wolf::RayTracingShaderGroupGenerator shaderGroupGenerator;
     shaderGroupGenerator.addRayGenShaderStage(0);
@@ -169,12 +164,12 @@ void RayTracedWorldDebugPass::createRayTracingPipeline()
             RayTracedWorldManager::getDescriptorSetLayout().createConstNonOwnerResource(),
             Wolf::MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource()
         };
-    m_rayTracingPipeline.reset(Wolf::Pipeline::createRayTracingPipeline(pipelineCreateInfo, descriptorSetLayouts));
+    m_pipeline.reset(Wolf::Pipeline::createRayTracingPipeline(pipelineCreateInfo, descriptorSetLayouts));
 
-    m_shaderBindingTable.reset(new Wolf::ShaderBindingTable(static_cast<uint32_t>(shaders.size()), *m_rayTracingPipeline));
+    m_shaderBindingTable.reset(new Wolf::ShaderBindingTable(static_cast<uint32_t>(shaders.size()), *m_pipeline));
 }
 
-void RayTracedWorldDebugPass::createRayTracingDescriptorSet()
+void RayTracedWorldDebugPass::createDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_rayTracingDescriptorSetLayoutGenerator.getDescriptorLayouts());
     const Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc(VK_IMAGE_LAYOUT_GENERAL, m_outputImage->getDefaultImageView());
@@ -184,14 +179,4 @@ void RayTracedWorldDebugPass::createRayTracingDescriptorSet()
     if (!m_rayTracingDescriptorSet)
         m_rayTracingDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_rayTracingDescriptorSetLayout));
     m_rayTracingDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
-}
-
-void RayTracedWorldDebugPass::createDrawRectDescriptorSet(const Wolf::InitializationContext& context)
-{
-    Wolf::DescriptorSetGenerator descriptorSetGenerator(m_drawRectDescriptorSetLayoutGenerator.getDescriptorLayouts());
-    descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_outputImage->getDefaultImageView(), *m_drawRectSampler);
-
-    if (!m_drawRectDescriptorSet)
-        m_drawRectDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_drawRectDescriptorSetLayout));
-    m_drawRectDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }

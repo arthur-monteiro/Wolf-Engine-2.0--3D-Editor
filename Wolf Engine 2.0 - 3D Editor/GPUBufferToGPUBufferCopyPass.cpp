@@ -23,7 +23,7 @@ GPUBufferToGPUBufferCopyPass::GPUBufferToGPUBufferCopyPass(const Wolf::ResourceN
 void GPUBufferToGPUBufferCopyPass::initializeResources(const Wolf::InitializationContext& context)
 {
     m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::TRANSFER, false));
-    m_semaphore.reset(Wolf::Semaphore::createSemaphore(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+    createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, true);
 
     m_currentRequestsQueues.resize(Wolf::g_configuration->getMaxCachedFrames());
 }
@@ -69,8 +69,8 @@ void GPUBufferToGPUBufferCopyPass::submit(const Wolf::SubmitContext& context)
 {
     if (m_commandsRecordedThisFrame)
     {
-        std::vector<const Wolf::Semaphore*> waitSemaphores{ m_drawIdsPass->isEnabledThisFrame() ? m_drawIdsPass->getSemaphore() : m_forwardPass->getSemaphore() };
-        const std::vector<const Wolf::Semaphore*> signalSemaphores{ m_semaphore.get() };
+        std::vector<const Wolf::Semaphore*> waitSemaphores{ m_drawIdsPass->isEnabledThisFrame() ? m_drawIdsPass->getSemaphore(context.swapChainImageIndex) : m_forwardPass->getSemaphore(context.swapChainImageIndex) };
+        const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
         m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
     }
 }

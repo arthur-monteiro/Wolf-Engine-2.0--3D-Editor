@@ -4,10 +4,12 @@
 
 #include "CascadedShadowMapsPass.h"
 #include "ContaminationUpdatePass.h"
+#include "ComputeSkyCubeMapPass.h"
 #include "DrawIdsPass.h"
 #include "ForwardPass.h"
 #include "GPUBufferToGPUBufferCopyPass.h"
 #include "ParticleUpdatePass.h"
+#include "PathTracingPass.h"
 #include "PreDepthPass.h"
 #include "RayTracedWorldDebugPass.h"
 #include "RayTracedWorldManager.h"
@@ -29,13 +31,17 @@ public:
 	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot = false);
 	void clear();
 
+	Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() override;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() override;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
+	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() override;
 	void requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const;
 
 private:
+	Wolf::ResourceUniqueOwner<SkyBoxManager> m_skyBoxManager;
+
 	Wolf::ResourceUniqueOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceUniqueOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceUniqueOwner<CascadedShadowMapsPass> m_cascadedShadowMapsPass;
@@ -43,7 +49,9 @@ private:
 	Wolf::ResourceUniqueOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
 	Wolf::ResourceUniqueOwner<ParticleUpdatePass> m_particleUpdatePass;
 	Wolf::ResourceUniqueOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
+	Wolf::ResourceUniqueOwner<ComputeSkyCubeMapPass> m_computeSkyCubeMapPass;
 	Wolf::ResourceUniqueOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
+	Wolf::ResourceUniqueOwner<PathTracingPass> m_pathTracingPass;
 	Wolf::ResourceUniqueOwner<ForwardPass> m_forwardPass;
 	Wolf::ResourceUniqueOwner<DrawIdsPass> m_drawIdsPass;
 	Wolf::ResourceUniqueOwner<GPUBufferToGPUBufferCopyPass> m_gpuBufferToGpuBufferCopyPass;

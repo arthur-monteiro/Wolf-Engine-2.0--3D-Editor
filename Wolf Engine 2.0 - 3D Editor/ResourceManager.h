@@ -27,13 +27,17 @@ public:
 
 	Wolf::ResourceNonOwner<Entity> computeResourceEditor(ResourceId resourceId);
 
-	ResourceId addModel(const std::string& loadingPath);
+	[[nodiscard]] ResourceId addModel(const std::string& loadingPath);
 	bool isModelLoaded(ResourceId modelResourceId) const;
 	Wolf::ModelData* getModelData(ResourceId modelResourceId) const;
 	Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(ResourceId modelResourceId);
 	uint32_t getFirstMaterialIdx(ResourceId modelResourceId) const;
 	uint32_t getFirstTextureSetIdx(ResourceId modelResourceId) const;
 	void subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
+
+	[[nodiscard]] ResourceId addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR);
+	bool isImageLoaded(ResourceId imageResourceId) const;
+	Wolf::ResourceNonOwner<Wolf::Image> getImage(ResourceId imageResourceId) const;
 
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
@@ -99,10 +103,36 @@ private:
 		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_meshToKeepInMemory;
 	};
 
+	class Image : public ResourceInterface
+	{
+	public:
+		Image(const std::string& loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
+			bool loadMips, bool isSRGB, bool isHDR);
+		Image(const Image&) = delete;
+
+		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
+		bool isLoaded() const override;
+
+		Wolf::ResourceNonOwner<Wolf::Image> getImage() { return m_image.createNonOwnerResource();}
+
+	private:
+		void loadImage();
+
+		bool m_imageLoadingRequested = false;
+		Wolf::ResourceUniqueOwner<Wolf::Image> m_image;
+
+		bool m_loadMips;
+		bool m_isSRGB;
+		bool m_isHDR;
+	};
+
 	static constexpr uint32_t MESH_RESOURCE_IDX_OFFSET = 0;
+	static constexpr uint32_t MAX_MESH_RESOURCE_COUNT = 1000;
 	std::vector<Wolf::ResourceUniqueOwner<Mesh>> m_meshes;
 
-	static constexpr uint32_t IMAGE_RESOURCE_IDX_OFFSET = 1000;
+	static constexpr uint32_t IMAGE_RESOURCE_IDX_OFFSET = MESH_RESOURCE_IDX_OFFSET + MAX_MESH_RESOURCE_COUNT;
+	static constexpr uint32_t MAX_IMAGE_RESOURCE_COUNT = 1000;
+	std::vector<Wolf::ResourceUniqueOwner<Image>> m_images;
 
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;

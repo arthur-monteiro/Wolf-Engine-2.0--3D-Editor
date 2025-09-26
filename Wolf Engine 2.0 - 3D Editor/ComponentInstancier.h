@@ -124,7 +124,7 @@ private:
 			SkyLight::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SkyLight());
+				return static_cast<ComponentInterface*>(new SkyLight(m_requestReloadCallback, m_resourceManager, m_renderingPipeline));
 			}
 		},
 		ComponentInfo
