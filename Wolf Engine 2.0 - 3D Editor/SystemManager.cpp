@@ -112,6 +112,7 @@ void SystemManager::run()
 
 	m_renderer->clear();
 	m_wolfInstance->getRenderMeshList()->clear();
+	m_wolfInstance->getLightManager()->resetSkyCubeMap();
 	m_drawManager->clear();
 	m_debugRenderingManager->clearAll();
 	m_selectedEntity.reset(nullptr);
