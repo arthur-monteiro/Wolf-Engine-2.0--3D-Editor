@@ -122,6 +122,7 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot)
 void RenderingPipeline::clear()
 {
 	m_updateGPUBuffersPass->clear();
+	m_computeSkyCubeMapPass->clear();
 }
 
 Wolf::ResourceNonOwner<SkyBoxManager> RenderingPipeline::getSkyBoxManager()

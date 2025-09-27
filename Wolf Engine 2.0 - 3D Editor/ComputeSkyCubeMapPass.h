@@ -26,6 +26,8 @@ public:
     void record(const Wolf::RecordContext& context) override;
     void submit(const Wolf::SubmitContext& context) override;
 
+    void clear();
+
     [[nodiscard]] bool wasEnabledThisFrame() const { return m_drawRecordedThisFrame; }
     void setInputSphericalMap(const Wolf::ResourceNonOwner<Wolf::Image>& sphericalMap);
 

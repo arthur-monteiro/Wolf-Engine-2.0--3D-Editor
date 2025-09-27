@@ -132,6 +132,11 @@ void ComputeSkyCubeMapPass::submit(const Wolf::SubmitContext& context)
     }
 }
 
+void ComputeSkyCubeMapPass::clear()
+{
+    m_sphericalMapImage.release();
+}
+
 void ComputeSkyCubeMapPass::setInputSphericalMap(const Wolf::ResourceNonOwner<Wolf::Image>& sphericalMap)
 {
     m_sphericalMapImage = sphericalMap;
