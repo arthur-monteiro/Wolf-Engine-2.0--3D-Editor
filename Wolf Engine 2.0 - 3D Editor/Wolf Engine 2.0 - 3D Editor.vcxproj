@@ -180,13 +180,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;_CRT_SECURE_NO_WARNINGS;WOLF_VULKAN;MATERIAL_DEBUG;IMMEDIATE_DELETE;TRACY_ENABLE;TRACY_ON_DEMAND;RESOURCE_DEBUG;RESOURCE_TRACKING;CUSTOM_PUSH_DATA_TO_GPU;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\GifEncoder\egif;..\Dependencies\Wolf Engine 2.0\ThirdParty\glm;..\Dependencies\Wolf Engine 2.0\Common;..\Dependencies\Wolf Engine 2.0\GraphicAPIBroker\Public;..\Dependencies\Wolf Engine 2.0\Wolf Engine 2.0;..\Dependencies\Wolf Engine 2.0\ThirdParty\vulkan\Include;..\Dependencies\Wolf Engine 2.0\ThirdParty\stb_image;..\Dependencies\Wolf Engine 2.0\ThirdParty\tiny_obj;..\Dependencies\Wolf Engine 2.0\ThirdParty\GLFW\include;..\Dependencies\Wolf Engine 2.0\ThirdParty\OVR\Include;..\Dependencies\Wolf Engine 2.0\ThirdParty\UltraLight\include;..\Dependencies\Wolf Engine 2.0\ThirdParty\xxh64;..\Dependencies\Wolf Engine 2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\GifEncoder\egif;..\Dependencies\Wolf-Engine-2.0\ThirdParty\glm;..\Dependencies\Wolf-Engine-2.0\Common;..\Dependencies\Wolf-Engine-2.0\GraphicAPIBroker\Public;..\Dependencies\Wolf-Engine-2.0\Wolf-Engine-2.0;..\Dependencies\Wolf-Engine-2.0\ThirdParty\vulkan\Include;..\Dependencies\Wolf-Engine-2.0\ThirdParty\stb_image;..\Dependencies\Wolf-Engine-2.0\ThirdParty\tiny_obj;..\Dependencies\Wolf-Engine-2.0\ThirdParty\GLFW\include;..\Dependencies\Wolf-Engine-2.0\ThirdParty\OVR\Include;..\Dependencies\Wolf-Engine-2.0\ThirdParty\UltraLight\include;..\Dependencies\Wolf-Engine-2.0\ThirdParty\xxh64;..\Dependencies\Wolf-Engine-2.0\ThirdParty\Tracy\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp23</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\x64\Debug;..\Dependencies\Wolf Engine 2.0\ThirdParty\OVR\Lib\Windows\x64\Debug\VS2017;..\Dependencies\Wolf Engine 2.0\ThirdParty\GLFW\lib-vc2019;..\Dependencies\Wolf Engine 2.0\ThirdParty\vulkan\Lib;..\Dependencies\Wolf Engine 2.0\ThirdParty\Wolf Engine\lib;..\Dependencies\Wolf Engine 2.0\ThirdParty\UltraLight\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\x64\Debug;..\Dependencies\Wolf-Engine-2.0\ThirdParty\OVR\Lib\Windows\x64\Debug\VS2017;..\Dependencies\Wolf-Engine-2.0\ThirdParty\GLFW\lib-vc2019;..\Dependencies\Wolf-Engine-2.0\ThirdParty\vulkan\Lib;..\Dependencies\Wolf-Engine-2.0\ThirdParty\Wolf Engine\lib;..\Dependencies\Wolf-Engine-2.0\ThirdParty\UltraLight\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;LibOVR.lib;UltralightCore.lib;Ultralight.lib;WebCore.lib;AppCore.lib;Engine Core.lib;Common.lib;Graphic API Broker.lib;GifEncoder.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
