@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG ee0491e
+        GIT_TAG db0f722
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -50,6 +50,15 @@ target_compile_definitions(WolfEngine_3DEditor PUBLIC WOLF_VULKAN)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC MATERIAL_DEBUG)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC TRACY_ENABLE)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC TRACY_ON_DEMAND)
+
+if (RESOURCE_TRACKING OR RESOURCE_DEBUG)
+    target_compile_definitions(
+            WolfEngine_3DEditor
+            PRIVATE
+            $<$<BOOL:RESOURCE_TRACKING>:RESOURCE_TRACKING>
+            $<$<BOOL:RESOURCE_DEBUG>:RESOURCE_DEBUG>
+    )
+endif()
 
 target_link_libraries(WolfEngine_3DEditor vulkan-1.lib)
 target_link_libraries(WolfEngine_3DEditor glfw3.lib)
