@@ -87,7 +87,7 @@ private:
 	EditorParams* m_editorParams;
 	Wolf::ResourceNonOwner<const ContaminationUpdatePass> m_contaminationUpdatePass;
 	Wolf::ResourceNonOwner<const ParticleUpdatePass> m_particlesUpdatePass;
-	Wolf::ResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
+	Wolf::NullableResourceNonOwner<ShadowMaskPassInterface> m_shadowMaskPass;
 	Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
 	Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
 	Wolf::NullableResourceNonOwner<PathTracingPass> m_pathTracingPass;
