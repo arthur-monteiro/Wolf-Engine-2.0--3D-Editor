@@ -69,6 +69,7 @@ private:
 		glm::uvec4 cascadeTextureSize;
 
 		glm::float_t noiseRotation;
+		glm::vec3 padding;
 	};
 	std::unique_ptr<Wolf::UniformBuffer> m_uniformBuffer;
 	std::unique_ptr<Wolf::Sampler> m_shadowMapsSampler;

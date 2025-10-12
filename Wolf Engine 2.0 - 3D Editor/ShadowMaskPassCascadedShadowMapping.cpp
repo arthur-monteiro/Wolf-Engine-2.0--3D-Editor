@@ -135,8 +135,8 @@ void ShadowMaskPassCascadedShadowMapping::record(const Wolf::RecordContext& cont
 
 	shadowUBData.noiseRotation = m_noiseRotations[context.currentFrameIdx % m_noiseRotations.size()];
 
-	shadowUBData.viewportOffset = glm::uvec2(m_editorParams->getRenderViewport().x, m_editorParams->getRenderViewport().y);
-	shadowUBData.viewportSize = glm::uvec2(m_editorParams->getRenderViewport().width, m_editorParams->getRenderViewport().height);
+	shadowUBData.viewportOffset = glm::uvec2(renderViewport.x, renderViewport.y);
+	shadowUBData.viewportSize = glm::uvec2(renderViewport.width, renderViewport.height);
 
 	m_uniformBuffer->transferCPUMemory((void*)&shadowUBData, sizeof(shadowUBData), 0);
 
@@ -199,7 +199,7 @@ void ShadowMaskPassCascadedShadowMapping::createOutputImages(uint32_t width, uin
 {
 	Wolf::CreateImageInfo createImageInfo;
 	createImageInfo.extent = { width, height, 1 };
-	createImageInfo.format = Wolf::Format::R32G32_SFLOAT;
+	createImageInfo.format = Wolf::Format::R16_SFLOAT;
 	createImageInfo.mipLevelCount = 1;
 	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 	createImageInfo.usage = Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::SAMPLED;

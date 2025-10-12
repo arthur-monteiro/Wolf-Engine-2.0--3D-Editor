@@ -12,7 +12,7 @@ layout (location = 10) in vec3 inColor;
 
 #include "particleBuffer.glsl"
 
-layout(binding = 0, set = 5, std140) uniform readonly UniformBufferDisplay
+layout(binding = 0, set = 4, std140) uniform readonly UniformBufferDisplay
 {
 	uint displayType;
 } ubDisplay;

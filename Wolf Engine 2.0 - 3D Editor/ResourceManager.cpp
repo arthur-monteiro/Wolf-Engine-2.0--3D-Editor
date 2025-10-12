@@ -206,7 +206,7 @@ void ResourceManager::subscribeToResource(ResourceId resourceId, const void* ins
 	m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->subscribe(instance, callback);
 }
 
-ResourceManager::ResourceId ResourceManager::addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR)
+ResourceManager::ResourceId ResourceManager::addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU)
 {
 	if (m_images.size() >= MAX_IMAGE_RESOURCE_COUNT)
 	{
@@ -224,7 +224,7 @@ ResourceManager::ResourceId ResourceManager::addImage(const std::string& loading
 
 	ResourceId resourceId = static_cast<uint32_t>(m_images.size()) + IMAGE_RESOURCE_IDX_OFFSET;
 
-	m_images.emplace_back(new Image(loadingPath, resourceId, m_updateResourceInUICallback, loadMips, isSRGB, isHDR));
+	m_images.emplace_back(new Image(loadingPath, resourceId, m_updateResourceInUICallback, loadMips, isSRGB, isHDR, keepDataOnCPU));
 	m_addResourceToUICallback(m_images.back()->computeName(), "media/resourceIcon/no_icon.png", resourceId);
 
 	return resourceId;
@@ -238,6 +238,16 @@ bool ResourceManager::isImageLoaded(ResourceId imageResourceId) const
 Wolf::ResourceNonOwner<Wolf::Image> ResourceManager::getImage(ResourceId imageResourceId) const
 {
 	return m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->getImage();
+}
+
+const uint8_t* ResourceManager::getImageData(ResourceId imageResourceId) const
+{
+	return m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->getFirstMipData();
+}
+
+void ResourceManager::deleteImageData(ResourceId imageResourceId) const
+{
+	m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->deleteImageData();
 }
 
 std::string ResourceManager::computeModelFullIdentifier(const std::string& loadingPath)
@@ -419,7 +429,7 @@ void ResourceManager::Mesh::buildBLAS()
 }
 
 ResourceManager::Image::Image(const std::string& loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
-	bool loadMips, bool isSRGB, bool isHDR)
+	bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU)
 	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback), m_loadMips(loadMips), m_isSRGB(isSRGB), m_isHDR(isHDR)
 {
 	if (m_isSRGB && m_isHDR)
@@ -432,6 +442,7 @@ ResourceManager::Image::Image(const std::string& loadingPath, ResourceId resourc
 	}
 
 	m_imageLoadingRequested = true;
+	m_dataOnCPUStatus = keepDataOnCPU ? DataOnCPUStatus::NOT_LOADED_YET : DataOnCPUStatus::NEVER_KEPT;
 }
 
 void ResourceManager::Image::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
@@ -446,6 +457,23 @@ void ResourceManager::Image::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf
 bool ResourceManager::Image::isLoaded() const
 {
 	return static_cast<bool>(m_image);
+}
+
+const uint8_t* ResourceManager::Image::getFirstMipData() const
+{
+	if (m_dataOnCPUStatus != DataOnCPUStatus::AVAILABLE)
+	{
+		Wolf::Debug::sendError("Data requested in not here");
+		return nullptr;
+	}
+
+	return m_firstMipData.data();
+}
+
+void ResourceManager::Image::deleteImageData()
+{
+	m_firstMipData.clear();
+	m_dataOnCPUStatus = DataOnCPUStatus::DELETED;
 }
 
 void ResourceManager::Image::loadImage()
@@ -487,5 +515,13 @@ void ResourceManager::Image::loadImage()
 		{
 			m_image->copyCPUBuffer(mipMapGenerator->getMipLevel(mipLevel).data(), Wolf::Image::SampledInFragmentShader(mipLevel), mipLevel);
 		}
+	}
+
+	if (m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET)
+	{
+		m_firstMipData.resize(m_image->getBPP() * imageFileLoader.getWidth() * imageFileLoader.getHeight());
+		memcpy(m_firstMipData.data(), imageFileLoader.getPixels(), m_firstMipData.size());
+
+		m_dataOnCPUStatus = DataOnCPUStatus::AVAILABLE;
 	}
 }

@@ -32,6 +32,9 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 
 	if (rayTracedWorldManager)
 	{
+		m_rayTracedShadowsPass.reset(new RayTracedShadowsPass(editorParams, m_preDepthPass.createNonOwnerResource(), rayTracedWorldManager));
+		wolfInstance->initializePass(m_rayTracedShadowsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
 		m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(editorParams, m_preDepthPass.createNonOwnerResource(), rayTracedWorldManager));
 		wolfInstance->initializePass(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
@@ -50,7 +53,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 		pathTracingPass = m_pathTracingPass.createNonOwnerResource();
 	}
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
-		m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), m_preDepthPass.createNonOwnerResource(), rayTracedWorldDebugPass, pathTracingPass,
+		m_preDepthPass.createNonOwnerResource(), rayTracedWorldDebugPass, pathTracingPass,
 		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource()));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
@@ -69,7 +72,7 @@ void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
 	m_skyBoxManager->updateBeforeFrame(wolfInstance, m_computeSkyCubeMapPass.createNonOwnerResource());
 }
 
-void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot)
+void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext)
 {
 	PROFILE_FUNCTION
 
@@ -77,8 +80,25 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot)
 	passes.reserve(11);
 	passes.push_back(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
-	passes.push_back(m_cascadedShadowMapsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
-	passes.push_back(m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<Wolf::CommandRecordBase>());
+
+	if (gameContext.shadowTechnique == GameContext::ShadowTechnique::CSM)
+	{
+		passes.push_back(m_cascadedShadowMapsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+		passes.push_back(m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<Wolf::CommandRecordBase>());
+
+		m_forwardPass->setShadowMaskPass(m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<ShadowMaskPassInterface>(), wolfInstance->getGraphicAPIManager());
+	}
+	else if (gameContext.shadowTechnique == GameContext::ShadowTechnique::RAY_TRACED)
+	{
+		passes.push_back(m_rayTracedShadowsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
+		m_forwardPass->setShadowMaskPass(m_rayTracedShadowsPass.createNonOwnerResource<ShadowMaskPassInterface>(), wolfInstance->getGraphicAPIManager());
+	}
+	else
+	{
+		Wolf::Debug::sendError("Unknown shadow technique");
+	}
+
 	passes.push_back(m_contaminationUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_particleUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_thumbnailsGenerationPass.createNonOwnerResource<Wolf::CommandRecordBase>());
@@ -153,6 +173,11 @@ Wolf::ResourceNonOwner<UpdateGPUBuffersPass> RenderingPipeline::getUpdateGPUBuff
 Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> RenderingPipeline::getComputeSkyCubeMapPass()
 {
 	return m_computeSkyCubeMapPass.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<CascadedShadowMapsPass> RenderingPipeline::getCascadedShadowMapsPass()
+{
+	return m_cascadedShadowMapsPass.createNonOwnerResource();
 }
 
 void RenderingPipeline::requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const

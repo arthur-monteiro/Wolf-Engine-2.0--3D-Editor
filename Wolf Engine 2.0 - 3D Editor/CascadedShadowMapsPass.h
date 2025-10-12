@@ -46,17 +46,23 @@ public:
 	void submit(const Wolf::SubmitContext& context) override;
 
 	void addCamerasForThisFrame(Wolf::CameraList& cameraList) const;
+	void setFar(float far);
 
 	Wolf::Image* getShadowMap(uint32_t cascadeIdx) const { return m_cascadeDepthPasses[cascadeIdx]->getOutput(); }
 	float getCascadeSplit(uint32_t cascadeIdx) const { return m_cascadeSplits[cascadeIdx]; }
 	void getCascadeMatrix(uint32_t cascadeIdx, glm::mat4& output) const { m_cascadeDepthPasses[cascadeIdx]->getViewProjMatrix(output); }
 	uint32_t getCascadeTextureSize(uint32_t cascadeIdx) const { return m_cascadeTextureSize[cascadeIdx]; }
 	bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame; }
+	float getFar() const { return m_far; }
 
 private:
+	void computeCascadeSplits();
+
 	/* Cascades */
 	uint32_t m_cascadeTextureSize[CASCADE_COUNT] = { 3072, 3072, 3072, 3072 };
 	std::array<std::unique_ptr<CascadeDepthPass>, CASCADE_COUNT> m_cascadeDepthPasses;
+	float m_near = 0.1f;
+	float m_far = 50.0f;
 	std::array<float, CASCADE_COUNT> m_cascadeSplits{};
 
 	bool m_wasEnabledThisFrame = false;

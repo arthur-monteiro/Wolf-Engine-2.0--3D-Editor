@@ -89,8 +89,11 @@ void SkyBoxManager::drawSkyBox(const Wolf::CommandBuffer& commandBuffer, const W
 
 void SkyBoxManager::setCubeMapResolution(uint32_t resolution)
 {
-    m_cubeMapResolution = resolution;
-    m_cubeMapResolutionChanged = true;
+    if (m_cubeMapResolution != resolution)
+    {
+        m_cubeMapResolution = resolution;
+        m_cubeMapResolutionChanged = true;
+    }
 }
 
 void SkyBoxManager::setOnCubeMapChangedCallback(const std::function<void(Wolf::ResourceUniqueOwner<Wolf::Image>&)>& onCubeMapChangedCallback)

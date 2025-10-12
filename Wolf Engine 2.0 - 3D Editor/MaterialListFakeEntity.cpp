@@ -7,7 +7,7 @@ MaterialListFakeEntity::MaterialListFakeEntity(const Wolf::ResourceNonOwner<Wolf
 {
 }
 
-void MaterialListFakeEntity::activateParams() const
+void MaterialListFakeEntity::activateParams()
 {
 	for (EditorParamInterface* param : m_editorParams)
 	{

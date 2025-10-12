@@ -5,7 +5,6 @@
 
 #include "ComponentInterface.h"
 #include "MeshResourceEditor.h"
-#include "PipelineSet.h"
 #include "RenderingPipelineInterface.h"
 #include "ThumbnailsGenerationPass.h"
 
@@ -35,9 +34,11 @@ public:
 	uint32_t getFirstTextureSetIdx(ResourceId modelResourceId) const;
 	void subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
-	[[nodiscard]] ResourceId addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR);
+	[[nodiscard]] ResourceId addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU);
 	bool isImageLoaded(ResourceId imageResourceId) const;
 	Wolf::ResourceNonOwner<Wolf::Image> getImage(ResourceId imageResourceId) const;
+	const uint8_t* getImageData(ResourceId imageResourceId) const;
+	void deleteImageData(ResourceId imageResourceId) const;
 
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
@@ -107,13 +108,15 @@ private:
 	{
 	public:
 		Image(const std::string& loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
-			bool loadMips, bool isSRGB, bool isHDR);
+			bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU);
 		Image(const Image&) = delete;
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
 		bool isLoaded() const override;
 
-		Wolf::ResourceNonOwner<Wolf::Image> getImage() { return m_image.createNonOwnerResource();}
+		Wolf::ResourceNonOwner<Wolf::Image> getImage() { return m_image.createNonOwnerResource(); }
+		const uint8_t* getFirstMipData() const;
+		void deleteImageData();
 
 	private:
 		void loadImage();
@@ -124,6 +127,9 @@ private:
 		bool m_loadMips;
 		bool m_isSRGB;
 		bool m_isHDR;
+
+		enum class DataOnCPUStatus { NEVER_KEPT, NOT_LOADED_YET, AVAILABLE, DELETED } m_dataOnCPUStatus;
+		std::vector<uint8_t> m_firstMipData;
 	};
 
 	static constexpr uint32_t MESH_RESOURCE_IDX_OFFSET = 0;

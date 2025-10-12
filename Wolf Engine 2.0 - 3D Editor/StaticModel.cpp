@@ -39,7 +39,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
 
 			// Color Blend
-			pipelineInfo.blendModes = {Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
+			pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
 			// Dynamic states
 			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
@@ -50,9 +50,11 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.dynamicStates.clear();
 			pipelineInfo.depthBiasConstantFactor = 4.0f;
 			pipelineInfo.depthBiasSlopeFactor = 2.5f;
+			pipelineInfo.cullMode = VK_CULL_MODE_NONE;
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
 			pipelineInfo.depthBiasConstantFactor = 0.0f;
 			pipelineInfo.depthBiasSlopeFactor = 0.0f;
+			pipelineInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 
 			/* Forward */
 			pipelineInfo.shaderInfos.resize(2);

@@ -210,7 +210,7 @@ float computeShadowOcclusion(in vec3 viewPos, in vec4 worldPos)
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_samplerless_texture_functions : require
 
-layout (binding = 0, set = 1, rg32f) uniform image2D resultShadowMask;
+layout (binding = 0, set = 1, r16f) uniform image2D resultShadowMask;
 
 layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
 void main()
@@ -231,6 +231,6 @@ void main()
 
     float color = computeShadowOcclusion(viewPos, worldPos);
 
-	float reprojectionData = worldPos.x + worldPos.y + worldPos.z;
-    imageStore(resultShadowMask, ivec2(gl_GlobalInvocationID.xy), vec4(color, reprojectionData, 0.0, 1.0));
+    imageStore(resultShadowMask, ivec2(gl_GlobalInvocationID.xy), vec4(color, 0.0, 0.0, 1.0));
+
 }

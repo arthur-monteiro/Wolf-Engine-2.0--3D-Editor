@@ -35,7 +35,7 @@ public:
 	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) const;
 	bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos);
-	virtual void activateParams() const;
+	virtual void activateParams();
 	virtual void fillJSONForParams(std::string& outJSON);
 
 	virtual void save() const;

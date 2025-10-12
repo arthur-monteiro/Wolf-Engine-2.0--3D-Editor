@@ -32,9 +32,9 @@ SystemManager::SystemManager()
 
 	createRenderer();
 
-	std::function<void(ComponentInterface*)> requestReloadCallback = [this](ComponentInterface* component)
+	m_requestReloadCallback = [this](ComponentInterface* component)
 		{
-			if (m_selectedEntity && component->isOnEntity(*m_selectedEntity))
+			if (m_selectedEntity && (!component || component->isOnEntity(*m_selectedEntity)))
 				m_entityReloadRequested = true;
 		};
 
@@ -45,10 +45,10 @@ SystemManager::SystemManager()
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("updateResource(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(resourceId) + "\");");
 		}
-		, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, m_configuration.createNonOwnerResource()));
+		, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback, m_configuration.createNonOwnerResource()));
 	
 	m_entityContainer.reset(new EntityContainer);
-	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), requestReloadCallback, 
+	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback,
 		[this](const std::string& entityLoadingPath)
 		{
 			std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
@@ -88,7 +88,9 @@ void SystemManager::run()
 		}
 
 		updateBeforeFrame();
-		m_renderer->frame(m_wolfInstance.get(), doScreenShot);
+
+		const uint32_t contextId = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
+		m_renderer->frame(m_wolfInstance.get(), doScreenShot, m_gameContexts[contextId]);
 
 		/* Update FPS counter */
 		const auto currentTime = std::chrono::steady_clock::now();
@@ -1001,7 +1003,7 @@ void SystemManager::addFakeEntities()
 	m_entityContainer->addEntity(materialListFakeEntity);
 	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + materialListFakeEntity->getName() + "\", \"" + materialListFakeEntity->computeEscapedLoadingPath() + "\", true)");
 
-	GraphicSettingsFakeEntity* graphicSettingsFakeEntity = new GraphicSettingsFakeEntity(m_renderer.createNonOwnerResource<RenderingPipelineInterface>());
+	GraphicSettingsFakeEntity* graphicSettingsFakeEntity = new GraphicSettingsFakeEntity(m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), this, m_requestReloadCallback);
 	m_entityContainer->addEntity(graphicSettingsFakeEntity);
 	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + graphicSettingsFakeEntity->getName() + "\", \"" + graphicSettingsFakeEntity->computeEscapedLoadingPath() + "\", true)");
 }

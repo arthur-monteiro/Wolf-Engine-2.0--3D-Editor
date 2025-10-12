@@ -56,10 +56,6 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 		m_particlesDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 
 		m_particlesVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.vert", {}, 1));
-		Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
-		m_shadowMaskPass->addComputeShadowsShaderCode(shaderCodeToAdd, SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
-		m_particlesFragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3, Wolf::ShaderParser::MaterialFetchProcedure(),
-		                                                             shaderCodeToAdd));
 	}
 
 	// UI resources
@@ -160,8 +156,12 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
-		m_commandBuffer->bindDescriptorSet(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSet(), SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES, *m_particlesPipeline);
-		m_commandBuffer->bindDescriptorSet(m_commonDescriptorSet.createConstNonOwnerResource(), 5, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(m_commonDescriptorSet.createConstNonOwnerResource(), 4, *m_particlesPipeline);
+		if (m_shadowMaskPass->hasDescriptorSetToBindForCompute())
+		{
+			m_commandBuffer->bindDescriptorSet(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSet(), SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES,
+				*m_particlesPipeline);
+		}
 		m_commandBuffer->draw(particleCount * 6, 1, 0, 0);
 	}
 
@@ -226,6 +226,22 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 	if (anyShaderModified)
 	{
 		context.graphicAPIManager->waitIdle();
+		createPipelines();
+	}
+}
+
+void ForwardPass::setShadowMaskPass(const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPassInterface, Wolf::GraphicAPIManager* graphicApiManager)
+{
+	if (m_shadowMaskPass != shadowMaskPassInterface)
+	{
+		m_shadowMaskPass = shadowMaskPassInterface;
+
+		Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
+		m_shadowMaskPass->addComputeShadowsShaderCode(shaderCodeToAdd, SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
+		m_particlesFragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3, Wolf::ShaderParser::MaterialFetchProcedure(),
+																	 shaderCodeToAdd));
+
+		graphicApiManager->waitIdle();
 		createPipelines();
 	}
 }
@@ -296,6 +312,7 @@ void ForwardPass::initializeFramesBuffers(const Wolf::InitializationContext& con
 void ForwardPass::createPipelines()
 {
 	// Particles
+	if (m_particlesFragmentShaderParser)
 	{
 		Wolf::RenderingPipelineCreateInfo pipelineCreateInfo;
 		pipelineCreateInfo.renderPass = m_renderPass.get();
@@ -320,9 +337,13 @@ void ForwardPass::createPipelines()
 			Wolf::GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
 			Wolf::MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(),
 			Wolf::LightManager::getDescriptorSetLayout().createConstNonOwnerResource(),
-			m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSetLayout(),
 			m_commonDescriptorSetLayout.createConstNonOwnerResource()
 		};
+
+		if (m_shadowMaskPass->hasDescriptorSetToBindForCompute())
+		{
+			pipelineCreateInfo.descriptorSetLayouts.push_back(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSetLayout());
+		}
 
 		// Color Blend
 		pipelineCreateInfo.blendModes = {Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ADD };

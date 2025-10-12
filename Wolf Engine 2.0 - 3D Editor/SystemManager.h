@@ -19,6 +19,8 @@ public:
 	SystemManager();
 	void run();
 
+	GameContext& getInModificationGameContext() { return m_inModificationGameContext; }
+
 private:
 	static constexpr uint32_t THREAD_COUNT_BEFORE_FRAME = 6;
 	void createWolfInstance();
@@ -99,6 +101,7 @@ private:
 
 	std::unique_ptr<EditorParams> m_editorParams;
 
+	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_selectedEntity;
 	std::mutex m_entityChangedMutex;
 	bool m_entityChanged = false;

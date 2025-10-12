@@ -57,6 +57,11 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
         updateComputeFromSphericalMapDescriptorSets();
         m_updateComputeFromSphericalMapDescriptorSetRequested = false;
     }
+    else
+    {
+        m_drawRecordedThisFrame = false;
+        return;
+    }
 
     std::vector<glm::mat4> captureViews =
     {

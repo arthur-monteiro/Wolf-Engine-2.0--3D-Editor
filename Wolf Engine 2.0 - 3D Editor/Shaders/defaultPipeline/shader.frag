@@ -15,7 +15,7 @@ layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 	uint displayType;
 } ubDisplay;
 
-layout (binding = 0, set = 4, rg32f) uniform image2D shadowMask;
+layout (binding = 0, set = 4, r16f) uniform image2D shadowMask;
 
 #include "../common/displayTypes.glsl"
 
@@ -84,10 +84,12 @@ vec4 computeLighting(MaterialInfo materialInfo)
             vec3 L = normalize(-ubLights.sunLights[i].sunDirection.xyz);
             vec3 H = normalize(V + L);
 
-            Lo += computeRadianceForLight(V, normal, roughness, F0, albedo, metalness, L, 1.0f /* attenuation */, ubLights.sunLights[i].sunColor.xyz) * imageLoad(shadowMask, ivec2(gl_FragCoord.xy)).r;
+            float shadowsCoeff = imageLoad(shadowMask, ivec2(gl_FragCoord.xy)).r;
+            Lo += computeRadianceForLight(V, normal, roughness, F0, albedo, metalness, L, 1.0f /* attenuation */, ubLights.sunLights[i].sunColor.xyz) * shadowsCoeff;
         }
 
-        return vec4(Lo, 1.0);
+        vec3 ambientLight = albedo * 0.3;
+        return vec4(Lo + ambientLight, 1.0);
     }
     else 
     {

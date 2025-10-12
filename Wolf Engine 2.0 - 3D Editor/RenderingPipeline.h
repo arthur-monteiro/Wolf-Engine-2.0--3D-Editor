@@ -11,6 +11,7 @@
 #include "ParticleUpdatePass.h"
 #include "PathTracingPass.h"
 #include "PreDepthPass.h"
+#include "RayTracedShadowsPass.h"
 #include "RayTracedWorldDebugPass.h"
 #include "RayTracedWorldManager.h"
 #include "RenderingPipelineInterface.h"
@@ -28,7 +29,7 @@ public:
 	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
 	void update(Wolf::WolfEngine* wolfInstance);
-	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot = false);
+	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext);
 	void clear();
 
 	Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() override;
@@ -37,6 +38,7 @@ public:
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() override;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() override;
+	Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() override;
 	void requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const;
 
 private:
@@ -46,6 +48,7 @@ private:
 	Wolf::ResourceUniqueOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceUniqueOwner<CascadedShadowMapsPass> m_cascadedShadowMapsPass;
 	Wolf::ResourceUniqueOwner<ShadowMaskPassCascadedShadowMapping> m_shadowMaskPassCascadedShadowMapping;
+	Wolf::ResourceUniqueOwner<RayTracedShadowsPass> m_rayTracedShadowsPass;
 	Wolf::ResourceUniqueOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
 	Wolf::ResourceUniqueOwner<ParticleUpdatePass> m_particleUpdatePass;
 	Wolf::ResourceUniqueOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;

@@ -27,6 +27,10 @@ public:
 	void addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const override;
 
 private:
+	glm::vec3 getSunDirection() const;
+	float getSunIntensity() const;
+	glm::vec3 getSunColor() const;
+
 	void forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString);
 	bool updateCubeMap();
 
@@ -43,7 +47,6 @@ private:
 	/* Realtime compute */
 	EditorParamFloat m_sunIntensity = EditorParamFloat("Intensity (cd/m2)", TAB, "Sun", 0.0f, 1000.0f);
 	EditorParamVector3 m_color = EditorParamVector3("Color", TAB, "Sun", 0.0f, 1.0f);
-	EditorParamVector3 m_sunDirection = EditorParamVector3("Sun direction", TAB, "Sun", -10.0f, 10.0f);
 
 	glm::vec3 computeSunDirectionForTime(uint32_t time) const;
 	void onAngleChanged();
@@ -61,17 +64,19 @@ private:
 	void onSphericalMapChanged();
 	ResourceManager::ResourceId m_sphericalMapResourceId = ResourceManager::NO_RESOURCE;
 	EditorParamString m_sphericalMap = EditorParamString("Spherical map", TAB, "Sky", [this] { onSphericalMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
+	glm::vec3 m_sunDirectionFromSphericalMap;
+	float m_sunIntensityFromSphericalMap;
+	glm::vec3 m_sunColorFromSphericalMap;
 
 	std::array<EditorParamInterface*, 1> m_alwaysVisibleParams =
 	{
 		&m_lightType
 	};
 
-	std::array<EditorParamInterface*, 8> m_realtimeComputeParams =
+	std::array<EditorParamInterface*, 7> m_realtimeComputeParams =
 	{
 		&m_sunIntensity,
 		&m_color,
-		&m_sunDirection,
 
 		&m_sunRisePhi,
 		&m_sunRiseTime,

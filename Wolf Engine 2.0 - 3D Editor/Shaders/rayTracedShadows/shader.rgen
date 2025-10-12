@@ -1,0 +1,56 @@
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_samplerless_texture_functions : require
+
+layout(binding = 0, set = 0, r16f) uniform image2D image;
+layout(binding = 1, set = 0) uniform texture2D depthImage;
+layout(binding = 2, set = 0) uniform UniformBuffer
+{
+    vec4 sunDirectionAndNoiseIndex;
+
+    float sunAreaAngle;
+    uint screenOffsetX;
+    uint screenOffsetY;
+    float padding;
+} ub;
+//layout(binding = 3, set = 0) uniform sampler3D noiseTexture;
+layout(location = 0) rayPayloadEXT bool isShadowed;
+
+const uint NOISE_TEXTURE_SIZE_PER_SIDE = 128;
+const uint NOISE_TEXTURE_VECTOR_COUNT = 16;
+
+const float PI = 3.141592f;
+const float PI_x2 = PI * 2.0f;
+const float HALF_PI = PI * 0.5f;
+
+void main() 
+{
+    uvec2 renderXY = uvec2(gl_LaunchIDEXT.x + ub.screenOffsetX, gl_LaunchIDEXT.y + ub.screenOffsetY);
+
+    const vec2 pixelPos = vec2(gl_LaunchIDEXT.xy);
+    const vec2 inUV = pixelPos / vec2(gl_LaunchSizeEXT.xy);
+    vec2 d = inUV * 2.0 - 1.0;
+
+    vec4 viewRay = getInvProjectionMatrix() * vec4(d.x, d.y, 1.0, 1.0);
+    float depth = texelFetch(depthImage, ivec2(renderXY), 0).r;
+    float linearDepth = getProjectionParams().y / (depth - getProjectionParams().x);
+    vec3 viewPos = viewRay.xyz * linearDepth;
+	vec4 worldPos = getInvViewMatrix() * vec4(viewPos, 1.0);
+
+    vec4 origin = worldPos;
+
+    uint rayFlags = gl_RayFlagsOpaqueEXT;
+    uint cullMask = 0xff;
+    float tmin = 0.001;
+    float tmax = 1000.0;
+
+    isShadowed = true;
+
+    //vec3 noiseDir = (texture(noiseTexture, vec3((gl_LaunchIDEXT.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), float(ub.sunDirectionAndNoiseIndex.w) / float(NOISE_TEXTURE_VECTOR_COUNT))).rgb);
+    //noiseDir *= ub.sunAreaAngle;
+
+    vec3 direction = -normalize(ub.sunDirectionAndNoiseIndex.xyz); // + noiseDir;
+
+    traceRay(rayFlags, cullMask, 0 /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, 0 /*missIndex*/, origin.xyz + direction.xyz * 0.01f, tmin, direction.xyz, tmax);
+
+    imageStore(image, ivec2(renderXY.xy), vec4(isShadowed ? 0.0 : 1.0, 0.0, 0.0, 0.0));
+}

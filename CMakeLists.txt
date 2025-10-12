@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG db0f722
+        GIT_TAG 75b67e052b7474bee107b6b29717d78578f22314
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -46,6 +46,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(WolfEngine_3DEditor ${SRC})
 
+target_compile_definitions(WolfEngine_3DEditor PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions(WolfEngine_3DEditor PUBLIC GLM_FORCE_RADIANS)
+target_compile_definitions(WolfEngine_3DEditor PUBLIC GLM_ENABLE_EXPERIMENTAL)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC WOLF_VULKAN)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC MATERIAL_DEBUG)
 target_compile_definitions(WolfEngine_3DEditor PUBLIC TRACY_ENABLE)
@@ -71,6 +74,8 @@ target_link_libraries(WolfEngine_3DEditor GraphicAPIBroker.lib)
 target_link_libraries(WolfEngine_3DEditor WolfEngine.lib)
 target_link_libraries(WolfEngine_3DEditor GifEncoder.lib)
 
+add_dependencies(WolfEngine_3DEditor Common)
+add_dependencies(WolfEngine_3DEditor GraphicAPIBroker)
 add_dependencies(WolfEngine_3DEditor WolfEngine)
 
 set_target_properties(WolfEngine_3DEditor

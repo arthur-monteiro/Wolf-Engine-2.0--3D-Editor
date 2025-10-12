@@ -44,6 +44,7 @@ public:
 
     [[nodiscard]] const Wolf::ResourceUniqueOwner<Wolf::Mesh>& getCubeMesh() const { return m_cubeMesh; }
     [[nodiscard]] Wolf::ResourceUniqueOwner<Wolf::Image>& getCubeMapImage() { return m_cubeMapImage; }
+    [[nodiscard]] uint32_t getCubeMapResolution() const { return m_cubeMapResolution; }
 
     void setCubeMapResolution(uint32_t resolution);
     void setOnCubeMapChangedCallback(const std::function<void(Wolf::ResourceUniqueOwner<Wolf::Image>&)>& onCubeMapChangedCallback);

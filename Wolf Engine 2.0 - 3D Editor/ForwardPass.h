@@ -23,9 +23,9 @@ class ForwardPass : public Wolf::CommandRecordBase
 {
 public:
 	ForwardPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<const ContaminationUpdatePass>& contaminationUpdatePass, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass,
-		const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPass, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass,
+		const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass,
 		const Wolf::NullableResourceNonOwner<PathTracingPass>& pathTracingPass, const Wolf::ResourceNonOwner<ComputeSkyCubeMapPass>& computeSkyCubeMapPass, const Wolf::ResourceNonOwner<SkyBoxManager>& skyBoxManager)
-	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_shadowMaskPass(shadowMaskPass), m_preDepthPass(preDepthPass),
+	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_preDepthPass(preDepthPass),
 	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass), m_pathTracingPass(pathTracingPass), m_computeSkyCubeMapPass(computeSkyCubeMapPass), m_skyBoxManager(skyBoxManager)
 	{}
 
@@ -34,6 +34,7 @@ public:
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
 
+	void setShadowMaskPass(const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPassInterface, Wolf::GraphicAPIManager* graphicApiManager);
 	void saveSwapChainToFile();
 
 private:
@@ -70,7 +71,7 @@ private:
 	std::unique_ptr<Wolf::ShaderParser> m_particlesFragmentShaderParser;
 	std::unique_ptr<Wolf::Pipeline> m_particlesPipeline;
 
-	static constexpr uint32_t SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES = 4;
+	static constexpr uint32_t SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES = 5;
 
 	/* UI resources */
 	Wolf::DescriptorSetLayoutGenerator m_userInterfaceDescriptorSetLayoutGenerator;

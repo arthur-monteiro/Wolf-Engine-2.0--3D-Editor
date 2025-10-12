@@ -153,7 +153,7 @@ bool Entity::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::Ra
 	return true;
 }
 
-void Entity::activateParams() const
+void Entity::activateParams()
 {
 	if (m_includeEntityParams)
 	{

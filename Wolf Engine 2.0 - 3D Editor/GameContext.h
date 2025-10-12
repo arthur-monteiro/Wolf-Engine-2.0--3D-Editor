@@ -23,6 +23,13 @@ struct GameContext
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 
+	enum class ShadowTechnique
+	{
+		CSM,
+		RAY_TRACED
+	};
+	ShadowTechnique shadowTechnique = ShadowTechnique::CSM;
+
 	std::string currentSceneName;
 };
 

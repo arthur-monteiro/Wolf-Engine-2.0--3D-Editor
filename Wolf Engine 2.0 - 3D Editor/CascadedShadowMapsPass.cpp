@@ -17,7 +17,7 @@ CascadeDepthPass::CascadeDepthPass(const Wolf::InitializationContext& context, u
 	DepthPassBase::initializeResources(context);
 	m_depthImage->setImageLayout(Wolf::Image::SampledInFragmentShader());
 
-	m_camera.reset(new Wolf::OrthographicCamera(glm::vec3(0.0f), 0.0f, 50.0f, glm::vec3(0.0f)));
+	m_camera.reset(new Wolf::OrthographicCamera(glm::vec3(0.0f), 0.0f, 500.0f, glm::vec3(0.0f), 0.1f, 1000.0f));
 	m_cameraIdx = cameraIdx;
 }
 
@@ -49,17 +49,7 @@ void CascadedShadowMapsPass::initializeResources(const Wolf::InitializationConte
 		m_cascadeDepthPasses[i].reset(new CascadeDepthPass(context, m_cascadeTextureSize[i], m_cascadeTextureSize[i], m_commandBuffer.get(), CommonCameraIndices::CAMERA_IDX_SHADOW_CASCADE_0 + i));
 	}
 
-	const float near = 0.1f; // context.camera->getNear();
-	const float far = 500.0f; // context.camera->getFar(); // we don't render shadows on all the range
-	uint32_t cascadeIdx = 0;
-	for (float i(1.0f / CASCADE_COUNT); i <= 1.0f; i += 1.0f / CASCADE_COUNT)
-	{
-		float d_uni = glm::mix(near, far, i);
-		float d_log = near * glm::pow((far / near), i);
-
-		m_cascadeSplits[cascadeIdx] = (glm::mix(d_uni, d_log, 0.5f));
-		cascadeIdx++;
-	}
+	computeCascadeSplits();
 }
 
 void CascadedShadowMapsPass::resize(const Wolf::InitializationContext& context)
@@ -147,5 +137,24 @@ void CascadedShadowMapsPass::addCamerasForThisFrame(Wolf::CameraList& cameraList
 	for (const std::unique_ptr<CascadeDepthPass>& cascade : m_cascadeDepthPasses)
 	{
 		cascade->addCameraForThisFrame(cameraList);
+	}
+}
+
+void CascadedShadowMapsPass::setFar(float far)
+{
+	m_far = far;
+	computeCascadeSplits();
+}
+
+void CascadedShadowMapsPass::computeCascadeSplits()
+{
+	uint32_t cascadeIdx = 0;
+	for (float i(1.0f / CASCADE_COUNT); i <= 1.0f; i += 1.0f / CASCADE_COUNT)
+	{
+		float d_uni = glm::mix(m_near, m_far, i);
+		float d_log = m_near * glm::pow((m_far / m_near), i);
+
+		m_cascadeSplits[cascadeIdx] = (glm::mix(d_uni, d_log, 0.5f));
+		cascadeIdx++;
 	}
 }

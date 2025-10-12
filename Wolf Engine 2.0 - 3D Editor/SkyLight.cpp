@@ -6,6 +6,7 @@
 #include "ComputeSkyCubeMapPass.h"
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
+#include "glm/gtx/quaternion.hpp"
 
 SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
 : m_requestReloadCallback(requestReloadCallback), m_resourceManager(resourceManager), m_renderingPipeline(renderingPipeline)
@@ -57,12 +58,57 @@ void SkyLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 	uniformData.transform = glm::mat4(1.0f);
 	debugRenderingManager.addCustomGroupOfLines(useNewMesh ? m_newDebugMesh.createNonOwnerResource() : m_debugMesh.createNonOwnerResource(), uniformData);
 
-	debugRenderingManager.addSphere(-computeSunDirectionForTime(m_currentTime) * 500.0f, 50.0f, m_color);
+	debugRenderingManager.addSphere(-getSunDirection() * 500.0f, 50.0f, getSunColor());
 }
 
 void SkyLight::addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
 {
-	lightManager->addSunLightInfoForNextFrame({ computeSunDirectionForTime(m_currentTime), 0.1f, m_color, m_sunIntensity });
+	lightManager->addSunLightInfoForNextFrame({ getSunDirection(), 0.1f, getSunColor(), getSunIntensity() });
+}
+
+glm::vec3 SkyLight::getSunDirection() const
+{
+	glm::vec3 sunDirection{};
+	if (m_lightType == LIGHT_TYPE_REALTIME_COMPUTE)
+	{
+		sunDirection = computeSunDirectionForTime(m_currentTime);
+	}
+	else if (m_lightType == LIGHT_TYPE_BAKED)
+	{
+		sunDirection = m_sunDirectionFromSphericalMap;
+	}
+
+	return sunDirection;
+}
+
+float SkyLight::getSunIntensity() const
+{
+	float sunIntensity = 0.0f;;
+	if (m_lightType == LIGHT_TYPE_REALTIME_COMPUTE)
+	{
+		sunIntensity = m_sunIntensity;
+	}
+	else if (m_lightType == LIGHT_TYPE_BAKED)
+	{
+		sunIntensity = m_sunIntensityFromSphericalMap;
+	}
+
+	return sunIntensity;
+}
+
+glm::vec3 SkyLight::getSunColor() const
+{
+	glm::vec3 sunColor(1.0f);
+	if (m_lightType == LIGHT_TYPE_REALTIME_COMPUTE)
+	{
+		sunColor = m_color;
+	}
+	else if (m_lightType == LIGHT_TYPE_BAKED)
+	{
+		sunColor = m_sunColorFromSphericalMap;
+	}
+
+	return sunColor;
 }
 
 void SkyLight::forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString)
@@ -110,7 +156,41 @@ bool SkyLight::updateCubeMap()
 				if (m_sphericalMapResourceId == ResourceManager::NO_RESOURCE || !m_resourceManager->isImageLoaded(m_sphericalMapResourceId))
 					return false;
 
-				m_renderingPipeline->getComputeSkyCubeMapPass()->setInputSphericalMap(m_resourceManager->getImage(m_sphericalMapResourceId));
+				Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_sphericalMapResourceId);
+				m_renderingPipeline->getComputeSkyCubeMapPass()->setInputSphericalMap(image);
+
+				if (image->getFormat() != Wolf::Format::R32G32B32A32_SFLOAT)
+				{
+					Wolf::Debug::sendError("Wrong format for spherical map");
+				}
+
+				const glm::vec4* imageData = reinterpret_cast<const glm::vec4*>(m_resourceManager->getImageData(m_sphericalMapResourceId));
+				Wolf::Extent3D imageExtent = image->getExtent();
+
+				glm::vec4 maxValue(0.0f);
+				glm::uvec2 maxValuePos(0);
+				for (uint32_t x = 0; x < imageExtent.width; ++x)
+				{
+					for (uint32_t y = 0; y < imageExtent.height; ++y)
+					{
+						const glm::vec4& pixel = imageData[x + y * imageExtent.width];
+
+						if (glm::length2(pixel) > glm::length2(maxValue))
+						{
+							maxValue = pixel;
+							maxValuePos = glm::uvec2(x, y);
+						}
+					}
+				}
+
+				float longitude = ((static_cast<float>(maxValuePos.x) / static_cast<float>(imageExtent.width)) - 0.5f) * glm::two_pi<float>();
+				float latitude = ((1.0f - (static_cast<float>(maxValuePos.y) / static_cast<float>(imageExtent.height))) - 0.5f) * glm::pi<float>();
+
+				m_sunDirectionFromSphericalMap = -glm::vec3(glm::cos(longitude) * glm::cos(latitude), glm::sin(latitude), glm::cos(latitude) * glm::sin(longitude));
+				m_sunIntensityFromSphericalMap = glm::length(maxValue) * 0.02f;
+				m_sunColorFromSphericalMap = glm::normalize(maxValue) * glm::sqrt(3.0f);
+
+				m_resourceManager->deleteImageData(m_sphericalMapResourceId);
 
 				return true;
 			}
@@ -149,7 +229,7 @@ void SkyLight::onSphericalMapChanged()
 {
 	if (static_cast<std::string>(m_sphericalMap) != "")
 	{
-		m_sphericalMapResourceId = m_resourceManager->addImage(m_sphericalMap, false, false, true);
+		m_sphericalMapResourceId = m_resourceManager->addImage(m_sphericalMap, false, false, true, true);
 		m_cubeMapUpdateRequested = true;
 	}
 }

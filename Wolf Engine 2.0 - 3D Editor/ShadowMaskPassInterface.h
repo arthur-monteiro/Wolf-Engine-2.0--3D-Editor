@@ -38,6 +38,7 @@ public:
 			DescriptorSetSlots::DESCRIPTOR_SET_SLOT_SHADOW_MASK_INFO
 		};
 	}
+	[[nodiscard]] bool hasDescriptorSetToBindForCompute() const { return static_cast<bool>(m_outputComputeDescriptorSet);}
 	Wolf::DescriptorSetBindInfo getShadowComputeDescriptorSetToBind(uint32_t bindingSlot)
 	{
 		return

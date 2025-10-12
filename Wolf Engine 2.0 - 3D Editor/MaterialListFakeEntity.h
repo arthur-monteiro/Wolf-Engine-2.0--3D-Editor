@@ -11,7 +11,7 @@ class MaterialListFakeEntity : public Entity
 public:
 	MaterialListFakeEntity(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
 
-	void activateParams() const override;
+	void activateParams() override;
 	void fillJSONForParams(std::string& outJSON) override;
 
 	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager) override;
