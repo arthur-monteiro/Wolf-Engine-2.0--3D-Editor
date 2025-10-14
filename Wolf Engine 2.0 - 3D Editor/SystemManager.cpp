@@ -20,6 +20,15 @@ SystemManager::SystemManager()
 
 	createWolfInstance();
 
+	if (m_configuration->getEnableRayTracing() && !m_wolfInstance->isRayTracingAvailable())
+	{
+		std::string warningMessage = "Ray tracing has been enabled in editor options but it's not supported on this hardware. ";
+		warningMessage += "It will be disabled";
+		Wolf::Debug::sendWarning(warningMessage);
+
+		m_configuration->disableRayTracing();
+	}
+
 	m_editorParams->setWindowWidth(Wolf::g_configuration->getWindowWidth());
 	m_editorParams->setWindowHeight(Wolf::g_configuration->getWindowHeight());
 

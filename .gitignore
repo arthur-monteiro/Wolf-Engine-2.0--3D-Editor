@@ -390,3 +390,6 @@ Dependencies/*
 */PathTracingResults/*
 
 */BrowseToFile.exe
+
+*/.idea
+Wolf Engine 2.0 - 3D Editor/config/editor.ini

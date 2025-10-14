@@ -14,6 +14,8 @@ public:
 	[[nodiscard]] uint32_t getTakeScreenshotAfterFrameCount() const { return m_takeScreenshotAfterFrameCount; }
 	[[nodiscard]] bool getDisplayLogsToUI() const { return m_displayLogsToUI; }
 
+	void disableRayTracing() { m_enableRayTracing = false;}
+
 	[[nodiscard]] std::string computeFullPathFromLocalPath(const std::string& localPath) const { return m_dataFolderPath + '/' + localPath; }
 	[[nodiscard]] std::string computeLocalPathFromFullPath(const std::string& fullPath) const { return fullPath.substr(m_dataFolderPath.size() + 1); }
 

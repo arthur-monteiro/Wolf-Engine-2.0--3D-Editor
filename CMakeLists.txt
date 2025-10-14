@@ -74,6 +74,7 @@ target_link_libraries(WolfEngine_3DEditor GraphicAPIBroker.lib)
 target_link_libraries(WolfEngine_3DEditor WolfEngine.lib)
 target_link_libraries(WolfEngine_3DEditor GifEncoder.lib)
 
+add_dependencies(WolfEngine_3DEditor GifEncoder)
 add_dependencies(WolfEngine_3DEditor Common)
 add_dependencies(WolfEngine_3DEditor GraphicAPIBroker)
 add_dependencies(WolfEngine_3DEditor WolfEngine)
