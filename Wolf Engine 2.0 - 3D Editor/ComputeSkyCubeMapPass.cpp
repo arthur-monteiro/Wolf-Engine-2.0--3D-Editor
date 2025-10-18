@@ -87,7 +87,7 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
         m_computeFromSphericalMapUniformBuffers[captureViewIdx]->transferCPUMemory(&uniformBufferData, sizeof(uniformBufferData));
 
         std::vector<Wolf::ClearValue> clearValues(1);
-        clearValues[0] = {{{0.1f, 0.1f, 0.1f, 1.0f}}};
+        clearValues[0] = {{{ CLEAR_VALUE, CLEAR_VALUE, CLEAR_VALUE, 1.0f }}};
         m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffer, clearValues);
 
         m_commandBuffer->bindPipeline(m_computeFromSphericalMapPipeline.createConstNonOwnerResource());

@@ -8,12 +8,12 @@ file(GLOB SRC
         "Wolf Engine 2.0 - 3D Editor/*.cpp"
 )
 
-set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
-FetchContent_Declare(WolfEngineContent
-        GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG 75b67e052b7474bee107b6b29717d78578f22314
-        SOURCE_SUBDIR "__skip_subdirectory__")
-FetchContent_MakeAvailable(WolfEngineContent)
+#set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+#FetchContent_Declare(WolfEngineContent
+#        GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
+#        GIT_TAG 5dd6f930b8939aee729099b514c545388999a2bd
+#        SOURCE_SUBDIR "__skip_subdirectory__")
+#FetchContent_MakeAvailable(WolfEngineContent)
 
 # Includes Wolf libs
 include_directories("dependencies/wolfenginecontent-src/Common")

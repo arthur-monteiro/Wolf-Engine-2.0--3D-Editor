@@ -91,9 +91,16 @@ void SystemManager::run()
 	while (!m_wolfInstance->windowShouldClose() /* check if the window should close (for example if the user pressed alt+f4)*/)
 	{
 		bool doScreenShot = false;
+		bool shutdownRequested = false;
 		if (g_editorConfiguration->getTakeScreenshotAfterFrameCount() != 0 && Wolf::g_runtimeContext->getCurrentCPUFrameNumber() == g_editorConfiguration->getTakeScreenshotAfterFrameCount())
 		{
 			doScreenShot = true;
+			shutdownRequested = true;
+		}
+		if (m_screenshotRequested)
+		{
+			doScreenShot = true;
+			m_screenshotRequested = false;
 		}
 
 		updateBeforeFrame();
@@ -115,7 +122,7 @@ void SystemManager::run()
 
 		FrameMark;
 
-		if (doScreenShot)
+		if (shutdownRequested)
 			break;
 	}
 
@@ -140,6 +147,7 @@ void SystemManager::createWolfInstance()
 		resizeCallback(width, height);
 	};
 	wolfInstanceCreateInfo.htmlURL = "UI/UI.html";
+	wolfInstanceCreateInfo.uiFinalLayout = VK_IMAGE_LAYOUT_GENERAL;
 	wolfInstanceCreateInfo.bindUltralightCallbacks = [this](ultralight::JSObject& jsObject) { bindUltralightCallbacks(jsObject); };
 	wolfInstanceCreateInfo.useBindlessDescriptor = true;
 	wolfInstanceCreateInfo.threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
@@ -244,6 +252,7 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openUIInBrowser"] = std::bind(&SystemManager::openUIInBrowserJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["takeScreenshot"] = std::bind(&SystemManager::takeScreenshotJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["getAllComponentTypes"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getAllComponentTypesJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["requestEntitySelection"] = std::bind(&SystemManager::requestEntitySelectionJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["duplicateEntity"] = std::bind(&SystemManager::duplicateEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -263,6 +272,12 @@ void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
 	m_editorParams->setWindowHeight(height);
 
 	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
+}
+
+void SystemManager::forceCustomViewForSelectedEntity()
+{
+	goToSelectedEntity();
+	Wolf::Debug::sendError("Not implemented");
 }
 
 ultralight::JSValue SystemManager::getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -601,6 +616,11 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 	system("start tmp/UI/UI_dmp.html");
 }
 
+void SystemManager::takeScreenshotJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	m_screenshotRequested = true;
+}
+
 ultralight::JSValue SystemManager::getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject,
                                                                   const ultralight::JSArgs& args)
 {
@@ -803,7 +823,7 @@ void SystemManager::updateBeforeFrame()
 		m_editorPhysicsManager->addDebugInfo(debugRenderingManager);
 	}
 
-	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), 0);
+	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), CommonCameraIndices::CAMERA_IDX_MAIN);
 	m_camera->setAspect(m_editorParams->getAspect());
 
 	m_renderer->update(m_wolfInstance.get());

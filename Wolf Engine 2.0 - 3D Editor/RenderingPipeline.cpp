@@ -57,6 +57,9 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource()));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
+	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource()));
+	wolfInstance->initializePass(m_compositionPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
 	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
 	wolfInstance->initializePass(m_drawIdsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
@@ -112,6 +115,7 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 		passes.push_back(m_pathTracingPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
 	passes.push_back(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	passes.push_back(m_compositionPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_drawIdsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
@@ -128,14 +132,14 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 	}
 	else
 	{
-		finalSemaphore = m_forwardPass->getSemaphore(swapChainImageIdx);
+		finalSemaphore = m_compositionPass->getSemaphore(swapChainImageIdx);
 	}
 	wolfInstance->frame(passes, finalSemaphore, swapChainImageIdx);
 
 	if (doScreenShot)
 	{
 		wolfInstance->waitIdle();
-		m_forwardPass->saveSwapChainToFile();
+		m_compositionPass->saveSwapChainToFile();
 	}
 }
 
@@ -178,6 +182,11 @@ Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> RenderingPipeline::getComputeSkyCu
 Wolf::ResourceNonOwner<CascadedShadowMapsPass> RenderingPipeline::getCascadedShadowMapsPass()
 {
 	return m_cascadedShadowMapsPass.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<CompositionPass> RenderingPipeline::getCompositionPass()
+{
+	return m_compositionPass.createNonOwnerResource();
 }
 
 void RenderingPipeline::requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const

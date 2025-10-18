@@ -15,12 +15,12 @@ public:
 	float getAspect();
 	Wolf::Viewport getRenderViewport();
 
-	uint32_t getRenderOffsetLeft() const;
-	uint32_t getRenderOffsetRight() const;
-	uint32_t getRenderWidth() const;
-	uint32_t getRenderOffsetTop() const;
-	uint32_t getRenderOffsetBot() const;
-	uint32_t getRenderHeight() const;
+	[[nodiscard]] uint32_t getRenderOffsetLeft() const;
+	[[nodiscard]] uint32_t getRenderOffsetRight() const;
+	[[nodiscard]] uint32_t getRenderWidth() const;
+	[[nodiscard]] uint32_t getRenderOffsetTop() const;
+	[[nodiscard]] uint32_t getRenderOffsetBot() const;
+	[[nodiscard]] uint32_t getRenderHeight() const;
 
 	void setRenderOffsetLeft(uint32_t value) { m_renderOffsetLeft = value; }
 	void setRenderOffsetRight(uint32_t value) { m_renderOffsetRight = value; }

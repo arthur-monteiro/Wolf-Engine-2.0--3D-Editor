@@ -33,3 +33,5 @@ struct GameContext
 	std::string currentSceneName;
 };
 
+static constexpr float CLEAR_VALUE = 0.01002282557f; // pow((0.1 + 0.055) / 1.055, 2.4)
+

@@ -39,7 +39,7 @@ void ParticleSeparateRenderPass::record(const Wolf::RecordContext& context)
 	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "Particle render separated pass");
 
 	std::vector<Wolf::ClearValue> clearValues(2);
-	clearValues[0] = { 0.1f, 0.1f, 0.1f, 1.0f };
+	clearValues[0] = { CLEAR_VALUE, CLEAR_VALUE, CLEAR_VALUE, 1.0f };
 	clearValues[1] = { 1.0f };
 	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffer, clearValues);
 

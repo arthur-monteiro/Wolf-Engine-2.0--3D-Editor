@@ -13,6 +13,9 @@
 class ThumbnailsGenerationPass : public Wolf::CommandRecordBase
 {
 public:
+	static constexpr uint32_t OUTPUT_SIZE = 100;
+	static constexpr float DELAY_BETWEEN_ICON_FRAMES_MS = 40.0f;
+
 	ThumbnailsGenerationPass();
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
@@ -25,7 +28,7 @@ public:
 	class Request
 	{
 	public:
-		Request(Wolf::ModelData* modelData, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback) : m_modelData(modelData), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback) {}
+		Request(Wolf::ModelData* modelData, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix);
 
 	private:
 		friend ThumbnailsGenerationPass;
@@ -34,15 +37,14 @@ public:
 		std::string m_outputFullFilepath;
 		uint32_t m_imageLeftToDraw = 0;
 		std::function<void()> m_onGeneratedCallback;
+		glm::mat4 m_viewMatrix;
 	};
 	void addRequestBeforeFrame(const Request& request);
 
 private:
 	static uint32_t computeTotalImageToDraw(const Request& request);
 
-	static constexpr uint32_t OUTPUT_SIZE = 100;
 	static constexpr Wolf::Format OUTPUT_FORMAT = Wolf::Format::R8G8B8A8_UNORM;
-	static constexpr float DELAY_BETWEEN_ICON_FRAMES_MS = 40.0f;
 
 	std::deque<Request> m_pendingRequests;
 	std::deque<Request> m_currentRequests;

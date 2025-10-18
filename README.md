@@ -3,7 +3,7 @@
 This project is a 3D editor using the [Wolf-Engine 2.0](https://github.com/arthur-monteiro/WolfEngine-2.0).
 
 <p align="center">
-  <img src="./Screenshots/sponza_intel.PNG"  width="1080"/>
+  <img src="./Screenshots/sponza_intel.png"  width="1080"/>
 </p>
 
 Currently in development.
@@ -13,6 +13,13 @@ Currently in development.
 Build with CMake, it will automatically download the right Wolf-Engine version.
 
 ## Features
+
+### Color grading
+You can load a .cube file (rec709) to apply a "look" on the final image.
+
+<p align="center">
+  <img src="./Screenshots/color_grading.png"  width="1080"/>
+</p>
 
 ### Particles
 

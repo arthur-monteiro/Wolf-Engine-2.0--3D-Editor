@@ -3,8 +3,9 @@
 #include <WolfEngine.h>
 
 #include "CascadedShadowMapsPass.h"
-#include "ContaminationUpdatePass.h"
+#include "CompositionPass.h"
 #include "ComputeSkyCubeMapPass.h"
+#include "ContaminationUpdatePass.h"
 #include "DrawIdsPass.h"
 #include "ForwardPass.h"
 #include "GPUBufferToGPUBufferCopyPass.h"
@@ -39,6 +40,7 @@ public:
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() override;
 	Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() override;
+	Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() override;
 	void requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const;
 
 private:
@@ -56,6 +58,7 @@ private:
 	Wolf::ResourceUniqueOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
 	Wolf::ResourceUniqueOwner<PathTracingPass> m_pathTracingPass;
 	Wolf::ResourceUniqueOwner<ForwardPass> m_forwardPass;
+	Wolf::ResourceUniqueOwner<CompositionPass> m_compositionPass;
 	Wolf::ResourceUniqueOwner<DrawIdsPass> m_drawIdsPass;
 	Wolf::ResourceUniqueOwner<GPUBufferToGPUBufferCopyPass> m_gpuBufferToGpuBufferCopyPass;
 };

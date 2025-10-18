@@ -5,6 +5,7 @@
 #include <string>
 
 #include "AnimatedModel.h"
+#include "ColorGradingComponent.h"
 #include "ComponentInterface.h"
 #include "ContaminationEmitter.h"
 #include "ContaminationMaterial.h"
@@ -53,7 +54,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 13> m_componentsInfo =
+	std::array<ComponentInfo, 14> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -156,7 +157,7 @@ private:
 		},
 		ComponentInfo
 		{
-			"Gas Cylinder",
+			"Gas cylinder",
 			GasCylinderComponent::ID,
 			[this]()
 			{
@@ -170,6 +171,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new ContaminationMaterial(m_getEntityFromLoadingPathCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"Color grading",
+			ColorGradingComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new ColorGradingComponent(m_resourceManager, m_renderingPipeline));
 			}
 		}
 	};

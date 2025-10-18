@@ -38,6 +38,8 @@ private:
 	void bindUltralightCallbacks(ultralight::JSObject& jsObject);
 	void resizeCallback(uint32_t width, uint32_t height) const;
 
+	void forceCustomViewForSelectedEntity();
+
 	// JS callbacks
 	ultralight::JSValue getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -57,6 +59,7 @@ private:
 	void loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void takeScreenshotJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getAllComponentTypesJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void requestEntitySelectionJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void disableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -116,4 +119,5 @@ private:
 
 	std::string m_loadSceneRequest;
 	bool m_isLoading = false;
+	bool m_screenshotRequested = false;
 };

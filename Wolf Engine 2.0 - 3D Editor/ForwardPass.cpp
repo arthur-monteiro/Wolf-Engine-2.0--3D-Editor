@@ -17,14 +17,16 @@
 
 void ForwardPass::initializeResources(const Wolf::InitializationContext& context)
 {
+	createOutputImage(context);
+
 	Wolf::Attachment color = setupColorAttachment(context);
 	Wolf::Attachment depth = setupDepthAttachment(context);
 
 	m_renderPass.reset(Wolf::RenderPass::createRenderPass({ color, depth }));
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false /* isTransient */));
-	initializeFramesBuffers(context, color, depth);
+	initializeFramesBuffer(context, color, depth);
 
-	createSemaphores(context, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, true);
+	createSemaphores(context, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, false);
 
 	// Shared resources
 	{
@@ -58,18 +60,8 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 		m_particlesVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.vert", {}, 1));
 	}
 
-	// UI resources
+	// Full screen rect resources
 	{
-		m_userInterfaceDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
-		m_userInterfaceDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts()));
-
-		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
-		m_userInterfaceSampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 11, VK_FILTER_LINEAR));
-		descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, context.userInterfaceImage->getDefaultImageView(), *m_userInterfaceSampler);
-
-		m_userInterfaceDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_userInterfaceDescriptorSetLayout));
-		m_userInterfaceDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
-
 		// Load fullscreen rect
 		const std::vector<Vertex2DTextured> vertices =
 		{
@@ -86,9 +78,6 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 		};
 
 		m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices));
-
-		m_userInterfaceVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/UI/UI.vert"));
-		m_userInterfaceFragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/UI/UI.frag"));
 	}
 
 	m_renderWidth = context.swapChainWidth;
@@ -102,15 +91,11 @@ void ForwardPass::resize(const Wolf::InitializationContext& context)
 
 	Wolf::Attachment color = setupColorAttachment(context);
 	Wolf::Attachment depth = setupDepthAttachment(context);
-	initializeFramesBuffers(context, color, depth);
-
-	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_userInterfaceDescriptorSetLayoutGenerator.getDescriptorLayouts());
-	descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, context.userInterfaceImage->getDefaultImageView(), *m_userInterfaceSampler);
-	m_userInterfaceDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+	initializeFramesBuffer(context, color, depth);
 
 	m_renderWidth = context.swapChainWidth;
 	m_renderHeight = context.swapChainHeight;
-	createPipelines(); // may be overkill but resets the viewport for UI
+	createPipelines(); // may be overkill but resets the viewport for UI // TODO: still needed?
 }
 
 void ForwardPass::record(const Wolf::RecordContext& context)
@@ -119,15 +104,14 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 
 	/* Command buffer record */
 	const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
-	const uint32_t frameBufferIdx = context.swapChainImageIdx;
 
 	m_commandBuffer->beginCommandBuffer();
 
 	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "Forward pass");
 
 	std::vector<Wolf::ClearValue> clearValues(1);
-	clearValues[0] = { 0.1f, 0.1f, 0.1f, 1.0f };
-	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffers[frameBufferIdx], clearValues);
+	clearValues[0] = { CLEAR_VALUE, CLEAR_VALUE, CLEAR_VALUE, 1.0f };
+	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffer, clearValues);
 
 	/* Shared resources */
 	DisplayOptionsUBData displayOptions{};
@@ -180,23 +164,16 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
 	}
 
-	m_commandBuffer->bindPipeline(m_userInterfacePipeline.get());
-	m_commandBuffer->bindDescriptorSet(m_userInterfaceDescriptorSet.get(), 0, *m_userInterfacePipeline);
-
-	m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
-
 	m_commandBuffer->endRenderPass();
 
 	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
 	m_commandBuffer->endCommandBuffer();
-
-	m_lastSwapchainImage = context.swapchainImage;
 }
 
 void ForwardPass::submit(const Wolf::SubmitContext& context)
 {
-	std::vector waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore };
+	std::vector<const Wolf::Semaphore*> waitSemaphores{ };
 	if (m_contaminationUpdatePass->wasEnabledThisFrame())
 		waitSemaphores.push_back(m_contaminationUpdatePass->getSemaphore(context.swapChainImageIndex));
 	if (m_particlesUpdatePass->getParticleCount() > 0)
@@ -213,13 +190,9 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 		waitSemaphores.push_back({ m_computeSkyCubeMapPass->getSemaphore(context.swapChainImageIndex) });
 
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
-	m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
+	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 
-	bool anyShaderModified = m_userInterfaceVertexShaderParser->compileIfFileHasBeenModified();
-	if (m_userInterfaceFragmentShaderParser->compileIfFileHasBeenModified())
-		anyShaderModified = true;
-	if (m_particlesVertexShaderParser->compileIfFileHasBeenModified())
-		anyShaderModified = true;
+	bool anyShaderModified = m_particlesVertexShaderParser->compileIfFileHasBeenModified();
 	if (m_particlesFragmentShaderParser->compileIfFileHasBeenModified())
 		anyShaderModified = true;
 
@@ -246,51 +219,27 @@ void ForwardPass::setShadowMaskPass(const Wolf::ResourceNonOwner<ShadowMaskPassI
 	}
 }
 
-void ForwardPass::saveSwapChainToFile()
+void ForwardPass::createOutputImage(const Wolf::InitializationContext& context)
 {
-	std::vector<uint8_t> fullImageData;
-	m_lastSwapchainImage->exportToBuffer(fullImageData);
-
-	uint32_t channelCount = 4;
-
-	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
-	std::vector<uint8_t> renderImageData(renderViewport.width * renderViewport.height * channelCount);
-
-	for (uint32_t y = 0; y < static_cast<uint32_t>(renderViewport.height); y++)
-	{
-		uint32_t offsetInFullImageData = ((y + static_cast<uint32_t>(renderViewport.y)) * m_lastSwapchainImage->getExtent().width * channelCount) + static_cast<uint32_t>(renderViewport.x) * channelCount;
-		uint8_t* src = &fullImageData[offsetInFullImageData];
-		uint8_t* dst = &renderImageData[y * renderViewport.width * channelCount];
-		uint32_t lineCopySize = renderViewport.width * channelCount;
-
-		memcpy(dst, src, lineCopySize);
-	}
-
-	for (uint32_t pixelIdx = 0; pixelIdx < renderViewport.width * renderViewport.height; pixelIdx++)
-	{
-		uint8_t r = renderImageData[4 * pixelIdx + 2];
-		uint8_t g = renderImageData[4 * pixelIdx + 1];
-		uint8_t b = renderImageData[4 * pixelIdx + 0];
-		uint8_t a = renderImageData[4 * pixelIdx + 3];
-
-		renderImageData[4 * pixelIdx + 0] = r;
-		renderImageData[4 * pixelIdx + 1] = g;
-		renderImageData[4 * pixelIdx + 2] = b;
-		renderImageData[4 * pixelIdx + 3] = a;
-	}
-
-	stbi_write_png("screenshot.png", renderViewport.width, renderViewport.height, channelCount, renderImageData.data(), renderViewport.width * channelCount);
+	Wolf::CreateImageInfo createInfo{};
+	createInfo.extent = { context.swapChainWidth, context.swapChainHeight, 1 };
+	createInfo.usage = Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT;
+	createInfo.format = Wolf::Format::R16G16B16A16_SFLOAT;
+	createInfo.mipLevelCount = 1;
+	m_outputImage.reset(Wolf::Image::createImage(createInfo));
+	m_outputImage->setImageLayout({ VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0, 1,
+		VK_IMAGE_LAYOUT_UNDEFINED });
 }
 
 Wolf::Attachment ForwardPass::setupColorAttachment(const Wolf::InitializationContext& context)
 {
-	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, context.swapChainFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
-		nullptr);
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, Wolf::Format::R16G16B16A16_SFLOAT, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_GENERAL, Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
+		m_outputImage->getDefaultImageView());
 }
 
 Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationContext& context)
 {
-	Wolf::Attachment attachment({context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+	Wolf::Attachment attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_preDepthPass->getOutput()->getDefaultImageView());
 	attachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;;
 	attachment.loadOperation = Wolf::AttachmentLoadOp::LOAD;
@@ -298,15 +247,9 @@ Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationCon
 	return attachment;
 }
 
-void ForwardPass::initializeFramesBuffers(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment)
+void ForwardPass::initializeFramesBuffer(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment)
 {
-	m_frameBuffers.clear();
-	m_frameBuffers.resize(context.swapChainImageCount);
-	for (uint32_t i = 0; i < context.swapChainImageCount; ++i)
-	{
-		colorAttachment.imageView = context.swapChainImages[i]->getDefaultImageView();
-		m_frameBuffers[i].reset(Wolf::FrameBuffer::createFrameBuffer(*m_renderPass, { colorAttachment,  depthAttachment }));
-	}
+	m_frameBuffer.reset(Wolf::FrameBuffer::createFrameBuffer(*m_renderPass, { colorAttachment,  depthAttachment }));
 }
 
 void ForwardPass::createPipelines()
@@ -355,45 +298,5 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 
 		m_particlesPipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
-	}
-
-	// UI
-	{
-		Wolf::RenderingPipelineCreateInfo pipelineCreateInfo;
-		pipelineCreateInfo.renderPass = m_renderPass.get();
-
-		// Programming stages
-		pipelineCreateInfo.shaderCreateInfos.resize(2);
-		m_userInterfaceVertexShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[0].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
-		m_userInterfaceFragmentShaderParser->readCompiledShader(pipelineCreateInfo.shaderCreateInfos[1].shaderCode);
-		pipelineCreateInfo.shaderCreateInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
-
-		// IA
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-		Vertex2DTextured::getAttributeDescriptions(attributeDescriptions, 0);
-		pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
-
-		std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
-		bindingDescriptions[0] = {};
-		Vertex2DTextured::getBindingDescription(bindingDescriptions[0], 0);
-		pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
-
-		// Viewport
-		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
-
-		// Depth
-		pipelineCreateInfo.enableDepthWrite = false;
-
-		// Resources
-		pipelineCreateInfo.descriptorSetLayouts = { m_userInterfaceDescriptorSetLayout.get() };
-
-		// Dynamic state
-		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-
-		// Color Blend
-		pipelineCreateInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
-
-		m_userInterfacePipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 	}
 }

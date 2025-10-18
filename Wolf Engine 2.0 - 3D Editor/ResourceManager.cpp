@@ -1,6 +1,9 @@
 #include "ResourceManager.h"
 
+#include <glm/gtc/packing.hpp>
 #include <fstream>
+#include <stb_image_write.h>
+
 #include <ImageFileLoader.h>
 #include <MipMapGenerator.h>
 
@@ -13,8 +16,8 @@
 #include "RenderMeshList.h"
 
 ResourceManager::ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback, 
-	const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
-	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+                                 const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
+                                 const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
 	: m_addResourceToUICallback(addResourceToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration),
       m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass())
 {
@@ -92,6 +95,7 @@ void ResourceManager::save()
 void ResourceManager::clear()
 {
 	m_meshes.clear();
+	m_images.clear();
 }
 
 Wolf::ResourceNonOwner<Entity> ResourceManager::computeResourceEditor(ResourceId resourceId)
@@ -99,38 +103,60 @@ Wolf::ResourceNonOwner<Entity> ResourceManager::computeResourceEditor(ResourceId
 	if (m_currentResourceInEdition == resourceId)
 		return m_transientEditionEntity.createNonOwnerResource();
 
-	MeshResourceEditor* meshResourceEditor = findMeshResourceEditorInResourceEditionToSave(resourceId);
-	if (!meshResourceEditor)
+	m_transientEditionEntity.reset(new Entity("", [](Entity*) {}));
+	m_transientEditionEntity->setIncludeEntityParams(false);
+
+	if (isMesh(resourceId))
 	{
-		if (m_resourceEditedParamsToSaveCount == MAX_EDITED_RESOURCES - 1)
+		MeshResourceEditor* meshResourceEditor = findMeshResourceEditorInResourceEditionToSave(resourceId);
+		if (!meshResourceEditor)
 		{
-			Wolf::Debug::sendWarning("Maximum edited resources reached");
-			return m_transientEditionEntity.createNonOwnerResource();
+			if (m_resourceEditedParamsToSaveCount == MAX_EDITED_RESOURCES - 1)
+			{
+				Wolf::Debug::sendWarning("Maximum edited resources reached");
+				return m_transientEditionEntity.createNonOwnerResource();
+			}
+
+			addCurrentResourceEditionToSave();
 		}
 
-		addCurrentResourceEditionToSave();
+		if (!meshResourceEditor)
+		{
+			Wolf::ModelData* modelData = getModelData(resourceId);
+			meshResourceEditor = new MeshResourceEditor(m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData->isMeshCentered);
+
+			for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->physicsShapes)
+			{
+				meshResourceEditor->addShape(shape);
+			}
+
+			meshResourceEditor->subscribe(this, [this](Notifier::Flags flags) { onResourceEditionChanged(flags); });
+		}
+		m_transientEditionEntity->addComponent(meshResourceEditor);
+		m_meshResourceEditor = m_transientEditionEntity->getComponent<MeshResourceEditor>();
+	}
+	else if (isImage(resourceId))
+	{
+
+	}
+	else
+	{
+		Wolf::Debug::sendError("Resource type is not supported");
 	}
 
 	m_currentResourceInEdition = resourceId;
 
-	m_transientEditionEntity.reset(new Entity("", [](Entity*) {}));
-	m_transientEditionEntity->setIncludeEntityParams(false);
-	if (!meshResourceEditor)
-	{
-		Wolf::ModelData* modelData = getModelData(resourceId);
-		meshResourceEditor = new MeshResourceEditor(m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData->isMeshCentered);
-
-		for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->physicsShapes)
-		{
-			meshResourceEditor->addShape(shape);
-		}
-
-		meshResourceEditor->subscribe(this, [this](Notifier::Flags flags) { onResourceEditionChanged(flags); });
-	}
-	m_transientEditionEntity->addComponent(meshResourceEditor);
-	m_meshResourceEditor = m_transientEditionEntity->getComponent<MeshResourceEditor>();
-
 	return m_transientEditionEntity.createNonOwnerResource();
+}
+
+bool ResourceManager::isMesh(ResourceId resourceId)
+{
+	return resourceId >= MESH_RESOURCE_IDX_OFFSET && resourceId < MESH_RESOURCE_IDX_OFFSET + MAX_MESH_RESOURCE_COUNT;
+}
+
+bool ResourceManager::isImage(ResourceId resourceId)
+{
+	return resourceId >= IMAGE_RESOURCE_IDX_OFFSET && resourceId < IMAGE_RESOURCE_IDX_OFFSET + MAX_IMAGE_RESOURCE_COUNT;
 }
 
 ResourceManager::ResourceId ResourceManager::addModel(const std::string& loadingPath)
@@ -150,23 +176,7 @@ ResourceManager::ResourceId ResourceManager::addModel(const std::string& loading
 	}
 
 	std::string iconFullPath = computeIconPath(loadingPath);
-	bool iconFileExists = false;
-	if (const std::ifstream iconFile(iconFullPath.c_str()); iconFile.good())
-	{
-		iconFullPath = iconFullPath.substr(3, iconFullPath.size()); // remove "UI/"
-		iconFileExists = true;
-	}
-	else
-	{
-		if (loadingPath.substr(loadingPath.find_last_of('.') + 1) == "dae")
-		{
-			iconFullPath = "media/resourceIcon/no_icon.gif";
-		}
-		else
-		{
-			iconFullPath = "media/resourceIcon/no_icon.png";
-		}
-	}
+	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
 
 	ResourceId resourceId = static_cast<uint32_t>(m_meshes.size()) + MESH_RESOURCE_IDX_OFFSET;
 
@@ -178,31 +188,61 @@ ResourceManager::ResourceId ResourceManager::addModel(const std::string& loading
 
 bool ResourceManager::isModelLoaded(ResourceId modelResourceId) const
 {
+	if (!isMesh(modelResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a mesh");
+	}
+
 	return modelResourceId != NO_RESOURCE && m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->isLoaded();
 }
 
 Wolf::ModelData* ResourceManager::getModelData(ResourceId modelResourceId) const
 {
+	if (!isMesh(modelResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a mesh");
+	}
+
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getModelData();
 }
 
 Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> ResourceManager::getBLAS(ResourceId modelResourceId)
 {
+	if (!isMesh(modelResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a mesh");
+	}
+
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getBLAS();
 }
 
 uint32_t ResourceManager::getFirstMaterialIdx(ResourceId modelResourceId) const
 {
+	if (!isMesh(modelResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a mesh");
+	}
+
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getFirstMaterialIdx();
 }
 
 uint32_t ResourceManager::getFirstTextureSetIdx(ResourceId modelResourceId) const
 {
+	if (!isMesh(modelResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a mesh");
+	}
+
 	return m_meshes[modelResourceId - MESH_RESOURCE_IDX_OFFSET]->getFirstTextureSetIdx();
 }
 
 void ResourceManager::subscribeToResource(ResourceId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const
 {
+	if (!isMesh(resourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a mesh");
+	}
+
 	m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->subscribe(instance, callback);
 }
 
@@ -224,29 +264,51 @@ ResourceManager::ResourceId ResourceManager::addImage(const std::string& loading
 
 	ResourceId resourceId = static_cast<uint32_t>(m_images.size()) + IMAGE_RESOURCE_IDX_OFFSET;
 
-	m_images.emplace_back(new Image(loadingPath, resourceId, m_updateResourceInUICallback, loadMips, isSRGB, isHDR, keepDataOnCPU));
-	m_addResourceToUICallback(m_images.back()->computeName(), "media/resourceIcon/no_icon.png", resourceId);
+	std::string iconFullPath = computeIconPath(loadingPath);
+	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+
+	m_images.emplace_back(new Image(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, loadMips, isSRGB, isHDR, keepDataOnCPU));
+	m_addResourceToUICallback(m_images.back()->computeName(), iconFullPath, resourceId);
 
 	return resourceId;
 }
 
 bool ResourceManager::isImageLoaded(ResourceId imageResourceId) const
 {
+	if (!isImage(imageResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not an image");
+	}
+
 	return m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->isLoaded();
 }
 
 Wolf::ResourceNonOwner<Wolf::Image> ResourceManager::getImage(ResourceId imageResourceId) const
 {
+	if (!isImage(imageResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not an image");
+	}
+
 	return m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->getImage();
 }
 
 const uint8_t* ResourceManager::getImageData(ResourceId imageResourceId) const
 {
+	if (!isImage(imageResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not an image");
+	}
+
 	return m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->getFirstMipData();
 }
 
 void ResourceManager::deleteImageData(ResourceId imageResourceId) const
 {
+	if (!isImage(imageResourceId))
+	{
+		Wolf::Debug::sendError("ResourceId is not an image");
+	}
 	m_images[imageResourceId - IMAGE_RESOURCE_IDX_OFFSET]->deleteImageData();
 }
 
@@ -266,7 +328,34 @@ std::string ResourceManager::computeModelFullIdentifier(const std::string& loadi
 
 std::string ResourceManager::computeIconPath(const std::string& loadingPath)
 {
-	return "UI/media/resourceIcon/" + computeModelFullIdentifier(loadingPath) + ((loadingPath.substr(loadingPath.find_last_of('.') + 1) == "dae") ? ".gif" : ".png");
+	std::string extension = loadingPath.substr(loadingPath.find_last_of('.') + 1);
+	std::string thumbnailFormat = extension == "dae" || extension == "cube" ? ".gif" : ".png";
+
+	return "UI/media/resourceIcon/" + computeModelFullIdentifier(loadingPath) + thumbnailFormat;
+}
+
+bool ResourceManager::formatIconPath(const std::string& inLoadingPath, std::string& outIconPath)
+{
+	bool iconFileExists = false;
+	if (const std::ifstream iconFile(outIconPath.c_str()); iconFile.good())
+	{
+		outIconPath = outIconPath.substr(3, outIconPath.size()); // remove "UI/"
+		iconFileExists = true;
+	}
+	else
+	{
+		std::string extension = inLoadingPath.substr(inLoadingPath.find_last_of('.') + 1);
+		if (extension == "dae" || extension == "cube")
+		{
+			outIconPath = "media/resourceIcon/no_icon.gif";
+		}
+		else
+		{
+			outIconPath = "media/resourceIcon/no_icon.png";
+		}
+	}
+
+	return iconFileExists;
 }
 
 MeshResourceEditor* ResourceManager::findMeshResourceEditorInResourceEditionToSave(ResourceId resourceId)
@@ -288,6 +377,11 @@ MeshResourceEditor* ResourceManager::findMeshResourceEditorInResourceEditionToSa
 
 void ResourceManager::addCurrentResourceEditionToSave()
 {
+	if (isImage(m_currentResourceInEdition))
+	{
+		return; // nothing to save for images
+	}
+
 	if (m_currentResourceInEdition != NO_RESOURCE)
 	{
 		m_resourceEditedParamsToSaveCount++;
@@ -400,8 +494,15 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 
 	if (m_thumbnailGenerationRequested)
 	{
+		Wolf::AABB entityAABB = m_modelData.mesh->getAABB();
+		float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
+
+		glm::vec3 position = entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight);
+		glm::vec3 target = entityAABB.getCenter();
+		glm::mat4 viewMatrix = glm::lookAt(position, target, glm::vec3(0.0f, 1.0f, 0.0f));
+
 		thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, computeIconPath(m_loadingPath), 
-			[this]() { m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath).substr(3, computeIconPath(m_loadingPath).size()), m_resourceId); } });
+			[this]() { m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath).substr(3, computeIconPath(m_loadingPath).size()), m_resourceId); }, viewMatrix });
 		m_thumbnailGenerationRequested = false;
 	}
 
@@ -428,9 +529,9 @@ void ResourceManager::Mesh::buildBLAS()
 	m_bottomLevelAccelerationStructure.reset(Wolf::BottomLevelAccelerationStructure::createBottomLevelAccelerationStructure(createInfo));
 }
 
-ResourceManager::Image::Image(const std::string& loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
+ResourceManager::Image::Image(const std::string& loadingPath, bool needThumbnailsGeneration, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
 	bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU)
-	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback), m_loadMips(loadMips), m_isSRGB(isSRGB), m_isHDR(isHDR)
+	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback), m_thumbnailGenerationRequested(needThumbnailsGeneration), m_loadMips(loadMips), m_isSRGB(isSRGB), m_isHDR(isHDR)
 {
 	if (m_isSRGB && m_isHDR)
 	{
@@ -482,23 +583,31 @@ void ResourceManager::Image::loadImage()
 	Wolf::ImageFileLoader imageFileLoader(fullFilePath, m_isHDR);
 
 	Wolf::CreateImageInfo createImageInfo;
-	createImageInfo.extent = { imageFileLoader.getWidth(), imageFileLoader.getHeight(), 1 };
+	createImageInfo.extent = { imageFileLoader.getWidth(), imageFileLoader.getHeight(), imageFileLoader.getDepth() };
 	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 
-	Wolf::Format imageFormat = Wolf::Format::R8G8B8A8_UNORM;
-	if (m_isHDR)
+	Wolf::Format imageFormat = imageFileLoader.getFormat();
+	if (m_isSRGB)
 	{
-		imageFormat = Wolf::Format::R32G32B32A32_SFLOAT;
-	}
-	else if (m_isSRGB)
-	{
-		imageFormat = Wolf::Format::R8G8B8A8_SRGB;
+		if (imageFormat == Wolf::Format::R8G8B8A8_UNORM)
+		{
+			imageFormat = Wolf::Format::R8G8B8A8_SRGB;
+		}
+		else
+		{
+			Wolf::Debug::sendError("Format is not suppported for sRGB");
+		}
 	}
 
 	Wolf::ResourceUniqueOwner<Wolf::MipMapGenerator> mipMapGenerator;
 	uint32_t mipLevelCount = 1;
 	if (m_loadMips)
 	{
+		if (imageFileLoader.getDepth())
+		{
+			Wolf::Debug::sendError("Load mip with 3D images is not supported yet");
+		}
+
 		mipMapGenerator.reset(new Wolf::MipMapGenerator(imageFileLoader.getPixels(), { imageFileLoader.getWidth(), imageFileLoader.getHeight() }, imageFormat));
 		mipLevelCount = mipMapGenerator->getMipLevelCount();
 	}
@@ -523,5 +632,101 @@ void ResourceManager::Image::loadImage()
 		memcpy(m_firstMipData.data(), imageFileLoader.getPixels(), m_firstMipData.size());
 
 		m_dataOnCPUStatus = DataOnCPUStatus::AVAILABLE;
+	}
+
+	if (m_thumbnailGenerationRequested)
+	{
+		auto computeThumbnailData = [this, &imageFileLoader](std::vector<Wolf::ImageCompression::RGBA8>& out, float samplingZ = 0.0f)
+		{
+			bool hadAnErrorDuringGeneration = false;
+			for (uint32_t x = 0; x < ThumbnailsGenerationPass::OUTPUT_SIZE; ++x)
+			{
+				for (uint32_t y = 0; y < ThumbnailsGenerationPass::OUTPUT_SIZE; ++y)
+				{
+					// We don't do bilinear here... Good enough?
+					glm::vec3 samplingCoords = glm::vec3(static_cast<float>(x) / static_cast<float>(ThumbnailsGenerationPass::OUTPUT_SIZE), static_cast<float>(y) / static_cast<float>(ThumbnailsGenerationPass::OUTPUT_SIZE), samplingZ);
+					glm::ivec3 samplingIndices = glm::ivec3(samplingCoords * glm::vec3(static_cast<float>(imageFileLoader.getWidth()), static_cast<float>(imageFileLoader.getHeight()), static_cast<float>(imageFileLoader.getDepth())));
+					uint32_t samplingIndex = samplingIndices.x + samplingIndices.y * imageFileLoader.getWidth() + samplingIndices.z * imageFileLoader.getWidth() * imageFileLoader.getHeight();
+
+					Wolf::ImageCompression::RGBA8& pixel = out[x + y * ThumbnailsGenerationPass::OUTPUT_SIZE];
+
+					if (imageFileLoader.getFormat() == Wolf::Format::R32G32B32A32_SFLOAT)
+					{
+						glm::vec4* pixels = reinterpret_cast<glm::vec4*>(imageFileLoader.getPixels());
+						pixel.r = glm::min(1.0f, pixels[samplingIndex].r) * 255.0f;
+						pixel.g = glm::min(1.0f, pixels[samplingIndex].g) * 255.0f;
+						pixel.b = glm::min(1.0f, pixels[samplingIndex].b) * 255.0f;
+						pixel.a = 255.0f;
+					}
+					else if (imageFileLoader.getFormat() == Wolf::Format::R16G16B16A16_SFLOAT)
+					{
+						uint16_t* pixels = reinterpret_cast<uint16_t*>(imageFileLoader.getPixels());
+						pixel.r = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex])) * 255.0f;
+						pixel.g = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 1])) * 255.0f;
+						pixel.b = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 2])) * 255.0f;
+						pixel.a = 255.0f;
+					}
+					else
+					{
+						Wolf::Debug::sendMessageOnce("Image format is not supported for thumbnail generation", Wolf::Debug::Severity::WARNING, this);
+						hadAnErrorDuringGeneration = true;
+					}
+				}
+			}
+
+			return !hadAnErrorDuringGeneration;
+		};
+
+		std::string extension = fullFilePath.substr(fullFilePath.find_last_of('.') + 1);
+		bool hadAnErrorDuringGeneration = false;
+
+		if (extension == "cube")
+		{
+			GifEncoder gifEncoder;
+
+			static constexpr int quality = 30;
+			static constexpr bool useGlobalColorMap = false;
+			static constexpr int loop = 0;
+			static constexpr int preAllocSize = ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE * 3;
+
+			if (!gifEncoder.open(computeIconPath(m_loadingPath), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE, quality, useGlobalColorMap, loop, preAllocSize))
+			{
+				Wolf::Debug::sendError("Error when opening gif file");
+			}
+
+			for (uint32_t z = 0; z < imageFileLoader.getDepth(); ++z)
+			{
+				std::vector<Wolf::ImageCompression::RGBA8> framePixels(ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE);
+				if (!computeThumbnailData(framePixels, static_cast<float>(z) / static_cast<float>(imageFileLoader.getDepth())))
+				{
+					Wolf::Debug::sendMessageOnce("Error computing frame data for " + fullFilePath + " thumbnail generation", Wolf::Debug::Severity::ERROR, this);
+					hadAnErrorDuringGeneration = true;
+				}
+
+				gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, reinterpret_cast<const uint8_t*>(framePixels.data()), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
+					static_cast<uint32_t>(ThumbnailsGenerationPass::DELAY_BETWEEN_ICON_FRAMES_MS) / 10);
+			}
+
+			gifEncoder.close();
+		}
+		else
+		{
+			std::vector<Wolf::ImageCompression::RGBA8> thumbnailPixels(ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE);
+
+			if (computeThumbnailData(thumbnailPixels))
+			{
+				stbi_write_png(computeIconPath(m_loadingPath).c_str(), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
+					4, thumbnailPixels.data(), ThumbnailsGenerationPass::OUTPUT_SIZE * sizeof(Wolf::ImageCompression::RGBA8));
+			}
+			else
+			{
+				hadAnErrorDuringGeneration = true;
+			}
+		}
+
+		if (!hadAnErrorDuringGeneration)
+		{
+			m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath).substr(3, computeIconPath(m_loadingPath).size()), m_resourceId);
+		}
 	}
 }

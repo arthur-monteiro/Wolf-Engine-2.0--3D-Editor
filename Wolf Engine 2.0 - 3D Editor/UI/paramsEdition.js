@@ -198,10 +198,18 @@ function computeInput(param, isLast) {
         htmlToAdd += "<table style='width: 70%; border-collapse: collapse; border-radius: 5px'>"
 
         let id = param.tab + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category);
-        htmlToAdd += "<tr><td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td><td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', '" + param.fileFilter + "', change" + nameForCallback + ")\""
+        htmlToAdd += "<tr>"
+        
+        htmlToAdd += "<td><div id='" + id + "'>" + (param.value ? param.value : "Default") + "</div></td>"
+
+        htmlToAdd += "<td><button onclick=\"pickFileAndSetValue('" + id + "', 'open', '" + param.fileFilter + "', change" + nameForCallback + ")\""
         if (param.isReadOnly)
             htmlToAdd += " disabled";
-        htmlToAdd += ">Select file</button></td></tr>";
+        htmlToAdd += ">Select file</button></td>";
+
+        htmlToAdd +="<td><img onclick=\"resetValue('" + id + "', change" + nameForCallback + ")\" src='media/interfaceIcon/cross.svg' height='25' width='25'/></td>"
+
+        htmlToAdd += "</tr>";
         htmlToAdd += "</table>";
     }
     else if (param.type == "Array") {
@@ -287,7 +295,7 @@ function computeInput(param, isLast) {
         htmlToAdd += "<button type='button' class='actionButton' onclick='change" + nameForCallback + "()'>" + param.name + "</button>";
     }
     else if (param.type == "Label") {
-        htmlToAdd += "<div>" + param.name + "</di>";
+        htmlToAdd += "<div>" + param.name + "</div>";
     }
 
     htmlToAdd += "</div>"

@@ -301,14 +301,15 @@ void ThumbnailsGenerationPass::addCameraForThisFrame(Wolf::CameraList& cameraLis
 	const Request& request = m_pendingRequests.front();
 
 	Wolf::AABB entityAABB = request.m_modelData->mesh->getAABB();
-	float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
-
-	m_camera->setPosition(entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight));
-	m_camera->setPhi(-0.645398319f);
-	m_camera->setTheta(glm::quarter_pi<float>());
-	m_camera->setFar(1000'000.f);
+	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, glm::length(entityAABB.getMax() - entityAABB.getMin()) * 4.0f);
+	m_camera->overrideMatrices(request.m_viewMatrix, projection);
 
 	cameraList.addCameraForThisFrame(m_camera.get(), CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
+}
+
+ThumbnailsGenerationPass::Request::Request(Wolf::ModelData* modelData, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix)
+	: m_modelData(modelData), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback), m_viewMatrix(viewMatrix)
+{
 }
 
 void ThumbnailsGenerationPass::addRequestBeforeFrame(const Request& request)

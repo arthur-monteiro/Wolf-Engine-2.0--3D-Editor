@@ -1,6 +1,7 @@
 #pragma once
 #include "ResourceNonOwner.h"
 
+class CompositionPass;
 class CascadedShadowMapsPass;
 class SkyBoxManager;
 class ContaminationUpdatePass;
@@ -21,5 +22,6 @@ public:
 	virtual Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() = 0;
 	virtual Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() = 0;
 	virtual Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() = 0;
+	virtual Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() = 0;
 };
 

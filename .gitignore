@@ -375,6 +375,7 @@ FodyWeavers.xsd
 *Parsed.rgen
 *Parsed.rmiss
 *Parsed.rchit
+*Parsed.comp
 x64/*
 Compute Pass/x64/*
 Hello triangle/x64/*

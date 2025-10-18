@@ -232,5 +232,4 @@ void main()
     float color = computeShadowOcclusion(viewPos, worldPos);
 
     imageStore(resultShadowMask, ivec2(gl_GlobalInvocationID.xy), vec4(color, 0.0, 0.0, 1.0));
-
 }

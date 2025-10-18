@@ -7,6 +7,14 @@ function getFrameRate() {
     return "FPS: 144";
 }
 
+function getVRAMRequested() {
+    return "0 MB";
+}
+
+function getVRAMUsed() {
+	return "0 MB";
+}
+
 function getRenderHeight() {
     return 600;
 }
@@ -17,6 +25,10 @@ function getRenderOffsetLeft() {
 
 function getRenderWidth() {
     return 1120;
+}
+
+function getRenderOffsetRight() {
+	return 300;
 }
 
 let modelAddCounter = 0;

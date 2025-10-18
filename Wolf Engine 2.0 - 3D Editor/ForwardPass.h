@@ -34,18 +34,21 @@ public:
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
 
+	Wolf::Image& getOutput() { return *m_outputImage; }
+
 	void setShadowMaskPass(const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPassInterface, Wolf::GraphicAPIManager* graphicApiManager);
-	void saveSwapChainToFile();
 
 private:
-	static Wolf::Attachment setupColorAttachment(const Wolf::InitializationContext& context);
+	void createOutputImage(const Wolf::InitializationContext& context);
+	Wolf::Attachment setupColorAttachment(const Wolf::InitializationContext& context);
 	Wolf::Attachment setupDepthAttachment(const Wolf::InitializationContext& context);
-	void initializeFramesBuffers(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment);
+	void initializeFramesBuffer(const Wolf::InitializationContext& context, Wolf::Attachment& colorAttachment, Wolf::Attachment& depthAttachment);
 
 	void createPipelines();
 
 	std::unique_ptr<Wolf::RenderPass> m_renderPass;
-	std::vector<std::unique_ptr<Wolf::FrameBuffer>> m_frameBuffers;
+	Wolf::ResourceUniqueOwner<Wolf::Image> m_outputImage;
+	Wolf::ResourceUniqueOwner<Wolf::FrameBuffer> m_frameBuffer;
 
 	uint32_t m_renderWidth;
 	uint32_t m_renderHeight;
@@ -73,16 +76,8 @@ private:
 
 	static constexpr uint32_t SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES = 5;
 
-	/* UI resources */
-	Wolf::DescriptorSetLayoutGenerator m_userInterfaceDescriptorSetLayoutGenerator;
-	std::unique_ptr<Wolf::DescriptorSetLayout> m_userInterfaceDescriptorSetLayout;
-	std::unique_ptr<Wolf::DescriptorSet> m_userInterfaceDescriptorSet;
+	/* Full screen rect */
 	std::unique_ptr<Wolf::Mesh> m_fullscreenRect;
-	std::unique_ptr<Wolf::Sampler> m_userInterfaceSampler;
-
-	std::unique_ptr<Wolf::ShaderParser> m_userInterfaceVertexShaderParser;
-	std::unique_ptr<Wolf::ShaderParser> m_userInterfaceFragmentShaderParser;
-	std::unique_ptr<Wolf::Pipeline> m_userInterfacePipeline;
 
 	EditorParams* m_editorParams;
 	Wolf::ResourceNonOwner<const ContaminationUpdatePass> m_contaminationUpdatePass;
@@ -93,8 +88,5 @@ private:
 	Wolf::NullableResourceNonOwner<PathTracingPass> m_pathTracingPass;
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> m_computeSkyCubeMapPass;
 	Wolf::ResourceNonOwner<SkyBoxManager> m_skyBoxManager;
-
-	/* Cached resources */
-	Wolf::Image* m_lastSwapchainImage = nullptr;
 };
 

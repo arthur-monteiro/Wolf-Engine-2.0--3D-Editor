@@ -18,6 +18,7 @@ layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 layout (binding = 0, set = 4, r16f) uniform image2D shadowMask;
 
 #include "../common/displayTypes.glsl"
+#include "../common/colorSpaceTransformations.glsl"
 
 const float PI = 3.14159265359;
 
@@ -88,8 +89,14 @@ vec4 computeLighting(MaterialInfo materialInfo)
             Lo += computeRadianceForLight(V, normal, roughness, F0, albedo, metalness, L, 1.0f /* attenuation */, ubLights.sunLights[i].sunColor.xyz) * shadowsCoeff;
         }
 
-        vec3 ambientLight = albedo * 0.3;
-        return vec4(Lo + ambientLight, 1.0);
+        vec3 ambientLight = albedo * 0.2;
+        
+        vec3 result = Lo + ambientLight;
+        float exposure = -1.5; // TODO
+        float exposureMultiplier = pow(2.0, exposure);
+        result *= exposureMultiplier;
+
+        return vec4(result, 1.0);
     }
     else 
     {

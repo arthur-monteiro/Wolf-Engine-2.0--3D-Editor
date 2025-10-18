@@ -69,7 +69,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			// Dynamic states
 			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 			pipelineInfo.enableDepthWrite = false;
-			pipelineInfo.depthCompareOp = VK_COMPARE_OP_EQUAL;
+			pipelineInfo.depthCompareOp = Wolf::CompareOp::EQUAL;
 
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
 

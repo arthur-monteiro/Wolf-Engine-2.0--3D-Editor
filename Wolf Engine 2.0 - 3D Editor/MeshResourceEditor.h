@@ -90,15 +90,19 @@ private:
 	EditorLabel m_isCenteredLabel = EditorLabel("Placeholder", TAB, "Mesh");
 	void centerMesh();
 	EditorParamButton m_centerMesh = EditorParamButton("Center mesh", TAB, "Mesh", [this]() { centerMesh(); });
+	
+	EditorParamButton m_enterCustomViewForThumbnail = EditorParamButton("Enter view for thumbnail generation", TAB, "Thumbnail", [this]() {});
 
-	std::array<EditorParamInterface*, 4> m_editorParams =
+	std::array<EditorParamInterface*, 5> m_editorParams =
 	{
 		&m_filepath,
 
 		&m_physicsMeshes,
 
 		&m_isCenteredLabel,
-		&m_centerMesh
+		&m_centerMesh,
+
+		&m_enterCustomViewForThumbnail
 	};
 };
 

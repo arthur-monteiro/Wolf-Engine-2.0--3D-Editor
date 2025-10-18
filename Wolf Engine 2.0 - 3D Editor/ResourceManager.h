@@ -26,6 +26,9 @@ public:
 
 	Wolf::ResourceNonOwner<Entity> computeResourceEditor(ResourceId resourceId);
 
+	static bool isMesh(ResourceId resourceId);
+	static bool isImage(ResourceId resourceId);
+
 	[[nodiscard]] ResourceId addModel(const std::string& loadingPath);
 	bool isModelLoaded(ResourceId modelResourceId) const;
 	Wolf::ModelData* getModelData(ResourceId modelResourceId) const;
@@ -43,6 +46,7 @@ public:
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
 	static std::string computeIconPath(const std::string& loadingPath);
+	static bool formatIconPath(const std::string& inLoadingPath, std::string& outIconPath);
 	MeshResourceEditor* findMeshResourceEditorInResourceEditionToSave(ResourceId resourceId);
 	void addCurrentResourceEditionToSave();
 	void onResourceEditionChanged(Notifier::Flags flags);
@@ -107,7 +111,7 @@ private:
 	class Image : public ResourceInterface
 	{
 	public:
-		Image(const std::string& loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
+		Image(const std::string& loadingPath, bool needThumbnailsGeneration, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback,
 			bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU);
 		Image(const Image&) = delete;
 
@@ -122,6 +126,7 @@ private:
 		void loadImage();
 
 		bool m_imageLoadingRequested = false;
+		bool m_thumbnailGenerationRequested = false;
 		Wolf::ResourceUniqueOwner<Wolf::Image> m_image;
 
 		bool m_loadMips;
