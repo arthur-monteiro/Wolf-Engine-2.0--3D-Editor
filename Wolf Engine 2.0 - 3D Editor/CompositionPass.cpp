@@ -178,6 +178,11 @@ void CompositionPass::submit(const Wolf::SubmitContext& context)
     }
 }
 
+void CompositionPass::clear()
+{
+    m_lutImage.release();
+}
+
 void CompositionPass::setInputLUT(const Wolf::ResourceNonOwner<Wolf::Image>& lutImage)
 {
     m_lutImage = lutImage;

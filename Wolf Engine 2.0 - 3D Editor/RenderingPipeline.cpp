@@ -147,6 +147,7 @@ void RenderingPipeline::clear()
 {
 	m_updateGPUBuffersPass->clear();
 	m_computeSkyCubeMapPass->clear();
+	m_compositionPass->clear();
 }
 
 Wolf::ResourceNonOwner<SkyBoxManager> RenderingPipeline::getSkyBoxManager()

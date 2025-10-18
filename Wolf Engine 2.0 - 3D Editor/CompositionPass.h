@@ -24,6 +24,8 @@ public:
     void record(const Wolf::RecordContext& context) override;
     void submit(const Wolf::SubmitContext& context) override;
 
+    void clear();
+
     void setInputLUT(const Wolf::ResourceNonOwner<Wolf::Image>& lutImage);
     void releaseInputLUT();
 
