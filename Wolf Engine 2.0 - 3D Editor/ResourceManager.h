@@ -18,7 +18,7 @@ public:
 
 	ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback, 
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
-		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback);
 
 	void updateBeforeFrame();
 	void save();
@@ -45,16 +45,19 @@ public:
 
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
-	static std::string computeIconPath(const std::string& loadingPath);
+	static std::string computeIconPath(const std::string& loadingPath, uint32_t thumbnailsLockedCount);
 	static bool formatIconPath(const std::string& inLoadingPath, std::string& outIconPath);
 	MeshResourceEditor* findMeshResourceEditorInResourceEditionToSave(ResourceId resourceId);
 	void addCurrentResourceEditionToSave();
 	void onResourceEditionChanged(Notifier::Flags flags);
+	void requestThumbnailReload(ResourceId resourceId, const glm::mat4& viewMatrix);
 
 	std::function<void(const std::string&, const std::string&, ResourceId)> m_addResourceToUICallback;
 	std::function<void(const std::string&, const std::string&, ResourceId)> m_updateResourceInUICallback;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
+	std::function<void(const std::string&)> m_isolateMeshCallback;
+	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
 
 	class ResourceInterface : public Notifier
 	{
@@ -75,6 +78,10 @@ private:
 		std::string m_loadingPath;
 		ResourceId m_resourceId = NO_RESOURCE;
 		std::function<void(const std::string&, const std::string&, ResourceId)> m_updateResourceInUICallback;
+
+		// Because the thumbnail file is locked by the UI, when we want to update it we need to create a new file with a new name
+		// This counter indicates the name of the next file: (icon name)_(m_thumbnailCountToMaintain)_.(extension)
+		uint32_t m_thumbnailCountToMaintain = 0;
 	};
 
 	class Mesh : public ResourceInterface
@@ -86,6 +93,9 @@ private:
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
 		void forceReload(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass);
+		void requestThumbnailReload();
+
+		void setThumbnailGenerationViewMatrix(const glm::mat4& viewMatrix) { m_thumbnailGenerationViewMatrix = viewMatrix;}
 
 		bool isLoaded() const override;
 		Wolf::ModelData* getModelData() { return &m_modelData; }
@@ -94,7 +104,8 @@ private:
 		uint32_t getFirstTextureSetIdx() const { return m_firstTextureSetIdx; }
 
 	private:
-		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& m_thumbnailsGenerationPass);
+		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
+		void generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& m_thumbnailsGenerationPass);
 		void buildBLAS();
 
 		bool m_modelLoadingRequested = false;
@@ -106,6 +117,8 @@ private:
 		uint32_t m_firstMaterialIdx = 0;
 
 		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_meshToKeepInMemory;
+
+		glm::mat4 m_thumbnailGenerationViewMatrix;
 	};
 
 	class Image : public ResourceInterface

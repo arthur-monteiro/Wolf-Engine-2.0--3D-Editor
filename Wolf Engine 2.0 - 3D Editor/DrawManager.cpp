@@ -107,6 +107,35 @@ void DrawManager::clear()
 	m_meshMutex.unlock();
 }
 
+void DrawManager::isolateEntity(Entity* entity)
+{
+	if (!m_infoByEntities.contains(entity))
+	{
+		Wolf::Debug::sendError("Trying to isolate an enregistered entity");
+		return;
+	}
+
+	const std::vector<InfoByEntity>& infoForEntity = m_infoByEntities[entity];
+	if (infoForEntity.empty())
+	{
+		Wolf::Debug::sendError("Trying to isolate an entity where info is empty");
+		return;
+	}
+
+	if (infoForEntity.size() != 1)
+	{
+		Wolf::Debug::sendWarning("Isolated an entity doesn't have exactly 1 instance, this is not currently supported. Only the first instance will be isolated");
+	}
+
+	const InfoByEntity& info = infoForEntity[0];
+	m_renderMeshList->isolateInstanceMesh(info.instancedMeshRegisteredIdx, info.instanceIdx);
+}
+
+void DrawManager::removeIsolation()
+{
+	m_renderMeshList->removeIsolation();
+}
+
 void DrawManager::addInstanceDataToBuffer(InstancedMeshRegistered& instancedMeshRegistered, uint32_t instanceIdx, const InstanceData& instanceData)
 {
 	Wolf::RenderMeshList::InstancedMesh instancedMesh = { instancedMeshRegistered.getMeshToRender(), instancedMeshRegistered.getInstanceBuffer().createNonOwnerResource(), sizeof(InstanceData) };

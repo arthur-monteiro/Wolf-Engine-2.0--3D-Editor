@@ -17,9 +17,10 @@
 
 ResourceManager::ResourceManager(const std::function<void(const std::string&, const std::string&, ResourceId)>& addResourceToUICallback, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback, 
                                  const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
-                                 const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+                                 const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string& loadingPath)>& isolateMeshCallback,
+                                 const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback)
 	: m_addResourceToUICallback(addResourceToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration),
-      m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass())
+      m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback)
 {
 }
 
@@ -48,7 +49,7 @@ void ResourceManager::updateBeforeFrame()
 			Wolf::ModelData* modelData = m_meshes[m_currentResourceInEdition]->getModelData();
 			modelData->physicsShapes.clear();
 
-			for (uint32_t i = 0; i < m_meshResourceEditor->getMeshCount(); ++i)
+			for (uint32_t i = 0; i < m_meshResourceEditor->getPhysicsMeshCount(); ++i)
 			{
 				Wolf::Physics::PhysicsShapeType shapeType = m_meshResourceEditor->getShapeType(i);
 
@@ -80,15 +81,32 @@ void ResourceManager::save()
 	{
 		ResourceEditedParamsToSave& resourceEditedParamsToSave = m_resourceEditedParamsToSave[i];
 
-		std::string fileContent;
-		resourceEditedParamsToSave.meshResourceEditor->computeOutputJSON(fileContent);
+		// Physics
+		if (resourceEditedParamsToSave.meshResourceEditor->getPhysicsMeshCount() > 0)
+		{
+			std::string physicsFileContent;
+			resourceEditedParamsToSave.meshResourceEditor->computePhysicsOutputJSON(physicsFileContent);
 
-		std::string outputFilename = m_meshes[resourceEditedParamsToSave.resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath() + ".physics.json";
+			std::string outputFilename = m_meshes[resourceEditedParamsToSave.resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath() + ".physics.json";
 
-		std::ofstream outputFile;
-		outputFile.open(m_editorConfiguration->computeFullPathFromLocalPath(outputFilename));
-		outputFile << fileContent;
-		outputFile.close();
+			std::ofstream outputFile;
+			outputFile.open(m_editorConfiguration->computeFullPathFromLocalPath(outputFilename));
+			outputFile << physicsFileContent;
+			outputFile.close();
+		}
+
+		// Info
+		{
+			std::string infoFileContent;
+			resourceEditedParamsToSave.meshResourceEditor->computeInfoOutputJSON(infoFileContent);
+
+			std::string outputFilename = m_meshes[resourceEditedParamsToSave.resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath() + ".info.json";
+
+			std::ofstream outputFile;
+			outputFile.open(m_editorConfiguration->computeFullPathFromLocalPath(outputFilename));
+			outputFile << infoFileContent;
+			outputFile.close();
+		}
 	}
 }
 
@@ -123,7 +141,8 @@ Wolf::ResourceNonOwner<Entity> ResourceManager::computeResourceEditor(ResourceId
 		if (!meshResourceEditor)
 		{
 			Wolf::ModelData* modelData = getModelData(resourceId);
-			meshResourceEditor = new MeshResourceEditor(m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData->isMeshCentered);
+			meshResourceEditor = new MeshResourceEditor(m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData->isMeshCentered, m_isolateMeshCallback,
+				m_removeIsolationAndGetViewMatrixCallback, [this, resourceId](const glm::mat4& viewMatrix) { requestThumbnailReload(resourceId, viewMatrix); });
 
 			for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->physicsShapes)
 			{
@@ -175,13 +194,60 @@ ResourceManager::ResourceId ResourceManager::addModel(const std::string& loading
 		}
 	}
 
-	std::string iconFullPath = computeIconPath(loadingPath);
+	std::string iconFullPath = computeIconPath(loadingPath, 0);
 	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+	uint32_t thumbnailsCount = 0;
+	while (iconFileExists)
+	{
+		thumbnailsCount++;
+
+		std::string nextIconFullPath = computeIconPath(loadingPath, thumbnailsCount);
+		iconFileExists = formatIconPath(loadingPath, nextIconFullPath);
+	}
+
+	iconFileExists = thumbnailsCount > 0;
+	if (thumbnailsCount > 1) // We need to replace the original with the latest one
+	{
+		std::string originalPath = computeIconPath(loadingPath, 0);
+		std::string latestPath = computeIconPath(loadingPath, thumbnailsCount - 1);
+
+		std::filesystem::remove(originalPath);
+		std::filesystem::rename(latestPath, originalPath);
+	}
 
 	ResourceId resourceId = static_cast<uint32_t>(m_meshes.size()) + MESH_RESOURCE_IDX_OFFSET;
 
-	m_meshes.emplace_back(new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback));
+	Mesh* newMesh = new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback);
+	m_meshes.emplace_back(newMesh);
 	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath, resourceId);
+
+	std::string infoFilePath = g_editorConfiguration->computeFullPathFromLocalPath(loadingPath + ".info.json");
+	bool infoFileExists = false;
+	{
+		std::ifstream infoFile(infoFilePath);
+		if (infoFile.good())
+		{
+			infoFileExists = true;
+		}
+	}
+
+	if (infoFileExists)
+	{
+		Wolf::JSONReader::FileReadInfo fileReadInfo(infoFilePath);
+		Wolf::JSONReader infoJSON(fileReadInfo);
+
+		Wolf::JSONReader::JSONObjectInterface* thumbnailGenerationInfo = infoJSON.getRoot()->getPropertyObject("thumbnailGenerationInfo");
+		glm::mat4 viewMatrix;
+		for (glm::length_t i = 0; i < 4; ++i)
+		{
+			for (glm::length_t j = 0; j < 4; ++j)
+			{
+				viewMatrix[i][j] = thumbnailGenerationInfo->getPropertyFloat("viewMatrix" + std::to_string(i) + std::to_string(j));
+			}
+		}
+
+		newMesh->setThumbnailGenerationViewMatrix(viewMatrix);
+	}
 
 	return resourceId;
 }
@@ -264,7 +330,7 @@ ResourceManager::ResourceId ResourceManager::addImage(const std::string& loading
 
 	ResourceId resourceId = static_cast<uint32_t>(m_images.size()) + IMAGE_RESOURCE_IDX_OFFSET;
 
-	std::string iconFullPath = computeIconPath(loadingPath);
+	std::string iconFullPath = computeIconPath(loadingPath, 0);
 	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
 
 	m_images.emplace_back(new Image(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, loadMips, isSRGB, isHDR, keepDataOnCPU));
@@ -326,12 +392,18 @@ std::string ResourceManager::computeModelFullIdentifier(const std::string& loadi
 	return modelFullIdentifier;
 }
 
-std::string ResourceManager::computeIconPath(const std::string& loadingPath)
+std::string ResourceManager::computeIconPath(const std::string& loadingPath, uint32_t thumbnailsLockedCount)
 {
-	std::string extension = loadingPath.substr(loadingPath.find_last_of('.') + 1);
-	std::string thumbnailFormat = extension == "dae" || extension == "cube" ? ".gif" : ".png";
+	std::string resourceExtension = loadingPath.substr(loadingPath.find_last_of('.') + 1);
+	std::string thumbnailExtension = resourceExtension == "dae" || resourceExtension == "cube" ? ".gif" : ".png";
 
-	return "UI/media/resourceIcon/" + computeModelFullIdentifier(loadingPath) + thumbnailFormat;
+	std::string iconPathNoExtension = "UI/media/resourceIcon/" + computeModelFullIdentifier(loadingPath);
+	if (thumbnailsLockedCount > 0)
+	{
+		iconPathNoExtension += "_" + std::to_string(thumbnailsLockedCount);
+	}
+	std::string iconPath = iconPathNoExtension + thumbnailExtension;
+	return iconPath;
 }
 
 bool ResourceManager::formatIconPath(const std::string& inLoadingPath, std::string& outIconPath)
@@ -398,6 +470,15 @@ void ResourceManager::onResourceEditionChanged(Notifier::Flags flags)
 	m_currentResourceNeedRebuildFlags |= flags;
 }
 
+void ResourceManager::requestThumbnailReload(ResourceId resourceId, const glm::mat4& viewMatrix)
+{
+	if (isMesh(resourceId))
+	{
+		m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->setThumbnailGenerationViewMatrix(viewMatrix);
+		m_meshes[resourceId - MESH_RESOURCE_IDX_OFFSET]->requestThumbnailReload();
+	}
+}
+
 ResourceManager::ResourceInterface::ResourceInterface(std::string loadingPath, ResourceId resourceId, const std::function<void(const std::string&, const std::string&, ResourceId)>& updateResourceInUICallback) 
 	: m_loadingPath(std::move(loadingPath)), m_resourceId(resourceId), m_updateResourceInUICallback(updateResourceInUICallback)
 {
@@ -432,8 +513,13 @@ void ResourceManager::Mesh::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf:
 {
 	if (m_modelLoadingRequested)
 	{
-		loadModel(materialsGPUManager, thumbnailsGenerationPass);
+		loadModel(materialsGPUManager);
 		m_modelLoadingRequested = false;
+	}
+	if (m_thumbnailGenerationRequested)
+	{
+		generateThumbnail(thumbnailsGenerationPass);
+		m_thumbnailGenerationRequested = false;
 	}
 
 	if (m_meshToKeepInMemory)
@@ -447,8 +533,25 @@ void ResourceManager::Mesh::forceReload(const Wolf::ResourceNonOwner<Wolf::Mater
 {
 	m_meshToKeepInMemory.reset(m_modelData.mesh.release());
 
-	loadModel(materialsGPUManager, thumbnailsGenerationPass);
+	loadModel(materialsGPUManager);
+	generateThumbnail(thumbnailsGenerationPass);
 	m_modelLoadingRequested = false;
+}
+
+void ResourceManager::Mesh::requestThumbnailReload()
+{
+	std::string iconPath = computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+	if (std::filesystem::exists(iconPath))
+	{
+		std::error_code ec;
+		if (!std::filesystem::remove(iconPath, ec))
+		{
+			// Thumbnail file exists but is OS locked, we need to create a new file with a new name
+			m_thumbnailCountToMaintain++;
+		}
+	}
+
+	m_thumbnailGenerationRequested = true;
 }
 
 bool ResourceManager::Mesh::isLoaded() const
@@ -456,7 +559,7 @@ bool ResourceManager::Mesh::isLoaded() const
 	return static_cast<bool>(m_modelData.mesh);
 }
 
-void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
 {
 	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
 
@@ -492,24 +595,25 @@ void ResourceManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::Materia
 	materialsGPUManager->unlockTextureSets();
 	materialsGPUManager->unlockMaterials();
 
-	if (m_thumbnailGenerationRequested)
-	{
-		Wolf::AABB entityAABB = m_modelData.mesh->getAABB();
-		float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
-
-		glm::vec3 position = entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight);
-		glm::vec3 target = entityAABB.getCenter();
-		glm::mat4 viewMatrix = glm::lookAt(position, target, glm::vec3(0.0f, 1.0f, 0.0f));
-
-		thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, computeIconPath(m_loadingPath), 
-			[this]() { m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath).substr(3, computeIconPath(m_loadingPath).size()), m_resourceId); }, viewMatrix });
-		m_thumbnailGenerationRequested = false;
-	}
-
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
 		buildBLAS();
 	}
+
+	Wolf::AABB entityAABB = m_modelData.mesh->getAABB();
+	float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
+	glm::vec3 position = entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight);
+	glm::vec3 target = entityAABB.getCenter();
+	m_thumbnailGenerationViewMatrix = glm::lookAt(position, target, glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+void ResourceManager::Mesh::generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+{
+	std::string iconPath = computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+
+	thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, m_firstMaterialIdx, iconPath,
+		[this, iconPath]() { m_updateResourceInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_resourceId); },
+			m_thumbnailGenerationViewMatrix });
 }
 
 void ResourceManager::Mesh::buildBLAS()
@@ -689,7 +793,7 @@ void ResourceManager::Image::loadImage()
 			static constexpr int loop = 0;
 			static constexpr int preAllocSize = ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE * 3;
 
-			if (!gifEncoder.open(computeIconPath(m_loadingPath), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE, quality, useGlobalColorMap, loop, preAllocSize))
+			if (!gifEncoder.open(computeIconPath(m_loadingPath, m_thumbnailCountToMaintain), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE, quality, useGlobalColorMap, loop, preAllocSize))
 			{
 				Wolf::Debug::sendError("Error when opening gif file");
 			}
@@ -715,7 +819,7 @@ void ResourceManager::Image::loadImage()
 
 			if (computeThumbnailData(thumbnailPixels))
 			{
-				stbi_write_png(computeIconPath(m_loadingPath).c_str(), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
+				stbi_write_png(computeIconPath(m_loadingPath, m_thumbnailCountToMaintain).c_str(), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
 					4, thumbnailPixels.data(), ThumbnailsGenerationPass::OUTPUT_SIZE * sizeof(Wolf::ImageCompression::RGBA8));
 			}
 			else
@@ -726,7 +830,7 @@ void ResourceManager::Image::loadImage()
 
 		if (!hadAnErrorDuringGeneration)
 		{
-			m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath).substr(3, computeIconPath(m_loadingPath).size()), m_resourceId);
+			m_updateResourceInUICallback(computeName(), computeIconPath(m_loadingPath, m_thumbnailCountToMaintain).substr(3, computeIconPath(m_loadingPath, m_thumbnailCountToMaintain).size()), m_resourceId);
 		}
 	}
 }

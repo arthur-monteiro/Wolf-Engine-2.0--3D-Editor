@@ -30,7 +30,6 @@ public:
 	virtual bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos) { return true; }
 	virtual bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) = 0;
 
-
 	virtual Wolf::AABB getAABB() const = 0;
 	virtual Wolf::BoundingSphere getBoundingSphere() const = 0;
 	virtual const glm::mat4& getTransform() const { return m_transform; }

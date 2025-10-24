@@ -30,7 +30,11 @@ public:
 		Request() = default;
 		Request(const void* data, uint32_t size, const Wolf::ResourceNonOwner<Wolf::Buffer>& outputBuffer, uint32_t outputOffset) :
 			m_data(data), m_size(size), m_outputBuffer(outputBuffer), m_outputOffset(outputOffset)
-		{		
+		{
+			if (m_outputOffset + m_size > m_outputBuffer->getSize())
+			{
+				Wolf::Debug::sendCriticalError("Wrong request, this could create a GPU hang");
+			}
 		}
 
 		Request(const unsigned char* pixels, const Wolf::ResourceNonOwner<Wolf::Image>& outputImage, const Wolf::Image::TransitionLayoutInfo& finalLayout, uint32_t mipLevel,

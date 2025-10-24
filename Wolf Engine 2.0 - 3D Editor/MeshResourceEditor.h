@@ -16,7 +16,8 @@ public:
 	};
 
 	std::string getId() const override { return "meshResourceEditor"; }
-	MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered);
+	MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, const std::function<void(const std::string&)>& isolateMeshCallback,
+		const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override {}
 	void addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape);
@@ -30,16 +31,21 @@ public:
 
 	void saveCustom() const override {}
 
-	void computeOutputJSON(std::string& out);
-	uint32_t getMeshCount() const { return static_cast<uint32_t>(m_physicsMeshes.size()); }
+	void computePhysicsOutputJSON(std::string& out);
+	uint32_t getPhysicsMeshCount() const { return static_cast<uint32_t>(m_physicsMeshes.size()); }
 	Wolf::Physics::PhysicsShapeType getShapeType(uint32_t meshIdx) const { return m_physicsMeshes[meshIdx].getType(); }
 	std::string getShapeName(uint32_t meshIdx) const { return m_physicsMeshes[meshIdx].getName(); }
 	void computeInfoForRectangle(uint32_t meshIdx, glm::vec3& outP0, glm::vec3& outS1, glm::vec3& outS2);
+
+	void computeInfoOutputJSON(std::string& out);
 
 private:
 	inline static const std::string TAB = "Mesh Resource";
 
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
+	std::function<void(const std::string&)> m_isolateMeshCallback;
+	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
+	std::function<void(const glm::mat4&)> m_requestThumbnailReload;
 
 	EditorParamString m_filepath = EditorParamString("Filepath", TAB, "General", EditorParamString::ParamStringType::STRING, false, false, true);
 
@@ -90,8 +96,11 @@ private:
 	EditorLabel m_isCenteredLabel = EditorLabel("Placeholder", TAB, "Mesh");
 	void centerMesh();
 	EditorParamButton m_centerMesh = EditorParamButton("Center mesh", TAB, "Mesh", [this]() { centerMesh(); });
-	
-	EditorParamButton m_enterCustomViewForThumbnail = EditorParamButton("Enter view for thumbnail generation", TAB, "Thumbnail", [this]() {});
+
+	void toggleCustomViewForThumbnail();
+	bool m_isInCustomViewForThumbnail = false;
+	glm::mat4 m_viewMatrixForThumbnail{};
+	EditorParamButton m_toggleCustomViewForThumbnail = EditorParamButton("Enter view for thumbnail generation", TAB, "Thumbnail", [this]() { toggleCustomViewForThumbnail(); });
 
 	std::array<EditorParamInterface*, 5> m_editorParams =
 	{
@@ -102,7 +111,7 @@ private:
 		&m_isCenteredLabel,
 		&m_centerMesh,
 
-		&m_enterCustomViewForThumbnail
+		&m_toggleCustomViewForThumbnail
 	};
 };
 

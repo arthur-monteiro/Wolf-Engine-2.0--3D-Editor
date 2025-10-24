@@ -20,8 +20,13 @@ struct BoneInfo
 	mat4 transform;
 };
 
+layout(binding = 0, set = 2) uniform UniformBuffer
+{
+	uint firstMaterialIdx;
+} ub;
+
 const uint MAX_BONE_COUNT = 128;
-layout(std430, set = 2, binding = 0) restrict buffer BoneInfoBufferLayout
+layout(std430, set = 3, binding = 0) restrict buffer BoneInfoBufferLayout
 {
     BoneInfo bonesInfo[MAX_BONE_COUNT];
 };
@@ -58,5 +63,5 @@ void main()
     gl_Position = getProjectionMatrix() * viewPos;
 
     outTexCoord = inTexCoord;
-	outMaterialID = 0;
+	outMaterialID = ub.firstMaterialIdx;
 } 

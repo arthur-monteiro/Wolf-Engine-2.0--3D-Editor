@@ -9,6 +9,11 @@ layout(location = 4) in uint inMaterialID;
 layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out uint outMaterialID;
  
+layout(binding = 0, set = 2) uniform UniformBuffer
+{
+	uint firstMaterialIdx;
+} ub;
+
 out gl_PerVertex
 {
     vec4 gl_Position;
@@ -27,5 +32,5 @@ void main()
     gl_Position = getProjectionMatrix() * viewPos;
 
     outTexCoord = inTexCoord;
-	outMaterialID = inMaterialID;
+	outMaterialID = inMaterialID + ub.firstMaterialIdx;
 } 

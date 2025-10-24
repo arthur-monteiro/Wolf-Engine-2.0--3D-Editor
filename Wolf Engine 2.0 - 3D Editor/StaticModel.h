@@ -29,6 +29,8 @@ public:
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
+	void setLoadingPath(const std::string& loadingPath) { m_loadingPathParam = loadingPath; }
+
 	Wolf::AABB getAABB() const override;
 	Wolf::BoundingSphere getBoundingSphere() const override;
 	std::string getTypeString() override { return "staticMesh"; }

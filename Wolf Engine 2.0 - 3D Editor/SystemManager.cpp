@@ -32,7 +32,9 @@ SystemManager::SystemManager()
 	m_editorParams->setWindowWidth(Wolf::g_configuration->getWindowWidth());
 	m_editorParams->setWindowHeight(Wolf::g_configuration->getWindowHeight());
 
-	m_camera.reset(new Wolf::FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f, 16.0f / 9.0f));
+	m_camera.reset(new Wolf::FirstPersonCamera(glm::vec3(1.4f, 1.2f, 0.3f), glm::vec3(2.0f, 0.9f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), 0.01f, 20.0f,
+		16.0f / 9.0f));
+	m_camera->setFar(10000.0f);
 
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
@@ -54,7 +56,13 @@ SystemManager::SystemManager()
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("updateResource(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(resourceId) + "\");");
 		}
-		, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback, m_configuration.createNonOwnerResource()));
+		, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback, m_configuration.createNonOwnerResource(),
+		[this](const std::string& loadingPath) { forceCustomViewForMesh(loadingPath); },
+		[this](glm::mat4& outViewMatrix)
+		{
+			outViewMatrix = m_camera->getViewMatrix();
+			removeCustomView();
+		}));
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback,
@@ -274,10 +282,40 @@ void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
 	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
 }
 
-void SystemManager::forceCustomViewForSelectedEntity()
+void SystemManager::forceCustomViewForMesh(const std::string& loadingPath)
 {
-	goToSelectedEntity();
-	Wolf::Debug::sendError("Not implemented");
+	m_temporaryEntityForThumbnailSetup.reset(new Entity("", [this](Entity*){}));
+	m_temporaryEntityForThumbnailSetup->setName("Temporary entity for thumbnail setup");
+
+	StaticModel* staticModel = new StaticModel(m_wolfInstance->getMaterialsManager(), m_resourceManager.createNonOwnerResource(), [this](ComponentInterface*){},
+		[this](const std::string&){ return m_entityContainer->getEntities()[0].createNonOwnerResource(); });
+	staticModel->setLoadingPath(loadingPath);
+	m_temporaryEntityForThumbnailSetup->addComponent(staticModel);
+
+	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
+	Wolf::ResourceNonOwner<EditorPhysicsManager> editorPhysicsManager= m_editorPhysicsManager.createNonOwnerResource();
+	Wolf::ResourceNonOwner<Wolf::InputHandler> inputHandler = m_wolfInstance->getInputHandler();
+	const Wolf::Timer& globalTimer = m_wolfInstance->getGlobalTimer();
+
+	m_temporaryEntityForThumbnailSetup->updateBeforeFrame(inputHandler, globalTimer, drawManager, editorPhysicsManager);
+	m_temporaryEntityForThumbnailSetup->updateBeforeFrame(inputHandler, globalTimer, drawManager, editorPhysicsManager);
+
+	m_positionBeforeCustomView = m_camera->getPosition();
+	m_phiBeforeCustomView = m_camera->getPhi();
+	m_thetaBeforeCustomView = m_camera->getTheta();
+
+	goToEntity(&*m_temporaryEntityForThumbnailSetup);
+	m_drawManager->isolateEntity(&*m_temporaryEntityForThumbnailSetup);
+}
+
+void SystemManager::removeCustomView()
+{
+	m_drawManager->removeIsolation();
+	m_temporaryEntityForThumbnailSetup.reset(nullptr);
+
+	m_camera->setPosition(m_positionBeforeCustomView);
+	m_camera->setPhi(m_phiBeforeCustomView);
+	m_camera->setTheta(m_thetaBeforeCustomView);
 }
 
 ultralight::JSValue SystemManager::getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -718,17 +756,22 @@ void SystemManager::selectEntity() const
 	updateUISelectedEntity();
 }
 
-void SystemManager::goToSelectedEntity() const
+void SystemManager::goToEntity(Entity* entity) const
 {
-	if ((*m_selectedEntity)->hasModelComponent())
+	if (entity->hasModelComponent())
 	{
-		Wolf::AABB entityAABB = (*m_selectedEntity)->getAABB();
+		Wolf::AABB entityAABB = entity->getAABB();
 		float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
 
 		m_camera->setPosition(entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight));
 		m_camera->setPhi(-0.645398319f);
 		m_camera->setTheta(glm::quarter_pi<float>());
 	}
+}
+
+void SystemManager::goToSelectedEntity() const
+{
+	goToEntity(&*(*m_selectedEntity));
 }
 
 void SystemManager::removeSelectedEntity()

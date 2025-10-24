@@ -510,6 +510,7 @@
 	function updateResource(name, iconPath, id)
 	{
 		let resourceElement = document.getElementById("resource_" + id);
+		
 		resourceElement.getElementsByClassName("resourceName")[0].innerHTML = name;
 		resourceElement.getElementsByClassName("resourceIcon")[0].innerHTML = "<img src='" + iconPath + "'/>";
 	}

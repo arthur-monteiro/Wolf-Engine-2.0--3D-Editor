@@ -28,12 +28,13 @@ public:
 	class Request
 	{
 	public:
-		Request(Wolf::ModelData* modelData, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix);
+		Request(Wolf::ModelData* modelData, uint32_t firstMaterialIdx, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix);
 
 	private:
 		friend ThumbnailsGenerationPass;
 
 		Wolf::ModelData* m_modelData = nullptr;
+		uint32_t m_firstMaterialIdx = 0;
 		std::string m_outputFullFilepath;
 		uint32_t m_imageLeftToDraw = 0;
 		std::function<void()> m_onGeneratedCallback;
@@ -56,11 +57,23 @@ private:
 	std::unique_ptr<Wolf::Image> m_copyImage;
 	std::unique_ptr<Wolf::Image> m_depthImage;
 
+
+
 	std::unique_ptr<Wolf::ShaderParser> m_fragmentShaderParser;
 	std::unique_ptr<Wolf::ShaderParser> m_staticVertexShaderParser;
 	std::unique_ptr<Wolf::Pipeline> m_staticPipeline;
 	std::unique_ptr<Wolf::ShaderParser> m_animatedVertexShaderParser;
 	std::unique_ptr<Wolf::Pipeline> m_animatedPipeline;
+
+	Wolf::DescriptorSetLayoutGenerator m_descriptorSetGenerator;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
+	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
+	struct UniformBufferData
+	{
+		uint32_t firstMaterialIdx;
+	};
+	Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_uniformBuffer;
+
 	Wolf::DescriptorSetLayoutGenerator m_animationDescriptorSetGenerator;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_animationDescriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_animationDescriptorSet;

@@ -38,7 +38,8 @@ private:
 	void bindUltralightCallbacks(ultralight::JSObject& jsObject);
 	void resizeCallback(uint32_t width, uint32_t height) const;
 
-	void forceCustomViewForSelectedEntity();
+	void forceCustomViewForMesh(const std::string& loadingPath);
+	void removeCustomView();
 
 	// JS callbacks
 	ultralight::JSValue getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -74,6 +75,7 @@ private:
 	ultralight::JSValue isBoundingSphereShowedForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 
 	void selectEntity() const;
+	void goToEntity(Entity* entity) const;
 	void goToSelectedEntity() const;
 	void removeSelectedEntity();
 	void updateUISelectedEntity() const;
@@ -120,4 +122,9 @@ private:
 	std::string m_loadSceneRequest;
 	bool m_isLoading = false;
 	bool m_screenshotRequested = false;
+
+	Wolf::ResourceUniqueOwner<Entity> m_temporaryEntityForThumbnailSetup;
+	glm::vec3 m_positionBeforeCustomView;
+	float m_phiBeforeCustomView = 0.0f;
+	float m_thetaBeforeCustomView = 0.0f;
 };

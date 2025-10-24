@@ -88,6 +88,10 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	// Resources
 	pipelineCreateInfo.descriptorSetLayouts = { Wolf::GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(), Wolf::MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource() };
 
+	m_descriptorSetGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0);
+	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetGenerator.getDescriptorLayouts()));
+	pipelineCreateInfo.descriptorSetLayouts.emplace_back(m_descriptorSetLayout.createConstNonOwnerResource());
+
 	// Color Blend
 	pipelineCreateInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
 
@@ -115,12 +119,19 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 
 	m_animatedPipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 
+	// Resources creation
+	m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(UniformBufferData)));
+	m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
+	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetGenerator.getDescriptorLayouts());
+	descriptorSetGenerator.setUniformBuffer(0, *m_uniformBuffer);
+	m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+
 	m_animationDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_animationDescriptorSetLayout));
-	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_animationDescriptorSetGenerator.getDescriptorLayouts());
+	Wolf::DescriptorSetGenerator animationsDescriptorSetGenerator(m_animationDescriptorSetGenerator.getDescriptorLayouts());
 	static constexpr uint32_t MAX_BONE_COUNT = 1024;
 	m_bonesBuffer.reset(Wolf::Buffer::createBuffer(MAX_BONE_COUNT * sizeof(glm::mat4), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-	descriptorSetGenerator.setBuffer(0, *m_bonesBuffer);
-	m_animationDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
+	animationsDescriptorSetGenerator.setBuffer(0, *m_bonesBuffer);
+	m_animationDescriptorSet->update(animationsDescriptorSetGenerator.getDescriptorSetCreateInfo());
 }
 
 void ThumbnailsGenerationPass::resize(const Wolf::InitializationContext& context)
@@ -140,6 +151,9 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	if (!m_currentRequests.empty())
 	{
 		Request& previousRequest = m_currentRequests.front();
+
+		// TODO: This is not very elegant, we should try the next frame if data is not ready instead of blocking the frame
+		context.graphicAPIManager->waitIdle();
 
 		const void* outputBytes = m_copyImage->map();
 		VkSubresourceLayout copyResourceLayout;
@@ -205,6 +219,10 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 		request.m_imageLeftToDraw = 1;
 	}
 
+	UniformBufferData uniformBufferData{};
+	uniformBufferData.firstMaterialIdx = request.m_firstMaterialIdx;
+	m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));
+
 	if (request.m_modelData->animationData)
 	{
 		uint32_t totalImagesToDraw = computeTotalImageToDraw(request);
@@ -241,11 +259,12 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->bindPipeline(pipeline);
 	m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION)->getDescriptorSet(), 0, *pipeline);
 	m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 1, *pipeline);
+	m_commandBuffer->bindDescriptorSet(m_descriptorSet.createConstNonOwnerResource(), 2, *pipeline);
 	if (request.m_modelData->animationData)
 	{
-		m_commandBuffer->bindDescriptorSet(m_animationDescriptorSet.createConstNonOwnerResource(), 2, *pipeline);
+		m_commandBuffer->bindDescriptorSet(m_animationDescriptorSet.createConstNonOwnerResource(), 3, *pipeline);
 	}
-	request.m_modelData->mesh->draw(*m_commandBuffer, 0);
+	request.m_modelData->mesh->draw(*m_commandBuffer, CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
 
 	m_commandBuffer->endRenderPass();
 
@@ -302,13 +321,14 @@ void ThumbnailsGenerationPass::addCameraForThisFrame(Wolf::CameraList& cameraLis
 
 	Wolf::AABB entityAABB = request.m_modelData->mesh->getAABB();
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, glm::length(entityAABB.getMax() - entityAABB.getMin()) * 4.0f);
+	projection[1][1] *= -1;
 	m_camera->overrideMatrices(request.m_viewMatrix, projection);
 
 	cameraList.addCameraForThisFrame(m_camera.get(), CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
 }
 
-ThumbnailsGenerationPass::Request::Request(Wolf::ModelData* modelData, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix)
-	: m_modelData(modelData), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback), m_viewMatrix(viewMatrix)
+ThumbnailsGenerationPass::Request::Request(Wolf::ModelData* modelData, uint32_t firstMaterialIdx, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix)
+	: m_modelData(modelData), m_firstMaterialIdx(firstMaterialIdx), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback), m_viewMatrix(viewMatrix)
 {
 }
 

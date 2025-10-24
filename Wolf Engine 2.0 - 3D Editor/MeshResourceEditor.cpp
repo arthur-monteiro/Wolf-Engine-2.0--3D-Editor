@@ -5,7 +5,10 @@
 #include "EditorConfiguration.h"
 #include "MathsUtilsEditor.h"
 
-MeshResourceEditor::MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered) : m_requestReloadCallback(requestReloadCallback)
+MeshResourceEditor::MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, const std::function<void(const std::string&)>& isolateMeshCallback,
+	const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload)
+: m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
+  m_requestThumbnailReload(requestThumbnailReload)
 {
 	m_filepath = filepath;
 
@@ -69,7 +72,7 @@ void MeshResourceEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount
 	}
 }
 
-void MeshResourceEditor::computeOutputJSON(std::string& out)
+void MeshResourceEditor::computePhysicsOutputJSON(std::string& out)
 {
 	out += "{\n";
 	out += "\t\"physicsMeshesCount\": " + std::to_string(m_physicsMeshes.size()) + ",\n";
@@ -119,6 +122,24 @@ void MeshResourceEditor::computeInfoForRectangle(uint32_t meshIdx, glm::vec3& ou
 	computeRectanglePointsFromScaleRotationOffset(m_physicsMeshes[meshIdx].getDefaultRectangleScale(), m_physicsMeshes[meshIdx].getDefaultRectangleRotation(), m_physicsMeshes[meshIdx].getDefaultRectangleOffset(), outP0, outS1, outS2);
 }
 
+void MeshResourceEditor::computeInfoOutputJSON(std::string& out)
+{
+	out += "{\n";
+	out += "\t\"thumbnailGenerationInfo\": {\n";
+	for (glm::length_t i = 0; i < 4; ++i)
+	{
+		for (glm::length_t j = 0; j < 4; ++j)
+		{
+			out += "\t\t\"viewMatrix" + std::to_string(i) + std::to_string(j) + "\": " + std::to_string(m_viewMatrixForThumbnail[i][j]);
+			if (i != 3 || j != 3)
+				out += ",";
+			out += "\n";
+		}
+	}
+	out += "\t}\n";
+	out += "}\n";
+}
+
 MeshResourceEditor::PhysicMesh::PhysicMesh() : ParameterGroupInterface(TAB)
 {
 	m_name = DEFAULT_NAME;
@@ -161,4 +182,23 @@ void MeshResourceEditor::centerMesh()
 	Wolf::ConfigurationHelper::writeInfoToFile(fullFilepath, "forceCenter", true);
 
 	notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::MESH));
+}
+
+void MeshResourceEditor::toggleCustomViewForThumbnail()
+{
+	m_isInCustomViewForThumbnail = !m_isInCustomViewForThumbnail;
+
+	if (m_isInCustomViewForThumbnail)
+	{
+		m_isolateMeshCallback(m_filepath);
+		m_toggleCustomViewForThumbnail.setName("Exit view for thumbnail generation and save info");
+		m_requestReloadCallback(this);
+	}
+	else
+	{
+		m_removeIsolationAndGetViewMatrixCallback(m_viewMatrixForThumbnail);
+		m_requestThumbnailReload(m_viewMatrixForThumbnail);
+		m_toggleCustomViewForThumbnail.setName("Enter view for thumbnail generation");
+		m_requestReloadCallback(this);
+	}
 }

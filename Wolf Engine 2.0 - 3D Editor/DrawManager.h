@@ -72,6 +72,9 @@ public:
 	void removeMeshesForEntity(Entity* entity);
 	void clear();
 
+	void isolateEntity(Entity* entity);
+	void removeIsolation();
+
 private:
 	class InstancedMeshRegistered;
 	void addInstanceDataToBuffer(InstancedMeshRegistered& instancedMeshRegistered, uint32_t instanceIdx, const InstanceData& instanceData);
