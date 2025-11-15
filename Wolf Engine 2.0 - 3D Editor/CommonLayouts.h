@@ -28,10 +28,12 @@ namespace DescriptorSetSlots
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_MESH_DEBUG = 2; // used for matrices for debug meshes
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_LIGHT_INFO = 3;
 	constexpr uint32_t DESCRIPTOR_SET_SLOT_SHADOW_MASK_INFO = 4;
-	constexpr uint32_t DESCRIPTOR_SET_SLOT_COUNT = 5;
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO = 5;
+	constexpr uint32_t DESCRIPTOR_SET_SLOT_COUNT = 6;
 }
 
 namespace AdditionalDescriptorSetsMaskBits
 {
 	constexpr uint32_t SHADOW_MASK_INFO = 1 << 0;
+	constexpr uint32_t GLOBAL_IRRADIANCE_SHADOW_MASK_INFO = 2 << 0;
 }

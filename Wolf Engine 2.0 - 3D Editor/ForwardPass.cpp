@@ -14,6 +14,7 @@
 #include "EditorModelInterface.h"
 #include "LightManager.h"
 #include "Vertex2DTextured.h"
+#include "VoxelGlobalIlluminationPass.h"
 
 void ForwardPass::initializeResources(const Wolf::InitializationContext& context)
 {
@@ -128,8 +129,17 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
 	descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo, 0);
 	descriptorSetBindInfos.emplace_back(m_shadowMaskPass->getMaskDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO);
+	if (m_globalIrradiancePass->hasDescriptorSetToBind())
+	{
+		descriptorSetBindInfos.emplace_back(m_globalIrradiancePass->getDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO);
+	}
 
-	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos);
+	std::vector<Wolf::PipelineSet::ShaderCodeToAddForStage> shadersCodeToAdd(1);
+	shadersCodeToAdd[0].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
+	m_globalIrradiancePass->addShaderCode(shadersCodeToAdd[0].shaderCodeToAdd, DescriptorSetSlots::DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO);
+	shadersCodeToAdd[0].requiredMask = AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
+
+	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
 
 	/* Particles */
 	if (uint32_t particleCount = m_particlesUpdatePass->getParticleCount())
@@ -188,6 +198,8 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 		waitSemaphores.push_back(m_pathTracingPass->getSemaphore(context.swapChainImageIndex));
 	else if (m_computeSkyCubeMapPass->wasEnabledThisFrame())
 		waitSemaphores.push_back({ m_computeSkyCubeMapPass->getSemaphore(context.swapChainImageIndex) });
+	if (m_globalIrradiancePass->wasEnabledThisFrame())
+		waitSemaphores.push_back(m_globalIrradiancePass->getSemaphore());
 
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);

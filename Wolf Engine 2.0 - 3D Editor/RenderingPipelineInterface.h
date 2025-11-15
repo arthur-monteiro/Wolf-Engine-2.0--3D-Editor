@@ -1,5 +1,6 @@
 #pragma once
-#include "ResourceNonOwner.h"
+
+#include <ResourceNonOwner.h>
 
 class CompositionPass;
 class CascadedShadowMapsPass;
@@ -9,6 +10,7 @@ class ComputeSkyCubeMapPass;
 class ParticleUpdatePass;
 class ThumbnailsGenerationPass;
 class UpdateGPUBuffersPass;
+class VoxelGlobalIlluminationPass;
 
 class RenderingPipelineInterface
 {
@@ -23,5 +25,6 @@ public:
 	virtual Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() = 0;
 	virtual Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() = 0;
 	virtual Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() = 0;
+	virtual Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() = 0;
 };
 

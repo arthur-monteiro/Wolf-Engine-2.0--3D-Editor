@@ -105,3 +105,8 @@ void GraphicSettingsFakeEntity::onCSMFarChanged()
 {
     m_renderingPipeline->getCascadedShadowMapsPass()->setFar(m_csmFar);
 }
+
+void GraphicSettingsFakeEntity::onVoxelGIDebugChanged()
+{
+    m_renderingPipeline->getVoxelGIPass()->setEnableDebug(m_enableVoxelGIDebug);
+}

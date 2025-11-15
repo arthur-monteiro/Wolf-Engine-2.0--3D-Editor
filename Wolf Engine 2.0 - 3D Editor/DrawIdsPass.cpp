@@ -69,7 +69,7 @@ void DrawIdsPass::record(const Wolf::RecordContext& context)
     const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
     m_commandBuffer->setViewport(renderViewport);
 
-    context.renderMeshList->draw(context, *m_commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS, CommonCameraIndices::CAMERA_IDX_MAIN, {});
+    context.renderMeshList->draw(context, *m_commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS, CommonCameraIndices::CAMERA_IDX_MAIN, {}, {});
 
     m_commandBuffer->endRenderPass();
     m_outputImage->setImageLayoutWithoutOperation(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);

@@ -12,6 +12,26 @@ Currently in development.
 
 Build with CMake, it will automatically download the right Wolf-Engine version.
 
+## Setup
+
+In `Wolf Engine 2.0 - 3D Editor\config` create a file `editor.ini` with the options:
+| Name | Info | Mandatory |
+| ---  | --- | --- |
+| dataFolder | The folder where you want to store the data | Mandatory |
+| defaultScene | Local path (within the `dataFolder`) of the scene to load at startup | Optional |
+| enableDebugDraw | 1 or 0 to enable / disable debug draw | Optional |
+| enableRayTracing | 1 or 0 to enable / disable ray tracing | Optional |
+
+Each line must define a new option with the syntax `optionName`=`value`
+
+Example:
+```
+dataFolder=F:\Data
+defaultScene=Saves\Scenes\sponza_intel.json
+enableDebugDraw=1
+enableRayTracing=1
+```
+
 ## Features
 
 ### Color grading

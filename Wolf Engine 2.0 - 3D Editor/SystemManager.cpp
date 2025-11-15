@@ -63,6 +63,7 @@ SystemManager::SystemManager()
 			outViewMatrix = m_camera->getViewMatrix();
 			removeCustomView();
 		}));
+	m_renderer->setResourceManager(m_resourceManager.createNonOwnerResource());
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback,
@@ -592,6 +593,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 			m_inModificationGameContext.displayType = GameContext::DisplayType::PATH_TRACING;
 		}
 	}
+	else if (displayType == "globalIrradiance")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::GLOBAL_IRRADIANCE;
 	else
 		Wolf::Debug::sendError("Unsupported display type: " + displayType);
 
@@ -962,15 +965,14 @@ void SystemManager::updateBeforeFrame()
 void SystemManager::loadScene()
 {
 	m_isLoading = true;
+	m_wolfInstance->waitIdle();
 
 	m_wolfInstance->getRenderMeshList()->clear();
 	m_debugRenderingManager->clearBeforeFrame();
-	m_wolfInstance->waitIdle();
 
 	m_selectedEntity.reset(nullptr);
 	m_entityContainer->clear();
 
-	m_resourceManager->clear();
 	m_drawManager->clear();
 
 	m_wolfInstance->evaluateUserInterfaceScript("resetEntityList()");

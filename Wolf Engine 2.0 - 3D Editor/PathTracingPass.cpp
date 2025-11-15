@@ -256,7 +256,6 @@ glm::vec3 uniformSampleHemisphere(float r1, float r2)
     return {x, r1, z};
 }
 
-
 void PathTracingPass::createNoiseImage()
 {
     Wolf::CreateImageInfo noiseImageCreateInfo;

@@ -55,7 +55,7 @@ void PreDepthPass::recordDraws(const Wolf::RecordContext& context)
 	m_commandBuffer->setViewport(renderViewport);
 
 	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH, CommonCameraIndices::CAMERA_IDX_MAIN,
-		{});
+		{}, {});
 }
 
 const Wolf::CommandBuffer& PreDepthPass::getCommandBuffer(const Wolf::RecordContext& context)

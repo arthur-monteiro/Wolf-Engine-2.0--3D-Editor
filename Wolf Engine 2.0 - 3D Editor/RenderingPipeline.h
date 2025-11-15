@@ -6,6 +6,7 @@
 #include "CompositionPass.h"
 #include "ComputeSkyCubeMapPass.h"
 #include "ContaminationUpdatePass.h"
+#include "DefaultGlobalIrradiance.h"
 #include "DrawIdsPass.h"
 #include "ForwardPass.h"
 #include "GPUBufferToGPUBufferCopyPass.h"
@@ -19,10 +20,12 @@
 #include "ShadowMaskPassCascadedShadowMapping.h"
 #include "ThumbnailsGenerationPass.h"
 #include "UpdateGPUBuffersPass.h"
+#include "VoxelGlobalIlluminationPass.h"
 
 class LightManager;
 class BindlessDescriptor;
 class EditorParams;
+class ResourceManager;
 
 class RenderingPipeline : public RenderingPipelineInterface
 {
@@ -33,6 +36,8 @@ public:
 	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext);
 	void clear();
 
+	void setResourceManager(const Wolf::ResourceNonOwner<ResourceManager>& resourceManager) const;
+
 	Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() override;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
@@ -41,6 +46,7 @@ public:
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() override;
 	Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() override;
 	Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() override;
+	Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() override;
 	void requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const;
 
 private:
@@ -56,6 +62,8 @@ private:
 	Wolf::ResourceUniqueOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
 	Wolf::ResourceUniqueOwner<ComputeSkyCubeMapPass> m_computeSkyCubeMapPass;
 	Wolf::ResourceUniqueOwner<RayTracedWorldDebugPass> m_rayTracedWorldDebugPass;
+	Wolf::ResourceUniqueOwner<DefaultGlobalIrradiance> m_defaultGlobalIrradiance;
+	Wolf::ResourceUniqueOwner<VoxelGlobalIlluminationPass> m_voxelGIPass;
 	Wolf::ResourceUniqueOwner<PathTracingPass> m_pathTracingPass;
 	Wolf::ResourceUniqueOwner<ForwardPass> m_forwardPass;
 	Wolf::ResourceUniqueOwner<CompositionPass> m_compositionPass;

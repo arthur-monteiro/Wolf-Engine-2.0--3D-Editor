@@ -89,7 +89,7 @@ vec4 computeLighting(MaterialInfo materialInfo)
             Lo += computeRadianceForLight(V, normal, roughness, F0, albedo, metalness, L, 1.0f /* attenuation */, ubLights.sunLights[i].sunColor.xyz) * shadowsCoeff;
         }
 
-        vec3 ambientLight = albedo * 0.2;
+        vec3 ambientLight = albedo * computeIrradiance(worldPos, normal) * 8.0;
         
         vec3 result = Lo + ambientLight;
         float exposure = -1.5; // TODO
@@ -128,6 +128,14 @@ void main()
         col = col % uvec3(255, 253, 256); // skips some channel values
 
         outColor = vec4(vec3(col) / 255.0, 1.0);
+    }
+    else if (ubDisplay.displayType == DISPLAY_TYPE_GLOBAL_IRRADIANCE)    
+    {
+        vec3 normal = materialInfo.normal;
+        normal = normalize(normal);
+        vec3 worldPos = (getInvViewMatrix() * vec4(inViewPos, 1.0f)).xyz;
+
+        outColor = vec4(computeIrradiance(worldPos, normal), 1.0);
     }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);

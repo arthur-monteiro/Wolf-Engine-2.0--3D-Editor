@@ -41,10 +41,14 @@ private:
     void onCSMFarChanged();
     EditorParamFloat m_csmFar = EditorParamFloat("Cascade shadow mapping max range", TAB, "Shadows", 25.0f, 5000.0f, [this]() { onCSMFarChanged(); });
 
-    std::array<EditorParamInterface*, 2> m_alwaysVisibleParams =
+    void onVoxelGIDebugChanged();
+    EditorParamBool m_enableVoxelGIDebug = EditorParamBool("Enable voxel GI debug", TAB, "Voxel GI", [this]() { onVoxelGIDebugChanged(); });
+
+    std::array<EditorParamInterface*, 3> m_alwaysVisibleParams =
     {
         &m_skyCubeMapResolution,
-        &m_shadowTechnique
+        &m_shadowTechnique,
+        &m_enableVoxelGIDebug
     };
 
     std::array<EditorParamInterface*, 1> m_csmParams =

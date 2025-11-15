@@ -13,6 +13,7 @@
 #include <UniformBuffer.h>
 
 #include "EditorParams.h"
+#include "GlobalIrradiancePassInterface.h"
 #include "ParticleUpdatePass.h"
 #include "PathTracingPass.h"
 #include "PreDepthPass.h"
@@ -24,9 +25,10 @@ class ForwardPass : public Wolf::CommandRecordBase
 public:
 	ForwardPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<const ContaminationUpdatePass>& contaminationUpdatePass, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass,
 		const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass,
-		const Wolf::NullableResourceNonOwner<PathTracingPass>& pathTracingPass, const Wolf::ResourceNonOwner<ComputeSkyCubeMapPass>& computeSkyCubeMapPass, const Wolf::ResourceNonOwner<SkyBoxManager>& skyBoxManager)
+		const Wolf::NullableResourceNonOwner<PathTracingPass>& pathTracingPass, const Wolf::ResourceNonOwner<ComputeSkyCubeMapPass>& computeSkyCubeMapPass, const Wolf::ResourceNonOwner<SkyBoxManager>& skyBoxManager,
+		const Wolf::NullableResourceNonOwner<GlobalIrradiancePassInterface>& globalIrradiancePass)
 	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_preDepthPass(preDepthPass),
-	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass), m_pathTracingPass(pathTracingPass), m_computeSkyCubeMapPass(computeSkyCubeMapPass), m_skyBoxManager(skyBoxManager)
+	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass), m_pathTracingPass(pathTracingPass), m_computeSkyCubeMapPass(computeSkyCubeMapPass), m_skyBoxManager(skyBoxManager), m_globalIrradiancePass(globalIrradiancePass)
 	{}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
@@ -88,5 +90,6 @@ private:
 	Wolf::NullableResourceNonOwner<PathTracingPass> m_pathTracingPass;
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> m_computeSkyCubeMapPass;
 	Wolf::ResourceNonOwner<SkyBoxManager> m_skyBoxManager;
+	Wolf::ResourceNonOwner<GlobalIrradiancePassInterface> m_globalIrradiancePass;
 };
 

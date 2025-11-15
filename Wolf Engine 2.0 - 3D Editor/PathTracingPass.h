@@ -19,7 +19,7 @@ public:
     void record(const Wolf::RecordContext& context) override;
     void submit(const Wolf::SubmitContext& context) override;
 
-    [[nodiscard]] bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame;}
+    [[nodiscard]] bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame; }
 
 private:
     Wolf::ResourceUniqueOwner<Wolf::Image>& getOutputImage() override { return m_outputImage;}

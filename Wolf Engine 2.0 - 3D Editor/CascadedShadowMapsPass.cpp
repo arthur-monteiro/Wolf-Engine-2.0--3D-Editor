@@ -31,7 +31,7 @@ void CascadeDepthPass::setCameraInfos(const glm::vec3& center, float radius, con
 void CascadeDepthPass::recordDraws(const Wolf::RecordContext& context)
 {
 	const Wolf::CommandBuffer& commandBuffer = getCommandBuffer(context);
-	context.renderMeshList->draw(context, commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP, m_cameraIdx, {});
+	context.renderMeshList->draw(context, commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP, m_cameraIdx, {}, {});
 }
 
 const Wolf::CommandBuffer& CascadeDepthPass::getCommandBuffer(const Wolf::RecordContext& context)

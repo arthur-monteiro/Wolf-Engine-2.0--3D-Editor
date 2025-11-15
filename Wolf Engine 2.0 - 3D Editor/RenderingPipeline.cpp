@@ -38,8 +38,15 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 		m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(editorParams, m_preDepthPass.createNonOwnerResource(), rayTracedWorldManager));
 		wolfInstance->initializePass(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
+		m_voxelGIPass.reset(new VoxelGlobalIlluminationPass(rayTracedWorldManager));
+		wolfInstance->initializePass(m_voxelGIPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
 		m_pathTracingPass.reset(new PathTracingPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_computeSkyCubeMapPass.createNonOwnerResource(), rayTracedWorldManager));
 		wolfInstance->initializePass(m_pathTracingPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
+	else
+	{
+		m_defaultGlobalIrradiance.reset(new DefaultGlobalIrradiance);
 	}
 
 	Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass> rayTracedWorldDebugPass;
@@ -52,9 +59,18 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	{
 		pathTracingPass = m_pathTracingPass.createNonOwnerResource();
 	}
+	Wolf::NullableResourceNonOwner<GlobalIrradiancePassInterface> globalIrradiancePassInterface;
+	if (m_voxelGIPass)
+	{
+		globalIrradiancePassInterface = m_voxelGIPass.createNonOwnerResource<GlobalIrradiancePassInterface>();
+	}
+	else
+	{
+		globalIrradiancePassInterface = m_defaultGlobalIrradiance.createNonOwnerResource<GlobalIrradiancePassInterface>();
+	}
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
 		m_preDepthPass.createNonOwnerResource(), rayTracedWorldDebugPass, pathTracingPass,
-		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource()));
+		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource(), globalIrradiancePassInterface));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource()));
@@ -73,6 +89,10 @@ void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
 	m_particleUpdatePass->updateBeforeFrame(wolfInstance->getGlobalTimer(), m_updateGPUBuffersPass.createNonOwnerResource());
 	m_thumbnailsGenerationPass->addCameraForThisFrame(wolfInstance->getCameraList());
 	m_skyBoxManager->updateBeforeFrame(wolfInstance, m_computeSkyCubeMapPass.createNonOwnerResource());
+	if (m_voxelGIPass)
+	{
+		m_voxelGIPass->addMeshesToRenderList(wolfInstance->getRenderMeshList());
+	}
 }
 
 void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext)
@@ -114,6 +134,10 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 	{
 		passes.push_back(m_pathTracingPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
+	if (m_voxelGIPass)
+	{
+		passes.push_back(m_voxelGIPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
 	passes.push_back(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_compositionPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_drawIdsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
@@ -148,6 +172,14 @@ void RenderingPipeline::clear()
 	m_updateGPUBuffersPass->clear();
 	m_computeSkyCubeMapPass->clear();
 	m_compositionPass->clear();
+}
+
+void RenderingPipeline::setResourceManager(const Wolf::ResourceNonOwner<ResourceManager>& resourceManager) const
+{
+	if (m_voxelGIPass)
+	{
+		m_voxelGIPass->setResourceManager(resourceManager);
+	}
 }
 
 Wolf::ResourceNonOwner<SkyBoxManager> RenderingPipeline::getSkyBoxManager()
@@ -188,6 +220,11 @@ Wolf::ResourceNonOwner<CascadedShadowMapsPass> RenderingPipeline::getCascadedSha
 Wolf::ResourceNonOwner<CompositionPass> RenderingPipeline::getCompositionPass()
 {
 	return m_compositionPass.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> RenderingPipeline::getVoxelGIPass()
+{
+	return m_voxelGIPass.createNonOwnerResource();
 }
 
 void RenderingPipeline::requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const
