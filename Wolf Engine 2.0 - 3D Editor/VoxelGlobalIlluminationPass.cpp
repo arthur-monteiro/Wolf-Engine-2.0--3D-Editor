@@ -32,9 +32,7 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
 
         Wolf::ModelData* modelData = m_resourceManager->getModelData(m_sphereMeshResourceId);
 
-        Wolf::RenderMeshList::InstancedMesh instancedMesh{};
-        instancedMesh.mesh.mesh = modelData->mesh.createNonOwnerResource();
-        instancedMesh.mesh.pipelineSet = m_debugPipelineSet.createConstNonOwnerResource();
+        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->mesh.createNonOwnerResource(), m_debugPipelineSet.createConstNonOwnerResource() } };
         instancedMesh.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
             m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
 
