@@ -2,7 +2,7 @@
 
 #include "ComponentInterface.h"
 #include "EditorTypes.h"
-#include "ResourceManager.h"
+#include "AssetManager.h"
 
 class ColorGradingComponent : public ComponentInterface
 {
@@ -10,7 +10,7 @@ public:
     static inline std::string ID = "colorGradingComponent";
     std::string getId() const override { return ID; }
 
-    ColorGradingComponent(const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
+    ColorGradingComponent(const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
     void loadParams(Wolf::JSONReader& jsonReader) override;
     void activateParams() override;
@@ -24,13 +24,13 @@ public:
 
 private:
     inline static const std::string TAB = "Color grading";
-    Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
+    Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
     Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
     bool updateLUTImage();
 
     void onLUTImageMapChanged();
-    ResourceManager::ResourceId m_lutImageResourceId = ResourceManager::NO_RESOURCE;
+    AssetManager::AssetId m_lutImageResourceId = AssetManager::NO_ASSET;
     bool m_lutImageUpdateRequested = true;
     EditorParamString m_lutImageParam = EditorParamString("LUT image", TAB, "Resources", [this]() { onLUTImageMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 

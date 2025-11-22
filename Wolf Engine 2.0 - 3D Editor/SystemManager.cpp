@@ -49,12 +49,12 @@ SystemManager::SystemManager()
 				m_entityReloadRequested = true;
 		};
 
-	m_resourceManager.reset(new ResourceManager([this](const std::string& resourceName, const std::string& iconPath, ResourceManager::ResourceId resourceId)
+	m_assetManager.reset(new AssetManager([this](const std::string& resourceName, const std::string& iconPath, AssetManager::AssetId assetId)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("addResourceToList(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(resourceId) + "\");");
-		}, [this](const std::string& resourceName, const std::string& iconPath, ResourceManager::ResourceId resourceId)
+			m_wolfInstance->evaluateUserInterfaceScript("addAssetToList(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
+		}, [this](const std::string& resourceName, const std::string& iconPath, AssetManager::AssetId assetId)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("updateResource(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(resourceId) + "\");");
+			m_wolfInstance->evaluateUserInterfaceScript("updateAsset(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
 		}
 		, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback, m_configuration.createNonOwnerResource(),
 		[this](const std::string& loadingPath) { forceCustomViewForMesh(loadingPath); },
@@ -63,7 +63,7 @@ SystemManager::SystemManager()
 			outViewMatrix = m_camera->getViewMatrix();
 			removeCustomView();
 		}));
-	m_renderer->setResourceManager(m_resourceManager.createNonOwnerResource());
+	m_renderer->setResourceManager(m_assetManager.createNonOwnerResource());
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback,
@@ -79,7 +79,7 @@ SystemManager::SystemManager()
 			return allEntities[0].createNonOwnerResource();
 		},
 		m_configuration.createNonOwnerResource(),
-		m_resourceManager.createNonOwnerResource(),
+		m_assetManager.createNonOwnerResource(),
 		m_wolfInstance->getPhysicsManager(),
 		m_entityContainer.createNonOwnerResource()));
 	
@@ -265,7 +265,7 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["getAllComponentTypes"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getAllComponentTypesJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["requestEntitySelection"] = std::bind(&SystemManager::requestEntitySelectionJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["duplicateEntity"] = std::bind(&SystemManager::duplicateEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
-	jsObject["editResource"] = std::bind(&SystemManager::editResourceJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["editAsset"] = std::bind(&SystemManager::editAssetJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["debugPhysicsCheckboxChanged"] = std::bind(&SystemManager::debugPhysicsCheckboxChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["goToEntity"] = std::bind(&SystemManager::onGoToEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["removeEntity"] = std::bind(&SystemManager::onRemoveEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -285,10 +285,10 @@ void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
 
 void SystemManager::forceCustomViewForMesh(const std::string& loadingPath)
 {
-	m_temporaryEntityForThumbnailSetup.reset(new Entity("", [this](Entity*){}));
+	m_temporaryEntityForThumbnailSetup.reset(new Entity("", [this](Entity*){}, [](Entity*){}));
 	m_temporaryEntityForThumbnailSetup->setName("Temporary entity for thumbnail setup");
 
-	StaticModel* staticModel = new StaticModel(m_wolfInstance->getMaterialsManager(), m_resourceManager.createNonOwnerResource(), [this](ComponentInterface*){},
+	StaticModel* staticModel = new StaticModel(m_wolfInstance->getMaterialsManager(), m_assetManager.createNonOwnerResource(), [this](ComponentInterface*){},
 		[this](const std::string&){ return m_entityContainer->getEntities()[0].createNonOwnerResource(); });
 	staticModel->setLoadingPath(loadingPath);
 	m_temporaryEntityForThumbnailSetup->addComponent(staticModel);
@@ -516,7 +516,7 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 	outputFile.close();
 
-	m_resourceManager->save();
+	m_assetManager->save();
 
 	Wolf::Debug::sendInfo("Save successful!");
 }
@@ -703,13 +703,13 @@ void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisOb
 	}
 }
 
-void SystemManager::editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+void SystemManager::editAssetJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string resourceIdStr = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
-	ResourceManager::ResourceId resourceId = static_cast<ResourceManager::ResourceId>(std::stoi(resourceIdStr));
+	AssetManager::AssetId resourceId = static_cast<AssetManager::AssetId>(std::stoi(resourceIdStr));
 
 	m_selectedEntity.reset(nullptr);
-	Wolf::ResourceNonOwner<Entity> entity = m_resourceManager->computeResourceEditor(resourceId);
+	Wolf::ResourceNonOwner<Entity> entity = m_assetManager->computeResourceEditor(resourceId);
 	m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(entity));
 
 	updateUISelectedEntity();
@@ -856,7 +856,7 @@ void SystemManager::updateBeforeFrame()
 		}
 	}
 
-	m_resourceManager->updateBeforeFrame();
+	m_assetManager->updateBeforeFrame();
 
 	std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 
@@ -1038,6 +1038,13 @@ Entity* SystemManager::addEntity(const std::string& filePath)
 			m_entityChangedMutex.lock();
 			m_entityChanged = true;
 			m_entityChangedMutex.unlock();
+		},
+		[this](Entity*)
+		{
+			if (g_editorConfiguration->getEnableRayTracing())
+			{
+				m_rayTracedWorldBuildNeeded = true;
+			}
 		});
 	m_entityContainer->addEntity(newEntity);
 

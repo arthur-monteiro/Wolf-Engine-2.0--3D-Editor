@@ -1,10 +1,7 @@
 #extension GL_EXT_ray_tracing : require
 
-struct Payload
-{
-    vec3 radiance;
-};
-layout(location = 0) rayPayloadInEXT Payload payload;
+#include "payloads.glsl"
+layout(location = 0) rayPayloadInEXT FirstRayPayload payload;
 
 vec3 computeSunColor(vec3 direction)
 {
@@ -13,7 +10,16 @@ vec3 computeSunColor(vec3 direction)
 
 void main()
 {
-    vec3 direction = gl_WorldRayDirectionEXT.xyz;
+    if (payload.rayIdx == 0)
+    {
+        vec3 direction = gl_WorldRayDirectionEXT.xyz;
 
-    payload.radiance = computeSunColor(direction);
+        float NdotL = max(dot(payload.evaluatedNormal, direction), 0.0);
+        payload.hit = false;
+        payload.radiance = computeSunColor(direction) * NdotL;
+    }
+    else if (payload.rayIdx == 1)
+    {
+        payload.isShadowed = false;
+    }
 }

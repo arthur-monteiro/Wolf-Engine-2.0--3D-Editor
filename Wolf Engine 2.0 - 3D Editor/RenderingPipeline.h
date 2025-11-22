@@ -25,7 +25,7 @@
 class LightManager;
 class BindlessDescriptor;
 class EditorParams;
-class ResourceManager;
+class AssetManager;
 
 class RenderingPipeline : public RenderingPipelineInterface
 {
@@ -36,8 +36,9 @@ public:
 	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext);
 	void clear();
 
-	void setResourceManager(const Wolf::ResourceNonOwner<ResourceManager>& resourceManager) const;
+	void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) const;
 
+	bool hasRayTracing() const override { return static_cast<bool>(m_rayTracedWorldDebugPass); };
 	Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() override;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
@@ -47,6 +48,7 @@ public:
 	Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() override;
 	Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() override;
 	Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() override;
+	Wolf::ResourceNonOwner<ForwardPass> getForwardPass() override;
 	void requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const;
 
 private:

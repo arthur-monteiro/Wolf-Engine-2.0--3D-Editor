@@ -6,7 +6,7 @@
 #include "EditorModelInterface.h"
 #include "EditorTypesTemplated.h"
 #include "ParameterGroupInterface.h"
-#include "ResourceManager.h"
+#include "AssetManager.h"
 
 class StaticModel : public EditorModelInterface
 {
@@ -14,7 +14,7 @@ public:
 	static inline std::string ID = "staticModel";
 	std::string getId() const override { return ID; }
 
-	StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, 
+	StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, 
 		const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -40,10 +40,10 @@ public:
 private:
 	inline static const std::string TAB = "Model";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-	Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
+	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
-	ResourceManager::ResourceId m_meshResourceId = ResourceManager::NO_RESOURCE;
+	AssetManager::AssetId m_meshResourceId = AssetManager::NO_ASSET;
 
 	bool m_isWaitingForMeshLoading = false;
 	void requestModelLoading();
@@ -133,10 +133,13 @@ private:
 	static constexpr uint32_t MAX_SUB_MESHES = 256;
 	EditorParamArray<SubMesh> m_subMeshes = EditorParamArray<SubMesh>("Sub meshes", TAB, "Mesh", MAX_SUB_MESHES, false, true);
 
-	std::array<EditorParamInterface*, 2> m_editorParams =
+	EditorParamUInt m_rayTracedWorldLOD = EditorParamUInt("LOD for ray traced world", TAB, "Ray Tracing", 0, 0, [this]() { notifySubscribers(); });
+
+	std::array<EditorParamInterface*, 3> m_editorParams =
 	{
 		&m_loadingPathParam,
-		&m_subMeshes
+		&m_subMeshes,
+		&m_rayTracedWorldLOD
 	};
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>> m_defaultPipelineSet;

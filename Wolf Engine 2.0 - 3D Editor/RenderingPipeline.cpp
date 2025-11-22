@@ -174,7 +174,7 @@ void RenderingPipeline::clear()
 	m_compositionPass->clear();
 }
 
-void RenderingPipeline::setResourceManager(const Wolf::ResourceNonOwner<ResourceManager>& resourceManager) const
+void RenderingPipeline::setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) const
 {
 	if (m_voxelGIPass)
 	{
@@ -225,6 +225,11 @@ Wolf::ResourceNonOwner<CompositionPass> RenderingPipeline::getCompositionPass()
 Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> RenderingPipeline::getVoxelGIPass()
 {
 	return m_voxelGIPass.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<ForwardPass> RenderingPipeline::getForwardPass()
+{
+	return m_forwardPass.createNonOwnerResource();
 }
 
 void RenderingPipeline::requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const

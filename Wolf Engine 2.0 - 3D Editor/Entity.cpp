@@ -8,7 +8,8 @@
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 
-Entity::Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback) : m_filepath(std::move(filePath)), m_onChangeCallback(onChangeCallback)
+Entity::Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<void(Entity*)>&& rebuildRayTracedWorldCallback)
+	: m_filepath(std::move(filePath)), m_onChangeCallback(onChangeCallback), m_rebuildRayTracedWorldCallback(rebuildRayTracedWorldCallback)
 {
 	m_nameParam = "Undefined";
 }
@@ -101,6 +102,8 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 				{
 					m_needsMeshesToRenderComputation = false;
 					drawManager->addMeshesToDraw(meshes, this);
+
+					m_rebuildRayTracedWorldCallback(this);
 				}
 				else
 				{

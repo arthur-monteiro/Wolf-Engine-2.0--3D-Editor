@@ -34,6 +34,14 @@ enableRayTracing=1
 
 ## Features
 
+### Ray traced global illumination
+Realtime capture of indirect lighting and sky lighting.
+
+<p align="center">
+  <img src="./Screenshots/global_irradiance.png"  width="1080"/>
+</p>
+
+
 ### Color grading
 You can load a .cube file (rec709) to apply a "look" on the final image.
 

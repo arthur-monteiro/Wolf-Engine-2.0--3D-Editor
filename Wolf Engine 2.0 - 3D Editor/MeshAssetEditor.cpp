@@ -1,18 +1,19 @@
-#include "MeshResourceEditor.h"
+#include "MeshAssetEditor.h"
 
 #include <ConfigurationHelper.h>
 
 #include "EditorConfiguration.h"
 #include "MathsUtilsEditor.h"
+#include "ModelLoader.h"
 
-MeshResourceEditor::MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, const std::function<void(const std::string&)>& isolateMeshCallback,
-	const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload)
+MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, const std::function<void(const std::string&)>& isolateMeshCallback,
+                                 const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload)
 : m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
   m_requestThumbnailReload(requestThumbnailReload)
 {
 	m_filepath = filepath;
 
-	if (isMeshCentered)
+	if (modelData->isMeshCentered)
 	{
 		m_isCenteredLabel.setName("Mesh is centered");
 	}
@@ -20,9 +21,25 @@ MeshResourceEditor::MeshResourceEditor(const std::string& filepath, const std::f
 	{
 		m_isCenteredLabel.setName("Mesh is not centered");
 	}
+
+	LODInfo& lodInfo = m_lodsInfo.emplace_back();
+	lodInfo.setError(0.0f);
+	lodInfo.setIndexCount(modelData->mesh->getIndexCount());
+	lodInfo.setName("LOD 0");
+
+	uint32_t lodIdx = 1;
+	for (Wolf::ModelData::LODInfo& modelLODInfo : modelData->lodsInfo)
+	{
+		LODInfo& editorLODInfo = m_lodsInfo.emplace_back();
+		editorLODInfo.setError(modelLODInfo.error);
+		editorLODInfo.setIndexCount(modelLODInfo.indexCount);
+		editorLODInfo.setName("LOD " + std::to_string(lodIdx));
+
+		lodIdx++;
+	}
 }
 
-void MeshResourceEditor::addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape)
+void MeshAssetEditor::addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape)
 {
 	PhysicMesh& physicMesh = m_physicsMeshes.emplace_back();
 
@@ -56,7 +73,7 @@ void MeshResourceEditor::addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape
 	}
 }
 
-void MeshResourceEditor::activateParams()
+void MeshAssetEditor::activateParams()
 {
 	for (EditorParamInterface* editorParam : m_editorParams)
 	{
@@ -64,7 +81,7 @@ void MeshResourceEditor::activateParams()
 	}
 }
 
-void MeshResourceEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
+void MeshAssetEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
 	for (const EditorParamInterface* editorParam : m_editorParams)
 	{
@@ -72,7 +89,7 @@ void MeshResourceEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount
 	}
 }
 
-void MeshResourceEditor::computePhysicsOutputJSON(std::string& out)
+void MeshAssetEditor::computePhysicsOutputJSON(std::string& out)
 {
 	out += "{\n";
 	out += "\t\"physicsMeshesCount\": " + std::to_string(m_physicsMeshes.size()) + ",\n";
@@ -117,12 +134,12 @@ void MeshResourceEditor::computePhysicsOutputJSON(std::string& out)
 	out += "}\n";
 }
 
-void MeshResourceEditor::computeInfoForRectangle(uint32_t meshIdx, glm::vec3& outP0, glm::vec3& outS1, glm::vec3& outS2)
+void MeshAssetEditor::computeInfoForRectangle(uint32_t meshIdx, glm::vec3& outP0, glm::vec3& outS1, glm::vec3& outS2)
 {
 	computeRectanglePointsFromScaleRotationOffset(m_physicsMeshes[meshIdx].getDefaultRectangleScale(), m_physicsMeshes[meshIdx].getDefaultRectangleRotation(), m_physicsMeshes[meshIdx].getDefaultRectangleOffset(), outP0, outS1, outS2);
 }
 
-void MeshResourceEditor::computeInfoOutputJSON(std::string& out)
+void MeshAssetEditor::computeInfoOutputJSON(std::string& out)
 {
 	out += "{\n";
 	out += "\t\"thumbnailGenerationInfo\": {\n";
@@ -140,43 +157,43 @@ void MeshResourceEditor::computeInfoOutputJSON(std::string& out)
 	out += "}\n";
 }
 
-MeshResourceEditor::PhysicMesh::PhysicMesh() : ParameterGroupInterface(TAB)
+MeshAssetEditor::PhysicMesh::PhysicMesh() : ParameterGroupInterface(TAB)
 {
 	m_name = DEFAULT_NAME;
 }
 
-void MeshResourceEditor::PhysicMesh::getAllParams(std::vector<EditorParamInterface*>& out) const
+void MeshAssetEditor::PhysicMesh::getAllParams(std::vector<EditorParamInterface*>& out) const
 {
 	std::copy(m_allParams.data(), &m_allParams.back() + 1, std::back_inserter(out));
 }
 
-void MeshResourceEditor::PhysicMesh::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
+void MeshAssetEditor::PhysicMesh::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
 {
 	std::copy(m_allParams.data(), &m_allParams.back() + 1, std::back_inserter(out));
 }
 
-bool MeshResourceEditor::PhysicMesh::hasDefaultName() const
+bool MeshAssetEditor::PhysicMesh::hasDefaultName() const
 {
 	return std::string(m_name) == DEFAULT_NAME;
 }
 
-Wolf::Physics::PhysicsShapeType MeshResourceEditor::PhysicMesh::getType() const
+Wolf::Physics::PhysicsShapeType MeshAssetEditor::PhysicMesh::getType() const
 {
 	return static_cast<Wolf::Physics::PhysicsShapeType>(static_cast<uint32_t>(m_shapeType));
 }
 
-void MeshResourceEditor::PhysicMesh::onValueChanged()
+void MeshAssetEditor::PhysicMesh::onValueChanged()
 {
 	notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::PHYSICS));
 }
 
-void MeshResourceEditor::onPhysicsMeshAdded()
+void MeshAssetEditor::onPhysicsMeshAdded()
 {
 	m_requestReloadCallback(this);
 	m_physicsMeshes.back().subscribe(this, [this](Notifier::Flags) { notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::PHYSICS)); });
 }
 
-void MeshResourceEditor::centerMesh()
+void MeshAssetEditor::centerMesh()
 {
 	std::string fullFilepath = g_editorConfiguration->computeFullPathFromLocalPath(m_filepath) + ".config";
 	Wolf::ConfigurationHelper::writeInfoToFile(fullFilepath, "forceCenter", true);
@@ -184,7 +201,7 @@ void MeshResourceEditor::centerMesh()
 	notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::MESH));
 }
 
-void MeshResourceEditor::toggleCustomViewForThumbnail()
+void MeshAssetEditor::toggleCustomViewForThumbnail()
 {
 	m_isInCustomViewForThumbnail = !m_isInCustomViewForThumbnail;
 
@@ -201,4 +218,24 @@ void MeshResourceEditor::toggleCustomViewForThumbnail()
 		m_toggleCustomViewForThumbnail.setName("Enter view for thumbnail generation");
 		m_requestReloadCallback(this);
 	}
+}
+
+MeshAssetEditor::LODInfo::LODInfo() : ParameterGroupInterface(TAB)
+{
+	m_name = DEFAULT_NAME;
+}
+
+void MeshAssetEditor::LODInfo::getAllParams(std::vector<EditorParamInterface*>& out) const
+{
+	std::copy(m_allParams.data(), &m_allParams.back() + 1, std::back_inserter(out));
+}
+
+void MeshAssetEditor::LODInfo::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
+{
+	std::copy(m_allParams.data(), &m_allParams.back() + 1, std::back_inserter(out));
+}
+
+bool MeshAssetEditor::LODInfo::hasDefaultName() const
+{
+	return std::string(m_name) == DEFAULT_NAME;
 }

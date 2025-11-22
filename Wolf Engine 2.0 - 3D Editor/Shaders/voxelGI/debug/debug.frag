@@ -10,7 +10,7 @@ layout (location = 0) out vec4 outColor;
 
 layout(std430, binding = 0, set = 2) buffer VoxelGridLayout
 {
-    vec3 irradiances[];
+    vec3 values[];
 } voxelGrid;
 
 vec3 computeIrradianceForDirection(in uint voxelIdx, in vec3 direction)
@@ -21,9 +21,9 @@ vec3 computeIrradianceForDirection(in uint voxelIdx, in vec3 direction)
     float w_y = absDirection.y;
     float w_z = absDirection.z;
     
-    vec3 color_x = (direction.x >= 0.0) ? voxelGrid.irradiances[voxelIdx * 6 + 0] : voxelGrid.irradiances[voxelIdx * 6 + 1]; // +X or -X
-    vec3 color_y = (direction.y >= 0.0) ? voxelGrid.irradiances[voxelIdx * 6 + 2] : voxelGrid.irradiances[voxelIdx * 6 + 3]; // +Y or -Y
-    vec3 color_z = (direction.z >= 0.0) ? voxelGrid.irradiances[voxelIdx * 6 + 4] : voxelGrid.irradiances[voxelIdx * 6 + 5]; // +Z or -Z
+    vec3 color_x = (direction.x >= 0.0) ? voxelGrid.values[voxelIdx * 12 + 0] : voxelGrid.values[voxelIdx * 12 + 1]; // +X or -X
+    vec3 color_y = (direction.y >= 0.0) ? voxelGrid.values[voxelIdx * 12 + 2] : voxelGrid.values[voxelIdx * 12 + 3]; // +Y or -Y
+    vec3 color_z = (direction.z >= 0.0) ? voxelGrid.values[voxelIdx * 12 + 4] : voxelGrid.values[voxelIdx * 12 + 5]; // +Z or -Z
     
     vec3 blendedColor = color_x * w_x + color_y * w_y + color_z * w_z;
     

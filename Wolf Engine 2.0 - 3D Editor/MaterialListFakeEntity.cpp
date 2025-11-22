@@ -3,7 +3,7 @@
 #include "EditorParamsHelper.h"
 
 MaterialListFakeEntity::MaterialListFakeEntity(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
-	: Entity("", [](Entity*){}), m_materialsGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration)
+	: Entity("", [](Entity*){}, [](Entity*) {}), m_materialsGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration)
 {
 }
 

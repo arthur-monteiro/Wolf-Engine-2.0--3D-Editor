@@ -4,7 +4,7 @@
 
 #include "EditorLightInterface.h"
 #include "EditorTypes.h"
-#include "ResourceManager.h"
+#include "AssetManager.h"
 
 class SkyLight : public EditorLightInterface
 {
@@ -12,7 +12,7 @@ public:
 	static inline std::string ID = "skyLight";
 	std::string getId() const override { return ID; }
 
-	SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
+	SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -36,7 +36,7 @@ private:
 
 	inline static const std::string TAB = "Sky light";
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
+	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
 	std::vector<std::string> LIGHT_TYPE_STRING_LIST = { "Realtime", "Baked" };
@@ -62,7 +62,7 @@ private:
 
 	/* Baked */
 	void onSphericalMapChanged();
-	ResourceManager::ResourceId m_sphericalMapResourceId = ResourceManager::NO_RESOURCE;
+	AssetManager::AssetId m_sphericalMapResourceId = AssetManager::NO_ASSET;
 	EditorParamString m_sphericalMap = EditorParamString("Spherical map", TAB, "Sky", [this] { onSphericalMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 	glm::vec3 m_sunDirectionFromSphericalMap;
 	float m_sunIntensityFromSphericalMap;

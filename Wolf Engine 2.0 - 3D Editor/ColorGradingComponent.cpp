@@ -3,7 +3,7 @@
 #include "CompositionPass.h"
 #include "EditorParamsHelper.h"
 
-ColorGradingComponent::ColorGradingComponent(const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+ColorGradingComponent::ColorGradingComponent(const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
     : m_resourceManager(resourceManager), m_renderingPipeline(renderingPipeline)
 {
 }
@@ -48,7 +48,7 @@ bool ColorGradingComponent::updateLUTImage()
         return true;
     }
 
-    if (m_lutImageResourceId == ResourceManager::NO_RESOURCE || !m_resourceManager->isImageLoaded(m_lutImageResourceId))
+    if (m_lutImageResourceId == AssetManager::NO_ASSET || !m_resourceManager->isImageLoaded(m_lutImageResourceId))
         return false;
 
     Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_lutImageResourceId);
@@ -66,7 +66,7 @@ void ColorGradingComponent::onLUTImageMapChanged()
     }
     else
     {
-        m_lutImageResourceId = ResourceManager::NO_RESOURCE;
+        m_lutImageResourceId = AssetManager::NO_ASSET;
     }
     m_lutImageUpdateRequested = true;
 }

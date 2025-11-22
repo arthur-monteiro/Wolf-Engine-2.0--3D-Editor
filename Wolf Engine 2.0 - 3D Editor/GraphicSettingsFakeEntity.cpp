@@ -5,10 +5,20 @@
 #include "SystemManager.h"
 
 GraphicSettingsFakeEntity::GraphicSettingsFakeEntity(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, SystemManager* systemManager, const std::function<void(ComponentInterface*)>& requestReloadCallback)
-: Entity("", [](Entity*){}), m_renderingPipeline(renderingPipeline), m_systemManager(systemManager), m_requestReloadCallback(requestReloadCallback)
+: Entity("", [](Entity*){}, [](Entity*){}), m_renderingPipeline(renderingPipeline), m_systemManager(systemManager), m_requestReloadCallback(requestReloadCallback)
 {
     m_skyCubeMapResolution = m_renderingPipeline->getSkyBoxManager()->getCubeMapResolution();
     m_csmFar = m_renderingPipeline->getCascadedShadowMapsPass()->getFar();
+    m_enableTrilinearVoxelGI = true;
+
+    if (m_renderingPipeline->hasRayTracing())
+    {
+        m_globalIrradianceTechnique.setOptions({"Voxel GI"});
+    }
+    else
+    {
+        m_globalIrradianceTechnique.setOptions({"Ambient lighting"});
+    }
 }
 
 void GraphicSettingsFakeEntity::activateParams()
@@ -24,8 +34,12 @@ void GraphicSettingsFakeEntity::fillJSONForParams(std::string& outJSON)
 
     forAllVisibleParams([this](EditorParamInterface* e, std::string& inOutJSON) mutable
     {
-        bool isLast = m_shadowTechnique == 0 && e == static_cast<EditorParamInterface*>(&m_csmFar) ||
+        bool isLastShadow = m_shadowTechnique == 0 && e == static_cast<EditorParamInterface*>(&m_csmFar) ||
            m_shadowTechnique != 0 && e == static_cast<EditorParamInterface*>(&m_shadowTechnique);
+        bool isShadowLast = reinterpret_cast<const std::string&>(m_voxelGIParams) == "Ambient lighting";
+        bool isLastGI = e == static_cast<EditorParamInterface*>(&m_probePositionVoxelGIDebug);
+        bool isLast = (isLastShadow && isShadowLast) || isLastGI;
+
         e->addToJSON(inOutJSON, 1, isLast);
     }, outJSON);
 
@@ -77,6 +91,15 @@ void GraphicSettingsFakeEntity::forAllVisibleParams(const std::function<void(Edi
             Wolf::Debug::sendError("Undefined shadow technique");
             break;
     }
+
+    const std::string& selectedGlobalIrradiance = static_cast<const std::string&>(m_globalIrradianceTechnique);
+    if (selectedGlobalIrradiance == "Voxel GI")
+    {
+        for (EditorParamInterface* editorParam : m_voxelGIParams)
+        {
+            callback(editorParam, inOutString);
+        }
+    }
 }
 
 GameContext::ShadowTechnique GraphicSettingsFakeEntity::computeShadowTechnique() const
@@ -106,7 +129,22 @@ void GraphicSettingsFakeEntity::onCSMFarChanged()
     m_renderingPipeline->getCascadedShadowMapsPass()->setFar(m_csmFar);
 }
 
+void GraphicSettingsFakeEntity::updateGlobalIrradianceTechnique()
+{
+    // Nothing to do
+}
+
+void GraphicSettingsFakeEntity::onTrilinarVoxelGIChanged()
+{
+    m_renderingPipeline->getForwardPass()->setEnableTrilinearVoxelGI(m_enableTrilinearVoxelGI);
+}
+
 void GraphicSettingsFakeEntity::onVoxelGIDebugChanged()
 {
     m_renderingPipeline->getVoxelGIPass()->setEnableDebug(m_enableVoxelGIDebug);
+}
+
+void GraphicSettingsFakeEntity::onProbePositionVoxelGIDebugChanged()
+{
+    m_renderingPipeline->getVoxelGIPass()->setDebugPostionFace(m_probePositionVoxelGIDebug);
 }

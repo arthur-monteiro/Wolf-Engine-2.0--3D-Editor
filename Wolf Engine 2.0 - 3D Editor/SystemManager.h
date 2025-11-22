@@ -11,7 +11,7 @@
 #include "GameContext.h"
 #include "RayTracedWorldManager.h"
 #include "RenderingPipeline.h"
-#include "ResourceManager.h"
+#include "AssetManager.h"
 
 class SystemManager
 {
@@ -65,7 +65,7 @@ private:
 	void requestEntitySelectionJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void disableEntityPickingJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void duplicateEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
-	void editResourceJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void editAssetJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void debugPhysicsCheckboxChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void onGoToEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void onRemoveEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -83,7 +83,7 @@ private:
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
 	Wolf::ResourceUniqueOwner<RenderingPipeline> m_renderer;
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
-	Wolf::ResourceUniqueOwner<ResourceManager> m_resourceManager;
+	Wolf::ResourceUniqueOwner<AssetManager> m_assetManager;
 
 	/* FPS counter */
 	uint32_t m_currentFramesAccumulated = 0;

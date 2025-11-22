@@ -4,7 +4,7 @@
 #include "EditorModelInterface.h"
 #include "EditorTypesTemplated.h"
 #include "ParameterGroupInterface.h"
-#include "ResourceManager.h"
+#include "AssetManager.h"
 
 class AnimatedModel : public EditorModelInterface
 {
@@ -12,7 +12,7 @@ public:
 	static inline std::string ID = "animatedModel";
 	std::string getId() const override { return ID; }
 
-	AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, 
+	AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, 
 		const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, 
 		const std::function<void(ComponentInterface*)>& requestReloadCallback);
 
@@ -44,11 +44,11 @@ private:
 
 	inline static const std::string TAB = "Model";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-	Wolf::ResourceNonOwner<ResourceManager> m_resourceManager;
+	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	ResourceManager::ResourceId m_meshResourceId = ResourceManager::NO_RESOURCE;
+	AssetManager::AssetId m_meshResourceId = AssetManager::NO_ASSET;
 
 	Wolf::AnimationData* findAnimationData(bool& success);
 
@@ -72,7 +72,7 @@ private:
 		Animation();
 		Animation(const Animation&) = delete;
 
-		void setResourceManager(const Wolf::ResourceNonOwner<ResourceManager>& resourceManager) { m_resourceManager.reset(new Wolf::ResourceNonOwner<ResourceManager>(resourceManager)); }
+		void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) { m_resourceManager.reset(new Wolf::ResourceNonOwner<AssetManager>(resourceManager)); }
 
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
@@ -85,7 +85,7 @@ private:
 
 	private:
 		inline static const std::string DEFAULT_NAME = "New animation";
-		std::unique_ptr<Wolf::ResourceNonOwner<ResourceManager>> m_resourceManager;
+		std::unique_ptr<Wolf::ResourceNonOwner<AssetManager>> m_resourceManager;
 
 		uint32_t m_resourceId = -1;
 		void onFileParamChanged();

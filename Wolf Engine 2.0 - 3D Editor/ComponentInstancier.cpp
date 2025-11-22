@@ -4,7 +4,7 @@
 
 ComponentInstancier::ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 	std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
-	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager,const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
+	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
 	const Wolf::ResourceNonOwner<EntityContainer>& entityContainer)
 	: m_materialsGPUManager(materialsGPUManager),
       m_renderingPipeline(renderingPipeline),

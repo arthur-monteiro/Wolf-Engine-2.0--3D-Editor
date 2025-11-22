@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG c57873853ef04648e5518a36c385a583b337e58d
+        GIT_TAG 4762776e0ffb3a81ad5c380c5529b2363f73fe1b
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -36,6 +36,7 @@ link_directories("dependencies/wolfenginecontent-src/x64/Debug/lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/vulkan/Lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/GLFW/lib-vc2019")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/UltraLight/lib")
+link_directories("dependencies/wolfenginecontent-src/ThirdParty/meshoptimizer/lib")
 link_directories("x64/Debug/lib")
 
 add_subdirectory("GifEncoder")
@@ -69,6 +70,7 @@ target_link_libraries(WolfEngine_3DEditor Ultralight.lib)
 target_link_libraries(WolfEngine_3DEditor UltralightCore.lib)
 target_link_libraries(WolfEngine_3DEditor WebCore.lib)
 target_link_libraries(WolfEngine_3DEditor AppCore.lib)
+target_link_libraries(WolfEngine_3DEditor meshoptimizer.lib)
 target_link_libraries(WolfEngine_3DEditor Common.lib)
 target_link_libraries(WolfEngine_3DEditor GraphicAPIBroker.lib)
 target_link_libraries(WolfEngine_3DEditor WolfEngine.lib)

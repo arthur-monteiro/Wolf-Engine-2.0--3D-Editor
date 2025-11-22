@@ -1,12 +1,18 @@
 #pragma once
 
+#include "EditorTypes.h"
 #include "EditorTypesTemplated.h"
 #include "Entity.h"
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
 #include "PhysicShapes.h"
 
-class MeshResourceEditor : public ComponentInterface
+namespace Wolf
+{
+	struct ModelData;
+}
+
+class MeshAssetEditor : public ComponentInterface
 {
 public:
 	enum class ResourceEditorNotificationFlagBits : uint32_t
@@ -16,7 +22,7 @@ public:
 	};
 
 	std::string getId() const override { return "meshResourceEditor"; }
-	MeshResourceEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, const std::function<void(const std::string&)>& isolateMeshCallback,
+	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, const std::function<void(const std::string&)>& isolateMeshCallback,
 		const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override {}
@@ -102,7 +108,34 @@ private:
 	glm::mat4 m_viewMatrixForThumbnail{};
 	EditorParamButton m_toggleCustomViewForThumbnail = EditorParamButton("Enter view for thumbnail generation", TAB, "Thumbnail", [this]() { toggleCustomViewForThumbnail(); });
 
-	std::array<EditorParamInterface*, 5> m_editorParams =
+	class LODInfo : public ParameterGroupInterface
+	{
+	public:
+		LODInfo();
+
+		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
+		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
+		bool hasDefaultName() const override;
+
+		void setError(float error) { m_error = std::to_string(error * 100) + "%"; }
+		void setIndexCount(uint32_t indexCount) { m_indexCount = std::to_string(indexCount); }
+
+	private:
+		inline static const std::string DEFAULT_NAME = "PLACEHOLDER";
+
+		EditorParamString m_error = EditorParamString("Error", TAB, "Info", EditorParamString::ParamStringType::STRING, false, false, true);
+		EditorParamString m_indexCount = EditorParamString("Index count", TAB, "Info", EditorParamString::ParamStringType::STRING, false, false, true);
+
+		std::array<EditorParamInterface*, 2> m_allParams =
+		{
+			&m_error,
+			&m_indexCount
+		};
+	};
+
+	EditorParamArray<LODInfo> m_lodsInfo = EditorParamArray<LODInfo>("LODs", TAB, "LOD", 16, false, true);
+
+	std::array<EditorParamInterface*, 6> m_editorParams =
 	{
 		&m_filepath,
 
@@ -111,7 +144,9 @@ private:
 		&m_isCenteredLabel,
 		&m_centerMesh,
 
-		&m_toggleCustomViewForThumbnail
+		&m_toggleCustomViewForThumbnail,
+
+		&m_lodsInfo
 	};
 };
 

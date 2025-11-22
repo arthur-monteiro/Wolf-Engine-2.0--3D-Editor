@@ -78,7 +78,14 @@ void RayTracedWorldManager::populateInstanceBuffer(const RayTracedWorldInfo& inf
 
         data.firstMaterialIdx = instanceInfo.m_firstMaterialIdx;
         data.vertexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_mesh->getVertexBuffer());
-        data.indexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_mesh->getIndexBuffer());
+        if (!instanceInfo.m_overrideIndexBuffer)
+        {
+            data.indexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_mesh->getIndexBuffer());
+        }
+        else
+        {
+            data.indexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_overrideIndexBuffer);
+        }
     }
 
     m_instanceBuffer->transferCPUMemoryWithStagingBuffer(instanceData.data(), instanceData.size() * sizeof(InstanceData));

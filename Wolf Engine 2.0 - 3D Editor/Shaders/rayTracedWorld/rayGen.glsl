@@ -26,10 +26,11 @@ struct Vertex
 };
 uint vertexSize = 12;
 
-void traceRay(in uint rayFlags, in uint cullMask, in uint sbtRecordOffset, in uint sbtRecordStride, in uint missIndex, in vec3 origin, in float tmin, in vec3 direction, in float tmax)
-{
-    traceRayEXT(topLevelAS, rayFlags, cullMask, sbtRecordOffset, sbtRecordStride, missIndex, origin, tmin, direction, tmax, 0);
-}
+#define traceRaySpecificPayload(_rayFlags, _cullMask, _sbtRecordOffset, _sbtRecordStride, _missIndex, _origin, _tmin, _direction, _tmax, _payloadLocation) \
+    traceRayEXT(topLevelAS, _rayFlags, _cullMask, _sbtRecordOffset, _sbtRecordStride, _missIndex, _origin, _tmin, _direction, _tmax, _payloadLocation)
+
+#define traceRay(_rayFlags, _cullMask, _sbtRecordOffset, _sbtRecordStride, _missIndex, _origin, _tmin, _direction, _tmax) \
+    traceRaySpecificPayload(_rayFlags, _cullMask, _sbtRecordOffset, _sbtRecordStride, _missIndex, _origin, _tmin, _direction, _tmax, 0)
 
 uint getFirstMaterialIdx(in uint instanceId)
 {

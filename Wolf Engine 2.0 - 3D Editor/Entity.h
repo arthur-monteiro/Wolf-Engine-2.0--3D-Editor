@@ -23,7 +23,7 @@ class ComponentInstancier;
 class Entity : public Notifier
 {
 public:
-	Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback);
+	Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<void(Entity*)>&& rebuildRayTracedWorldCallback);
 	virtual ~Entity() = default;
 	void loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent);
 
@@ -91,6 +91,7 @@ public:
 private:
 	std::string m_filepath;
 	std::function<void(Entity*)> m_onChangeCallback;
+	std::function<void(Entity*)> m_rebuildRayTracedWorldCallback;
 
 	static constexpr uint32_t MAX_COMPONENT_COUNT = 8;
 	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface> m_components;

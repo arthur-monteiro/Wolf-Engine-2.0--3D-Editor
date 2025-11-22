@@ -41,18 +41,35 @@ private:
     void onCSMFarChanged();
     EditorParamFloat m_csmFar = EditorParamFloat("Cascade shadow mapping max range", TAB, "Shadows", 25.0f, 5000.0f, [this]() { onCSMFarChanged(); });
 
+    void updateGlobalIrradianceTechnique();
+    EditorParamEnum m_globalIrradianceTechnique = EditorParamEnum({ "PLACEHOLDER" }, "Global irradiance technique", TAB, "Global Irradiance",
+        [this]() { updateGlobalIrradianceTechnique();});
+
+    void onTrilinarVoxelGIChanged();
+    EditorParamBool m_enableTrilinearVoxelGI = EditorParamBool("Enable trilinear filtering", TAB, "Voxel GI", [this]() { onTrilinarVoxelGIChanged(); });
     void onVoxelGIDebugChanged();
     EditorParamBool m_enableVoxelGIDebug = EditorParamBool("Enable voxel GI debug", TAB, "Voxel GI", [this]() { onVoxelGIDebugChanged(); });
+    void onProbePositionVoxelGIDebugChanged();
+    // TODO: this should be grayed if debug isn't enabled
+    EditorParamEnum m_probePositionVoxelGIDebug = EditorParamEnum({ "Center", "+X", "-X", "+Y", "-Y", "+Z", "-Z" }, "Use probe position from face", TAB, "Voxel GI",
+        [this]() { onProbePositionVoxelGIDebugChanged(); });
 
     std::array<EditorParamInterface*, 3> m_alwaysVisibleParams =
     {
         &m_skyCubeMapResolution,
         &m_shadowTechnique,
-        &m_enableVoxelGIDebug
+        &m_globalIrradianceTechnique
     };
 
     std::array<EditorParamInterface*, 1> m_csmParams =
     {
         &m_csmFar
+    };
+
+    std::array<EditorParamInterface*, 3> m_voxelGIParams =
+    {
+        &m_enableTrilinearVoxelGI,
+        &m_enableVoxelGIDebug,
+        &m_probePositionVoxelGIDebug
     };
 };

@@ -623,7 +623,7 @@ li {
     width:3ch;
 }
 
-#resourceBrowser {
+#assetBrowser {
     height: 200px;
     position: absolute;
     bottom: 50px;
@@ -636,7 +636,7 @@ li {
     justify-content: center;
 }
 
-.resourceMesh {
+.assetMesh {
     width: 100px;
     height: 125px;
     border: solid 1px white;
@@ -645,12 +645,12 @@ li {
     margin-right: 7px;
 }
 
-.resourceIcon {
+.assetIcon {
     width: 100px;
     height: 100px;
 }
 
-.resourceName {
+.assetName {
     font-size: 10px;
     display: flex;
     align-items: center;

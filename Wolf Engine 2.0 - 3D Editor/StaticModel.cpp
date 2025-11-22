@@ -12,7 +12,7 @@
 #include "Entity.h"
 #include "TextureSetComponent.h"
 
-StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager,
+StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
 	const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
 : m_materialsGPUManager(materialsGPUManager), m_resourceManager(resourceManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
@@ -101,7 +101,6 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 	{
 		if (m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
-			m_isWaitingForMeshLoading = false;
 			if (m_subMeshes.empty())
 			{
 				const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& textureSetInfo = m_resourceManager->getModelData(m_meshResourceId)->textureSets;
@@ -125,6 +124,11 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 				subscribeToAllSubMeshes();
 				reloadEntity();
 			}
+
+			uint32_t maxLOD = m_resourceManager->getModelData(m_meshResourceId)->simplifiedIndexBuffers.size();
+			m_rayTracedWorldLOD.setMax(maxLOD);
+
+			m_isWaitingForMeshLoading = false;
 		}
 	}
 
@@ -167,7 +171,15 @@ bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManage
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
 		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
 
-	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId), m_transform, firstMaterialIdx, m_resourceManager->getModelData(m_meshResourceId)->mesh.createNonOwnerResource() };
+	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
+	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId, m_rayTracedWorldLOD), m_transform, firstMaterialIdx,
+		modelData->mesh.createNonOwnerResource() };
+
+	if (m_rayTracedWorldLOD > 0)
+	{
+		instanceInfo.m_overrideIndexBuffer = modelData->simplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+	}
+
 	instanceInfos.push_back(instanceInfo);
 
 	return true;

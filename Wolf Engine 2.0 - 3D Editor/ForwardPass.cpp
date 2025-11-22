@@ -117,6 +117,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	/* Shared resources */
 	DisplayOptionsUBData displayOptions{};
 	displayOptions.displayType = static_cast<uint32_t>(gameContext->displayType);
+	displayOptions.enableTrilinearVoxelGI = m_enableTrilinearVoxelGI;
 	m_displayOptionsUniformBuffer->transferCPUMemory(&displayOptions, sizeof(displayOptions), 0);
 
 	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();

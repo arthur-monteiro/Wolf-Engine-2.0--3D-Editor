@@ -8,7 +8,7 @@
 #include "EditorParamsHelper.h"
 #include "glm/gtx/quaternion.hpp"
 
-SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
 : m_requestReloadCallback(requestReloadCallback), m_resourceManager(resourceManager), m_renderingPipeline(renderingPipeline)
 {
 	m_color = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -153,7 +153,7 @@ bool SkyLight::updateCubeMap()
 			}
 		case LIGHT_TYPE_BAKED:
 			{
-				if (m_sphericalMapResourceId == ResourceManager::NO_RESOURCE || !m_resourceManager->isImageLoaded(m_sphericalMapResourceId))
+				if (m_sphericalMapResourceId == AssetManager::NO_ASSET || !m_resourceManager->isImageLoaded(m_sphericalMapResourceId))
 					return false;
 
 				Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_sphericalMapResourceId);

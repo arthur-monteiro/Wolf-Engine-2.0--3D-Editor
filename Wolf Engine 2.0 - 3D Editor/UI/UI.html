@@ -17,9 +17,9 @@
 		</ul>
 	</div>
 
-	<div id="resourceContextMenu" style="display: none; z-index: 1000;">
+	<div id="assetContextMenu" style="display: none; z-index: 1000;">
 		<ul class="menuList">
-			<li class="menuItem" id="edit" onclick="onResourceEdit()">Edit</li>
+			<li class="menuItem" id="edit" onclick="onAssetEdit()">Edit</li>
 		</ul>
 	</div>
 
@@ -44,11 +44,11 @@
 			<span>No entity selected</span>
 		</div>
 		<div id="entityList"></div>
-		<div id="resourceBrowser"></div>
+		<div id="assetBrowser"></div>
 
 		<div id="sliderInfo" onmousedown="resizeInfo()"></div>
 		<div id="sliderList" onmousedown="resizeList()"></div>
-		<div id="sliderResourceBrowser" onmousedown="resizeList()"></div>
+		<div id="sliderAssetBrowser" onmousedown="resizeList()"></div>
 
 		<div id="viewBotRightElements">
 			<img id="selectEntityIcon"
@@ -203,7 +203,7 @@
 	var animationsInstances = [];
 	var selectedEntityName = "";
 	var isRequestingDuplicate = false;
-	var selectedResourceId = "";
+	var selectedAssetId = "";
 
 	function openPerformances()
 	{
@@ -446,26 +446,26 @@
 		document.getElementById('entityList').innerHTML = "";
 	}
 
-	function closeResourceContextMenu() {
-		document.getElementById("resourceContextMenu").style.display = "none";
+	function closeAssetContextMenu() {
+		document.getElementById("assetContextMenu").style.display = "none";
 	}
 
-	function onResourceEdit() {
-		editResource(selectedResourceId);
+	function onAssetEdit() {
+		editAsset(selectedAssetId);
 
-		closeResourceContextMenu();
+		closeAssetContextMenu();
 	}
 
-	function onMouseDownResource(e, id) {
+	function onMouseDownAsset(e, id) {
 		let isRightClick = getMouseButtons(e) == RMB;
 
-		selectedResourceId = id;
+		selectedAssetId = id;
 
 		if (isRightClick) {
-			document.getElementById("resourceContextMenu").style.display = "block";
-			document.getElementById("resourceContextMenu").style.position = "absolute";
-			document.getElementById("resourceContextMenu").style.left = e.clientX;
-			document.getElementById("resourceContextMenu").style.top = e.clientY;
+			document.getElementById("assetContextMenu").style.display = "block";
+			document.getElementById("assetContextMenu").style.position = "absolute";
+			document.getElementById("assetContextMenu").style.left = e.clientX;
+			document.getElementById("assetContextMenu").style.top = e.clientY;
 		}
 	}
 
@@ -499,21 +499,21 @@
 		document.getElementById("boundingSphereIcon").style.opacity = opacity;
 	}
 
-	function addResourceToList(name, iconPath, id) {
-		let resourceInfoDiv = "<div id='resource_" + id + "' class='resourceMesh' onmousedown=\"onMouseDownResource(event, '" + id + "');\">";
-		resourceInfoDiv += "<div class='resourceIcon'><img src='" + iconPath + "'/></div>";
-		resourceInfoDiv += "<div class='resourceName'>" + name + "</div>";
-		resourceInfoDiv += "</div>";
+	function addAssetToList(name, iconPath, id) {
+		let assetInfoDiv = "<div id='asset_" + id + "' class='assetMesh' onmousedown=\"onMouseDownAsset(event, '" + id + "');\">";
+		assetInfoDiv += "<div class='assetIcon'><img src='" + iconPath + "'/></div>";
+		assetInfoDiv += "<div class='assetName'>" + name + "</div>";
+		assetInfoDiv += "</div>";
 
-		document.getElementById('resourceBrowser').innerHTML += resourceInfoDiv;
+		document.getElementById('assetBrowser').innerHTML += assetInfoDiv;
 	}
 
-	function updateResource(name, iconPath, id)
+	function updateAsset(name, iconPath, id)
 	{
-		let resourceElement = document.getElementById("resource_" + id);
+		let assetElement = document.getElementById("asset_" + id);
 		
-		resourceElement.getElementsByClassName("resourceName")[0].innerHTML = name;
-		resourceElement.getElementsByClassName("resourceIcon")[0].innerHTML = "<img src='" + iconPath + "'/>";
+		assetElement.getElementsByClassName("assetName")[0].innerHTML = name;
+		assetElement.getElementsByClassName("assetIcon")[0].innerHTML = "<img src='" + iconPath + "'/>";
 	}
 
 	function makeID(length) {

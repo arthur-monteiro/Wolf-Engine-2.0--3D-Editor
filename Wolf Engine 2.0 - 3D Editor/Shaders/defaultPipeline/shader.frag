@@ -13,6 +13,7 @@ layout (location = 0) out vec4 outColor;
 layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 {
 	uint displayType;
+    bool enableTrilinearVoxelGI;
 } ubDisplay;
 
 layout (binding = 0, set = 4, r16f) uniform image2D shadowMask;
@@ -89,7 +90,7 @@ vec4 computeLighting(MaterialInfo materialInfo)
             Lo += computeRadianceForLight(V, normal, roughness, F0, albedo, metalness, L, 1.0f /* attenuation */, ubLights.sunLights[i].sunColor.xyz) * shadowsCoeff;
         }
 
-        vec3 ambientLight = albedo * computeIrradiance(worldPos, normal) * 8.0;
+        vec3 ambientLight = albedo * computeIrradiance(worldPos, normal, ubDisplay.enableTrilinearVoxelGI) * 8.0;
         
         vec3 result = Lo + ambientLight;
         float exposure = -1.5; // TODO
@@ -135,7 +136,7 @@ void main()
         normal = normalize(normal);
         vec3 worldPos = (getInvViewMatrix() * vec4(inViewPos, 1.0f)).xyz;
 
-        outColor = vec4(computeIrradiance(worldPos, normal), 1.0);
+        outColor = vec4(computeIrradiance(worldPos, normal, ubDisplay.enableTrilinearVoxelGI), 1.0);
     }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);

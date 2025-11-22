@@ -13,7 +13,7 @@
 #include "TextureSetComponent.h"
 #include "UpdateGPUBuffersPass.h"
 
-AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ResourceManager>& resourceManager, 
+AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, 
                              const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 							 const std::function<void(ComponentInterface*)>& requestReloadCallback)
 : m_materialsGPUManager(materialsGPUManager), m_resourceManager(resourceManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()),

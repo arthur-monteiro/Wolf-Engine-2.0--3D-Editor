@@ -5,7 +5,7 @@
 #include <PhysicsManager.h>
 #include <ResourceNonOwner.h>
 
-#include "ResourceManager.h"
+#include "AssetManager.h"
 
 class Entity;
 

@@ -39,6 +39,7 @@ public:
 	Wolf::Image& getOutput() { return *m_outputImage; }
 
 	void setShadowMaskPass(const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPassInterface, Wolf::GraphicAPIManager* graphicApiManager);
+	void setEnableTrilinearVoxelGI(bool value) { m_enableTrilinearVoxelGI = value; }
 
 private:
 	void createOutputImage(const Wolf::InitializationContext& context);
@@ -64,8 +65,11 @@ private:
 	struct DisplayOptionsUBData
 	{
 		uint32_t displayType;
+		bool enableTrilinearVoxelGI;
 	};
 	std::unique_ptr<Wolf::UniformBuffer> m_displayOptionsUniformBuffer;
+
+	bool m_enableTrilinearVoxelGI = false;
 
 	/* Particles resources */
 	Wolf::DescriptorSetLayoutGenerator m_particlesDescriptorSetLayoutGenerator;
