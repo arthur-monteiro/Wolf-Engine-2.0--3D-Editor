@@ -34,7 +34,7 @@ enableRayTracing=1
 
 ## Features
 
-### Ray traced global illumination
+### [Ray traced global illumination](voxelGI_README.md) 
 Realtime capture of indirect lighting and sky lighting.
 
 <p align="center">
