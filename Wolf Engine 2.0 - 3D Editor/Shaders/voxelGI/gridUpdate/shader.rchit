@@ -52,18 +52,8 @@ void main()
         Vertex vertex = computeVertex(gl_InstanceCustomIndexEXT, gl_PrimitiveID, attribs);
         vec3 L = normalize(-ubLights.sunLights[0].sunDirection.xyz);
 
-        uint materialId = getFirstMaterialIdx(gl_InstanceCustomIndexEXT) + vertex.subMeshIdx;
-
-        mat3 usedModelMatrix = transpose(inverse(mat3(gl_WorldToObjectEXT)));
-        vec3 n = normalize(usedModelMatrix * vertex.normal);
-        vec3 t = normalize(usedModelMatrix * vertex.tangent);
-        t = normalize(t - dot(t, n) * n);
-        vec3 b = normalize(cross(t, n));
-        mat3 TBN = transpose(mat3(t, b, n));
-
-        MaterialInfo materialInfo = fetchMaterial(vertex.texCoords, materialId, TBN, inPayload.hitWorldPos);
-        vec3 albedo = materialInfo.albedo.xyz;
-        vec3 normal = materialInfo.normal.xyz;
+        vec3 albedo = vertex.vertexColor.xyz;
+        vec3 normal = vertex.normal.xyz;
 
         float NdotL = max(dot(normal, L), 0.0);
 

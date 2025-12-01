@@ -37,7 +37,7 @@ const vec3 DIRECTIONS[] = {
 
 const uint NOISE_TEXTURE_SIZE_PER_SIDE = 128;
 const uint NOISE_TEXTURE_VECTOR_COUNT = 128;
-const uint RAY_COUNT_PER_ACTIVATED_FACE = 16;
+const uint RAY_COUNT_PER_ACTIVATED_FACE = 32;
 
 bool checkIfFaceIsRequestedAndReset(in uint requestValueIdx, in uint firstRequestBitIdx, in uint bitOffset)
 {
@@ -140,7 +140,7 @@ void main()
         {
             vec3 previousColor = voxelGrid.values[voxelIdx * 12 + faceIdx].rgb;
             //finalColor = previousColor.rgb + (finalColor.rgb - previousColor.rgb) / float(ub.frameIdx);
-            float currentResultWeight = 1.0 / float(NOISE_TEXTURE_VECTOR_COUNT);
+            float currentResultWeight = 1.0 / 128.0;
             finalColor = finalColor * currentResultWeight + previousColor * (1.0 - currentResultWeight);
         }
 

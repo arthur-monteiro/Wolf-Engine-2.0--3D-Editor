@@ -150,7 +150,7 @@ public:
 	EditorParamUInt& operator=(uint32_t value) { setValue(value); return *this; }
 	operator uint32_t() const { return m_value; }
 
-	void setMax(uint32_t max) { m_max = max; }
+	void setMax(uint32_t max);
 
 private:
 	static Type uintTypeToParamType(ParamUIntType uintType);

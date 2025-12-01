@@ -142,7 +142,7 @@ void ThumbnailsGenerationPass::resize(const Wolf::InitializationContext& context
 uint32_t ThumbnailsGenerationPass::computeTotalImageToDraw(const Request& request)
 {
 	float maxTimer;
-	findMaxTimer(request.m_modelData->animationData->rootBones.data(), maxTimer);
+	findMaxTimer(request.m_modelData->m_animationData->rootBones.data(), maxTimer);
 	return std::max(static_cast<uint32_t>((maxTimer * 1000.0f) / DELAY_BETWEEN_ICON_FRAMES_MS), 1u);
 }
 
@@ -159,7 +159,7 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 		VkSubresourceLayout copyResourceLayout;
 		m_copyImage->getResourceLayout(copyResourceLayout);
 
-		if (!previousRequest.m_modelData->animationData)
+		if (!previousRequest.m_modelData->m_animationData)
 		{
 			stbi_write_png(previousRequest.m_outputFullFilepath.c_str(), OUTPUT_SIZE, OUTPUT_SIZE, 4, outputBytes, static_cast<int>(copyResourceLayout.rowPitch));
 		}
@@ -223,15 +223,15 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	uniformBufferData.firstMaterialIdx = request.m_firstMaterialIdx;
 	m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));
 
-	if (request.m_modelData->animationData)
+	if (request.m_modelData->m_animationData)
 	{
 		uint32_t totalImagesToDraw = computeTotalImageToDraw(request);
 
-		uint32_t boneCount = request.m_modelData->animationData->boneCount;
+		uint32_t boneCount = request.m_modelData->m_animationData->boneCount;
 		std::vector<BoneInfoGPU> bonesInfoGPU(boneCount);
 		std::vector<BoneInfoCPU> bonesInfoCPU(boneCount);
 
-		computeBonesInfo(request.m_modelData->animationData->rootBones.data(), glm::mat4(1.0f), (static_cast<float>(totalImagesToDraw - request.m_imageLeftToDraw) * DELAY_BETWEEN_ICON_FRAMES_MS) / 1000.0f, 
+		computeBonesInfo(request.m_modelData->m_animationData->rootBones.data(), glm::mat4(1.0f), (static_cast<float>(totalImagesToDraw - request.m_imageLeftToDraw) * DELAY_BETWEEN_ICON_FRAMES_MS) / 1000.0f, 
 			glm::mat4(1.0f), bonesInfoGPU, bonesInfoCPU);
 
 		m_bonesBuffer->transferCPUMemory(bonesInfoGPU.data(), static_cast<uint32_t>(bonesInfoGPU.size() * sizeof(BoneInfoGPU)));
@@ -247,7 +247,7 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffer, clearValues);
 
 	Wolf::Pipeline* pipeline;
-	if (request.m_modelData->animationData)
+	if (request.m_modelData->m_animationData)
 	{
 		pipeline = m_animatedPipeline.get();
 	}
@@ -260,7 +260,7 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION)->getDescriptorSet(), 0, *pipeline);
 	m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 1, *pipeline);
 	m_commandBuffer->bindDescriptorSet(m_descriptorSet.createConstNonOwnerResource(), 2, *pipeline);
-	if (request.m_modelData->animationData)
+	if (request.m_modelData->m_animationData)
 	{
 		m_commandBuffer->bindDescriptorSet(m_animationDescriptorSet.createConstNonOwnerResource(), 3, *pipeline);
 	}
@@ -335,7 +335,7 @@ ThumbnailsGenerationPass::Request::Request(Wolf::ModelData* modelData, uint32_t 
 void ThumbnailsGenerationPass::addRequestBeforeFrame(const Request& request)
 {
 	m_pendingRequests.push_back(request);
-	if (request.m_modelData->animationData)
+	if (request.m_modelData->m_animationData)
 	{
 		uint32_t totalImagesToDraw = computeTotalImageToDraw(request);
 		m_pendingRequests.back().m_imageLeftToDraw = totalImagesToDraw;

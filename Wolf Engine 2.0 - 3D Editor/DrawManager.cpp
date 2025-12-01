@@ -172,5 +172,6 @@ bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::RenderMeshList::Me
 		}
 	}
 
-	return hasSameDescriptorSets && m_meshToRender.mesh == otherMeshToRender.mesh && m_meshToRender.pipelineSet == otherMeshToRender.pipelineSet;
+	return hasSameDescriptorSets && m_meshToRender.mesh == otherMeshToRender.mesh && m_meshToRender.pipelineSet == otherMeshToRender.pipelineSet
+		&& m_meshToRender.overrideIndexBuffer == otherMeshToRender.overrideIndexBuffer;
 }

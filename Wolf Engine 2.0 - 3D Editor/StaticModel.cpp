@@ -103,7 +103,7 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 		{
 			if (m_subMeshes.empty())
 			{
-				const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& textureSetInfo = m_resourceManager->getModelData(m_meshResourceId)->textureSets;
+				const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& textureSetInfo = m_resourceManager->getModelData(m_meshResourceId)->m_textureSets;
 				for (uint32_t subMeshIdx = 0; subMeshIdx < textureSetInfo.size(); ++subMeshIdx)
 				{
 					m_subMeshes.emplace_back();
@@ -125,8 +125,8 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 				reloadEntity();
 			}
 
-			uint32_t maxLOD = m_resourceManager->getModelData(m_meshResourceId)->simplifiedIndexBuffers.size();
-			m_rayTracedWorldLOD.setMax(maxLOD);
+			onDrawLODTypeChanged();
+			onRayTracedWorldLODTypeChanged();
 
 			m_isWaitingForMeshLoading = false;
 		}
@@ -145,7 +145,23 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
 		return false;
 
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelData(m_meshResourceId)->mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
+	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { modelData->mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	if (m_drawLOD > 0)
+	{
+		if (m_drawLODType == 0) // Default
+		{
+			meshToRenderInfo.overrideIndexBuffer = modelData->defaultSimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
+		}
+		else if (m_drawLODType == 1) // Sloppy
+		{
+			meshToRenderInfo.overrideIndexBuffer = modelData->sloppySimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
+		}
+		else
+		{
+			Wolf::Debug::sendCriticalError("Unhandled LOD type");
+		}
+	}
 
 	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
@@ -172,12 +188,23 @@ bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManage
 		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
 
 	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
-	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId, m_rayTracedWorldLOD), m_transform, firstMaterialIdx,
+	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform, firstMaterialIdx,
 		modelData->mesh.createNonOwnerResource() };
 
 	if (m_rayTracedWorldLOD > 0)
 	{
-		instanceInfo.m_overrideIndexBuffer = modelData->simplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+		if (m_rayTracedWorldLODType == 0) // Default
+		{
+			instanceInfo.m_overrideIndexBuffer = modelData->defaultSimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+		}
+		else if (m_rayTracedWorldLODType == 1) // Sloppy
+		{
+			instanceInfo.m_overrideIndexBuffer = modelData->sloppySimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+		}
+		else
+		{
+			Wolf::Debug::sendCriticalError("Unhandled LOD type");
+		}
 	}
 
 	instanceInfos.push_back(instanceInfo);
@@ -190,7 +217,7 @@ bool StaticModel::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsM
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
 		return false;
 
-	for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& physicsShape : m_resourceManager->getModelData(m_meshResourceId)->physicsShapes)
+	for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& physicsShape : m_resourceManager->getModelData(m_meshResourceId)->m_physicsShapes)
 	{
 		outList.push_back({physicsShape.createNonOwnerResource(), m_transform });
 	}
@@ -443,4 +470,52 @@ void StaticModel::SubMesh::onTextureSetAdded()
 
 	if (m_reloadEntityCallback)
 		m_reloadEntityCallback();
+}
+
+void StaticModel::onDrawLODTypeChanged()
+{
+	if (m_resourceManager->isModelLoaded(m_meshResourceId))
+	{
+		uint32_t maxLOD;
+		if (m_drawLODType == 0) // Default
+		{
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->defaultSimplifiedIndexBuffers.size();
+		}
+		else if (m_drawLODType == 1) // Sloppy
+		{
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->sloppySimplifiedIndexBuffers.size();
+		}
+		else
+		{
+			Wolf::Debug::sendCriticalError("Unhandled draw LOD type");
+			maxLOD = 0;
+		}
+
+		m_drawLOD.setMax(maxLOD);
+	}
+	notifySubscribers();
+}
+
+void StaticModel::onRayTracedWorldLODTypeChanged()
+{
+	if (m_resourceManager->isModelLoaded(m_meshResourceId))
+	{
+		uint32_t maxLOD;
+		if (m_rayTracedWorldLODType == 0) // Default
+		{
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->defaultSimplifiedIndexBuffers.size();
+		}
+		else if (m_rayTracedWorldLODType == 1) // Sloppy
+		{
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->sloppySimplifiedIndexBuffers.size();
+		}
+		else
+		{
+			Wolf::Debug::sendCriticalError("Unhandled draw LOD type");
+			maxLOD = 0;
+		}
+
+		m_rayTracedWorldLOD.setMax(maxLOD);
+	}
+	notifySubscribers();
 }

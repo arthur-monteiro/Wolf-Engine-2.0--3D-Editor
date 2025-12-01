@@ -47,7 +47,7 @@ void AssetManager::updateBeforeFrame()
 		if (m_currentAssetNeedRebuildFlags & static_cast<uint32_t>(MeshAssetEditor::ResourceEditorNotificationFlagBits::PHYSICS))
 		{
 			Wolf::ModelData* modelData = m_meshes[m_currentAssetInEdition]->getModelData();
-			modelData->physicsShapes.clear();
+			modelData->m_physicsShapes.clear();
 
 			for (uint32_t i = 0; i < m_meshAssetEditor->getPhysicsMeshCount(); ++i)
 			{
@@ -60,7 +60,16 @@ void AssetManager::updateBeforeFrame()
 					glm::vec3 s2;
 					m_meshAssetEditor->computeInfoForRectangle(i, p0, s1, s2);
 
-					modelData->physicsShapes.emplace_back(new Wolf::Physics::Rectangle(m_meshAssetEditor->getShapeName(i), p0, s1, s2));
+					modelData->m_physicsShapes.emplace_back(new Wolf::Physics::Rectangle(m_meshAssetEditor->getShapeName(i), p0, s1, s2));
+				}
+				else if (shapeType == Wolf::Physics::PhysicsShapeType::Box)
+				{
+					glm::vec3 aabbMin;
+					glm::vec3 aabbMax;
+					glm::vec3 rotation;
+					m_meshAssetEditor->computeInfoForBox(i, aabbMin, aabbMax, rotation);
+
+					modelData->m_physicsShapes.emplace_back(new Wolf::Physics::Box(m_meshAssetEditor->getShapeName(i), aabbMin, aabbMax, rotation));
 				}
 			}
 		}
@@ -144,7 +153,7 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 			meshResourceEditor = new MeshAssetEditor(m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData, m_isolateMeshCallback,
 				m_removeIsolationAndGetViewMatrixCallback, [this, assetId](const glm::mat4& viewMatrix) { requestThumbnailReload(assetId, viewMatrix); });
 
-			for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->physicsShapes)
+			for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->m_physicsShapes)
 			{
 				meshResourceEditor->addShape(shape);
 			}
@@ -170,12 +179,12 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 
 bool AssetManager::isMesh(AssetId assetId)
 {
-	return assetId >= MESH_ASSET_IDX_OFFSET && assetId < MESH_ASSET_IDX_OFFSET + MAX_ASSET_RESOURCE_COUNT;
+	return assetId == NO_ASSET || (assetId >= MESH_ASSET_IDX_OFFSET && assetId < MESH_ASSET_IDX_OFFSET + MAX_ASSET_RESOURCE_COUNT);
 }
 
 bool AssetManager::isImage(AssetId assetId)
 {
-	return assetId >= IMAGE_ASSET_IDX_OFFSET && assetId < IMAGE_ASSET_IDX_OFFSET + MAX_IMAGE_ASSET_COUNT;
+	return assetId == NO_ASSET || (assetId >= IMAGE_ASSET_IDX_OFFSET && assetId < IMAGE_ASSET_IDX_OFFSET + MAX_IMAGE_ASSET_COUNT);
 }
 
 AssetManager::AssetId AssetManager::addModel(const std::string& loadingPath)
@@ -272,14 +281,14 @@ Wolf::ModelData* AssetManager::getModelData(AssetId modelResourceId) const
 	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getModelData();
 }
 
-Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::getBLAS(AssetId modelResourceId, uint32_t lod)
+Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::getBLAS(AssetId modelResourceId, uint32_t lod, uint32_t lodType)
 {
 	if (!isMesh(modelResourceId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getBLAS(lod);
+	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getBLAS(lod, lodType);
 }
 
 uint32_t AssetManager::getFirstMaterialIdx(AssetId modelResourceId) const
@@ -559,6 +568,11 @@ bool AssetManager::Mesh::isLoaded() const
 	return static_cast<bool>(m_modelData.mesh);
 }
 
+Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::Mesh::getBLAS(uint32_t lod, uint32_t lodType)
+{
+	return m_bottomLevelAccelerationStructures[lodType][lod].createNonOwnerResource();
+}
+
 void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
 {
 	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
@@ -576,15 +590,16 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 		modelLoadingInfo.additionalVertexBufferUsages |= rayTracingFlags;
 		modelLoadingInfo.additionalIndexBufferUsages |= rayTracingFlags;
 	}
-	modelLoadingInfo.generateLODCount = 8;
+	modelLoadingInfo.generateDefaultLODCount = 8;
+	modelLoadingInfo.generateSloppyLODCount= 16;
 	Wolf::ModelLoader::loadObject(m_modelData, modelLoadingInfo);
 
 	materialsGPUManager->lockMaterials();
 	materialsGPUManager->lockTextureSets();
 
-	m_firstTextureSetIdx = m_modelData.textureSets.empty() ? 0 : materialsGPUManager->getCurrentTextureSetCount();
-	m_firstMaterialIdx = m_modelData.textureSets.empty() ? 0 : materialsGPUManager->getCurrentMaterialCount();
-	for (const Wolf::MaterialsGPUManager::TextureSetInfo& textureSetInfo : m_modelData.textureSets)
+	m_firstTextureSetIdx = m_modelData.m_textureSets.empty() ? 0 : materialsGPUManager->getCurrentTextureSetCount();
+	m_firstMaterialIdx = m_modelData.m_textureSets.empty() ? 0 : materialsGPUManager->getCurrentMaterialCount();
+	for (const Wolf::MaterialsGPUManager::TextureSetInfo& textureSetInfo : m_modelData.m_textureSets)
 	{
 		materialsGPUManager->addNewTextureSet(textureSetInfo);
 
@@ -598,10 +613,16 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
-		m_bottomLevelAccelerationStructures.resize(m_modelData.simplifiedIndexBuffers.size() + 1);
-		for (uint32_t lod = 0; lod < m_bottomLevelAccelerationStructures.size(); lod++)
+		m_bottomLevelAccelerationStructures.resize(2);
+		for (uint32_t lodType = 0; lodType < 2; lodType++)
 		{
-			buildBLAS(lod);
+			uint32_t lodCount = lodType == 0 ? m_modelData.defaultSimplifiedIndexBuffers.size() : m_modelData.sloppySimplifiedIndexBuffers.size();
+
+			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
+			for (uint32_t lod = 0; lod < m_bottomLevelAccelerationStructures[lodType].size(); lod++)
+			{
+				buildBLAS(lod, lodType);
+			}
 		}
 	}
 
@@ -621,7 +642,7 @@ void AssetManager::Mesh::generateThumbnail(const Wolf::ResourceNonOwner<Thumbnai
 			m_thumbnailGenerationViewMatrix });
 }
 
-void AssetManager::Mesh::buildBLAS(uint32_t lod)
+void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
 {
 	Wolf::GeometryInfo geometryInfo;
 	geometryInfo.mesh.vertexBuffer = &*m_modelData.mesh->getVertexBuffer();
@@ -635,10 +656,18 @@ void AssetManager::Mesh::buildBLAS(uint32_t lod)
 	}
 	else
 	{
-		const Wolf::ResourceUniqueOwner<Wolf::Buffer>& overrideIndexBuffer = m_modelData.simplifiedIndexBuffers[lod - 1];
+		Wolf::ResourceUniqueOwner<Wolf::Buffer>* overrideIndexBuffer = nullptr;
+		if (lodType == 0)
+		{
+			overrideIndexBuffer = &m_modelData.defaultSimplifiedIndexBuffers[lod - 1];
+		}
+		else
+		{
+			overrideIndexBuffer = &m_modelData.sloppySimplifiedIndexBuffers[lod - 1];
+		}
 
-		geometryInfo.mesh.indexBuffer = &*overrideIndexBuffer;
-		uint32_t indexCount = overrideIndexBuffer->getSize() / sizeof(uint32_t);
+		geometryInfo.mesh.indexBuffer = &**overrideIndexBuffer;
+		uint32_t indexCount = (*overrideIndexBuffer)->getSize() / sizeof(uint32_t);
 		geometryInfo.mesh.indexCount = indexCount;
 	}
 
@@ -646,7 +675,7 @@ void AssetManager::Mesh::buildBLAS(uint32_t lod)
 	createInfo.geometryInfos = { &geometryInfo, 1 };
 	createInfo.buildFlags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
 
-	m_bottomLevelAccelerationStructures[lod].reset(Wolf::BottomLevelAccelerationStructure::createBottomLevelAccelerationStructure(createInfo));
+	m_bottomLevelAccelerationStructures[lodType][lod].reset(Wolf::BottomLevelAccelerationStructure::createBottomLevelAccelerationStructure(createInfo));
 }
 
 AssetManager::Image::Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,

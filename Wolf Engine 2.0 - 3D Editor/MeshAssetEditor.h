@@ -3,6 +3,7 @@
 #include "EditorTypes.h"
 #include "EditorTypesTemplated.h"
 #include "Entity.h"
+#include "ModelLoader.h"
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
 #include "PhysicShapes.h"
@@ -41,7 +42,9 @@ public:
 	uint32_t getPhysicsMeshCount() const { return static_cast<uint32_t>(m_physicsMeshes.size()); }
 	Wolf::Physics::PhysicsShapeType getShapeType(uint32_t meshIdx) const { return m_physicsMeshes[meshIdx].getType(); }
 	std::string getShapeName(uint32_t meshIdx) const { return m_physicsMeshes[meshIdx].getName(); }
+
 	void computeInfoForRectangle(uint32_t meshIdx, glm::vec3& outP0, glm::vec3& outS1, glm::vec3& outS2);
+	void computeInfoForBox(uint32_t meshIdx, glm::vec3& outAABBMin, glm::vec3& outAABBMax, glm::vec3& outRotation);
 
 	void computeInfoOutputJSON(std::string& out);
 
@@ -59,6 +62,7 @@ private:
 	{
 	public:
 		PhysicMesh();
+		void setRequestReloadCallback(const std::function<void(ComponentInterface*)>& requestReloadCallback) { m_requestReloadCallback = requestReloadCallback; }
 
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
@@ -69,30 +73,66 @@ private:
 		void setDefaultRectangleRotation(const glm::vec3& value) { m_defaultRectangleRotation = value; }
 		void setDefaultRectangleOffset(const glm::vec3& value) { m_defaultRectangleOffset = value; }
 
+		void setDefaultBoxAABBMin(const glm::vec3& value) { m_defaultBoxAABBMin = value; }
+		void setDefaultBoxAABBMax(const glm::vec3& value) { m_defaultBoxAABBMax = value; }
+		void setDefaultBoxRotation(const glm::vec3& value) { m_defaultBoxRotation = value; }
+
 		Wolf::Physics::PhysicsShapeType getType() const;
 		glm::vec2 getDefaultRectangleScale() const { return m_defaultRectangleScale; }
 		glm::vec3 getDefaultRectangleRotation() const { return m_defaultRectangleRotation; }
 		glm::vec3 getDefaultRectangleOffset() const { return m_defaultRectangleOffset; }
 
+		glm::vec3 getDefaultBoxAABBMin() const { return m_defaultBoxAABBMin; }
+		glm::vec3 getDefaultBoxAABBMax() const { return m_defaultBoxAABBMax; }
+		glm::vec3 getDefaultBoxRotation() const { return m_defaultBoxRotation; }
+
 	private:
 		inline static const std::string DEFAULT_NAME = "New physic mesh";
-		std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+		std::function<void(ComponentInterface*)> m_requestReloadCallback;
 
 		void onValueChanged();
 
-		EditorParamEnum m_shapeType = EditorParamEnum(Wolf::Physics::PHYSICS_SHAPE_STRING_LIST, "Shape type", TAB, "Shape", [this]() { onValueChanged(); });
+		void onShapeTypeChanged();
+		EditorParamEnum m_shapeType = EditorParamEnum(Wolf::Physics::PHYSICS_SHAPE_STRING_LIST, "Shape type", TAB, "Shape", [this]() { onShapeTypeChanged(); });
 
 		// Rectangle
 		EditorParamVector2 m_defaultRectangleScale = EditorParamVector2("Default scale", TAB, "Shape", 0.0f, 10.0f, [this]() { onValueChanged(); });
 		EditorParamVector3 m_defaultRectangleRotation = EditorParamVector3("Default rotation", TAB, "Shape", 0.0f, 6.29f, [this]() { onValueChanged(); });
 		EditorParamVector3 m_defaultRectangleOffset = EditorParamVector3("Default offset", TAB, "Shape", 0.0f, 6.29f, [this]() { onValueChanged(); });
 
-		std::array<EditorParamInterface*, 4> m_allParams =
+		// Box
+		EditorParamVector3 m_defaultBoxAABBMin = EditorParamVector3("Default AABB Min", TAB, "Shape", -100.0f, 100.0f, [this]() { onValueChanged(); });
+		EditorParamVector3 m_defaultBoxAABBMax = EditorParamVector3("Default AABB Max", TAB, "Shape", -100.0f, 100.0f, [this]() { onValueChanged(); });
+		EditorParamVector3 m_defaultBoxRotation = EditorParamVector3("Default rotation (box)", TAB, "Shape", 0.0f, 6.29f, [this]() { onValueChanged(); });
+
+		std::array<EditorParamInterface*, 7> m_allParams =
 		{
 			&m_shapeType,
 			&m_defaultRectangleScale,
 			&m_defaultRectangleRotation,
+			&m_defaultRectangleOffset,
+			&m_defaultBoxAABBMin,
+			&m_defaultBoxAABBMax,
+			&m_defaultBoxRotation
+		};
+
+		std::array<EditorParamInterface*, 1> m_alwaysVisibleParams =
+		{
+			&m_shapeType
+		};
+
+		std::array<EditorParamInterface*, 3> m_rectangleParams =
+		{
+			&m_defaultRectangleScale,
+			&m_defaultRectangleRotation,
 			&m_defaultRectangleOffset
+		};
+
+		std::array<EditorParamInterface*, 3> m_boxParams =
+		{
+			&m_defaultBoxAABBMin,
+			&m_defaultBoxAABBMax,
+			&m_defaultBoxRotation
 		};
 	};
 	static constexpr uint32_t MAX_PHYSICS_MESHES = 256;
@@ -133,9 +173,10 @@ private:
 		};
 	};
 
-	EditorParamArray<LODInfo> m_lodsInfo = EditorParamArray<LODInfo>("LODs", TAB, "LOD", 16, false, true);
+	EditorParamArray<LODInfo> m_defaultLODsInfo = EditorParamArray<LODInfo>("Default LODs", TAB, "LOD", 16, false, true);
+	EditorParamArray<LODInfo> m_sloppyLODsInfo = EditorParamArray<LODInfo>("Sloppy LODs", TAB, "LOD", 32, false, true);
 
-	std::array<EditorParamInterface*, 6> m_editorParams =
+	std::array<EditorParamInterface*, 7> m_editorParams =
 	{
 		&m_filepath,
 
@@ -146,7 +187,7 @@ private:
 
 		&m_toggleCustomViewForThumbnail,
 
-		&m_lodsInfo
+		&m_defaultLODsInfo,
+		&m_sloppyLODsInfo
 	};
 };
-

@@ -1,4 +1,4 @@
-layout (binding = 0, set = 0, r32ui) uniform uimage3D contaminationIds;
+layout (binding = 0, set = 0, r8ui) uniform uimage3D contaminationIds;
 const uint MAX_MATERIALS = 8;
 layout(std430, binding = 1, set = 0) readonly restrict buffer contaminationInfo
 {

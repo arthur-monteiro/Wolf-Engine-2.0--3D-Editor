@@ -2,6 +2,7 @@
 
 #include "DebugRenderingManager.h"
 #include "MathsUtilsEditor.h"
+#include "glm/gtx/matrix_decompose.hpp"
 
 EditorPhysicsManager::EditorPhysicsManager(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager) : m_physicsManager(physicsManager)
 {
@@ -38,6 +39,33 @@ void EditorPhysicsManager::addMeshes(const std::vector<PhysicsMeshInfo>& physics
 			computeTransform(glm::vec3(scale, 1.0f), rotation, offset, transform);
 
 			infoByEntity.rectangleTransform = physicsMeshInfo.transform * transform;
+		}
+		else if (shapeType == Wolf::Physics::PhysicsShapeType::Box)
+		{
+			const Wolf::Physics::Box& shapeAsBox = dynamic_cast<const Wolf::Physics::Box&>(*physicsMeshInfo.shape);
+
+			glm::vec3 scale;
+			glm::quat rotationQuat;
+			glm::vec3 translation;
+			glm::vec3 skew;
+			glm::vec4 perspective;
+			glm::decompose(physicsMeshInfo.transform, scale, rotationQuat, translation, skew, perspective);
+
+			glm::mat4 noRotationTransform(1.0f);
+			noRotationTransform = glm::translate(noRotationTransform, translation);
+			noRotationTransform = glm::scale(noRotationTransform, scale);
+
+			glm::vec3 aabbMin = noRotationTransform * glm::vec4(shapeAsBox.getAABBMin(), 1.0f);
+			glm::vec3 aabbMax = noRotationTransform * glm::vec4(shapeAsBox.getAABBMax(), 1.0f);
+			glm::vec3 rotation = shapeAsBox.getRotation() + glm::eulerAngles(rotationQuat);
+
+			Wolf::Physics::PhysicsManager::DynamicShapeId shapeId = m_physicsManager->addDynamicBox(Wolf::Physics::Box(shapeAsBox.getName(), aabbMin, aabbMax, rotation), entity);
+			InfoByEntity& infoByEntity = m_infoByEntityArray[entity].emplace_back(shapeId);
+			infoByEntity.shapeType = shapeType;
+
+			infoByEntity.boxAABBMin = aabbMin;
+			infoByEntity.boxAABBMax = aabbMax;
+			infoByEntity.boxRotation = rotation;
 		}
 		else
 		{
@@ -76,6 +104,15 @@ void EditorPhysicsManager::addDebugInfo(DebugRenderingManager& debugRenderingMan
 			if (info.shapeType == Wolf::Physics::PhysicsShapeType::Rectangle)
 			{
 				debugRenderingManager.addRectangle(info.rectangleTransform);
+			}
+			else if (info.shapeType == Wolf::Physics::PhysicsShapeType::Box)
+			{
+				Wolf::AABB aabb(info.boxAABBMin, info.boxAABBMax);
+				debugRenderingManager.addBox(aabb, info.boxRotation);
+			}
+			else
+			{
+				Wolf::Debug::sendError("Unhandled shape type");
 			}
 		}
 	}

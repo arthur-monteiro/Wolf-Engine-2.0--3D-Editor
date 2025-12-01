@@ -20,6 +20,7 @@
 #include "ShadowMaskPassCascadedShadowMapping.h"
 #include "ThumbnailsGenerationPass.h"
 #include "UpdateGPUBuffersPass.h"
+#include "UpdateRayTracedWorldPass.h"
 #include "VoxelGlobalIlluminationPass.h"
 
 class LightManager;
@@ -54,6 +55,7 @@ public:
 private:
 	Wolf::ResourceUniqueOwner<SkyBoxManager> m_skyBoxManager;
 
+	Wolf::ResourceUniqueOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
 	Wolf::ResourceUniqueOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceUniqueOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceUniqueOwner<CascadedShadowMapsPass> m_cascadedShadowMapsPass;

@@ -32,7 +32,7 @@ public:
 	[[nodiscard]] AssetId addModel(const std::string& loadingPath);
 	bool isModelLoaded(AssetId modelResourceId) const;
 	Wolf::ModelData* getModelData(AssetId modelResourceId) const;
-	Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(AssetId modelResourceId, uint32_t lod);
+	Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(AssetId modelResourceId, uint32_t lod, uint32_t lodType);
 	uint32_t getFirstMaterialIdx(AssetId modelResourceId) const;
 	uint32_t getFirstTextureSetIdx(AssetId modelResourceId) const;
 	void subscribeToResource(AssetId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
@@ -99,19 +99,19 @@ private:
 
 		bool isLoaded() const override;
 		Wolf::ModelData* getModelData() { return &m_modelData; }
-		Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(uint32_t lod) { return m_bottomLevelAccelerationStructures[lod].createNonOwnerResource(); }
+		Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(uint32_t lod, uint32_t lodType);
 		uint32_t getFirstMaterialIdx() const { return m_firstMaterialIdx; }
 		uint32_t getFirstTextureSetIdx() const { return m_firstTextureSetIdx; }
 
 	private:
 		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
 		void generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& m_thumbnailsGenerationPass);
-		void buildBLAS(uint32_t lod);
+		void buildBLAS(uint32_t lod, uint32_t lodType);
 
 		bool m_modelLoadingRequested = false;
 		bool m_thumbnailGenerationRequested = false;
 		Wolf::ModelData m_modelData;
-		std::vector<Wolf::ResourceUniqueOwner<Wolf::BottomLevelAccelerationStructure>> m_bottomLevelAccelerationStructures;
+		std::vector<std::vector<Wolf::ResourceUniqueOwner<Wolf::BottomLevelAccelerationStructure>>> m_bottomLevelAccelerationStructures;
 
 		uint32_t m_firstTextureSetIdx = 0;
 		uint32_t m_firstMaterialIdx = 0;

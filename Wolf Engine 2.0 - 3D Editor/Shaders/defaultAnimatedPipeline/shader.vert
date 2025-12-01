@@ -26,7 +26,7 @@ struct BoneInfo
 const uint MAX_BONE_COUNT = 128;
 layout(std430, set = 
 #ifdef FORWARD
-5
+6
 #else
 1
 #endif

@@ -1,9 +1,13 @@
 #include "RayTracedWorldManager.h"
 
+#include <fstream>
+
 #include <Buffer.h>
 #include <DescriptorSetGenerator.h>
 #include <DescriptorSetLayoutGenerator.h>
-#include <fstream>
+#include <PushDataToGPU.h>
+
+#include "ProfilerCommon.h"
 
 RayTracedWorldManager::RayTracedWorldManager()
 {
@@ -24,17 +28,24 @@ RayTracedWorldManager::RayTracedWorldManager()
     m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout->getResource()));
 }
 
-void RayTracedWorldManager::build(const RayTracedWorldInfo& info)
+void RayTracedWorldManager::requestBuild(const RayTracedWorldInfo& info)
 {
+    PROFILE_FUNCTION
+
     if (info.m_instances.size() > MAX_INSTANCES)
     {
         Wolf::Debug::sendCriticalError("Too much BLAS instances, instance buffer will be too small");
     }
     m_buffers.clear();
 
-    buildTLAS(info);
     populateInstanceBuffer(info);
-    createDescriptorSet();
+    requestBuildTLAS(info);
+}
+
+void RayTracedWorldManager::build(Wolf::CommandBuffer& commandBuffer)
+{
+    m_topLevelAccelerationStructure->build(&commandBuffer, m_blasInstances);
+    m_needsRebuildTLAS = false;
 }
 
 void RayTracedWorldManager::addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const
@@ -54,26 +65,36 @@ void RayTracedWorldManager::addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeTo
     }
 }
 
-void RayTracedWorldManager::buildTLAS(const RayTracedWorldInfo& info)
+void RayTracedWorldManager::requestBuildTLAS(const RayTracedWorldInfo& info)
 {
-    std::vector<Wolf::BLASInstance> blasInstances(info.m_instances.size());
-    for (size_t i = 0; i < blasInstances.size(); i++)
+    PROFILE_FUNCTION
+
+    m_blasInstances.resize(info.m_instances.size());
+    for (size_t i = 0; i < m_blasInstances.size(); i++)
     {
-        blasInstances[i].bottomLevelAS = info.m_instances[i].m_bottomLevelAccelerationStructure.operator->();
-        blasInstances[i].transform = info.m_instances[i].m_transform;
-        blasInstances[i].instanceID = i;
-        blasInstances[i].hitGroupIndex = 0;
+        m_blasInstances[i].bottomLevelAS = info.m_instances[i].m_bottomLevelAccelerationStructure.operator->();
+        m_blasInstances[i].transform = info.m_instances[i].m_transform;
+        m_blasInstances[i].instanceID = i;
+        m_blasInstances[i].hitGroupIndex = 0;
     }
 
-    m_topLevelAccelerationStructure.reset(Wolf::TopLevelAccelerationStructure::createTopLevelAccelerationStructure(blasInstances));
+    if (!m_topLevelAccelerationStructure || m_topLevelAccelerationStructure->getInstanceCount() != m_blasInstances.size())
+    {
+        m_topLevelAccelerationStructure.reset(Wolf::TopLevelAccelerationStructure::createTopLevelAccelerationStructure(m_blasInstances.size()));
+        createDescriptorSet();
+    }
+
+    m_needsRebuildTLAS = true;
 }
 
 void RayTracedWorldManager::populateInstanceBuffer(const RayTracedWorldInfo& info)
 {
-    std::vector<InstanceData> instanceData(info.m_instances.size());
-    for (size_t i = 0; i < instanceData.size(); i++)
+    PROFILE_FUNCTION
+
+    m_instanceData.resize(info.m_instances.size());
+    for (size_t i = 0; i < m_instanceData.size(); i++)
     {
-        InstanceData& data = instanceData[i];
+        InstanceData& data = m_instanceData[i];
         const RayTracedWorldInfo::InstanceInfo& instanceInfo = info.m_instances[i];
 
         data.firstMaterialIdx = instanceInfo.m_firstMaterialIdx;
@@ -88,11 +109,14 @@ void RayTracedWorldManager::populateInstanceBuffer(const RayTracedWorldInfo& inf
         }
     }
 
-    m_instanceBuffer->transferCPUMemoryWithStagingBuffer(instanceData.data(), instanceData.size() * sizeof(InstanceData));
+
+    Wolf::pushDataToGPUBuffer(m_instanceData.data(), m_instanceData.size() * sizeof(InstanceData), m_instanceBuffer.createNonOwnerResource(), 0);
 }
 
 void RayTracedWorldManager::createDescriptorSet()
 {
+    PROFILE_FUNCTION
+
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
     descriptorSetGenerator.setBuffer(0, *m_instanceBuffer);
     descriptorSetGenerator.setAccelerationStructure(1, *m_topLevelAccelerationStructure);

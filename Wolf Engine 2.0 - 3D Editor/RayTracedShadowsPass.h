@@ -7,11 +7,13 @@
 #include "PreDepthPass.h"
 #include "RayTracedWorldManager.h"
 #include "ShadowMaskPassInterface.h"
+#include "UpdateRayTracedWorldPass.h"
 
 class RayTracedShadowsPass : public Wolf::CommandRecordBase, public ShadowMaskPassInterface
 {
 public:
-    RayTracedShadowsPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
+    RayTracedShadowsPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass,
+        const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
@@ -34,6 +36,7 @@ private:
 
     EditorParams* m_editorParams;
     Wolf::ResourceNonOwner<PreDepthPass> m_preDepthPass;
+    Wolf::ResourceNonOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
     Wolf::ResourceNonOwner<RayTracedWorldManager> m_rayTracedWorldManager;
 
     std::unique_ptr<Wolf::Image> m_outputImage;

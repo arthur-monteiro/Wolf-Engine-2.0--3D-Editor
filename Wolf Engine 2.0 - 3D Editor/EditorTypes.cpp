@@ -242,6 +242,13 @@ void EditorParamUInt::addToJSON(std::string& out, uint32_t tabCount, bool isLast
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
 }
 
+void EditorParamUInt::setMax(uint32_t max)
+{
+	m_max = max;
+	if (m_value > m_max)
+		setValue(m_max);
+}
+
 EditorParamInterface::Type EditorParamUInt::uintTypeToParamType(ParamUIntType uintType)
 {
 	switch (uintType)

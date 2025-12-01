@@ -394,3 +394,8 @@ Dependencies/*
 
 */.idea
 Wolf Engine 2.0 - 3D Editor/config/editor.ini
+
+.idea/
+
+Wolf Engine 2.0 - 3D Editor/default/cookie.jar.db-wal
+Wolf Engine 2.0 - 3D Editor/default/cookie.jar.db-shm

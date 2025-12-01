@@ -32,8 +32,10 @@ public:
         };
         std::vector<InstanceInfo> m_instances;
     };
-    void build(const RayTracedWorldInfo& info);
+    void requestBuild(const RayTracedWorldInfo& info);
+    void build(Wolf::CommandBuffer& commandBuffer);
 
+    bool needsRebuildTLAS() const { return m_needsRebuildTLAS; }
     bool hasInstance() const { return static_cast<bool>(m_topLevelAccelerationStructure); };
     Wolf::ResourceNonOwner<const Wolf::DescriptorSet> getDescriptorSet() { return m_descriptorSet.createConstNonOwnerResource(); }
     void addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const;
@@ -41,7 +43,7 @@ public:
     static Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& getDescriptorSetLayout() { return Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, RayTracedWorldManager>::getResource(); }
 
 private:
-    void buildTLAS(const RayTracedWorldInfo& info);
+    void requestBuildTLAS(const RayTracedWorldInfo& info);
     void populateInstanceBuffer(const RayTracedWorldInfo& info);
     void createDescriptorSet();
     uint32_t addStorageBuffer(const Wolf::ResourceNonOwner<Wolf::Buffer>& buffer);
@@ -63,4 +65,8 @@ private:
 
     std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> m_buffers;
     uint32_t m_currentBindlessCount = 0;
+
+    std::vector<Wolf::BLASInstance> m_blasInstances;
+    std::vector<InstanceData> m_instanceData;
+    bool m_needsRebuildTLAS =false;
 };

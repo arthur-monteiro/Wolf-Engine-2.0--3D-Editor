@@ -1,18 +1,20 @@
 #include "VoxelGlobalIlluminationPass.h"
 
+#include <fstream>
+#include <random>
+
 #include <DebugMarker.h>
 #include <DescriptorSetGenerator.h>
-#include <fstream>
 #include <GraphicCameraInterface.h>
-#include <random>
+#include <ProfilerCommon.h>
 #include <RayTracingShaderGroupGenerator.h>
 #include <ShaderBindingTable.h>
 #include <ShaderParser.h>
 
 #include "CommonLayouts.h"
 
-VoxelGlobalIlluminationPass::VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
-: m_rayTracedWorldManager(rayTracedWorldManager)
+VoxelGlobalIlluminationPass::VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
+: m_updateRayTracedWorldPass(updateRayTracedWorldPass), m_rayTracedWorldManager(rayTracedWorldManager)
 {
 }
 
@@ -35,7 +37,7 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
         Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->mesh.createNonOwnerResource(), m_debugPipelineSet.createConstNonOwnerResource() } };
         instancedMesh.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
             m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
-        instancedMesh.mesh.overrideIndexBuffer = modelData->simplifiedIndexBuffers[0].createNonOwnerResource();
+        instancedMesh.mesh.overrideIndexBuffer = modelData->defaultSimplifiedIndexBuffers[0].createNonOwnerResource();
 
         renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
     }
@@ -120,6 +122,10 @@ void VoxelGlobalIlluminationPass::submit(const Wolf::SubmitContext& context)
         return;
 
     std::vector<const Wolf::Semaphore*> waitSemaphores{ };
+    if (m_updateRayTracedWorldPass->wasEnabledThisFrame())
+    {
+        waitSemaphores.push_back(m_updateRayTracedWorldPass->getSemaphore(context.swapChainImageIndex));
+    }
     const std::vector<const Wolf::Semaphore*> signalSemaphores{ Wolf::CommandRecordBase::getSemaphore(context.swapChainImageIndex) };
     m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 
@@ -138,6 +144,8 @@ void VoxelGlobalIlluminationPass::submit(const Wolf::SubmitContext& context)
 
 void VoxelGlobalIlluminationPass::addShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const
 {
+    PROFILE_FUNCTION
+
     std::ifstream inFile("Shaders/voxelGI/output/readGlobalIrradiance.glsl");
     std::string line;
     while (std::getline(inFile, line))

@@ -63,6 +63,7 @@ public:
 	void addSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color);
 	void addWiredSphere(const glm::vec3& worldPos, float radius, const glm::vec3& color);
 	void addRectangle(const glm::mat4& transform);
+	void addBox(const Wolf::AABB& aabb, const glm::vec3& rotation);
 
 	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
 

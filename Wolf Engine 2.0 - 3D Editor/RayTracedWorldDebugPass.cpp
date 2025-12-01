@@ -13,8 +13,9 @@
 #include "GameContext.h"
 #include "Vertex2DTextured.h"
 
-RayTracedWorldDebugPass::RayTracedWorldDebugPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
-    : m_editorParams(editorParams), m_preDepthPass(preDepthPass), m_rayTracedWorldManager(rayTracedWorldManager)
+RayTracedWorldDebugPass::RayTracedWorldDebugPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass,
+        const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
+    : m_editorParams(editorParams), m_preDepthPass(preDepthPass), m_updateRayTracedWorldPass(updateRayTracedWorldPass), m_rayTracedWorldManager(rayTracedWorldManager)
 {
 }
 
@@ -100,7 +101,7 @@ void RayTracedWorldDebugPass::submit(const Wolf::SubmitContext& context)
     if (!m_wasEnabledThisFrame)
         return;
 
-    const std::vector<const Wolf::Semaphore*> waitSemaphores{ /*m_preDepthPass->getSemaphore()*/ };
+    std::vector<const Wolf::Semaphore*> waitSemaphores{ /*m_preDepthPass->getSemaphore()*/ };
     const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
     m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 

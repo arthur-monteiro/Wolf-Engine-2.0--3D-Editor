@@ -261,7 +261,10 @@ void PlayerComponent::updateAnimatedModel()
 
 void PlayerComponent::onContaminationEmitterChanged()
 {
-	m_contaminationEmitterEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_contaminationEmitterParam)));
+	if (static_cast<std::string>(m_contaminationEmitterParam) != "")
+	{
+		m_contaminationEmitterEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_contaminationEmitterParam)));
+	}
 }
 
 void PlayerComponent::onSmokeEmitterChanged()

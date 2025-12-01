@@ -6,6 +6,12 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 {
 	m_skyBoxManager.reset(new SkyBoxManager);
 
+	if (rayTracedWorldManager)
+	{
+		m_updateRayTracedWorldPass.reset(new UpdateRayTracedWorldPass(rayTracedWorldManager));
+		wolfInstance->initializePass(m_updateRayTracedWorldPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
+
 	m_updateGPUBuffersPass.reset(new UpdateGPUBuffersPass);
 	wolfInstance->initializePass(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
@@ -32,13 +38,13 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 
 	if (rayTracedWorldManager)
 	{
-		m_rayTracedShadowsPass.reset(new RayTracedShadowsPass(editorParams, m_preDepthPass.createNonOwnerResource(), rayTracedWorldManager));
+		m_rayTracedShadowsPass.reset(new RayTracedShadowsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_updateRayTracedWorldPass.createNonOwnerResource(), rayTracedWorldManager));
 		wolfInstance->initializePass(m_rayTracedShadowsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-		m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(editorParams, m_preDepthPass.createNonOwnerResource(), rayTracedWorldManager));
+		m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_updateRayTracedWorldPass.createNonOwnerResource(), rayTracedWorldManager));
 		wolfInstance->initializePass(m_rayTracedWorldDebugPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-		m_voxelGIPass.reset(new VoxelGlobalIlluminationPass(rayTracedWorldManager));
+		m_voxelGIPass.reset(new VoxelGlobalIlluminationPass(m_updateRayTracedWorldPass.createNonOwnerResource(), rayTracedWorldManager));
 		wolfInstance->initializePass(m_voxelGIPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 		m_pathTracingPass.reset(new PathTracingPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_computeSkyCubeMapPass.createNonOwnerResource(), rayTracedWorldManager));
@@ -93,6 +99,10 @@ void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
 	{
 		m_voxelGIPass->addMeshesToRenderList(wolfInstance->getRenderMeshList());
 	}
+	else
+	{
+		m_defaultGlobalIrradiance->update();
+	}
 }
 
 void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext)
@@ -101,6 +111,10 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 
 	std::vector<Wolf::ResourceNonOwner<Wolf::CommandRecordBase>> passes;
 	passes.reserve(11);
+	if (m_updateRayTracedWorldPass)
+	{
+		passes.push_back(m_updateRayTracedWorldPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
 	passes.push_back(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 

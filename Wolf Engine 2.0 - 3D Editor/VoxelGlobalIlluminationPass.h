@@ -8,11 +8,12 @@
 #include "GlobalIrradiancePassInterface.h"
 #include "RayTracedWorldManager.h"
 #include "AssetManager.h"
+#include "UpdateRayTracedWorldPass.h"
 
 class VoxelGlobalIlluminationPass : public Wolf::CommandRecordBase, public GlobalIrradiancePassInterface
 {
 public:
-    VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
+    VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
     void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager);
     void setEnableDebug(bool value) { m_enableDebug = value; }
@@ -29,6 +30,8 @@ public:
     void addShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const override;
 
 private:
+    Wolf::ResourceNonOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
+
     void createVoxelGrid();
     void initGridUpdateShaders();
     void createPipeline();

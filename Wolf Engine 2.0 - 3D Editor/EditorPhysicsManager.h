@@ -37,6 +37,11 @@ private:
 
 		// Rectangle debug info
 		glm::mat4 rectangleTransform;
+
+		// Box debug info
+		glm::vec3 boxAABBMin;
+		glm::vec3 boxAABBMax;
+		glm::vec3 boxRotation;
 	};
 	std::map<Entity*, std::vector<InfoByEntity>> m_infoByEntityArray;
 };

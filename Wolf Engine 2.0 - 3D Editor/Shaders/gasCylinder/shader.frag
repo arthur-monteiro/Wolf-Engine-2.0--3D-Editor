@@ -1,12 +1,13 @@
 layout (early_fragment_tests) in;
 
 layout (location = 0) in vec3 inViewPos;
-layout (location = 1) in vec2 inTexCoords;
-layout (location = 2) flat in uint inMaterialID;
-layout (location = 3) in mat3 inTBN;
-layout (location = 6) in vec3 inWorldSpaceNormal;
-layout (location = 7) in vec3 inWorldSpacePos;
-layout (location = 8) flat in uint inEntityId;
+layout (location = 1) in vec3 inColor;
+layout (location = 2) in vec2 inTexCoords;
+layout (location = 3) flat in uint inMaterialID;
+layout (location = 4) in mat3 inTBN;
+layout (location = 7) in vec3 inWorldSpaceNormal;
+layout (location = 8) in vec3 inWorldSpacePos;
+layout (location = 9) flat in uint inEntityId;
 
 layout (location = 0) out vec4 outColor;
 
@@ -17,7 +18,7 @@ layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 
 layout (binding = 0, set = 4, r32f) uniform image2D shadowMask;
 
-layout (binding = 0, set = 5, std140) uniform readonly uniformBufferCylinderGas
+layout (binding = 0, set = 6, std140) uniform readonly uniformBufferCylinderGas
 {
     vec3 color;
     float currentValue; 
@@ -27,14 +28,7 @@ layout (binding = 0, set = 5, std140) uniform readonly uniformBufferCylinderGas
     vec2 padding;
 } ubCylinderGas;
 
-const uint DISPLAY_TYPE_ALBEDO = 0;
-const uint DISPLAY_TYPE_NORMAL = 1;
-const uint DISPLAY_TYPE_ROUGHNESS = 2;
-const uint DISPLAY_TYPE_METALNESS = 3;
-const uint DISPLAY_TYPE_MAT_AO = 4;
-const uint DISPLAY_TYPE_MAT_ANISO_STRENGTH = 5;
-const uint DISPLAY_TYPE_LIGHTING = 6;
-const uint DISPLAY_TYPE_ENTITY_IDX = 7;
+#include "../common/displayTypes.glsl"
 
 const float PI = 3.14159265359;
 

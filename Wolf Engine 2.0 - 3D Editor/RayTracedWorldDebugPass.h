@@ -13,20 +13,24 @@
 #include "DrawRectInterface.h"
 #include "PreDepthPass.h"
 #include "RayTracedWorldManager.h"
+#include "UpdateRayTracedWorldPass.h"
 
 class RayTracedWorldDebugPass : public Wolf::CommandRecordBase, public DrawRectInterface
 {
 public:
-    RayTracedWorldDebugPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
+    RayTracedWorldDebugPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass,
+        const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
     void record(const Wolf::RecordContext& context) override;
     void submit(const Wolf::SubmitContext& context) override;
 
-    [[nodiscard]] bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame;}
+    [[nodiscard]] bool wasEnabledThisFrame() const { return m_wasEnabledThisFrame; }
 
 private:
+    Wolf::ResourceNonOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
+
     Wolf::ResourceUniqueOwner<Wolf::Image>& getOutputImage() override { return m_outputImage;}
 
     void createOutputImage(const Wolf::InitializationContext& context);

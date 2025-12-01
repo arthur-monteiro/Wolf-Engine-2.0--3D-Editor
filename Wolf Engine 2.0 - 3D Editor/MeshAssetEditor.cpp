@@ -1,5 +1,8 @@
 #include "MeshAssetEditor.h"
 
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <ConfigurationHelper.h>
 
 #include "EditorConfiguration.h"
@@ -13,7 +16,7 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 {
 	m_filepath = filepath;
 
-	if (modelData->isMeshCentered)
+	if (modelData->m_isMeshCentered)
 	{
 		m_isCenteredLabel.setName("Mesh is centered");
 	}
@@ -22,20 +25,33 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 		m_isCenteredLabel.setName("Mesh is not centered");
 	}
 
-	LODInfo& lodInfo = m_lodsInfo.emplace_back();
+	LODInfo& lodInfo = m_defaultLODsInfo.emplace_back();
 	lodInfo.setError(0.0f);
 	lodInfo.setIndexCount(modelData->mesh->getIndexCount());
 	lodInfo.setName("LOD 0");
 
 	uint32_t lodIdx = 1;
-	for (Wolf::ModelData::LODInfo& modelLODInfo : modelData->lodsInfo)
+	for (Wolf::ModelData::LODInfo& modelLODInfo : modelData->m_defaultLODsInfo)
 	{
-		LODInfo& editorLODInfo = m_lodsInfo.emplace_back();
-		editorLODInfo.setError(modelLODInfo.error);
-		editorLODInfo.setIndexCount(modelLODInfo.indexCount);
+		LODInfo& editorLODInfo = m_defaultLODsInfo.emplace_back();
+		editorLODInfo.setError(modelLODInfo.m_error);
+		editorLODInfo.setIndexCount(modelLODInfo.m_indexCount);
 		editorLODInfo.setName("LOD " + std::to_string(lodIdx));
 
 		lodIdx++;
+	}
+	// Populate sloppy LODs (if any) so the editor shows them as well
+	if (!modelData->m_sloppyLODsInfo.empty())
+	{
+		uint32_t sloppyIdx = 0;
+		for (Wolf::ModelData::LODInfo& sloppyLODInfo : modelData->m_sloppyLODsInfo)
+		{
+			LODInfo& editorSloppyInfo = m_sloppyLODsInfo.emplace_back();
+			editorSloppyInfo.setError(sloppyLODInfo.m_error);
+			editorSloppyInfo.setIndexCount(sloppyLODInfo.m_indexCount);
+			editorSloppyInfo.setName("Sloppy LOD " + std::to_string(sloppyIdx));
+			sloppyIdx++;
+		}
 	}
 }
 
@@ -66,6 +82,21 @@ void MeshAssetEditor::addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& 
 		physicMesh.setDefaultRectangleScale(scale);
 		physicMesh.setDefaultRectangleRotation(rotation);
 		physicMesh.setDefaultRectangleOffset(offset);
+	}
+	else if (type == Wolf::Physics::PhysicsShapeType::Box)
+	{
+		physicMesh.setShapeType(typeIdx);
+		physicMesh.setName(shape->getName());
+
+		Wolf::ResourceNonOwner<Wolf::Physics::Box> shapeAsBox = shape.createNonOwnerResource<Wolf::Physics::Box>();
+
+		glm::vec3 aabbMin = shapeAsBox->getAABBMin();
+		glm::vec3 aabbMax = shapeAsBox->getAABBMax();
+		glm::vec3 rotation = shapeAsBox->getRotation();
+
+		physicMesh.setDefaultBoxAABBMin(aabbMin);
+		physicMesh.setDefaultBoxAABBMax(aabbMax);
+		physicMesh.setDefaultBoxRotation(rotation);
 	}
 	else
 	{
@@ -120,6 +151,26 @@ void MeshAssetEditor::computePhysicsOutputJSON(std::string& out)
 			out += "\t\t\t\"defaultS2Y\": " + std::to_string(s2.y) + ",\n";
 			out += "\t\t\t\"defaultS2Z\": " + std::to_string(s2.z) + ",\n";
 		}
+		else if (m_physicsMeshes[i].getType() == Wolf::Physics::PhysicsShapeType::Box)
+		{
+			out += "\t\t\t\"name\" : \"" + static_cast<std::string>(*m_physicsMeshes[i].getNameParam()) + "\",\n";
+
+			glm::vec3 aabbMin = m_physicsMeshes[i].getDefaultBoxAABBMin();
+			glm::vec3 aabbMax = m_physicsMeshes[i].getDefaultBoxAABBMax();
+			glm::vec3 rot = m_physicsMeshes[i].getDefaultBoxRotation();
+
+			out += "\t\t\t\"defaultAABBMinX\": " + std::to_string(aabbMin.x) + ",\n";
+			out += "\t\t\t\"defaultAABBMinY\": " + std::to_string(aabbMin.y) + ",\n";
+			out += "\t\t\t\"defaultAABBMinZ\": " + std::to_string(aabbMin.z) + ",\n";
+
+			out += "\t\t\t\"defaultAABBMaxX\": " + std::to_string(aabbMax.x) + ",\n";
+			out += "\t\t\t\"defaultAABBMaxY\": " + std::to_string(aabbMax.y) + ",\n";
+			out += "\t\t\t\"defaultAABBMaxZ\": " + std::to_string(aabbMax.z) + ",\n";
+
+			out += "\t\t\t\"defaultRotationX\": " + std::to_string(rot.x) + ",\n";
+			out += "\t\t\t\"defaultRotationY\": " + std::to_string(rot.y) + ",\n";
+			out += "\t\t\t\"defaultRotationZ\": " + std::to_string(rot.z) + ",\n";
+		}
 		else
 		{
 			Wolf::Debug::sendError("Unhandled physics mesh type");
@@ -137,6 +188,13 @@ void MeshAssetEditor::computePhysicsOutputJSON(std::string& out)
 void MeshAssetEditor::computeInfoForRectangle(uint32_t meshIdx, glm::vec3& outP0, glm::vec3& outS1, glm::vec3& outS2)
 {
 	computeRectanglePointsFromScaleRotationOffset(m_physicsMeshes[meshIdx].getDefaultRectangleScale(), m_physicsMeshes[meshIdx].getDefaultRectangleRotation(), m_physicsMeshes[meshIdx].getDefaultRectangleOffset(), outP0, outS1, outS2);
+}
+
+void MeshAssetEditor::computeInfoForBox(uint32_t meshIdx, glm::vec3& outAABBMin, glm::vec3& outAABBMax, glm::vec3& outRotation)
+{
+	outAABBMin = m_physicsMeshes[meshIdx].getDefaultBoxAABBMin();
+	outAABBMax = m_physicsMeshes[meshIdx].getDefaultBoxAABBMax();
+	outRotation = m_physicsMeshes[meshIdx].getDefaultBoxRotation();
 }
 
 void MeshAssetEditor::computeInfoOutputJSON(std::string& out)
@@ -169,7 +227,30 @@ void MeshAssetEditor::PhysicMesh::getAllParams(std::vector<EditorParamInterface*
 
 void MeshAssetEditor::PhysicMesh::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
 {
-	std::copy(m_allParams.data(), &m_allParams.back() + 1, std::back_inserter(out));
+	for (EditorParamInterface* param : m_alwaysVisibleParams)
+	{
+		out.push_back(param);
+	}
+
+	switch (static_cast<uint32_t>(m_shapeType))
+	{
+		case static_cast<uint32_t>(Wolf::Physics::PhysicsShapeType::Rectangle):
+		{
+			for (EditorParamInterface* param : m_rectangleParams)
+			{
+				out.push_back(param);
+			}
+			break;
+		}
+		case static_cast<uint32_t>(Wolf::Physics::PhysicsShapeType::Box):
+		{
+			for (EditorParamInterface* param : m_boxParams)
+			{
+				out.push_back(param);
+			}
+			break;
+		}
+	}
 }
 
 bool MeshAssetEditor::PhysicMesh::hasDefaultName() const
@@ -187,9 +268,16 @@ void MeshAssetEditor::PhysicMesh::onValueChanged()
 	notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::PHYSICS));
 }
 
+void MeshAssetEditor::PhysicMesh::onShapeTypeChanged()
+{
+	onValueChanged();
+	m_requestReloadCallback(nullptr);
+}
+
 void MeshAssetEditor::onPhysicsMeshAdded()
 {
 	m_requestReloadCallback(this);
+	m_physicsMeshes.back().setRequestReloadCallback(m_requestReloadCallback);
 	m_physicsMeshes.back().subscribe(this, [this](Notifier::Flags) { notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::PHYSICS)); });
 }
 

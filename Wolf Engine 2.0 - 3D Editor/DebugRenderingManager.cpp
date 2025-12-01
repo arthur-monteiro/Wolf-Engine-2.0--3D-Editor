@@ -208,19 +208,7 @@ void DebugRenderingManager::clearBeforeFrame()
 
 void DebugRenderingManager::addAABB(const Wolf::AABB& box)
 {
-	if (m_AABBInfoArrayCount >= m_AABBInfoArray.size())
-	{
-		m_AABBInfoArray.emplace_back(m_cubeLineMesh.createNonOwnerResource(), m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
-	}
-
-	const PerGroupOfLines& perGroupOfLinesInfo = m_AABBInfoArray[m_AABBInfoArrayCount];
-
-	LinesUBData data{};
-	data.transform = glm::translate(glm::mat4(glm::mat4(1.0f)), glm::vec3(box.getCenter()));
-	data.transform = glm::scale(data.transform, glm::vec3(box.getSize()));
-	perGroupOfLinesInfo.linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
-
-	m_AABBInfoArrayCount++;
+	addBox(box, glm::vec3(0.0f));
 }
 
 void DebugRenderingManager::addCustomGroupOfLines(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const LinesUBData& data)
@@ -260,6 +248,26 @@ void DebugRenderingManager::addRectangle(const glm::mat4& transform)
 
 	m_rectanglesData.transform[m_rectanglesCount] = transform;
 	m_rectanglesCount++;
+}
+
+void DebugRenderingManager::addBox(const Wolf::AABB& aabb, const glm::vec3& rotation)
+{
+	if (m_AABBInfoArrayCount >= m_AABBInfoArray.size())
+	{
+		m_AABBInfoArray.emplace_back(m_cubeLineMesh.createNonOwnerResource(), m_linesDescriptorSetLayout, m_linesDescriptorSetLayoutGenerator);
+	}
+
+	const PerGroupOfLines& perGroupOfLinesInfo = m_AABBInfoArray[m_AABBInfoArrayCount];
+
+	LinesUBData data{};
+	data.transform = glm::translate(glm::mat4(glm::mat4(1.0f)), glm::vec3(aabb.getCenter()));
+	data.transform = glm::rotate(data.transform, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+	data.transform = glm::rotate(data.transform, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+	data.transform = glm::rotate(data.transform, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+	data.transform = glm::scale(data.transform, glm::vec3(aabb.getSize()));
+	perGroupOfLinesInfo.linesUniformBuffer->transferCPUMemory(&data, sizeof(data));
+
+	m_AABBInfoArrayCount++;
 }
 
 void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList)

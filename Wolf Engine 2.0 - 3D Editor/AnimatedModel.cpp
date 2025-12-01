@@ -104,7 +104,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 
 		if (m_waitingForMeshLoadingFrameCount == 0 && m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
-			std::unique_ptr<Wolf::AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->animationData;
+			std::unique_ptr<Wolf::AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
 
 			m_boneCount = animationData->boneCount;
 			m_bonesBuffer.reset(Wolf::Buffer::createBuffer(m_boneCount * sizeof(glm::mat4), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
@@ -213,7 +213,7 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
 	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].emplace_back(descriptorSetBindInfo);
 
-	descriptorSetBindInfo.setBindingSlot(5);
+	descriptorSetBindInfo.setBindingSlot(6);
 	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(descriptorSetBindInfo);
 
 	outList.push_back({ meshToRenderInfo, { m_transform, m_materialIdx } });
@@ -233,7 +233,7 @@ void AnimatedModel::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 	{
 		if (m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
-			std::unique_ptr<Wolf::AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->animationData;
+			std::unique_ptr<Wolf::AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
 			addBonesToDebug(animationData->rootBones.data(), debugRenderingManager);
 		}
 	}
@@ -335,13 +335,13 @@ Wolf::AnimationData* AnimatedModel::findAnimationData(bool& success)
 
 	uint32_t animationIdx = m_animationSelectParam;
 
-	Wolf::AnimationData* animationData = m_resourceManager->getModelData(m_meshResourceId)->animationData.get();
+	Wolf::AnimationData* animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData.get();
 	if (animationIdx > 0)
 	{
 		uint32_t animationResourceId = m_animationsParam[animationIdx - 1 /* first one is default */].getResourceId();
 		if (m_resourceManager->isModelLoaded(animationResourceId))
 		{
-			animationData = m_resourceManager->getModelData(animationResourceId)->animationData.get();
+			animationData = m_resourceManager->getModelData(animationResourceId)->m_animationData.get();
 		}
 		else
 		{

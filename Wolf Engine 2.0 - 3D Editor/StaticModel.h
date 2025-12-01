@@ -133,15 +133,23 @@ private:
 	static constexpr uint32_t MAX_SUB_MESHES = 256;
 	EditorParamArray<SubMesh> m_subMeshes = EditorParamArray<SubMesh>("Sub meshes", TAB, "Mesh", MAX_SUB_MESHES, false, true);
 
-	EditorParamUInt m_rayTracedWorldLOD = EditorParamUInt("LOD for ray traced world", TAB, "Ray Tracing", 0, 0, [this]() { notifySubscribers(); });
+	void onDrawLODTypeChanged();
+	EditorParamEnum m_drawLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for draw", TAB, "Quality", [this]() { onDrawLODTypeChanged(); });
+	EditorParamUInt m_drawLOD = EditorParamUInt("LOD for draw", TAB, "Quality", 0, 0, [this]() { notifySubscribers(); });
 
-	std::array<EditorParamInterface*, 3> m_editorParams =
+	void onRayTracedWorldLODTypeChanged();
+	EditorParamEnum m_rayTracedWorldLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for ray traced world", TAB, "Quality", [this]() { onRayTracedWorldLODTypeChanged(); });
+	EditorParamUInt m_rayTracedWorldLOD = EditorParamUInt("LOD for ray traced world", TAB, "Quality", 0, 0, [this]() { notifySubscribers(); });
+
+	std::array<EditorParamInterface*, 6> m_editorParams =
 	{
 		&m_loadingPathParam,
 		&m_subMeshes,
+		&m_drawLODType,
+		&m_drawLOD,
+		&m_rayTracedWorldLODType,
 		&m_rayTracedWorldLOD
 	};
 
 	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>> m_defaultPipelineSet;
 };
-

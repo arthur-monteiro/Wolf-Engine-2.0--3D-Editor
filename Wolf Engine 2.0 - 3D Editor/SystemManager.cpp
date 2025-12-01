@@ -535,6 +535,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 
 	if (displayType == "albedo")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::ALBEDO;
+	else if (displayType == "vertexColor")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::VERTEX_COLOR;
 	else if (displayType == "normal")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::NORMAL;
 	else if (displayType == "roughness")
@@ -919,7 +921,7 @@ void SystemManager::updateBeforeFrame()
 
 			if (!tlasInfo.m_instances.empty() && !errorEncountered)
 			{
-				m_rayTracedWorldManager->build(tlasInfo);
+				m_rayTracedWorldManager->requestBuild(tlasInfo);
 				m_rayTracedWorldBuildNeeded = false;
 			}
 		}

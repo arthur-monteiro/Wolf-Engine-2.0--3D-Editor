@@ -56,6 +56,7 @@ void GraphicSettingsFakeEntity::updateBeforeFrame(const Wolf::ResourceNonOwner<W
 {
     if (m_skyCubeMapResolutionChanged)
     {
+        // ReSharper disable once CppDFAUnreachableCode
         m_renderingPipeline->getSkyBoxManager()->setCubeMapResolution(m_skyCubeMapResolution);
         m_skyCubeMapResolutionChanged = false;
     }

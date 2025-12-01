@@ -1,6 +1,7 @@
 #include "SkyBoxManager.h"
 
 #include <GraphicCameraInterface.h>
+#include <ProfilerCommon.h>
 #include <RenderPass.h>
 
 #include "CommonLayouts.h"
@@ -79,6 +80,8 @@ void SkyBoxManager::updateBeforeFrame(Wolf::WolfEngine* wolfInstance, const Wolf
 
 void SkyBoxManager::drawSkyBox(const Wolf::CommandBuffer& commandBuffer, const Wolf::RenderPass& renderPass, const Wolf::RecordContext& context)
 {
+    PROFILE_FUNCTION
+
     createPipelineIfNeeded(renderPass);
 
     commandBuffer.bindPipeline(m_pipeline.createConstNonOwnerResource());

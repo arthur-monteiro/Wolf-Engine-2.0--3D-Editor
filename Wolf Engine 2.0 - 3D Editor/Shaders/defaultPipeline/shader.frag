@@ -1,19 +1,21 @@
 layout (early_fragment_tests) in;
 
 layout (location = 0) in vec3 inViewPos;
-layout (location = 1) in vec2 inTexCoords;
-layout (location = 2) flat in uint inMaterialID;
-layout (location = 3) in mat3 inTBN;
-layout (location = 6) in vec3 inWorldSpaceNormal;
-layout (location = 7) in vec3 inWorldSpacePos;
-layout (location = 8) flat in uint inEntityId;
+layout (location = 1) in vec3 inColor;
+layout (location = 2) in vec2 inTexCoords;
+layout (location = 3) flat in uint inMaterialID;
+layout (location = 4) in mat3 inTBN;
+layout (location = 7) in vec3 inWorldSpaceNormal;
+layout (location = 8) in vec3 inWorldSpacePos;
+layout (location = 9) flat in uint inEntityId;
 
 layout (location = 0) out vec4 outColor;
 
 layout(binding = 0, set = 1, std140) uniform readonly UniformBufferDisplay
 {
 	uint displayType;
-    bool enableTrilinearVoxelGI;
+    uint enableTrilinearVoxelGI;
+    float exposure;
 } ubDisplay;
 
 layout (binding = 0, set = 4, r16f) uniform image2D shadowMask;
@@ -90,10 +92,10 @@ vec4 computeLighting(MaterialInfo materialInfo)
             Lo += computeRadianceForLight(V, normal, roughness, F0, albedo, metalness, L, 1.0f /* attenuation */, ubLights.sunLights[i].sunColor.xyz) * shadowsCoeff;
         }
 
-        vec3 ambientLight = albedo * computeIrradiance(worldPos, normal, ubDisplay.enableTrilinearVoxelGI) * 8.0;
+        vec3 ambientLight = albedo * computeIrradiance(worldPos, normal, ubDisplay.enableTrilinearVoxelGI == 1) * 8.0;
         
         vec3 result = Lo + ambientLight;
-        float exposure = -1.5; // TODO
+        float exposure = ubDisplay.exposure;
         float exposureMultiplier = pow(2.0, exposure);
         result *= exposureMultiplier;
 
@@ -111,8 +113,10 @@ void main()
 
     if (ubDisplay.displayType == DISPLAY_TYPE_ALBEDO)
         outColor = vec4(materialInfo.albedo.rgb, 1.0);
+    else if (ubDisplay.displayType == DISPLAY_TYPE_VERTEX_COLOR)
+        outColor = vec4(inColor.rgb, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_NORMAL)
-        outColor = vec4(materialInfo.normal, 1.0);
+        outColor = vec4(materialInfo.normal.xyz, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_ROUGHNESS)
         outColor = vec4(materialInfo.roughness.rrr, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_METALNESS)
@@ -136,7 +140,7 @@ void main()
         normal = normalize(normal);
         vec3 worldPos = (getInvViewMatrix() * vec4(inViewPos, 1.0f)).xyz;
 
-        outColor = vec4(computeIrradiance(worldPos, normal, ubDisplay.enableTrilinearVoxelGI), 1.0);
+        outColor = vec4(computeIrradiance(worldPos, normal, ubDisplay.enableTrilinearVoxelGI == 1), 1.0);
     }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);

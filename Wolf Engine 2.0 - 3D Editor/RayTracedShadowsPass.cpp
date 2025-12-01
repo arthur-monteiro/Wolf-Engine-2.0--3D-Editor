@@ -13,8 +13,9 @@
 
 struct GameContext;
 
-RayTracedShadowsPass::RayTracedShadowsPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
-    : m_editorParams(editorParams), m_preDepthPass(preDepthPass), m_rayTracedWorldManager(rayTracedWorldManager)
+RayTracedShadowsPass::RayTracedShadowsPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass,
+        const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
+    : m_editorParams(editorParams), m_preDepthPass(preDepthPass), m_updateRayTracedWorldPass(updateRayTracedWorldPass), m_rayTracedWorldManager(rayTracedWorldManager)
 {
 }
 
@@ -101,7 +102,10 @@ void RayTracedShadowsPass::submit(const Wolf::SubmitContext& context)
     if (!m_wasEnabledThisFrame)
         return;
 
-    const std::vector<const Wolf::Semaphore*> waitSemaphores{ m_preDepthPass->getSemaphore(context.swapChainImageIndex) };
+    std::vector<const Wolf::Semaphore*> waitSemaphores{ m_preDepthPass->getSemaphore(context.swapChainImageIndex) };
+    if (m_updateRayTracedWorldPass->wasEnabledThisFrame())
+        waitSemaphores.push_back(m_updateRayTracedWorldPass->getSemaphore(context.swapChainImageIndex));
+
     const std::vector<const Wolf::Semaphore*> signalSemaphores{ CommandRecordBase::getSemaphore(context.swapChainImageIndex) };
     m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
 

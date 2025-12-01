@@ -19,12 +19,13 @@ layout (binding = 2, set = @RAY_TRACING_DESCRIPTOR_SLOT) readonly buffer BufferL
 struct Vertex
 {
     vec3 pos;
+    vec3 vertexColor;
 	vec3 normal;
 	vec3 tangent;
 	vec2 texCoords;
 	uint subMeshIdx;
 };
-uint vertexSize = 12;
+uint vertexSize = 15;
 
 #define traceRaySpecificPayload(_rayFlags, _cullMask, _sbtRecordOffset, _sbtRecordStride, _missIndex, _origin, _tmin, _direction, _tmax, _payloadLocation) \
     traceRayEXT(topLevelAS, _rayFlags, _cullMask, _sbtRecordOffset, _sbtRecordStride, _missIndex, _origin, _tmin, _direction, _tmax, _payloadLocation)
@@ -64,12 +65,16 @@ Vertex unpackVertex(in uint instanceId, in uint index)
     uint d9 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 9];
     uint d10 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 10];
     uint d11 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 11];
+    uint d12 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 12];
+    uint d13 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 13];
+    uint d14 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 14];
 
     v.pos = vec3(uintBitsToFloat(d0), uintBitsToFloat(d1), uintBitsToFloat(d2));
-    v.normal = vec3(uintBitsToFloat(d3), uintBitsToFloat(d4), uintBitsToFloat(d5));
-    v.tangent = vec3(uintBitsToFloat(d6), uintBitsToFloat(d7), uintBitsToFloat(d8));
-    v.texCoords = vec2(uintBitsToFloat(d9), uintBitsToFloat(d10));
-    v.subMeshIdx = d11;
+    v.vertexColor = vec3(uintBitsToFloat(d3), uintBitsToFloat(d4), uintBitsToFloat(d5));
+    v.normal = vec3(uintBitsToFloat(d6), uintBitsToFloat(d7), uintBitsToFloat(d8));
+    v.tangent = vec3(uintBitsToFloat(d9), uintBitsToFloat(d10), uintBitsToFloat(d11));
+    v.texCoords = vec2(uintBitsToFloat(d12), uintBitsToFloat(d13));
+    v.subMeshIdx = d14;
 
     return v;
 }
@@ -86,6 +91,7 @@ Vertex computeVertex(in uint instanceId, in uint primitiveId, in vec2 attribs)
     
     Vertex v;
     v.pos = v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z;
+    v.vertexColor = v0.vertexColor * barycentrics.x + v1.vertexColor * barycentrics.y + v2.vertexColor * barycentrics.z;
     v.normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
     v.tangent = v0.tangent * barycentrics.x + v1.tangent * barycentrics.y + v2.tangent * barycentrics.z;
     v.texCoords = v0.texCoords * barycentrics.x + v1.texCoords * barycentrics.y + v2.texCoords * barycentrics.z;

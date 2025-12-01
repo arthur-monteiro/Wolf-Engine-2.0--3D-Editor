@@ -25,7 +25,6 @@ public:
             DescriptorSetSlots::DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO
         };
     }
-    [[nodiscard]] bool hasDescriptorSetToBind() const { return static_cast<bool>(m_outputDescriptorSet);}
 
     virtual void addShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const = 0;
 

@@ -5,6 +5,8 @@
 #include <string>
 
 #include "AnimatedModel.h"
+#include "AssetManager.h"
+#include "CameraSettingsComponent.h"
 #include "ColorGradingComponent.h"
 #include "ComponentInterface.h"
 #include "ContaminationEmitter.h"
@@ -19,7 +21,6 @@
 #include "ParticleEmitter.h"
 #include "PlayerComponent.h"
 #include "PointLight.h"
-#include "AssetManager.h"
 #include "SkyLight.h"
 #include "StaticModel.h"
 
@@ -54,7 +55,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 14> m_componentsInfo =
+	std::array<ComponentInfo, 15> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -180,6 +181,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new ColorGradingComponent(m_resourceManager, m_renderingPipeline));
+			}
+		},
+		ComponentInfo
+		{
+			"Camera Settings",
+			CameraSettingsComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new CameraSettingsComponent(m_renderingPipeline));
 			}
 		}
 	};

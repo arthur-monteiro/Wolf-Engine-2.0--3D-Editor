@@ -117,7 +117,8 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	/* Shared resources */
 	DisplayOptionsUBData displayOptions{};
 	displayOptions.displayType = static_cast<uint32_t>(gameContext->displayType);
-	displayOptions.enableTrilinearVoxelGI = m_enableTrilinearVoxelGI;
+	displayOptions.enableTrilinearVoxelGI = m_enableTrilinearVoxelGI ? 1 : 0;
+	displayOptions.exposure = m_exposure;
 	m_displayOptionsUniformBuffer->transferCPUMemory(&displayOptions, sizeof(displayOptions), 0);
 
 	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
@@ -125,22 +126,23 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 
 	m_skyBoxManager->drawSkyBox(*m_commandBuffer, *m_renderPass, context);
 
-	Wolf::DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
-
-	std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
-	descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo, 0);
-	descriptorSetBindInfos.emplace_back(m_shadowMaskPass->getMaskDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO);
-	if (m_globalIrradiancePass->hasDescriptorSetToBind())
 	{
+		PROFILE_SCOPED("Draw record")
+
+		Wolf::DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
+
+		std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
+		descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo, 0);
+		descriptorSetBindInfos.emplace_back(m_shadowMaskPass->getMaskDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO);
 		descriptorSetBindInfos.emplace_back(m_globalIrradiancePass->getDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO);
+
+		std::vector<Wolf::PipelineSet::ShaderCodeToAddForStage> shadersCodeToAdd(1);
+		shadersCodeToAdd[0].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
+		m_globalIrradiancePass->addShaderCode(shadersCodeToAdd[0].shaderCodeToAdd, DescriptorSetSlots::DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO);
+		shadersCodeToAdd[0].requiredMask = AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
+
+		context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
 	}
-
-	std::vector<Wolf::PipelineSet::ShaderCodeToAddForStage> shadersCodeToAdd(1);
-	shadersCodeToAdd[0].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
-	m_globalIrradiancePass->addShaderCode(shadersCodeToAdd[0].shaderCodeToAdd, DescriptorSetSlots::DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO);
-	shadersCodeToAdd[0].requiredMask = AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
-
-	context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
 
 	/* Particles */
 	if (uint32_t particleCount = m_particlesUpdatePass->getParticleCount())
