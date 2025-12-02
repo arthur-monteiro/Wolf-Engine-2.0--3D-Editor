@@ -168,7 +168,7 @@ void CompositionPass::submit(const Wolf::SubmitContext& context)
     std::vector<const Wolf::Semaphore*> waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore, m_forwardPass->getSemaphore(context.swapChainImageIndex) };
 
     const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
-    m_commandBuffer->submit(waitSemaphores, signalSemaphores, context.frameFence);
+    m_commandBuffer->submit(waitSemaphores, signalSemaphores, m_finalPassFrameIdx == Wolf::g_runtimeContext->getCurrentCPUFrameNumber() ? context.frameFence : nullptr);
 
     bool anyShaderModified = m_computeShaderParser->compileIfFileHasBeenModified();
     if (anyShaderModified)

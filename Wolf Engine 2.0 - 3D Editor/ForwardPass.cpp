@@ -88,6 +88,8 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 
 void ForwardPass::resize(const Wolf::InitializationContext& context)
 {
+	createOutputImage(context);
+
 	m_renderPass->setExtent({ context.swapChainWidth, context.swapChainHeight });
 
 	Wolf::Attachment color = setupColorAttachment(context);

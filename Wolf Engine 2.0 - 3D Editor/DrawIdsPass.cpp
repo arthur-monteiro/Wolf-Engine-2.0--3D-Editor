@@ -108,7 +108,7 @@ void DrawIdsPass::submit(const Wolf::SubmitContext& context)
     std::vector<const Wolf::Semaphore*> waitSemaphores { m_forwardPass->getSemaphore(context.swapChainImageIndex) };
 
     const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
-    m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
+    m_commandBuffer->submit(waitSemaphores, signalSemaphores, m_finalPassFrameIdx == Wolf::g_runtimeContext->getCurrentCPUFrameNumber() ? context.frameFence : nullptr);
 }
 
 void DrawIdsPass::requestPixelBeforeFrame(uint32_t posX, uint32_t posY, const PixelRequestCallback& callback)
@@ -161,3 +161,4 @@ void DrawIdsPass::initializeFramesBuffer(const Wolf::InitializationContext& cont
 {
     m_frameBuffer.reset(Wolf::FrameBuffer::createFrameBuffer(*m_renderPass, { colorAttachment,  depthAttachment }));
 }
+

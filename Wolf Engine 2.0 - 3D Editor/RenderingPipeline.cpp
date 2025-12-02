@@ -85,7 +85,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
 	wolfInstance->initializePass(m_drawIdsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_gpuBufferToGpuBufferCopyPass.reset(new GPUBufferToGPUBufferCopyPass(m_forwardPass.createConstNonOwnerResource(), m_drawIdsPass.createConstNonOwnerResource()));
+	m_gpuBufferToGpuBufferCopyPass.reset(new GPUBufferToGPUBufferCopyPass(m_compositionPass.createConstNonOwnerResource(), m_drawIdsPass.createConstNonOwnerResource()));
 	wolfInstance->initializePass(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 }
 
@@ -163,14 +163,17 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 	if (!m_gpuBufferToGpuBufferCopyPass->isCurrentQueueEmpty())
 	{
 		finalSemaphore = m_gpuBufferToGpuBufferCopyPass->getSemaphore(swapChainImageIdx);
+		m_gpuBufferToGpuBufferCopyPass->setIsFinalPassThisFrame();
 	}
 	else if (m_drawIdsPass->isEnabledThisFrame())
 	{
 		finalSemaphore = m_drawIdsPass->getSemaphore(swapChainImageIdx);
+		m_drawIdsPass->setIsFinalPassThisFrame();
 	}
 	else
 	{
 		finalSemaphore = m_compositionPass->getSemaphore(swapChainImageIdx);
+		m_compositionPass->setIsFinalPassThisFrame();
 	}
 	wolfInstance->frame(passes, finalSemaphore, swapChainImageIdx);
 

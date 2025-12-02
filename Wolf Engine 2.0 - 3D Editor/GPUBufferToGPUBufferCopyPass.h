@@ -7,13 +7,13 @@
 #include <DynamicResourceUniqueOwnerArray.h>
 #include <ReadableBuffer.h>
 
+#include "CompositionPass.h"
 #include "DrawIdsPass.h"
-#include "ForwardPass.h"
 
 class GPUBufferToGPUBufferCopyPass: public Wolf::CommandRecordBase
 {
 public:
-    GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<const DrawIdsPass>& drawIdsPass);
+    GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const CompositionPass>& compositionPass, const Wolf::ResourceNonOwner<const DrawIdsPass>& drawIdsPass);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
@@ -21,6 +21,7 @@ public:
     void submit(const Wolf::SubmitContext& context) override;
 
     [[nodiscard]] bool isCurrentQueueEmpty() const;
+    void setIsFinalPassThisFrame();
 
     class Request
     {
@@ -42,7 +43,7 @@ public:
     void addRequestBeforeFrame(const Request& request);
 
 private:
-    Wolf::ResourceNonOwner<const ForwardPass> m_forwardPass;
+    Wolf::ResourceNonOwner<const CompositionPass> m_compositionPass;
     Wolf::ResourceNonOwner<const DrawIdsPass> m_drawIdsPass;
 
     static constexpr uint32_t RequestsBatchSize = 4;
@@ -53,4 +54,5 @@ private:
     Wolf::DynamicStableArray<Wolf::DynamicResourceUniqueOwnerArray<Request, RequestsBatchSize>, QueuesBatchSize> m_currentRequestsQueues;
 
     bool m_commandsRecordedThisFrame = false;
+    uint32_t m_finalPassFrameIdx = static_cast<uint32_t>(-1);
 };

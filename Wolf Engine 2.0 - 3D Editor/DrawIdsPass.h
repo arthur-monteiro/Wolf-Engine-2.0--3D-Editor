@@ -20,6 +20,7 @@ public:
     using PixelRequestCallback = std::function<void(uint32_t)>;
     void requestPixelBeforeFrame(uint32_t posX, uint32_t posY, const PixelRequestCallback& callback);
     bool isEnabledThisFrame() const { return m_lastRecordFrameNumber == Wolf::g_runtimeContext->getCurrentCPUFrameNumber() ? m_recordCommandsThisFrame : m_recordCommandsNextFrame; };
+    void setIsFinalPassThisFrame() { m_finalPassFrameIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber(); }
 
 private:
     static constexpr Wolf::Format OUTPUT_FORMAT = Wolf::Format::R32_UINT;
@@ -36,6 +37,7 @@ private:
     Wolf::ResourceNonOwner<const ForwardPass> m_forwardPass;
 
     uint32_t m_lastRecordFrameNumber = 0;
+    uint32_t m_finalPassFrameIdx = static_cast<uint32_t>(-1);
 
     bool m_recordCommandsNextFrame = false;
     bool m_recordCommandsThisFrame = false;

@@ -39,6 +39,11 @@ SystemManager::SystemManager()
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
 		m_rayTracedWorldManager.reset(new RayTracedWorldManager);
+
+		if (Wolf::g_configuration->getUseVirtualTexture())
+		{
+			Wolf::Debug::sendWarning("Ray tracing doesn't request slices for virtual texture. Texture sampling may not work");
+		}
 	}
 
 	createRenderer();

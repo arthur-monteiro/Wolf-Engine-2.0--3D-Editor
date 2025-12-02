@@ -14,8 +14,8 @@ void Wolf::requestGPUBufferReadbackRecord(const ResourceNonOwner<Buffer>& srcBuf
     g_GPUBufferToGPUBufferCopyPassInst->addRequestBeforeFrame({ srcBuffer, srcOffset, readableBuffer, size });
 }
 
-GPUBufferToGPUBufferCopyPass::GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<const DrawIdsPass>& drawIdsPass)
-: m_forwardPass(forwardPass), m_drawIdsPass(drawIdsPass)
+GPUBufferToGPUBufferCopyPass::GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const CompositionPass>& compositionPass, const Wolf::ResourceNonOwner<const DrawIdsPass>& drawIdsPass)
+: m_compositionPass(compositionPass), m_drawIdsPass(drawIdsPass)
 {
     g_GPUBufferToGPUBufferCopyPassInst = this;
 }
@@ -69,9 +69,9 @@ void GPUBufferToGPUBufferCopyPass::submit(const Wolf::SubmitContext& context)
 {
     if (m_commandsRecordedThisFrame)
     {
-        std::vector<const Wolf::Semaphore*> waitSemaphores{ m_drawIdsPass->isEnabledThisFrame() ? m_drawIdsPass->getSemaphore(context.swapChainImageIndex) : m_forwardPass->getSemaphore(context.swapChainImageIndex) };
+        std::vector<const Wolf::Semaphore*> waitSemaphores{ m_drawIdsPass->isEnabledThisFrame() ? m_drawIdsPass->getSemaphore(context.swapChainImageIndex) : m_compositionPass->getSemaphore(context.swapChainImageIndex) };
         const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
-        m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
+        m_commandBuffer->submit(waitSemaphores, signalSemaphores, m_finalPassFrameIdx == Wolf::g_runtimeContext->getCurrentCPUFrameNumber() ? context.frameFence : nullptr);
     }
 }
 
@@ -98,4 +98,9 @@ void GPUBufferToGPUBufferCopyPass::addRequestBeforeFrame(const Request& request)
     Request* newRequest = new Request(request);
     m_addRequestsQueue.emplace_back(newRequest);
     m_addRequestQueueMutex.unlock();
+}
+
+void GPUBufferToGPUBufferCopyPass::setIsFinalPassThisFrame()
+{
+    m_finalPassFrameIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber();
 }

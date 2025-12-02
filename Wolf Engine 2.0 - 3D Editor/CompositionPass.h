@@ -29,6 +29,8 @@ public:
     void setInputLUT(const Wolf::ResourceNonOwner<Wolf::Image>& lutImage);
     void releaseInputLUT();
 
+    void setIsFinalPassThisFrame() { m_finalPassFrameIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber(); }
+
     void saveSwapChainToFile();
 
 private:
@@ -67,4 +69,6 @@ private:
     Wolf::Image* m_lastSwapChainImage = nullptr;
     std::vector<Wolf::Image*> m_swapChainImages;
     Wolf::Image* m_uiImage;
+
+    uint32_t m_finalPassFrameIdx = static_cast<uint32_t>(-1);
 };
