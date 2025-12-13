@@ -42,13 +42,18 @@ void RayTracedWorldManager::requestBuild(const RayTracedWorldInfo& info)
     requestBuildTLAS(info);
 }
 
-void RayTracedWorldManager::build(Wolf::CommandBuffer& commandBuffer)
+void RayTracedWorldManager::build(const Wolf::CommandBuffer& commandBuffer)
 {
     m_topLevelAccelerationStructure->build(&commandBuffer, m_blasInstances);
     m_needsRebuildTLAS = false;
 }
 
-void RayTracedWorldManager::addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const
+void RayTracedWorldManager::recordTLASBuildBarriers(const Wolf::CommandBuffer& commandBuffer)
+{
+    m_topLevelAccelerationStructure->recordBuildBarriers(&commandBuffer);
+}
+
+void RayTracedWorldManager::addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot)
 {
     std::ifstream inFile("Shaders/rayTracedWorld/rayGen.glsl");
     std::string line;
@@ -81,7 +86,14 @@ void RayTracedWorldManager::requestBuildTLAS(const RayTracedWorldInfo& info)
     if (!m_topLevelAccelerationStructure || m_topLevelAccelerationStructure->getInstanceCount() != m_blasInstances.size())
     {
         m_topLevelAccelerationStructure.reset(Wolf::TopLevelAccelerationStructure::createTopLevelAccelerationStructure(m_blasInstances.size()));
-        createDescriptorSet();
+    }
+
+    uint64_t bufferListHash = computeBufferListHash();
+    if (bufferListHash != m_buffersListHash)
+    {
+        // TODO: descriptor set may be in use, updating it may cause a crash
+        createDescriptorSet(); // we need to update the descriptor set because buffers may have changed
+        m_buffersListHash = bufferListHash;
     }
 
     m_needsRebuildTLAS = true;
@@ -133,3 +145,16 @@ uint32_t RayTracedWorldManager::addStorageBuffer(const Wolf::ResourceNonOwner<Wo
 
     return m_buffers.size() - 1;
 }
+
+uint64_t RayTracedWorldManager::computeBufferListHash() const
+{
+    static_assert(sizeof(Wolf::Buffer*) == sizeof(uint64_t));
+    std::vector<uint64_t> bufferPtrs(m_buffers.size());
+    for (const Wolf::ResourceNonOwner<Wolf::Buffer>& buffer : m_buffers)
+    {
+        bufferPtrs.push_back(reinterpret_cast<uint64_t>(buffer.operator->()));
+    }
+
+    return xxh64::hash(reinterpret_cast<const char*>(bufferPtrs.data()), bufferPtrs.size() * sizeof(uint64_t), 0);
+}
+

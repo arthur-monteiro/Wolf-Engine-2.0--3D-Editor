@@ -1,18 +1,19 @@
 #include "MeshAssetEditor.h"
 
-#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <ConfigurationHelper.h>
 
+#include "ComputeVertexDataPass.h"
 #include "EditorConfiguration.h"
 #include "MathsUtilsEditor.h"
 #include "ModelLoader.h"
 
-MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, const std::function<void(const std::string&)>& isolateMeshCallback,
-                                 const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload)
-: m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
-  m_requestThumbnailReload(requestThumbnailReload)
+MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
+	const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
+	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+: m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback), m_requestThumbnailReload(requestThumbnailReload),
+  m_renderingPipeline(renderingPipeline)
 {
 	m_filepath = filepath;
 
@@ -26,27 +27,42 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 	}
 
 	LODInfo& lodInfo = m_defaultLODsInfo.emplace_back();
+	lodInfo.setRenderingPipeline(m_renderingPipeline);
+	lodInfo.setModelData(modelData);
+	lodInfo.setFirstMaterialIdx(firstMaterialIdx);
+	lodInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
+	lodInfo.setLODIndexAndType(0, 0);
 	lodInfo.setError(0.0f);
-	lodInfo.setIndexCount(modelData->mesh->getIndexCount());
+	lodInfo.setIndexCount(modelData->m_mesh->getIndexCount());
 	lodInfo.setName("LOD 0");
 
 	uint32_t lodIdx = 1;
 	for (Wolf::ModelData::LODInfo& modelLODInfo : modelData->m_defaultLODsInfo)
 	{
 		LODInfo& editorLODInfo = m_defaultLODsInfo.emplace_back();
+		editorLODInfo.setRenderingPipeline(m_renderingPipeline);
+		editorLODInfo.setModelData(modelData);
+		editorLODInfo.setFirstMaterialIdx(firstMaterialIdx);
+		editorLODInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
+		editorLODInfo.setLODIndexAndType(lodIdx, 0);
 		editorLODInfo.setError(modelLODInfo.m_error);
 		editorLODInfo.setIndexCount(modelLODInfo.m_indexCount);
 		editorLODInfo.setName("LOD " + std::to_string(lodIdx));
 
 		lodIdx++;
 	}
-	// Populate sloppy LODs (if any) so the editor shows them as well
+
 	if (!modelData->m_sloppyLODsInfo.empty())
 	{
-		uint32_t sloppyIdx = 0;
+		uint32_t sloppyIdx = 1;
 		for (Wolf::ModelData::LODInfo& sloppyLODInfo : modelData->m_sloppyLODsInfo)
 		{
 			LODInfo& editorSloppyInfo = m_sloppyLODsInfo.emplace_back();
+			editorSloppyInfo.setRenderingPipeline(m_renderingPipeline);
+			editorSloppyInfo.setModelData(modelData);
+			editorSloppyInfo.setFirstMaterialIdx(firstMaterialIdx);
+			editorSloppyInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
+			editorSloppyInfo.setLODIndexAndType(sloppyIdx, 1);
 			editorSloppyInfo.setError(sloppyLODInfo.m_error);
 			editorSloppyInfo.setIndexCount(sloppyLODInfo.m_indexCount);
 			editorSloppyInfo.setName("Sloppy LOD " + std::to_string(sloppyIdx));
@@ -326,4 +342,35 @@ void MeshAssetEditor::LODInfo::getAllVisibleParams(std::vector<EditorParamInterf
 bool MeshAssetEditor::LODInfo::hasDefaultName() const
 {
 	return std::string(m_name) == DEFAULT_NAME;
+}
+
+void MeshAssetEditor::LODInfo::setLODIndexAndType(uint32_t lodIdx, uint32_t lodType)
+{
+	m_lodIdx = lodIdx;
+	m_lodType = lodType;
+}
+
+void MeshAssetEditor::LODInfo::onComputeVertexColorsAndNormals()
+{
+	Wolf::ResourceNonOwner<ComputeVertexDataPass> computeVertexDataPass = m_renderingPipeline->getComputeVertexDataPass();
+
+	Wolf::NullableResourceNonOwner<Wolf::Buffer> overrideIndexBuffer;
+	if (m_lodIdx > 0)
+	{
+		if (m_lodType == 0)
+		{
+			overrideIndexBuffer = m_modelData->m_defaultSimplifiedIndexBuffers[m_lodIdx - 1].createNonOwnerResource();
+		}
+		else if (m_lodType == 1)
+		{
+			overrideIndexBuffer = m_modelData->m_sloppySimplifiedIndexBuffers[m_lodIdx - 1].createNonOwnerResource();
+		}
+		else
+		{
+			Wolf::Debug::sendError("Unhandled LOD type");
+		}
+	}
+
+	ComputeVertexDataPass::Request request(m_modelData->m_mesh.createNonOwnerResource(), overrideIndexBuffer, m_firstMaterialIdx, m_bottomLevelAccelerationStructure);
+	computeVertexDataPass->addRequestBeforeFrame(request);
 }

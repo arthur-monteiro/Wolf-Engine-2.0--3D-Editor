@@ -1,0 +1,80 @@
+layout(std430, binding = 0, set = 0) buffer VertexBufferLayout
+{
+    uint data[];
+} vertexBuffer;
+
+layout(std430, binding = 1, set = 0) buffer IndexBufferLayout
+{
+    uint indices[];
+} indexBuffer;
+
+layout(binding = 2, set = 0) uniform uniformBuffer
+{
+    uint indexCount;
+    vec3 padding;
+} ub;
+
+layout(std430, binding = 3, set = 0) buffer TriangleCountPerVertexBufferLayout
+{
+    uint triangleCount[];
+} triangleCounterPerVertexBuffer;
+
+const uint VERTEX_SIZE = 15;
+
+vec3 getVertexPositionAtIndex(in uint index)
+{
+    uint offset = index * VERTEX_SIZE;
+    vec3 position;
+    position.x = uintBitsToFloat(vertexBuffer.data[offset + 0]);
+    position.y = uintBitsToFloat(vertexBuffer.data[offset + 1]);
+    position.z = uintBitsToFloat(vertexBuffer.data[offset + 2]);
+
+    return position;
+}
+
+void setVertexColorAtIndex(in uint index, in vec3 color)
+{
+    uint offset = index * VERTEX_SIZE;
+    vertexBuffer.data[offset + 3] = floatBitsToUint(color.x);
+    vertexBuffer.data[offset + 4] = floatBitsToUint(color.y);
+    vertexBuffer.data[offset + 5] = floatBitsToUint(color.z);
+}
+
+vec3 computeTriangleNormal(vec3 p1, vec3 p2, vec3 p3) 
+{
+    // Edge vectors
+    vec3 A = p2 - p1;
+    vec3 B = p3 - p1;
+
+    vec3 normal = cross(A, B);
+    return normal;
+}
+
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    if (gl_GlobalInvocationID.x >= ub.indexCount)
+        return;
+
+    uint index = indexBuffer.indices[gl_GlobalInvocationID.x];
+
+    // Compute triangle normal
+    uint firstTriangleIndexNumber = gl_GlobalInvocationID.x - gl_GlobalInvocationID.x % 3;
+
+    uint index0 = indexBuffer.indices[firstTriangleIndexNumber];
+    vec3 vertexPosition0 = getVertexPositionAtIndex(index0);
+
+    uint index1 = indexBuffer.indices[firstTriangleIndexNumber + 1];
+    vec3 vertexPosition1 = getVertexPositionAtIndex(index1);
+
+    uint index2 = indexBuffer.indices[firstTriangleIndexNumber + 2];
+    vec3 vertexPosition2 = getVertexPositionAtIndex(index2);
+
+    vec3 triangleNormal = computeTriangleNormal(vertexPosition0, vertexPosition1, vertexPosition2);
+
+    // Blend
+    uint triangleCount = atomicAdd(triangleCounterPerVertexBuffer.triangleCount[index], 1);
+
+    // Output
+    setVertexColorAtIndex(index, triangleNormal);
+}

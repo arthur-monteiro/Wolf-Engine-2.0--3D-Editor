@@ -24,6 +24,8 @@ struct Vertex
 	vec3 tangent;
 	vec2 texCoords;
 	uint subMeshIdx;
+
+    vec3 triangleNormal;
 };
 uint vertexSize = 15;
 
@@ -79,6 +81,16 @@ Vertex unpackVertex(in uint instanceId, in uint index)
     return v;
 }
 
+vec3 computeTriangleNormal(vec3 p1, vec3 p2, vec3 p3) 
+{
+    // Edge vectors
+    vec3 A = p2 - p1;
+    vec3 B = p3 - p1;
+
+    vec3 normal = cross(A, B);
+    return normalize(normal);
+}
+
 Vertex computeVertex(in uint instanceId, in uint primitiveId, in vec2 attribs)
 {
     ivec3 indices = getIndices(instanceId, primitiveId);
@@ -93,6 +105,7 @@ Vertex computeVertex(in uint instanceId, in uint primitiveId, in vec2 attribs)
     v.pos = v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z;
     v.vertexColor = v0.vertexColor * barycentrics.x + v1.vertexColor * barycentrics.y + v2.vertexColor * barycentrics.z;
     v.normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
+    v.triangleNormal = computeTriangleNormal(v0.pos, v1.pos, v2.pos);
     v.tangent = v0.tangent * barycentrics.x + v1.tangent * barycentrics.y + v2.tangent * barycentrics.z;
     v.texCoords = v0.texCoords * barycentrics.x + v1.texCoords * barycentrics.y + v2.texCoords * barycentrics.z;
     v.subMeshIdx = v0.subMeshIdx;

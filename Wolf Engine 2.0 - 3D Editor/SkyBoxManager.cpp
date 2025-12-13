@@ -125,8 +125,12 @@ void SkyBoxManager::createCubeMap()
 
 void SkyBoxManager::createPipelineIfNeeded(const Wolf::RenderPass& renderPass)
 {
-    if (m_pipeline)
+    Wolf::Extent2D extent = { renderPass.getExtent().width, renderPass.getExtent().height };
+
+    if (m_pipeline && m_lastPipelineRenderTargetExtent == extent)
         return;
+
+    m_lastPipelineRenderTargetExtent = extent;
 
     Wolf::RenderingPipelineCreateInfo pipelineCreateInfo{};
     pipelineCreateInfo.renderPass = &renderPass;
@@ -149,7 +153,7 @@ void SkyBoxManager::createPipelineIfNeeded(const Wolf::RenderPass& renderPass)
     pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
 
     // Viewport
-    pipelineCreateInfo.extent = { renderPass.getExtent().width, renderPass.getExtent().height };
+    pipelineCreateInfo.extent = extent;
 
     // Color Blend
     std::vector blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };

@@ -207,7 +207,7 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 	if (m_hideModel == true)
 		return true;
 
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelData(m_meshResourceId)->mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelData(m_meshResourceId)->m_mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
 	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
 	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
@@ -262,7 +262,7 @@ void AnimatedModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 Wolf::AABB AnimatedModel::getAABB() const
 {
 	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->mesh->getAABB() * m_transform;
+		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getAABB() * m_transform;
 
 	return Wolf::AABB();
 }
@@ -270,7 +270,7 @@ Wolf::AABB AnimatedModel::getAABB() const
 Wolf::BoundingSphere AnimatedModel::getBoundingSphere() const
 {
 	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->mesh->getBoundingSphere() * m_scaleParam + m_translationParam;
+		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getBoundingSphere() * m_scaleParam + m_translationParam;
 
 	return Wolf::BoundingSphere();
 }

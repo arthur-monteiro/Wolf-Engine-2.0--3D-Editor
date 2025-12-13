@@ -60,6 +60,7 @@ private:
     Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_fragmentShaderParser;
 
     Wolf::ResourceUniqueOwner<Wolf::Pipeline> m_pipeline;
+    Wolf::Extent2D m_lastPipelineRenderTargetExtent = { 0, 0 };
 
     Wolf::ResourceUniqueOwner<Wolf::Image> m_cubeMapImage;
     uint32_t m_cubeMapResolution = 512;

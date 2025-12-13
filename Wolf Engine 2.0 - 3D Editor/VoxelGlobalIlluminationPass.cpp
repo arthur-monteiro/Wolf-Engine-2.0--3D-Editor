@@ -34,10 +34,17 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
 
         Wolf::ModelData* modelData = m_resourceManager->getModelData(m_sphereMeshResourceId);
 
-        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->mesh.createNonOwnerResource(), m_debugPipelineSet.createConstNonOwnerResource() } };
+        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->m_mesh.createNonOwnerResource(), m_debugPipelineSet.createConstNonOwnerResource() } };
+
+        if (instancedMesh.mesh.perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+        {
+            Wolf::Debug::sendCriticalError("Pipeline can't be overridden for forward pass");
+            return;
+        }
+
         instancedMesh.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
             m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
-        instancedMesh.mesh.overrideIndexBuffer = modelData->defaultSimplifiedIndexBuffers[0].createNonOwnerResource();
+        instancedMesh.mesh.overrideIndexBuffer = modelData->m_defaultSimplifiedIndexBuffers[0].createNonOwnerResource();
 
         renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
     }

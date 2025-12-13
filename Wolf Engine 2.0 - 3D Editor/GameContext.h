@@ -21,7 +21,8 @@ struct GameContext
 		RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID = 10,
 		PATH_TRACING = 11,
 		GLOBAL_IRRADIANCE = 12,
-		VERTEX_COLOR = 13
+		VERTEX_COLOR = 13,
+		VERTEX_NORMAL = 14
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 

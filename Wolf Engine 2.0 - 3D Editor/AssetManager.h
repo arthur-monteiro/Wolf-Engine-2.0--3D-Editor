@@ -58,6 +58,7 @@ private:
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	std::function<void(const std::string&)> m_isolateMeshCallback;
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
+	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
 	class ResourceInterface : public Notifier
 	{

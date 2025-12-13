@@ -544,6 +544,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_inModificationGameContext.displayType = GameContext::DisplayType::VERTEX_COLOR;
 	else if (displayType == "normal")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::NORMAL;
+	else if (displayType == "vertexNormal")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::VERTEX_NORMAL;
 	else if (displayType == "roughness")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::ROUGHNESS;
 	else if (displayType == "metalness")

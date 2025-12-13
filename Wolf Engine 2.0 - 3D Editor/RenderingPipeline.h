@@ -5,6 +5,7 @@
 #include "CascadedShadowMapsPass.h"
 #include "CompositionPass.h"
 #include "ComputeSkyCubeMapPass.h"
+#include "ComputeVertexDataPass.h"
 #include "ContaminationUpdatePass.h"
 #include "DefaultGlobalIrradiance.h"
 #include "DrawIdsPass.h"
@@ -45,6 +46,7 @@ public:
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() override;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
+	Wolf::NullableResourceNonOwner<ComputeVertexDataPass> getComputeVertexDataPass() override;
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() override;
 	Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() override;
 	Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() override;
@@ -57,6 +59,7 @@ private:
 
 	Wolf::ResourceUniqueOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
 	Wolf::ResourceUniqueOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
+	Wolf::ResourceUniqueOwner<ComputeVertexDataPass> m_computeVertexDataPass;
 	Wolf::ResourceUniqueOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceUniqueOwner<CascadedShadowMapsPass> m_cascadedShadowMapsPass;
 	Wolf::ResourceUniqueOwner<ShadowMaskPassCascadedShadowMapping> m_shadowMaskPassCascadedShadowMapping;

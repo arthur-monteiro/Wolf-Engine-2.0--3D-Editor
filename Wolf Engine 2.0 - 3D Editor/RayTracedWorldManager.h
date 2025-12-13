@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <xxh64.hpp>
 
 #include <ResourceUniqueOwner.h>
 
@@ -33,12 +34,13 @@ public:
         std::vector<InstanceInfo> m_instances;
     };
     void requestBuild(const RayTracedWorldInfo& info);
-    void build(Wolf::CommandBuffer& commandBuffer);
+    void build(const Wolf::CommandBuffer& commandBuffer);
+    void recordTLASBuildBarriers(const Wolf::CommandBuffer& commandBuffer);
 
     bool needsRebuildTLAS() const { return m_needsRebuildTLAS; }
     bool hasInstance() const { return static_cast<bool>(m_topLevelAccelerationStructure); };
     Wolf::ResourceNonOwner<const Wolf::DescriptorSet> getDescriptorSet() { return m_descriptorSet.createConstNonOwnerResource(); }
-    void addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot) const;
+    static void addRayGenShaderCode(Wolf::ShaderParser::ShaderCodeToAdd& inOutShaderCodeToAdd, uint32_t bindingSlot);
 
     static Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& getDescriptorSetLayout() { return Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, RayTracedWorldManager>::getResource(); }
 
@@ -47,6 +49,7 @@ private:
     void populateInstanceBuffer(const RayTracedWorldInfo& info);
     void createDescriptorSet();
     uint32_t addStorageBuffer(const Wolf::ResourceNonOwner<Wolf::Buffer>& buffer);
+    uint64_t computeBufferListHash() const;
 
     Wolf::ResourceUniqueOwner<Wolf::TopLevelAccelerationStructure> m_topLevelAccelerationStructure;
 
@@ -65,6 +68,7 @@ private:
 
     std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> m_buffers;
     uint32_t m_currentBindlessCount = 0;
+    uint64_t m_buffersListHash = 0;
 
     std::vector<Wolf::BLASInstance> m_blasInstances;
     std::vector<InstanceData> m_instanceData;

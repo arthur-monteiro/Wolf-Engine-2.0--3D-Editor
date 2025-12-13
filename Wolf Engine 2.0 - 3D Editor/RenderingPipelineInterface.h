@@ -2,13 +2,14 @@
 
 #include <ResourceNonOwner.h>
 
-class ForwardPass;
-class CompositionPass;
 class CascadedShadowMapsPass;
-class SkyBoxManager;
-class ContaminationUpdatePass;
+class CompositionPass;
 class ComputeSkyCubeMapPass;
+class ComputeVertexDataPass;
+class ContaminationUpdatePass;
+class ForwardPass;
 class ParticleUpdatePass;
+class SkyBoxManager;
 class ThumbnailsGenerationPass;
 class UpdateGPUBuffersPass;
 class VoxelGlobalIlluminationPass;
@@ -24,6 +25,7 @@ public:
 	virtual Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() = 0;
 	virtual Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() = 0;
 	virtual Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() = 0;
+	virtual Wolf::NullableResourceNonOwner<ComputeVertexDataPass> getComputeVertexDataPass() = 0;
 	virtual Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() = 0;
 	virtual Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() = 0;
 	virtual Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() = 0;

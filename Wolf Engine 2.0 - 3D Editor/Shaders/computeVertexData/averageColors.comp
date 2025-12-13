@@ -1,0 +1,46 @@
+layout(std430, binding = 0, set = 0) buffer VertexBufferLayout
+{
+    uint data[];
+} vertexBuffer;
+
+layout(std430, binding = 1, set = 0) buffer IndexBufferLayout
+{
+    uint indices[];
+} indexBuffer;
+
+layout(binding = 2, set = 0) uniform UniformBufferLayout
+{
+    uint indexCount;
+    uint vertexCount;
+    vec2 padding;
+} ub;
+
+layout(std430, binding = 3, set = 0) buffer ColorWeightBufferLayout
+{
+    uint weights[];
+} colorWeightsBuffer;
+
+const uint VERTEX_SIZE = 15;
+
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    if (gl_GlobalInvocationID.x >= ub.vertexCount)
+        return;
+
+    uint vertexIdx = gl_GlobalInvocationID.x;
+
+    vec3 accumulatedColor;
+
+    uint offset = vertexIdx * VERTEX_SIZE;
+    accumulatedColor.x = uintBitsToFloat(vertexBuffer.data[offset + 3]);
+    accumulatedColor.y = uintBitsToFloat(vertexBuffer.data[offset + 4]);
+    accumulatedColor.z = uintBitsToFloat(vertexBuffer.data[offset + 5]);
+
+    float totalWeight = uintBitsToFloat(colorWeightsBuffer.weights[vertexIdx]);
+
+    vec3 averagedColor = accumulatedColor / max(totalWeight, 0.01);
+    vertexBuffer.data[offset + 3] = floatBitsToUint(averagedColor.x);
+    vertexBuffer.data[offset + 4] = floatBitsToUint(averagedColor.y);
+    vertexBuffer.data[offset + 5] = floatBitsToUint(averagedColor.z);
+}

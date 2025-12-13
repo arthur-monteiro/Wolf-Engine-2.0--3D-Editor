@@ -20,7 +20,8 @@ AssetManager::AssetManager(const std::function<void(const std::string&, const st
                                  const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string& loadingPath)>& isolateMeshCallback,
                                  const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback)
 	: m_addResourceToUICallback(addAssetToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration),
-      m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback)
+      m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
+	  m_renderingPipeline(renderingPipeline)
 {
 }
 
@@ -116,6 +117,8 @@ void AssetManager::save()
 			outputFile << infoFileContent;
 			outputFile.close();
 		}
+
+		// TODO: computed vertex data
 	}
 }
 
@@ -150,8 +153,10 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 		if (!meshResourceEditor)
 		{
 			Wolf::ModelData* modelData = getModelData(assetId);
-			meshResourceEditor = new MeshAssetEditor(m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData, m_isolateMeshCallback,
-				m_removeIsolationAndGetViewMatrixCallback, [this, assetId](const glm::mat4& viewMatrix) { requestThumbnailReload(assetId, viewMatrix); });
+			uint32_t firstMaterialIdx = getFirstMaterialIdx(assetId);
+			Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> bottomLevelAccelerationStructure = getBLAS(assetId, 0, 0);
+			meshResourceEditor = new MeshAssetEditor(m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData, firstMaterialIdx, bottomLevelAccelerationStructure, m_isolateMeshCallback,
+				m_removeIsolationAndGetViewMatrixCallback, [this, assetId](const glm::mat4& viewMatrix) { requestThumbnailReload(assetId, viewMatrix); }, m_renderingPipeline);
 
 			for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->m_physicsShapes)
 			{
@@ -165,7 +170,7 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 	}
 	else if (isImage(assetId))
 	{
-
+		Wolf::Debug::sendError("Image editor is not implemented yet");
 	}
 	else
 	{
@@ -540,7 +545,7 @@ void AssetManager::Mesh::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Ma
 void AssetManager::Mesh::forceReload(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
 	const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
 {
-	m_meshToKeepInMemory.reset(m_modelData.mesh.release());
+	m_meshToKeepInMemory.reset(m_modelData.m_mesh.release());
 
 	loadModel(materialsGPUManager);
 	generateThumbnail(thumbnailsGenerationPass);
@@ -565,7 +570,7 @@ void AssetManager::Mesh::requestThumbnailReload()
 
 bool AssetManager::Mesh::isLoaded() const
 {
-	return static_cast<bool>(m_modelData.mesh);
+	return static_cast<bool>(m_modelData.m_mesh);
 }
 
 Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::Mesh::getBLAS(uint32_t lod, uint32_t lodType)
@@ -616,7 +621,7 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 		m_bottomLevelAccelerationStructures.resize(2);
 		for (uint32_t lodType = 0; lodType < 2; lodType++)
 		{
-			uint32_t lodCount = lodType == 0 ? m_modelData.defaultSimplifiedIndexBuffers.size() : m_modelData.sloppySimplifiedIndexBuffers.size();
+			uint32_t lodCount = lodType == 0 ? m_modelData.m_defaultSimplifiedIndexBuffers.size() : m_modelData.m_sloppySimplifiedIndexBuffers.size();
 
 			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
 			for (uint32_t lod = 0; lod < m_bottomLevelAccelerationStructures[lodType].size(); lod++)
@@ -626,7 +631,7 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 		}
 	}
 
-	Wolf::AABB entityAABB = m_modelData.mesh->getAABB();
+	Wolf::AABB entityAABB = m_modelData.m_mesh->getAABB();
 	float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
 	glm::vec3 position = entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight);
 	glm::vec3 target = entityAABB.getCenter();
@@ -645,25 +650,25 @@ void AssetManager::Mesh::generateThumbnail(const Wolf::ResourceNonOwner<Thumbnai
 void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
 {
 	Wolf::GeometryInfo geometryInfo;
-	geometryInfo.mesh.vertexBuffer = &*m_modelData.mesh->getVertexBuffer();
-	geometryInfo.mesh.vertexCount = m_modelData.mesh->getVertexCount();
-	geometryInfo.mesh.vertexSize = m_modelData.mesh->getVertexSize();
+	geometryInfo.mesh.vertexBuffer = &*m_modelData.m_mesh->getVertexBuffer();
+	geometryInfo.mesh.vertexCount = m_modelData.m_mesh->getVertexCount();
+	geometryInfo.mesh.vertexSize = m_modelData.m_mesh->getVertexSize();
 	geometryInfo.mesh.vertexFormat = Wolf::Format::R32G32B32_SFLOAT;
 	if (lod == 0)
 	{
-		geometryInfo.mesh.indexBuffer = &*m_modelData.mesh->getIndexBuffer();
-		geometryInfo.mesh.indexCount = m_modelData.mesh->getIndexCount();
+		geometryInfo.mesh.indexBuffer = &*m_modelData.m_mesh->getIndexBuffer();
+		geometryInfo.mesh.indexCount = m_modelData.m_mesh->getIndexCount();
 	}
 	else
 	{
 		Wolf::ResourceUniqueOwner<Wolf::Buffer>* overrideIndexBuffer = nullptr;
 		if (lodType == 0)
 		{
-			overrideIndexBuffer = &m_modelData.defaultSimplifiedIndexBuffers[lod - 1];
+			overrideIndexBuffer = &m_modelData.m_defaultSimplifiedIndexBuffers[lod - 1];
 		}
 		else
 		{
-			overrideIndexBuffer = &m_modelData.sloppySimplifiedIndexBuffers[lod - 1];
+			overrideIndexBuffer = &m_modelData.m_sloppySimplifiedIndexBuffers[lod - 1];
 		}
 
 		geometryInfo.mesh.indexBuffer = &**overrideIndexBuffer;

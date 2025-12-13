@@ -23,8 +23,9 @@ public:
 	};
 
 	std::string getId() const override { return "meshResourceEditor"; }
-	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, const std::function<void(const std::string&)>& isolateMeshCallback,
-		const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload);
+	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
+		const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
+		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override {}
 	void addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape);
@@ -55,6 +56,7 @@ private:
 	std::function<void(const std::string&)> m_isolateMeshCallback;
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
 	std::function<void(const glm::mat4&)> m_requestThumbnailReload;
+	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
 	EditorParamString m_filepath = EditorParamString("Filepath", TAB, "General", EditorParamString::ParamStringType::STRING, false, false, true);
 
@@ -157,19 +159,35 @@ private:
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
 		bool hasDefaultName() const override;
 
+		void setRenderingPipeline(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline) { m_renderingPipeline = renderingPipeline; }
+		void setModelData(Wolf::ModelData* modelData) { m_modelData = modelData; }
+		void setFirstMaterialIdx(uint32_t firstMaterialIdx) { m_firstMaterialIdx = firstMaterialIdx; }
+		void setBottomLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& accelerationStructure) { m_bottomLevelAccelerationStructure = accelerationStructure; }
+		void setLODIndexAndType(uint32_t lodIdx, uint32_t lodType);
 		void setError(float error) { m_error = std::to_string(error * 100) + "%"; }
 		void setIndexCount(uint32_t indexCount) { m_indexCount = std::to_string(indexCount); }
 
 	private:
 		inline static const std::string DEFAULT_NAME = "PLACEHOLDER";
 
+		Wolf::NullableResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
+		Wolf::ModelData* m_modelData;
+		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
+		uint32_t m_firstMaterialIdx;
+		uint32_t m_lodIdx = 0;
+		uint32_t m_lodType = 0;
+
 		EditorParamString m_error = EditorParamString("Error", TAB, "Info", EditorParamString::ParamStringType::STRING, false, false, true);
 		EditorParamString m_indexCount = EditorParamString("Index count", TAB, "Info", EditorParamString::ParamStringType::STRING, false, false, true);
 
-		std::array<EditorParamInterface*, 2> m_allParams =
+		void onComputeVertexColorsAndNormals();
+		EditorParamButton m_computeVertexColorsAndNormals = EditorParamButton("Compute vertex colors and normals", TAB, "Actions", [this]() { onComputeVertexColorsAndNormals();});
+
+		std::array<EditorParamInterface*, 3> m_allParams =
 		{
 			&m_error,
-			&m_indexCount
+			&m_indexCount,
+			&m_computeVertexColorsAndNormals
 		};
 	};
 

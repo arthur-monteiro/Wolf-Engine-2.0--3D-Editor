@@ -264,7 +264,7 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	{
 		m_commandBuffer->bindDescriptorSet(m_animationDescriptorSet.createConstNonOwnerResource(), 3, *pipeline);
 	}
-	request.m_modelData->mesh->draw(*m_commandBuffer, CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
+	request.m_modelData->m_mesh->draw(*m_commandBuffer, CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
 
 	m_commandBuffer->endRenderPass();
 
@@ -319,7 +319,7 @@ void ThumbnailsGenerationPass::addCameraForThisFrame(Wolf::CameraList& cameraLis
 
 	const Request& request = m_pendingRequests.front();
 
-	Wolf::AABB entityAABB = request.m_modelData->mesh->getAABB();
+	Wolf::AABB entityAABB = request.m_modelData->m_mesh->getAABB();
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, glm::length(entityAABB.getMax() - entityAABB.getMin()) * 4.0f);
 	projection[1][1] *= -1;
 	m_camera->overrideMatrices(request.m_viewMatrix, projection);

@@ -146,16 +146,16 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 		return false;
 
 	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { modelData->mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { modelData->m_mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 	if (m_drawLOD > 0)
 	{
 		if (m_drawLODType == 0) // Default
 		{
-			meshToRenderInfo.overrideIndexBuffer = modelData->defaultSimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
+			meshToRenderInfo.overrideIndexBuffer = modelData->m_defaultSimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
 		}
 		else if (m_drawLODType == 1) // Sloppy
 		{
-			meshToRenderInfo.overrideIndexBuffer = modelData->sloppySimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
+			meshToRenderInfo.overrideIndexBuffer = modelData->m_sloppySimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
 		}
 		else
 		{
@@ -189,17 +189,17 @@ bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManage
 
 	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
 	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform, firstMaterialIdx,
-		modelData->mesh.createNonOwnerResource() };
+		modelData->m_mesh.createNonOwnerResource() };
 
 	if (m_rayTracedWorldLOD > 0)
 	{
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			instanceInfo.m_overrideIndexBuffer = modelData->defaultSimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+			instanceInfo.m_overrideIndexBuffer = modelData->m_defaultSimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			instanceInfo.m_overrideIndexBuffer = modelData->sloppySimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+			instanceInfo.m_overrideIndexBuffer = modelData->m_sloppySimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
 		}
 		else
 		{
@@ -252,7 +252,7 @@ void StaticModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 Wolf::AABB StaticModel::getAABB() const
 {
 	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->mesh->getAABB() * m_transform;
+		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getAABB() * m_transform;
 
 	return Wolf::AABB();
 }
@@ -260,7 +260,7 @@ Wolf::AABB StaticModel::getAABB() const
 Wolf::BoundingSphere StaticModel::getBoundingSphere() const
 {
 	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->mesh->getBoundingSphere() * m_scaleParam + m_translationParam;
+		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getBoundingSphere() * m_scaleParam + m_translationParam;
 
 	return Wolf::BoundingSphere();
 }
@@ -479,11 +479,11 @@ void StaticModel::onDrawLODTypeChanged()
 		uint32_t maxLOD;
 		if (m_drawLODType == 0) // Default
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->defaultSimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_defaultSimplifiedIndexBuffers.size();
 		}
 		else if (m_drawLODType == 1) // Sloppy
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->sloppySimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_sloppySimplifiedIndexBuffers.size();
 		}
 		else
 		{
@@ -503,11 +503,11 @@ void StaticModel::onRayTracedWorldLODTypeChanged()
 		uint32_t maxLOD;
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->defaultSimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_defaultSimplifiedIndexBuffers.size();
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->sloppySimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_sloppySimplifiedIndexBuffers.size();
 		}
 		else
 		{

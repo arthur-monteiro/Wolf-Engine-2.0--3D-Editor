@@ -15,7 +15,10 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_updateGPUBuffersPass.reset(new UpdateGPUBuffersPass);
 	wolfInstance->initializePass(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_preDepthPass.reset(new PreDepthPass(editorParams, true, m_updateGPUBuffersPass.createNonOwnerResource()));
+	m_computeVertexDataPass.reset(new ComputeVertexDataPass);
+	wolfInstance->initializePass(m_computeVertexDataPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
+	m_preDepthPass.reset(new PreDepthPass(editorParams, true, m_updateGPUBuffersPass.createNonOwnerResource(), m_computeVertexDataPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_cascadedShadowMapsPass.reset(new CascadedShadowMapsPass);
@@ -116,6 +119,10 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 		passes.push_back(m_updateRayTracedWorldPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
 	passes.push_back(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	if (m_computeVertexDataPass)
+	{
+		passes.push_back(m_computeVertexDataPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
 	passes.push_back(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	if (gameContext.shadowTechnique == GameContext::ShadowTechnique::CSM)
@@ -158,6 +165,10 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 	passes.push_back(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	uint32_t swapChainImageIdx = wolfInstance->acquireNextSwapChainImage();
+	if (swapChainImageIdx == Wolf::SwapChain::NO_IMAGE_IDX)
+	{
+		return;
+	}
 
 	Wolf::Semaphore* finalSemaphore = nullptr;
 	if (!m_gpuBufferToGpuBufferCopyPass->isCurrentQueueEmpty())
@@ -222,6 +233,14 @@ Wolf::ResourceNonOwner<ThumbnailsGenerationPass> RenderingPipeline::getThumbnail
 Wolf::ResourceNonOwner<UpdateGPUBuffersPass> RenderingPipeline::getUpdateGPUBuffersPass()
 {
 	return m_updateGPUBuffersPass.createNonOwnerResource();
+}
+
+Wolf::NullableResourceNonOwner<ComputeVertexDataPass> RenderingPipeline::getComputeVertexDataPass()
+{
+	if (m_computeVertexDataPass)
+		return m_computeVertexDataPass.createNonOwnerResource();
+	else
+		return Wolf::NullableResourceNonOwner<ComputeVertexDataPass>(nullptr);
 }
 
 Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> RenderingPipeline::getComputeSkyCubeMapPass()

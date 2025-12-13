@@ -117,6 +117,8 @@ void main()
         outColor = vec4(inColor.rgb, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_NORMAL)
         outColor = vec4(materialInfo.normal.xyz, 1.0);
+    else if (ubDisplay.displayType == DISPLAY_TYPE_VERTEX_NORMAL)
+        outColor = vec4(inTBN[0].z, inTBN[1].z, inTBN[2].z, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_ROUGHNESS)
         outColor = vec4(materialInfo.roughness.rrr, 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_METALNESS)
