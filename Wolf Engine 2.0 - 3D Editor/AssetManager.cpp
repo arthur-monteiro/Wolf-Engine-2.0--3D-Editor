@@ -575,6 +575,10 @@ bool AssetManager::Mesh::isLoaded() const
 
 Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::Mesh::getBLAS(uint32_t lod, uint32_t lodType)
 {
+	if (lodType >= m_bottomLevelAccelerationStructures.size() || lod >= m_bottomLevelAccelerationStructures[lodType].size())
+	{
+		return Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>();
+	}
 	return m_bottomLevelAccelerationStructures[lodType][lod].createNonOwnerResource();
 }
 

@@ -43,7 +43,7 @@ void PreDepthPass::submit(const Wolf::SubmitContext& context)
 	std::vector<const Wolf::Semaphore*> waitSemaphores{ };
 	if (m_updateGPUBuffersPass->transferRecordedThisFrame())
 		waitSemaphores.push_back(m_updateGPUBuffersPass->getSemaphore(context.swapChainImageIndex));
-	if (m_computeVertexDataPass->hasCommandsRecordedThisFrame())
+	if (m_computeVertexDataPass && m_computeVertexDataPass->hasCommandsRecordedThisFrame())
 		waitSemaphores.push_back(m_computeVertexDataPass->getSemaphore(context.swapChainImageIndex));
 
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };

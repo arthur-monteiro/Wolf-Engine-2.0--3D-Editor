@@ -352,7 +352,13 @@ void MeshAssetEditor::LODInfo::setLODIndexAndType(uint32_t lodIdx, uint32_t lodT
 
 void MeshAssetEditor::LODInfo::onComputeVertexColorsAndNormals()
 {
-	Wolf::ResourceNonOwner<ComputeVertexDataPass> computeVertexDataPass = m_renderingPipeline->getComputeVertexDataPass();
+	Wolf::NullableResourceNonOwner<ComputeVertexDataPass> computeVertexDataPass = m_renderingPipeline->getComputeVertexDataPass();
+
+	if  (!computeVertexDataPass)
+	{
+		Wolf::Debug::sendWarning("Compute vertex data pass not initialized, can't compute vertex colors and normals");
+		return;
+	}
 
 	Wolf::NullableResourceNonOwner<Wolf::Buffer> overrideIndexBuffer;
 	if (m_lodIdx > 0)

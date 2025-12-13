@@ -15,8 +15,11 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_updateGPUBuffersPass.reset(new UpdateGPUBuffersPass);
 	wolfInstance->initializePass(m_updateGPUBuffersPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_computeVertexDataPass.reset(new ComputeVertexDataPass);
-	wolfInstance->initializePass(m_computeVertexDataPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	if (rayTracedWorldManager)
+	{
+		m_computeVertexDataPass.reset(new ComputeVertexDataPass);
+		wolfInstance->initializePass(m_computeVertexDataPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	}
 
 	m_preDepthPass.reset(new PreDepthPass(editorParams, true, m_updateGPUBuffersPass.createNonOwnerResource(), m_computeVertexDataPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
