@@ -286,7 +286,7 @@ Wolf::ModelData* AssetManager::getModelData(AssetId modelResourceId) const
 	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getModelData();
 }
 
-Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::getBLAS(AssetId modelResourceId, uint32_t lod, uint32_t lodType)
+Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::getBLAS(AssetId modelResourceId, uint32_t lod, uint32_t lodType)
 {
 	if (!isMesh(modelResourceId))
 	{
@@ -573,11 +573,11 @@ bool AssetManager::Mesh::isLoaded() const
 	return static_cast<bool>(m_modelData.m_mesh);
 }
 
-Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::Mesh::getBLAS(uint32_t lod, uint32_t lodType)
+Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::Mesh::getBLAS(uint32_t lod, uint32_t lodType)
 {
 	if (lodType >= m_bottomLevelAccelerationStructures.size() || lod >= m_bottomLevelAccelerationStructures[lodType].size())
 	{
-		return Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>();
+		return Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>();
 	}
 	return m_bottomLevelAccelerationStructures[lodType][lod].createNonOwnerResource();
 }
