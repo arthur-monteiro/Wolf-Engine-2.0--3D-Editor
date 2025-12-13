@@ -276,12 +276,9 @@ void ComputeVertexDataPass::Request::initResources()
     // Step 3: Accumulate colors
     m_rayTracedWorldManager.reset(new RayTracedWorldManager());
 
+    RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo = { m_bottomLevelAccelerationStructure, glm::mat4(1.0f), m_firstMaterialIdx, m_mesh };
     RayTracedWorldManager::RayTracedWorldInfo rayTracedWorldInfo{};
-    rayTracedWorldInfo.m_instances.resize(1);
-    rayTracedWorldInfo.m_instances[0].m_bottomLevelAccelerationStructure = m_bottomLevelAccelerationStructure;
-    rayTracedWorldInfo.m_instances[0].m_transform = glm::mat4(1.0f);
-    rayTracedWorldInfo.m_instances[0].m_firstMaterialIdx = m_firstMaterialIdx;
-    rayTracedWorldInfo.m_instances[0].m_mesh = m_mesh;
+    rayTracedWorldInfo.m_instances.emplace_back(instanceInfo);
     m_rayTracedWorldManager->requestBuild(rayTracedWorldInfo);
 
     createAccumulateColorsDescriptorSet();

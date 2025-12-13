@@ -32,7 +32,7 @@ public:
     public:
         Request() = default;
         Request(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const Wolf::NullableResourceNonOwner<Wolf::Buffer>& overrideIndexBuffer, uint32_t firstMaterialIdx, const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& blas)
-             : m_mesh(mesh), m_firstMaterialIdx(firstMaterialIdx), m_bottomLevelAccelerationStructure(blas)
+             : m_mesh(mesh), m_firstMaterialIdx(firstMaterialIdx), m_bottomLevelAccelerationStructure(blas), m_indexBuffer(mesh->getIndexBuffer())
         {
             if (mesh->getVertexSize() != sizeof(Wolf::Vertex3D))
             {
@@ -43,19 +43,12 @@ public:
             {
                 m_indexBuffer = overrideIndexBuffer;
             }
-            else
-            {
-                m_indexBuffer = mesh->getIndexBuffer();
-            }
 
             initResources();
         }
-        Request(Request& other)
+        Request(Request& other) : m_mesh(other.m_mesh), m_indexBuffer(other.m_indexBuffer), m_bottomLevelAccelerationStructure(other.m_bottomLevelAccelerationStructure)
         {
-            m_mesh = other.m_mesh;
-            m_indexBuffer = other.m_indexBuffer;
             m_firstMaterialIdx = other.m_firstMaterialIdx;
-            m_bottomLevelAccelerationStructure = other.m_bottomLevelAccelerationStructure;
 
             m_uniformBuffer.reset(other.m_uniformBuffer.release());
             m_colorWeightPerVertex.reset(other.m_colorWeightPerVertex.release());

@@ -240,7 +240,7 @@ Wolf::NullableResourceNonOwner<ComputeVertexDataPass> RenderingPipeline::getComp
 	if (m_computeVertexDataPass)
 		return m_computeVertexDataPass.createNonOwnerResource();
 	else
-		return Wolf::NullableResourceNonOwner<ComputeVertexDataPass>(nullptr);
+		return Wolf::NullableResourceNonOwner<ComputeVertexDataPass>();
 }
 
 Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> RenderingPipeline::getComputeSkyCubeMapPass()
