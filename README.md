@@ -44,15 +44,15 @@ Realtime capture of indirect lighting and sky lighting.
 ### Vertex color and normal re-computation
 Re-compute vertex color and normal for lower LODs in order to keep correct data. Before / after:
 <p align="center">
-  <img src="./Screenshots/vertexDataRecomputation/vertex_color_before.png" width="512" alt="Description of the image before changes" />
+  <img src="./Screenshots/vertexDataRecomputation/vertex_color_before.png" width="400" alt="Description of the image before changes" />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="./Screenshots/vertexDataRecomputation/vertex_color_after.png" width="512" alt="Description of the image after changes" />
+  <img src="./Screenshots/vertexDataRecomputation/vertex_color_after.png" width="400" alt="Description of the image after changes" />
 </p>
 
 <p align="center">
-  <img src="./Screenshots/vertexDataRecomputation/vertex_normal_before.png" width="512" alt="Description of the image before changes" />
+  <img src="./Screenshots/vertexDataRecomputation/vertex_normal_before.png" width="400" alt="Description of the image before changes" />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="./Screenshots/vertexDataRecomputation/vertex_normal_after.png" width="512" alt="Description of the image after changes" />
+  <img src="./Screenshots/vertexDataRecomputation/vertex_normal_after.png" width="400" alt="Description of the image after changes" />
 </p>
 
 ### Color grading
