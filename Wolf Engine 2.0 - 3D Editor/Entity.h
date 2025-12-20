@@ -48,7 +48,7 @@ public:
 
 	void setIncludeEntityParams(bool value) { m_includeEntityParams = value; }
 
-	Wolf::DynamicStableArray<Wolf::ResourceUniqueOwner<ComponentInterface>, 8>& getAllComponents() { return m_components; }
+	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface>& getAllComponents() { return m_components; }
 
 	Wolf::AABB getAABB() const;
 	Wolf::BoundingSphere getBoundingSphere() const;

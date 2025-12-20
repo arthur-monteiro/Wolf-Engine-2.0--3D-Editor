@@ -1,5 +1,7 @@
 #pragma once
 
+#include <OrthographicCamera.h>
+
 #include <glm/gtc/constants.hpp>
 
 #include "ComponentInterface.h"
@@ -72,9 +74,18 @@ public:
 	float getOrientationMaxAngle() const { return m_particleOrientationMaxAngle; }
 	glm::vec3 getParticleColor() const { return m_particleColor; }
 
+	static constexpr uint32_t COLLISION_TYPE_NONE = 0;
+	static constexpr uint32_t COLLISION_TYPE_DEPTH = 1;
+	uint32_t getCollisionType() const { return m_collisionType; }
+	void getCollisionViewProjMatrix(glm::mat4& outMatrix) const { outMatrix = m_depthCollisionCamera->getProjectionMatrix() * m_depthCollisionCamera->getViewMatrix(); }
+	uint32_t getCollisionDepthTextureIdx() const { return m_collisionDepthTextureIdx; }
+	float getCollisionDepthScale() const { return m_collisionDepthScale; }
+	float getCollisionDepthOffset() const { return m_collisionDepthOffset; }
+
 	uint64_t getNextSpawnTimerInMs() const { return m_nextSpawnMsTimer; }
 	uint32_t getNextParticleToSpawnIdx() const { return m_nextParticleToSpawnIdx; }
 	uint32_t getNextParticleToSpawnCount() const { return m_nextParticleToSpawnCount; }
+	float getDelayBetweenTwoParticlesInMs() const { return m_delayBetweenTwoParticles * 1000.0f; }
 
 private:
 	void onEntityRegistered() override;
@@ -117,7 +128,8 @@ private:
 		&m_spawnBoxDepth
 	};
 
-	EditorParamUInt m_maxParticleCount = EditorParamUInt("Max particle count", TAB, "Spawn", 1, 1024);
+	void onParticleCountChanged();
+	EditorParamUInt m_maxParticleCount = EditorParamUInt("Max particle count", TAB, "Spawn", 1, 1024, [this]() { onParticleCountChanged();});
 	EditorParamFloat m_delayBetweenTwoParticles = EditorParamFloat("Delay between 2 particles (sec)", TAB, "Spawn", 0.0f, 10.0f);
 
 	// ----- Movement -----
@@ -156,7 +168,18 @@ private:
 	EditorParamString m_particleEntityParam = EditorParamString("Particle entity", TAB, "Particle", [this]() { onParticleEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
 	EditorParamVector3 m_particleColor = EditorParamVector3("Color", TAB, "Particle", 0.0f, 1.0f);
 
-	std::array<EditorParamInterface*, 28> m_allEditorParams =
+	// ----- Collisions -----
+	void onCollisionTypeChanged();
+	EditorParamEnum m_collisionType = EditorParamEnum({ "None", "Custom depth"}, "Collision type", TAB, "Collisions", [this]() { onCollisionTypeChanged(); });
+
+	// Custom depth
+	EditorParamUInt m_collisionDepthTextureSize = EditorParamUInt("Depth texture size", TAB, "Collisions", 128, 4096);
+	std::array<EditorParamInterface*, 1> m_collisionDepthParams =
+	{
+		&m_collisionDepthTextureSize
+	};
+
+	std::array<EditorParamInterface*, 31> m_allEditorParams =
 	{
 		&m_isEmitting,
 		&m_firstFlipBookIdx,
@@ -171,6 +194,7 @@ private:
 		&m_spawnBoxCenterPosition,
 		&m_spawnBoxWidth,
 		&m_spawnBoxHeight,
+		&m_spawnBoxDepth,
 
 		&m_maxParticleCount,
 		&m_delayBetweenTwoParticles,
@@ -191,10 +215,13 @@ private:
 		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
 		&m_particleEntityParam,
-		&m_particleColor
+		&m_particleColor,
+
+		&m_collisionType,
+		&m_collisionDepthTextureSize
 	};
 
-	std::array<EditorParamInterface*, 20> m_alwaysVisibleEditorParams =
+	std::array<EditorParamInterface*, 21> m_alwaysVisibleEditorParams =
 	{
 		&m_isEmitting,
 		&m_firstFlipBookIdx,
@@ -219,10 +246,13 @@ private:
 		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
 		&m_particleEntityParam,
-		&m_particleColor
+		&m_particleColor,
+
+		&m_collisionType
 	};
 
 	Wolf::ResourceNonOwner<ParticleUpdatePass> m_particleUpdatePass;
+	Wolf::ResourceNonOwner<CustomDepthPass> m_customDepthPass;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	// Info for current execution
@@ -239,4 +269,16 @@ private:
 
 	bool m_particleNotificationRegistered = false;
 	bool m_needCheckForNewLinkedEntities = true;
+
+	// Graphic resources
+	bool m_needToRegisterDepthTexture = false;
+
+	void createDepthCollisionImage();
+	Wolf::ResourceUniqueOwner<Wolf::Image> m_depthCollisionImage;
+	uint32_t m_collisionDepthTextureIdx = -1;
+
+	void createDepthCollisionCamera();
+	Wolf::ResourceUniqueOwner<Wolf::OrthographicCamera> m_depthCollisionCamera;
+	float m_collisionDepthScale;
+	float m_collisionDepthOffset;
 };

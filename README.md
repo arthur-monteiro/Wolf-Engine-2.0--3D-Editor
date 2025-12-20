@@ -32,6 +32,14 @@ enableDebugDraw=1
 enableRayTracing=1
 ```
 
+## Scenes
+
+### [Snowy sponza (WIP)](snowy_sponza_README.md)
+
+<p align="center">
+  <img src="./Screenshots/snowySponza/scene.gif"  width="1080"/>
+</p>
+
 ## Features
 
 ### [Ray traced global illumination](voxelGI_README.md) 

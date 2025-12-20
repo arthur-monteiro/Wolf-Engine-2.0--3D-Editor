@@ -1,11 +1,12 @@
 #include "ParticleEmitter.h"
 
+#include "CustomDepthPass.h"
 #include "EditorParamsHelper.h"
 #include "Entity.h"
 #include "ParticleUpdatePass.h"
 
 ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback) :
-	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_customDepthPass(renderingPipeline->getCustomDepthPass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_requestReloadCallback = requestReloadCallback;
 
@@ -18,6 +19,8 @@ ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineI
 	m_particleMaxSizeMultiplier = 1.0f;
 	m_isEmitting = true;
 	m_particleColor = glm::vec3(1.0f);
+
+	m_collisionDepthTextureSize = 1024;
 }
 
 ParticleEmitter::~ParticleEmitter()
@@ -52,14 +55,14 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wo
 	// Set next idx from previous spawn
 	m_nextParticleToSpawnIdx = (m_nextParticleToSpawnIdx + m_nextParticleToSpawnCount) % m_maxParticleCount;
 
-	uint64_t msToWaitBetweenTwoParticles = static_cast<uint64_t>(static_cast<float>(m_delayBetweenTwoParticles) * 1000.0f);
+	float msToWaitBetweenTwoParticles = m_delayBetweenTwoParticles * 1000.0f;
 
 	uint64_t msElapsedSinceLastSpawn = globalTimer.getCurrentCachedMillisecondsDuration() - m_lastSpawnMsTimer;
-	m_nextParticleToSpawnCount = msToWaitBetweenTwoParticles == 0 ? m_maxParticleCount : static_cast<uint32_t>(msElapsedSinceLastSpawn / msToWaitBetweenTwoParticles);
+	m_nextParticleToSpawnCount = static_cast<uint32_t>(static_cast<float>(msElapsedSinceLastSpawn) / msToWaitBetweenTwoParticles);
 	if (m_nextParticleToSpawnCount > 0)
 	{
-		m_nextSpawnMsTimer = m_lastSpawnMsTimer + msToWaitBetweenTwoParticles;
-		m_lastSpawnMsTimer += msToWaitBetweenTwoParticles * m_nextParticleToSpawnCount;
+		m_nextSpawnMsTimer = m_lastSpawnMsTimer + static_cast<uint64_t>(msToWaitBetweenTwoParticles);
+		m_lastSpawnMsTimer += static_cast<uint64_t>(msToWaitBetweenTwoParticles * static_cast<float>(m_nextParticleToSpawnCount));
 	}
 
 	if (!m_isEmitting)
@@ -73,6 +76,14 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wo
 		m_particleNotificationRegistered = true;
 
 		onParticleDataChanged();
+	}
+
+	if (m_needToRegisterDepthTexture)
+	{
+		m_collisionDepthTextureIdx = m_particleUpdatePass->registerDepthTexture(m_depthCollisionImage.createNonOwnerResource());
+		m_particleUpdatePass->updateEmitter(this);
+
+		m_needToRegisterDepthTexture = false;
 	}
 }
 
@@ -211,6 +222,23 @@ void ParticleEmitter::forAllVisibleParams(const std::function<void(EditorParamIn
 			Wolf::Debug::sendError("Undefined direction shape");
 			break;
 	}
+
+	switch (static_cast<uint32_t>(m_collisionType))
+	{
+		case COLLISION_TYPE_NONE:
+			break;
+		case COLLISION_TYPE_DEPTH:
+		{
+			for (EditorParamInterface* editorParam : m_collisionDepthParams)
+			{
+				callback(editorParam, inOutString);
+			}
+			break;
+		}
+		default:
+			Wolf::Debug::sendError("Undefined collision type");
+			break;
+	}
 }
 
 void ParticleEmitter::onUsedTileCountInFlipBookChanged()
@@ -221,6 +249,14 @@ void ParticleEmitter::onUsedTileCountInFlipBookChanged()
 	m_particleUpdatePass->updateEmitter(this);
 
 	m_requestReloadCallback(this);
+}
+
+void ParticleEmitter::onParticleCountChanged()
+{
+	if (m_maxParticleCount > ParticleUpdatePass::NOISE_POINT_COUNT)
+	{
+		Wolf::Debug::sendWarning("Particle count should not exceed ParticleUpdatePass::NOISE_POINT_COUNT(" + std::to_string(ParticleUpdatePass::NOISE_POINT_COUNT) + ")");
+	}
 }
 
 void ParticleEmitter::updateNormalizedDirection()
@@ -278,4 +314,41 @@ void ParticleEmitter::onParticleDataChanged()
 	m_particleUpdatePass->updateEmitter(this);
 
 	m_requestReloadCallback(this);
+}
+
+void ParticleEmitter::onCollisionTypeChanged()
+{
+	if (m_collisionType == COLLISION_TYPE_DEPTH)
+	{
+		if (!m_depthCollisionImage || m_depthCollisionImage->getExtent().width != m_collisionDepthTextureSize)
+		{
+			createDepthCollisionImage();
+			createDepthCollisionCamera();
+
+			CustomDepthPass::Request request(m_depthCollisionImage.createNonOwnerResource(), m_depthCollisionCamera.createNonOwnerResource<Wolf::CameraInterface>());
+			m_customDepthPass->addRequestBeforeFrame(request);
+
+			m_needToRegisterDepthTexture = true;
+		}
+	}
+
+	m_requestReloadCallback(this);
+}
+
+void ParticleEmitter::createDepthCollisionImage()
+{
+	Wolf::CreateImageInfo createImageInfo{};
+	createImageInfo.extent = { m_collisionDepthTextureSize, m_collisionDepthTextureSize, 1 };
+	createImageInfo.format = Wolf::Format::D32_SFLOAT;
+	createImageInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | Wolf::ImageUsageFlagBits::SAMPLED;
+	createImageInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+	createImageInfo.mipLevelCount = 1;
+	m_depthCollisionImage.reset(Wolf::Image::createImage(createImageInfo));
+}
+
+void ParticleEmitter::createDepthCollisionCamera()
+{
+	m_collisionDepthScale = 50.0f;
+	m_collisionDepthOffset = static_cast<glm::vec3>(m_spawnBoxCenterPosition).y - 50.0f;
+	m_depthCollisionCamera.reset(new Wolf::OrthographicCamera(static_cast<glm::vec3>(m_spawnBoxCenterPosition) - glm::vec3(0.0f, 25.0f, 0.0f), m_spawnBoxWidth * 0.5, 25.0f, glm::vec3(0.0f, -1.0f, 0.0f), 0.0f, 50.0f));
 }

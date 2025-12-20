@@ -7,6 +7,7 @@
 #include "ComputeSkyCubeMapPass.h"
 #include "ComputeVertexDataPass.h"
 #include "ContaminationUpdatePass.h"
+#include "CustomDepthPass.h"
 #include "DefaultGlobalIrradiance.h"
 #include "DrawIdsPass.h"
 #include "ForwardPass.h"
@@ -43,6 +44,7 @@ public:
 	bool hasRayTracing() const override { return static_cast<bool>(m_rayTracedWorldDebugPass); };
 	Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() override;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
+	Wolf::ResourceNonOwner<CustomDepthPass> getCustomDepthPass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() override;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
@@ -60,6 +62,7 @@ private:
 	Wolf::ResourceUniqueOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
 	Wolf::ResourceUniqueOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceUniqueOwner<ComputeVertexDataPass> m_computeVertexDataPass;
+	Wolf::ResourceUniqueOwner<CustomDepthPass> m_customDepthPass;
 	Wolf::ResourceUniqueOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceUniqueOwner<CascadedShadowMapsPass> m_cascadedShadowMapsPass;
 	Wolf::ResourceUniqueOwner<ShadowMaskPassCascadedShadowMapping> m_shadowMaskPassCascadedShadowMapping;

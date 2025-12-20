@@ -48,7 +48,7 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::VERTEX,                                       0); // particles buffer
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::VERTEX, 1); // emitters buffer
 		m_particlesDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::VERTEX, 2); // noise buffer
-		m_particlesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts()));
+		m_particlesDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT));
 
 		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_particlesDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		descriptorSetGenerator.setBuffer(0, m_particlesUpdatePass->getParticleBuffer());
@@ -156,6 +156,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(m_commonDescriptorSet.createConstNonOwnerResource(), 4, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(m_globalIrradiancePass->getDescriptorSetToBind().getDescriptorSet(), GLOBAL_IRRADIANCE_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES, *m_particlesPipeline);
 		if (m_shadowMaskPass->hasDescriptorSetToBindForCompute())
 		{
 			m_commandBuffer->bindDescriptorSet(m_shadowMaskPass->getShadowComputeDescriptorSetToBind(SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES).getDescriptorSet(), SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES,
@@ -228,6 +229,7 @@ void ForwardPass::setShadowMaskPass(const Wolf::ResourceNonOwner<ShadowMaskPassI
 
 		Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
 		m_shadowMaskPass->addComputeShadowsShaderCode(shaderCodeToAdd, SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
+		m_globalIrradiancePass->addShaderCode(shaderCodeToAdd, GLOBAL_IRRADIANCE_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES);
 		m_particlesFragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.frag", {}, 1, 2, 3, Wolf::ShaderParser::MaterialFetchProcedure(),
 																	 shaderCodeToAdd));
 
@@ -297,7 +299,8 @@ void ForwardPass::createPipelines()
 			Wolf::GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource(),
 			Wolf::MaterialsGPUManager::getDescriptorSetLayout().createConstNonOwnerResource(),
 			Wolf::LightManager::getDescriptorSetLayout().createConstNonOwnerResource(),
-			m_commonDescriptorSetLayout.createConstNonOwnerResource()
+			m_commonDescriptorSetLayout.createConstNonOwnerResource(),
+			m_globalIrradiancePass->getDescriptorSetToBind().getDescriptorSetLayout()
 		};
 
 		if (m_shadowMaskPass->hasDescriptorSetToBindForCompute())

@@ -15,7 +15,8 @@ TextureSetEditor::TextureSetEditor(const std::string& tab, const std::string& ca
 	m_sixWaysLightmap0("6 ways light map 0", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
 	m_sixWaysLightmap1("6 ways light map 1", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
 	m_enableAlpha("Enable alpha",tab, category, [this]() { onTextureChanged(); }),
-	m_shadingMode({ "GGX", "Anisotropic GGX", "6 Ways Lighting" }, "Shading Mode", tab, category, [this]() { onShadingModeChanged(); }, false, true)
+	m_alphaPathParam("Alpha map", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
+	m_shadingMode(Wolf::MaterialsGPUManager::MaterialInfo::SHADING_MODE_STRING_LIST, "Shading Mode", tab, category, [this]() { onShadingModeChanged(); }, false, true)
 {
 	m_shadingMode = static_cast<uint32_t>(shadingMode);
 }
@@ -82,6 +83,19 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 
 			notifySubscribers();
 		}
+		else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AlphaOnly))
+		{
+			Wolf::TextureSetLoader::TextureSetFileInfoAlphaOnly materialFileInfo;
+			materialFileInfo.name = "Custom material";
+			materialFileInfo.alphaMap = static_cast<std::string>(m_alphaPathParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_alphaPathParam);
+
+			Wolf::TextureSetLoader materialLoader(materialFileInfo, false);
+			materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
+
+			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
+
+			notifySubscribers();
+		}
 
 		m_textureChanged = false;
 	}
@@ -112,33 +126,41 @@ void TextureSetEditor::getAllVisibleParams(std::vector<EditorParamInterface*>& o
 	// Shape specific params
 	switch (static_cast<Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode>(static_cast<uint32_t>(m_shadingMode)))
 	{
-	case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX:
-	{
-		for (EditorParamInterface* editorParam : m_shadingModeGGXParams)
+		case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX:
 		{
-			out.push_back(editorParam);
+			for (EditorParamInterface* editorParam : m_shadingModeGGXParams)
+			{
+				out.push_back(editorParam);
+			}
+			break;
 		}
-		break;
-	}
-	case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AnisoGGX:
-	{
-		for (EditorParamInterface* editorParam : m_shadingModeGGXAnisoParams)
+		case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AnisoGGX:
 		{
-			out.push_back(editorParam);
+			for (EditorParamInterface* editorParam : m_shadingModeGGXAnisoParams)
+			{
+				out.push_back(editorParam);
+			}
+			break;
 		}
-		break;
-	}
-	case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::SixWaysLighting:
-	{
-		for (EditorParamInterface* editorParam : m_shadingModeSixWaysLighting)
+		case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::SixWaysLighting:
 		{
-			out.push_back(editorParam);
+			for (EditorParamInterface* editorParam : m_shadingModeSixWaysLightingParams)
+			{
+				out.push_back(editorParam);
+			}
+			break;
 		}
-		break;
-	}
-	default:
-		Wolf::Debug::sendError("Undefined shading mode");
-		break;
+		case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AlphaOnly:
+		{
+			for (EditorParamInterface* editorParam : m_shadingModeAlphaOnlyParams)
+			{
+				out.push_back(editorParam);
+			}
+			break;
+		}
+		default:
+			Wolf::Debug::sendError("Undefined shading mode");
+			break;
 	}
 }
 

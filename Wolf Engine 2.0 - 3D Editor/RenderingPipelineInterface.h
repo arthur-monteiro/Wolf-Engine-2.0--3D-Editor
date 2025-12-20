@@ -2,6 +2,7 @@
 
 #include <ResourceNonOwner.h>
 
+class CustomDepthPass;
 class CascadedShadowMapsPass;
 class CompositionPass;
 class ComputeSkyCubeMapPass;
@@ -22,6 +23,7 @@ public:
 	virtual bool hasRayTracing() const = 0;
 	virtual Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() = 0;
 	virtual Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() = 0;
+	virtual Wolf::ResourceNonOwner<CustomDepthPass> getCustomDepthPass() = 0;
 	virtual Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() = 0;
 	virtual Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() = 0;
 	virtual Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() = 0;

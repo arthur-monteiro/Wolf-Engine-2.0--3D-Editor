@@ -62,6 +62,9 @@ uint32_t Particle::getMaterialIdx() const
 
 void Particle::onMaterialEntityChanged()
 {
-	m_materialEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_materialEntityParam)));
-	m_materialNotificationRegistered = false;
+	if (static_cast<std::string>(m_materialEntityParam) != "")
+	{
+		m_materialEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_materialEntityParam)));
+		m_materialNotificationRegistered = false;
+	}
 }

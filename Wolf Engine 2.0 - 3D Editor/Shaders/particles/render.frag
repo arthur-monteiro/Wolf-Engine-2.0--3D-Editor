@@ -15,6 +15,8 @@ layout (location = 10) in vec3 inColor;
 layout(binding = 0, set = 4, std140) uniform readonly UniformBufferDisplay
 {
 	uint displayType;
+    uint enableTrilinearVoxelGI;
+    float exposure;
 } ubDisplay;
 
 const uint DISPLAY_TYPE_LIGHTING = 6;
@@ -102,6 +104,11 @@ vec4 computeLighting(MaterialInfo firstMaterialInfo, MaterialInfo nextMaterialIn
         }
 
         return vec4(inColor * accumulatedLighting.r, lightmap0.w * opacity);
+    }
+    else if (firstMaterialInfo.shadingMode == 3) // alpha only
+    {
+        float alpha = mix(firstMaterialInfo.albedo, nextMaterialInfo.albedo, currentTileIdx - uint(currentTileIdx)).w;
+        return vec4(inColor * computeIrradiance(inWorldPos, vec3(0, 1, 0), ubDisplay.enableTrilinearVoxelGI == 1) * 8.0, alpha * opacity);
     }
     else
     {

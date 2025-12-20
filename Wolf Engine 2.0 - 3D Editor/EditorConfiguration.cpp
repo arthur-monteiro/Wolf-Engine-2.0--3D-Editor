@@ -3,7 +3,7 @@
 #include <fstream>
 #include <ranges>
 
-#include "Debug.h"
+#include <Debug.h>
 
 const EditorConfiguration* g_editorConfiguration = nullptr;
 

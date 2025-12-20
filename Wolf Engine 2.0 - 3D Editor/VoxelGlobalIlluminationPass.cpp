@@ -72,9 +72,9 @@ void VoxelGlobalIlluminationPass::initializeResources(const Wolf::Initialization
     initDebugResources();
 
     // Output resources
-    m_outputDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0); // voxel grid
-    m_outputDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 1); // requests buffer
-    m_outputDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 2); // requests buffer copy
+    m_outputDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::COMPUTE, 0); // voxel grid
+    m_outputDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::COMPUTE, 1); // requests buffer
+    m_outputDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::FRAGMENT | Wolf::ShaderStageFlagBits::COMPUTE, 2); // requests buffer copy
     m_outputDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_outputDescriptorSetLayoutGenerator.getDescriptorLayouts()));
     createOutputDescriptorSet();
 }

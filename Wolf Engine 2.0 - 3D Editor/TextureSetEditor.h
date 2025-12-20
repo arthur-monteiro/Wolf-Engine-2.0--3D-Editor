@@ -44,6 +44,7 @@ private:
 	EditorParamString m_sixWaysLightmap0;
 	EditorParamString m_sixWaysLightmap1;
 	EditorParamBool m_enableAlpha;
+	EditorParamString m_alphaPathParam;
 
 	EditorParamEnum m_shadingMode;
 
@@ -68,10 +69,15 @@ private:
 		&m_enableAlpha,
 	};
 
-	std::array<EditorParamInterface*, 2> m_shadingModeSixWaysLighting
+	std::array<EditorParamInterface*, 2> m_shadingModeSixWaysLightingParams
 	{
 		&m_sixWaysLightmap0,
 		&m_sixWaysLightmap1
+	};
+
+	std::array<EditorParamInterface*, 1> m_shadingModeAlphaOnlyParams
+	{
+		&m_alphaPathParam
 	};
 
 	std::array<EditorParamInterface*, 1> m_alwaysVisibleParams
@@ -79,7 +85,7 @@ private:
 		&m_shadingMode
 	};
 
-	std::array<EditorParamInterface*, 10> m_allParams =
+	std::array<EditorParamInterface*, 11> m_allParams =
 	{
 		&m_albedoPathParam,
 		&m_normalPathParam,
@@ -90,6 +96,7 @@ private:
 		&m_sixWaysLightmap0,
 		&m_sixWaysLightmap1,
 		&m_enableAlpha,
+		&m_alphaPathParam,
 		&m_shadingMode
 	};
 

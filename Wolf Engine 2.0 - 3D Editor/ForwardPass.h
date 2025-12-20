@@ -83,7 +83,8 @@ private:
 	std::unique_ptr<Wolf::ShaderParser> m_particlesFragmentShaderParser;
 	std::unique_ptr<Wolf::Pipeline> m_particlesPipeline;
 
-	static constexpr uint32_t SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES = 5;
+	static constexpr uint32_t GLOBAL_IRRADIANCE_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES = 5;
+	static constexpr uint32_t SHADOW_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES = 6;
 
 	/* Full screen rect */
 	std::unique_ptr<Wolf::Mesh> m_fullscreenRect;

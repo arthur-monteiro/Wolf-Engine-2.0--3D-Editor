@@ -54,19 +54,21 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 		const Wolf::RenderMeshList::MeshToRender& meshToRender = meshToDraw.meshToRender;
 
 		bool instancedMeshFound = false;
-		DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_instancedMeshesRegistered, instancedMeshRegistered,
+		for (uint32_t i = 0; i < m_instancedMeshesRegistered.size(); ++i)
+		{
+			Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_instancedMeshesRegistered[i];
+
+			if (instancedMeshRegistered->isSame(meshToRender))
 			{
-				if (instancedMeshRegistered->isSame(meshToRender))
-				{
-					instancedMeshFound = true;
-					uint32_t instanceIdx = instancedMeshRegistered->addInstance();
-					addInstanceDataToBuffer(*instancedMeshRegistered, instanceIdx, meshToDraw.instanceData);
+				instancedMeshFound = true;
+				uint32_t instanceIdx = instancedMeshRegistered->addInstance();
+				addInstanceDataToBuffer(*instancedMeshRegistered, instanceIdx, meshToDraw.instanceData);
 
-					m_infoByEntities[entity].push_back({ i, instanceIdx });
+				m_infoByEntities[entity].push_back({ i, instanceIdx });
 
-					break;
-				}
-			})
+				break;
+			}
+		}
 
 		if (!instancedMeshFound)
 		{

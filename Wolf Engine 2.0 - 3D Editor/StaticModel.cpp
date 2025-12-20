@@ -76,6 +76,15 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.lightDescriptorSlot = -1;
 			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/outputIds.frag";
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
+
+			// Custom depth
+			pipelineInfo.bindlessDescriptorSlot = -1;
+			pipelineInfo.lightDescriptorSlot = -1;
+			pipelineInfo.shaderInfos.resize(1);
+			pipelineInfo.dynamicStates.clear();
+			pipelineInfo.enableDepthWrite = true;
+			pipelineInfo.depthCompareOp = Wolf::CompareOp::LESS_OR_EQUAL;
+			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_DEPTH);
 		}));
 }
 

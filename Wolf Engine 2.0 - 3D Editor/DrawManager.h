@@ -1,6 +1,6 @@
 #pragma once
 
-#include <DynamicStableArray.h>
+#include <DynamicResourceUniqueOwnerArray.h>
 #include <RenderMeshList.h>
 #include <ResourceUniqueOwner.h>
 
@@ -104,7 +104,7 @@ private:
 
 		uint32_t m_instancedMeshIdx = -1;
 	};
-	Wolf::DynamicStableArray<Wolf::ResourceUniqueOwner<InstancedMeshRegistered>, 64> m_instancedMeshesRegistered;
+	Wolf::DynamicResourceUniqueOwnerArray<InstancedMeshRegistered, 64> m_instancedMeshesRegistered;
 
 	struct InfoByEntity
 	{

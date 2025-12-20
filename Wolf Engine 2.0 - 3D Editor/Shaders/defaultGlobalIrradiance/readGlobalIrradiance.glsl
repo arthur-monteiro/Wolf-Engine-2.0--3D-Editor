@@ -1,4 +1,4 @@
-layout(binding = 0, set = @VOXEL_GI_DESCRIPTOR_SLOT, std140) uniform readonly UniformBuffer
+layout(binding = 0, set = @VOXEL_GI_DESCRIPTOR_SLOT, std140) uniform readonly UniformBufferGlobalIrradiance
 {
 	float ambientIntensity;
 } ubGlobalIrradiance;

@@ -21,6 +21,9 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 		wolfInstance->initializePass(m_computeVertexDataPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
 
+	m_customDepthPass.reset(new CustomDepthPass);
+	wolfInstance->initializePass(m_customDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
 	m_preDepthPass.reset(new PreDepthPass(editorParams, true, m_updateGPUBuffersPass.createNonOwnerResource(), m_computeVertexDataPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
@@ -33,7 +36,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_contaminationUpdatePass.reset(new ContaminationUpdatePass);
 	wolfInstance->initializePass(m_contaminationUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_particleUpdatePass.reset(new ParticleUpdatePass);
+	m_particleUpdatePass.reset(new ParticleUpdatePass(m_customDepthPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_particleUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_thumbnailsGenerationPass.reset(new ThumbnailsGenerationPass);
@@ -98,6 +101,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
 {
 	m_cascadedShadowMapsPass->addCamerasForThisFrame(wolfInstance->getCameraList());
+	m_customDepthPass->updateBeforeFrame(wolfInstance->getCameraList());
 	m_particleUpdatePass->updateBeforeFrame(wolfInstance->getGlobalTimer(), m_updateGPUBuffersPass.createNonOwnerResource());
 	m_thumbnailsGenerationPass->addCameraForThisFrame(wolfInstance->getCameraList());
 	m_skyBoxManager->updateBeforeFrame(wolfInstance, m_computeSkyCubeMapPass.createNonOwnerResource());
@@ -126,6 +130,7 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 	{
 		passes.push_back(m_computeVertexDataPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
+	passes.push_back(m_customDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_preDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	if (gameContext.shadowTechnique == GameContext::ShadowTechnique::CSM)
@@ -221,6 +226,11 @@ Wolf::ResourceNonOwner<SkyBoxManager> RenderingPipeline::getSkyBoxManager()
 Wolf::ResourceNonOwner<ContaminationUpdatePass> RenderingPipeline::getContaminationUpdatePass()
 {
 	return m_contaminationUpdatePass.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<CustomDepthPass> RenderingPipeline::getCustomDepthPass()
+{
+	return m_customDepthPass.createNonOwnerResource();
 }
 
 Wolf::ResourceNonOwner<ParticleUpdatePass> RenderingPipeline::getParticleUpdatePass()

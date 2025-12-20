@@ -3,6 +3,8 @@
 
 #define COMPUTE_SHADER
 
+#extension GL_EXT_nonuniform_qualifier : enable
+
 layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 const float PI = 3.141592653589793;
@@ -36,10 +38,17 @@ struct EmitterInfo
 	float maxOrientationAngle;
 	float minSizeMultiplier;
 	float maxSizeMultiplier;
-	float padding;
+	float delayBetweenTwoParticlesInMs;
 
 	vec3 color;
-	float pad1;
+	uint collisionType;
+		
+	mat4 collisionViewProjMatrix;
+	
+	uint collisionDepthTextureIdx;
+	float collisionDepthScale;
+	float collisionDepthOffset;
+	float padding;
 };
 
 const uint MAX_EMITTER_COUNT = 16;
@@ -75,11 +84,14 @@ layout(std430, binding = 1) restrict buffer ParticleInfoBufferLayout
     ParticleInfoGPU particlesInfo[MAX_TOTAL_PARTICLES];
 };
 
-const uint NOISE_POINT_COUNT = 1024;
+const uint NOISE_POINT_COUNT = 262144;
 layout(std430, binding = 2) restrict buffer NoiseBufferLayout
 {
     float noise[NOISE_POINT_COUNT];
 };
+
+layout (binding = 3) uniform texture2D[] depthTextures;
+layout (binding = 4) uniform sampler depthSampler;
 
 float getRandomFloat(uint offset)
 {
@@ -90,6 +102,12 @@ uint getParticleCountForEmitter(uint idx)
 {
 	return ub.particleCountPerEmitter[idx / 4][idx % 4];
 }
+
+const mat4 biasMat = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 );
 
 void main()
 {
@@ -130,22 +148,32 @@ void main()
 
 	if (/*particlesInfo[particleIdx].createdTimer == 0 &&*/ particleIdxInEmitter >= nextParticleToSpawnIdx && particleIdxInEmitter < lastParticleToSpawnIdx)
 	{
-		particlesInfo[particleIdx].createdTimer = ub.emittersInfo[emitterIdx].nextSpawnTimer + (particleIdxInEmitter - nextParticleToSpawnIdx) * uint(particleLifetime);
+		particlesInfo[particleIdx].createdTimer = ub.emittersInfo[emitterIdx].nextSpawnTimer + uint(float(particleIdxInEmitter - nextParticleToSpawnIdx) * ub.emittersInfo[emitterIdx].delayBetweenTwoParticlesInMs);
+		//particlesInfo[particleIdx].createdTimer = ub.currentTimer;
 		particlesInfo[particleIdx].emitterIdx = ub.emittersInfo[emitterIdx].emitterIdx;
 
 		// Spawn position
 		vec3 spawnPosition = vec3(0.0f);
 		if (ub.emittersInfo[emitterIdx].spawnShape == CYLINDER_SHAPE)
 		{
-			float angle = getRandomFloat(0) * 2.0f * PI;
+			float angle = getRandomFloat(0) * 2.0 * PI;
 			float distanceFromCenter = getRandomFloat(1) * ub.emittersInfo[emitterIdx].spawnShapeRadiusOrWidth;
-			float height = getRandomFloat(2) * ub.emittersInfo[emitterIdx].spawnShapeHeight - ub.emittersInfo[emitterIdx].spawnShapeHeight * 0.5f;
+			float height = getRandomFloat(2) * ub.emittersInfo[emitterIdx].spawnShapeHeight - ub.emittersInfo[emitterIdx].spawnShapeHeight * 0.5;
 
 			spawnPosition = vec3(distanceFromCenter * cos(angle), height, distanceFromCenter * sin(angle)) + ub.emittersInfo[emitterIdx].spawnPosition;
 		}
 		else if (ub.emittersInfo[emitterIdx].spawnShape == BOX_SHAPE)
 		{
+			float halfWidth = ub.emittersInfo[emitterIdx].spawnShapeRadiusOrWidth * 0.5;
+			float posX = getRandomFloat(0) * ub.emittersInfo[emitterIdx].spawnShapeRadiusOrWidth - halfWidth;
 
+			float halfHeight = ub.emittersInfo[emitterIdx].spawnShapeHeight * 0.5;
+			float posY = getRandomFloat(1) * ub.emittersInfo[emitterIdx].spawnShapeHeight - halfHeight;
+
+			float halfDepth = ub.emittersInfo[emitterIdx].spawnBoxDepth * 0.5;
+			float posZ = getRandomFloat(2) * ub.emittersInfo[emitterIdx].spawnBoxDepth - halfDepth;
+
+			spawnPosition = vec3(posX, posY, posZ) + ub.emittersInfo[emitterIdx].spawnPosition;
 		}
 		particlesInfo[particleIdx].position = spawnPosition;
 
@@ -162,7 +190,22 @@ void main()
 		float speed = mix(ub.emittersInfo[emitterIdx].minSpeed, ub.emittersInfo[emitterIdx].maxSpeed, getRandomFloat(4));
 		vec3 direction = particlesInfo[particleIdx].direction * speed;
 
-		particlesInfo[particleIdx].position += direction;
+		vec3 newPosition = particlesInfo[particleIdx].position + direction;
+
+		if (ub.emittersInfo[emitterIdx].collisionType == 1) // COLLISION_TYPE_DEPTH
+		{
+			vec4 posProjectionSpace = biasMat * ub.emittersInfo[emitterIdx].collisionViewProjMatrix * vec4(newPosition.xyz, 1.0);
+    		vec3 projCoords = posProjectionSpace.xyz / posProjectionSpace.w;
+			float currentDepth = projCoords.z;
+
+			float closestDepth = texture(sampler2D(depthTextures[ub.emittersInfo[emitterIdx].collisionDepthTextureIdx], depthSampler), projCoords.xy).r;
+			if (closestDepth < currentDepth)
+			{
+				newPosition.y = (1.0 - closestDepth) * ub.emittersInfo[emitterIdx].collisionDepthScale + ub.emittersInfo[emitterIdx].collisionDepthOffset;
+			}
+		}
+
+		particlesInfo[particleIdx].position = newPosition;
 	}
 
 	particlesInfo[particleIdx].age = float(ub.currentTimer - particlesInfo[particleIdx].createdTimer) / float(particleLifetime);

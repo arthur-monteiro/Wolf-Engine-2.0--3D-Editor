@@ -202,18 +202,21 @@ void Entity::save() const
 		outJSON += ",";
 	outJSON += "\n";
 
-	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component,
-			outJSON += "\t" R"(")" + component->getId() + R"(": {)" "\n";
-			outJSON += "\t\t" R"("params": [)" "\n";
-			component->addParamsToJSON(outJSON, 3);
-			if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
-			{
-				outJSON.erase(commaPos + outJSON.size() - 3);
-			}
-			outJSON += "\t\t]\n";
-			outJSON += "\t}";
-			outJSON += i == m_components.size() - 1 ? "\n" : ",\n";
-		)
+	for (uint32_t i = 0; i < m_components.size(); ++i)
+	{
+		const Wolf::ResourceUniqueOwner<ComponentInterface>& component = m_components[i];
+
+		outJSON += "\t" R"(")" + component->getId() + R"(": {)" "\n";
+		outJSON += "\t\t" R"("params": [)" "\n";
+		component->addParamsToJSON(outJSON, 3);
+		if (const size_t commaPos = outJSON.substr(outJSON.size() - 3).find(','); commaPos != std::string::npos)
+		{
+			outJSON.erase(commaPos + outJSON.size() - 3);
+		}
+		outJSON += "\t\t]\n";
+		outJSON += "\t}";
+		outJSON += i == m_components.size() - 1 ? "\n" : ",\n";
+	}
 
 	outJSON += "}";
 

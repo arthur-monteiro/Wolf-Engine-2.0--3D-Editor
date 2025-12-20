@@ -36,7 +36,7 @@ private:
 
 	bool m_shadingModeChanged = false;
 	void onShadingModeChanged();
-	EditorParamEnum m_shadingMode = EditorParamEnum({ "GGX", "Anisotropic GGX", "6 Ways Lighting" }, "Shading Mode", TAB, "Material", [this]() { onShadingModeChanged(); });
+	EditorParamEnum m_shadingMode = EditorParamEnum(Wolf::MaterialsGPUManager::MaterialInfo::SHADING_MODE_STRING_LIST, "Shading Mode", TAB, "Material", [this]() { onShadingModeChanged(); });
 
 	void onTextureSetChanged(uint32_t textureSetIdx);
 	std::vector<uint32_t> m_textureSetChangedIndices;

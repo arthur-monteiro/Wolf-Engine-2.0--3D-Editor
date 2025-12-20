@@ -2,15 +2,21 @@
 
 #include <glm/glm.hpp>
 
-#include "CommandRecordBase.h"
-#include "DescriptorSetLayoutGenerator.h"
+#include <CommandRecordBase.h>
+#include <DescriptorSetLayoutGenerator.h>
+#include <ResourceUniqueOwner.h>
+#include <ShaderParser.h>
+
+#include "CustomDepthPass.h"
 #include "ParticleEmitter.h"
-#include "ResourceUniqueOwner.h"
-#include "ShaderParser.h"
 
 class ParticleUpdatePass : public Wolf::CommandRecordBase
 {
 public:
+	static constexpr uint32_t NOISE_POINT_COUNT = 262144;
+
+	ParticleUpdatePass(const Wolf::ResourceNonOwner<CustomDepthPass>& customDepthPass);
+
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
 	void record(const Wolf::RecordContext& context) override;
@@ -28,11 +34,16 @@ public:
 
 	void updateEmitter(const ParticleEmitter* emitter);
 
+	uint32_t registerDepthTexture(const Wolf::ResourceNonOwner<Wolf::Image>& depthImage);
+
 private:
+	Wolf::ResourceNonOwner<CustomDepthPass> m_customDepthPass;
+
 	void createPipeline();
 	void createNoiseBuffer();
 
 	void addEmitterInfoUpdate(const ParticleEmitter* emitter, uint32_t emitterIdx);
+	uint32_t addDepthTexturesToBindless(const std::vector<Wolf::DescriptorSetGenerator::ImageDescription>& images);
 
 	Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_computeShaderParser;
 	Wolf::ResourceUniqueOwner<Wolf::Pipeline> m_computePipeline;
@@ -108,10 +119,17 @@ private:
 		float maxOrientationAngle;
 		float minSizeMultiplier;
 		float maxSizeMultiplier;
-		float padding;
+		float delayBetweenTwoParticlesInMs;
 
 		glm::vec3 color;
-		float pad1;
+		uint32_t collisionType;
+
+		glm::mat4 collisionViewProjMatrix;
+
+		uint32_t collisionDepthTextureIdx;
+		float collisionDepthScale;
+		float collisionDepthOffset;
+		float padding;
 	};
 
 	struct UniformBufferData
@@ -128,11 +146,14 @@ private:
 	Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_uniformBuffer;
 
 	// Noise
-	static constexpr uint32_t NOISE_POINT_COUNT = 1024;
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_noiseBuffer;
 
 	uint32_t m_particleCount = 0;
 
+	static constexpr uint32_t MAX_DEPTH_IMAGES = 8;
+	uint32_t m_currentDepthTextureBindlessCount = 0;
+	Wolf::ResourceUniqueOwner<Wolf::Image> m_defaultDepthImage;
+	Wolf::ResourceUniqueOwner<Wolf::Sampler> m_depthSampler;
 	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
