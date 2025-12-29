@@ -23,6 +23,7 @@
 #include "PointLight.h"
 #include "SkyLight.h"
 #include "StaticModel.h"
+#include "SurfaceCoatingComponent.h"
 
 class RenderingPipelineInterface;
 
@@ -55,7 +56,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 15> m_componentsInfo =
+	std::array<ComponentInfo, 16> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -185,11 +186,20 @@ private:
 		},
 		ComponentInfo
 		{
-			"Camera Settings",
+			"Camera settings",
 			CameraSettingsComponent::ID,
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new CameraSettingsComponent(m_renderingPipeline));
+			}
+		},
+		ComponentInfo
+		{
+			"Surface coating",
+			SurfaceCoatingComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new SurfaceCoatingComponent(m_renderingPipeline, m_resourceManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
 			}
 		}
 	};

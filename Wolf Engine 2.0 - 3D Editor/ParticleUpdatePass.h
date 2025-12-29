@@ -7,7 +7,7 @@
 #include <ResourceUniqueOwner.h>
 #include <ShaderParser.h>
 
-#include "CustomDepthPass.h"
+#include "CustomSceneRenderPass.h"
 #include "ParticleEmitter.h"
 
 class ParticleUpdatePass : public Wolf::CommandRecordBase
@@ -15,7 +15,7 @@ class ParticleUpdatePass : public Wolf::CommandRecordBase
 public:
 	static constexpr uint32_t NOISE_POINT_COUNT = 262144;
 
-	ParticleUpdatePass(const Wolf::ResourceNonOwner<CustomDepthPass>& customDepthPass);
+	ParticleUpdatePass(const Wolf::ResourceNonOwner<CustomSceneRenderPass>& customDepthPass);
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -37,7 +37,7 @@ public:
 	uint32_t registerDepthTexture(const Wolf::ResourceNonOwner<Wolf::Image>& depthImage);
 
 private:
-	Wolf::ResourceNonOwner<CustomDepthPass> m_customDepthPass;
+	Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customDepthPass;
 
 	void createPipeline();
 	void createNoiseBuffer();
@@ -129,7 +129,7 @@ private:
 		uint32_t collisionDepthTextureIdx;
 		float collisionDepthScale;
 		float collisionDepthOffset;
-		float padding;
+		uint32_t collisionBehaviour;
 	};
 
 	struct UniformBufferData

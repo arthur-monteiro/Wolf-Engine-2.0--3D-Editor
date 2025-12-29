@@ -37,7 +37,7 @@ public:
 	uint32_t getFirstTextureSetIdx(AssetId modelResourceId) const;
 	void subscribeToResource(AssetId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
-	[[nodiscard]] AssetId addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU);
+	[[nodiscard]] AssetId addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU);
 	bool isImageLoaded(AssetId imageResourceId) const;
 	Wolf::ResourceNonOwner<Wolf::Image> getImage(AssetId imageResourceId) const;
 	const uint8_t* getImageData(AssetId imageResourceId) const;
@@ -126,7 +126,7 @@ private:
 	{
 	public:
 		Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-			bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU);
+			bool loadMips, Wolf::Format format, bool keepDataOnCPU);
 		Image(const Image&) = delete;
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
@@ -144,8 +144,7 @@ private:
 		Wolf::ResourceUniqueOwner<Wolf::Image> m_image;
 
 		bool m_loadMips;
-		bool m_isSRGB;
-		bool m_isHDR;
+		Wolf::Format m_format;
 
 		enum class DataOnCPUStatus { NEVER_KEPT, NOT_LOADED_YET, AVAILABLE, DELETED } m_dataOnCPUStatus;
 		std::vector<uint8_t> m_firstMipData;

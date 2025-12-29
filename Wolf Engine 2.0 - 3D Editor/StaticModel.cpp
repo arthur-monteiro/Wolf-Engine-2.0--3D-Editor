@@ -78,13 +78,13 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
 
 			// Custom depth
-			pipelineInfo.bindlessDescriptorSlot = -1;
-			pipelineInfo.lightDescriptorSlot = -1;
-			pipelineInfo.shaderInfos.resize(1);
+			pipelineInfo.bindlessDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_BINDLESS;
+			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
 			pipelineInfo.dynamicStates.clear();
 			pipelineInfo.enableDepthWrite = true;
 			pipelineInfo.depthCompareOp = Wolf::CompareOp::LESS_OR_EQUAL;
-			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_DEPTH);
+			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/customRender.frag";
+			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER);
 		}));
 }
 
@@ -155,7 +155,7 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 		return false;
 
 	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { modelData->m_mesh.createNonOwnerResource(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { modelData->m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 	if (m_drawLOD > 0)
 	{
 		if (m_drawLODType == 0) // Default

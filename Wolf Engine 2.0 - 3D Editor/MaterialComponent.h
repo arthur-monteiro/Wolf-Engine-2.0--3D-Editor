@@ -27,7 +27,6 @@ public:
 	static constexpr uint32_t DEFAULT_MATERIAL_IDX = 0;
 	uint32_t getMaterialIdx() const { return m_materialIdx; }
 
-
 private:
 	inline static const std::string TAB = "Material";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;

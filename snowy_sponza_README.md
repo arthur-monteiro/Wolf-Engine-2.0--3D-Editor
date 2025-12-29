@@ -9,7 +9,7 @@ This scene shows the famous Sponza (https://www.intel.com/content/www/us/en/deve
     <sub><sup>Work in progress</sup></sub>
 </p>
 
-# Geometry
+# Scene geometry
 
 First of all, we render sponza with a cloudy sky:
 
@@ -49,4 +49,40 @@ An important feature here is particles collision. It's handled by rendering a to
   <img src="./Screenshots/snowySponza/depth_buffer.png" width="350"/>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="./Screenshots/snowySponza/particles_collision.gif" width="380"/>
+</p>
+
+# Snow geometry
+
+The snow is rendered by drawing a tessellated square where all the vertex are computed in shaders.
+
+<p align="center">
+  <img src="./Screenshots/snowySponza/snow_square.png"  width="1080"/>
+</p>
+
+In tessellation evaluation shader, vertices are ajusted to the geometry height using a top-down capture of the scene. Normals are also ajusted:
+
+<p align="center">
+  <img src="./Screenshots/snowySponza/snow_to_geometry_albedo.png" width="350"/>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/snowySponza/snow_to_geometry_normal.png" width="380"/>
+</p>
+
+Then to create some little dunes, 4 patterns images generated with perlin noise are applyed on top of the vertices. Modifying height and normals.
+
+<p align="center">
+  <img src="./Screenshots/snowySponza/snow_with_patterns_albedo.png" width="350"/>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/snowySponza/snow_with_patterns_normal.png" width="380"/>
+</p>
+
+Patterns to sample are chosen using a randomly generated map:
+
+<p align="center">
+  <img src="./Screenshots/snowySponza/pattern_idx_map.png"  width="1080"/>
+</p>
+
+Global snow height and offset can be controlled with editor parameters:
+
+<p align="center">
+  <img src="./Screenshots/snowySponza/snow_growing.gif"  width="1080"/>
 </p>

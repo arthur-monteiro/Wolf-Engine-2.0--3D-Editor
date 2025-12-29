@@ -5,6 +5,7 @@
 #include <glm/gtc/constants.hpp>
 
 #include "ComponentInterface.h"
+#include "CustomSceneRenderPass.h"
 #include "EditorTypes.h"
 #include "Particle.h"
 #include "TextureSetEditor.h"
@@ -81,6 +82,9 @@ public:
 	uint32_t getCollisionDepthTextureIdx() const { return m_collisionDepthTextureIdx; }
 	float getCollisionDepthScale() const { return m_collisionDepthScale; }
 	float getCollisionDepthOffset() const { return m_collisionDepthOffset; }
+	static constexpr uint32_t COLLISION_BEHAVIOUR_DIE = 0;
+	static constexpr uint32_t COLLISION_BEHAVIOUR_STOP = 1;
+	uint32_t getCollisionBehaviour() const { return m_collisionBehaviour; }
 
 	uint64_t getNextSpawnTimerInMs() const { return m_nextSpawnMsTimer; }
 	uint32_t getNextParticleToSpawnIdx() const { return m_nextParticleToSpawnIdx; }
@@ -179,7 +183,15 @@ private:
 		&m_collisionDepthTextureSize
 	};
 
-	std::array<EditorParamInterface*, 31> m_allEditorParams =
+	// Collision enabled
+	void onCollisionBehaviourChanged();
+	EditorParamEnum m_collisionBehaviour = EditorParamEnum({ "Die", "Stop" }, "Collision behaviour", TAB, "Collisions", [this]() { onCollisionBehaviourChanged(); });
+	std::array<EditorParamInterface*, 1> m_collisionEnabledParams =
+	{
+		&m_collisionBehaviour
+	};
+
+	std::array<EditorParamInterface*, 32> m_allEditorParams =
 	{
 		&m_isEmitting,
 		&m_firstFlipBookIdx,
@@ -218,7 +230,8 @@ private:
 		&m_particleColor,
 
 		&m_collisionType,
-		&m_collisionDepthTextureSize
+		&m_collisionDepthTextureSize,
+		&m_collisionBehaviour
 	};
 
 	std::array<EditorParamInterface*, 21> m_alwaysVisibleEditorParams =
@@ -252,7 +265,7 @@ private:
 	};
 
 	Wolf::ResourceNonOwner<ParticleUpdatePass> m_particleUpdatePass;
-	Wolf::ResourceNonOwner<CustomDepthPass> m_customDepthPass;
+	Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customDepthPass;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	// Info for current execution
@@ -272,6 +285,7 @@ private:
 
 	// Graphic resources
 	bool m_needToRegisterDepthTexture = false;
+	uint32_t m_registeredDepthTextureIdx = CustomSceneRenderPass::NO_REQUEST_ID;
 
 	void createDepthCollisionImage();
 	Wolf::ResourceUniqueOwner<Wolf::Image> m_depthCollisionImage;

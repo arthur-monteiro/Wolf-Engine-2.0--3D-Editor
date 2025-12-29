@@ -10,6 +10,8 @@ public:
 	void subscribe(const void* instance, const std::function<void(Flags)>& callback);
 	void unsubscribe(const void* instance);
 
+	bool isSubscribed(const void* instance) const;
+
 protected:
 	void notifySubscribers(Flags flags = 0) const;
 

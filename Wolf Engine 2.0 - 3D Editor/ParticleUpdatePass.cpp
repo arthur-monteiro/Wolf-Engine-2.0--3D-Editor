@@ -8,7 +8,7 @@
 #include "Pipeline.h"
 #include "UpdateGPUBuffersPass.h"
 
-ParticleUpdatePass::ParticleUpdatePass(const Wolf::ResourceNonOwner<CustomDepthPass>& customDepthPass) : m_customDepthPass(customDepthPass)
+ParticleUpdatePass::ParticleUpdatePass(const Wolf::ResourceNonOwner<CustomSceneRenderPass>& customDepthPass) : m_customDepthPass(customDepthPass)
 {
 }
 
@@ -182,6 +182,7 @@ void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer, const
 			emitterInfo.collisionDepthScale = emitter->getCollisionDepthScale();
 			emitterInfo.collisionDepthOffset = emitter->getCollisionDepthOffset();
 		}
+		emitterInfo.collisionBehaviour = emitter->getCollisionBehaviour();
 	}
 
 	m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));

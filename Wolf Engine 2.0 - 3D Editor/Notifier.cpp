@@ -16,6 +16,17 @@ void Notifier::unsubscribe(const void* instance)
 	}
 }
 
+bool Notifier::isSubscribed(const void* instance) const
+{
+	for (const Subscription& subscription : m_subscriptions)
+	{
+		if (subscription.instance == instance)
+			return true;
+	}
+
+	return false;
+}
+
 void Notifier::notifySubscribers(Flags flags) const
 {
 	for (const Subscription& subscription : m_subscriptions)

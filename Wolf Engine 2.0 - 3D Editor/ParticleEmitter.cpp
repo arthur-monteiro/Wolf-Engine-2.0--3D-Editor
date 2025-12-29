@@ -1,12 +1,11 @@
 #include "ParticleEmitter.h"
 
-#include "CustomDepthPass.h"
 #include "EditorParamsHelper.h"
 #include "Entity.h"
 #include "ParticleUpdatePass.h"
 
 ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback) :
-	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_customDepthPass(renderingPipeline->getCustomDepthPass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_customDepthPass(renderingPipeline->getCustomRenderPass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_requestReloadCallback = requestReloadCallback;
 
@@ -233,6 +232,11 @@ void ParticleEmitter::forAllVisibleParams(const std::function<void(EditorParamIn
 			{
 				callback(editorParam, inOutString);
 			}
+
+			for (EditorParamInterface* editorParam : m_collisionEnabledParams)
+			{
+				callback(editorParam, inOutString);
+			}
 			break;
 		}
 		default:
@@ -325,14 +329,26 @@ void ParticleEmitter::onCollisionTypeChanged()
 			createDepthCollisionImage();
 			createDepthCollisionCamera();
 
-			CustomDepthPass::Request request(m_depthCollisionImage.createNonOwnerResource(), m_depthCollisionCamera.createNonOwnerResource<Wolf::CameraInterface>());
-			m_customDepthPass->addRequestBeforeFrame(request);
+			CustomSceneRenderPass::Request request(m_depthCollisionImage.createNonOwnerResource(), m_depthCollisionCamera.createNonOwnerResource<Wolf::CameraInterface>(), {});
+			if (m_registeredDepthTextureIdx == -1)
+			{
+				m_registeredDepthTextureIdx = m_customDepthPass->addRequestBeforeFrame(request);;
+			}
+			else
+			{
+				m_customDepthPass->updateRequestBeforeFrame(m_registeredDepthTextureIdx, request);
+			}
 
 			m_needToRegisterDepthTexture = true;
 		}
 	}
 
 	m_requestReloadCallback(this);
+}
+
+void ParticleEmitter::onCollisionBehaviourChanged()
+{
+	m_particleUpdatePass->updateEmitter(this);
 }
 
 void ParticleEmitter::createDepthCollisionImage()
@@ -348,6 +364,7 @@ void ParticleEmitter::createDepthCollisionImage()
 
 void ParticleEmitter::createDepthCollisionCamera()
 {
+	// TODO: remove these hardcoded values
 	m_collisionDepthScale = 50.0f;
 	m_collisionDepthOffset = static_cast<glm::vec3>(m_spawnBoxCenterPosition).y - 50.0f;
 	m_depthCollisionCamera.reset(new Wolf::OrthographicCamera(static_cast<glm::vec3>(m_spawnBoxCenterPosition) - glm::vec3(0.0f, 25.0f, 0.0f), m_spawnBoxWidth * 0.5, 25.0f, glm::vec3(0.0f, -1.0f, 0.0f), 0.0f, 50.0f));

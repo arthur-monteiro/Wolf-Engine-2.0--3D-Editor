@@ -6,5 +6,5 @@ void main()
 {
     outInstanceId = uint(gl_InstanceIndex);
 
-    gl_Position = vec4(inPosition, 1.0f);    
+    gl_Position = vec4(inPosition, 1.0f);
 } 

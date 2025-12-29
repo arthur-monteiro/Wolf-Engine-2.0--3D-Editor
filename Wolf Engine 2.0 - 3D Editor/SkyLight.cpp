@@ -153,10 +153,10 @@ bool SkyLight::updateCubeMap()
 			}
 		case LIGHT_TYPE_BAKED:
 			{
-				if (m_sphericalMapResourceId == AssetManager::NO_ASSET || !m_resourceManager->isImageLoaded(m_sphericalMapResourceId))
+				if (m_sphericalMapAssetId == AssetManager::NO_ASSET || !m_resourceManager->isImageLoaded(m_sphericalMapAssetId))
 					return false;
 
-				Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_sphericalMapResourceId);
+				Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_sphericalMapAssetId);
 				m_renderingPipeline->getComputeSkyCubeMapPass()->setInputSphericalMap(image);
 
 				if (image->getFormat() != Wolf::Format::R32G32B32A32_SFLOAT)
@@ -164,7 +164,7 @@ bool SkyLight::updateCubeMap()
 					Wolf::Debug::sendError("Wrong format for spherical map");
 				}
 
-				const glm::vec4* imageData = reinterpret_cast<const glm::vec4*>(m_resourceManager->getImageData(m_sphericalMapResourceId));
+				const glm::vec4* imageData = reinterpret_cast<const glm::vec4*>(m_resourceManager->getImageData(m_sphericalMapAssetId));
 				Wolf::Extent3D imageExtent = image->getExtent();
 
 				glm::vec4 maxValue(0.0f);
@@ -190,7 +190,7 @@ bool SkyLight::updateCubeMap()
 				m_sunIntensityFromSphericalMap = glm::length(maxValue) * 0.02f;
 				m_sunColorFromSphericalMap = glm::normalize(maxValue) * glm::sqrt(3.0f);
 
-				m_resourceManager->deleteImageData(m_sphericalMapResourceId);
+				m_resourceManager->deleteImageData(m_sphericalMapAssetId);
 
 				return true;
 			}
@@ -229,7 +229,7 @@ void SkyLight::onSphericalMapChanged()
 {
 	if (static_cast<std::string>(m_sphericalMap) != "")
 	{
-		m_sphericalMapResourceId = m_resourceManager->addImage(m_sphericalMap, false, false, true, true);
+		m_sphericalMapAssetId = m_resourceManager->addImage(m_sphericalMap, false, Wolf::Format::R32G32B32A32_SFLOAT, true);
 		m_cubeMapUpdateRequested = true;
 	}
 }

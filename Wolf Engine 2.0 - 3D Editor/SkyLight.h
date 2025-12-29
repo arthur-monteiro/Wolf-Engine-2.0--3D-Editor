@@ -62,7 +62,7 @@ private:
 
 	/* Baked */
 	void onSphericalMapChanged();
-	AssetManager::AssetId m_sphericalMapResourceId = AssetManager::NO_ASSET;
+	AssetManager::AssetId m_sphericalMapAssetId = AssetManager::NO_ASSET;
 	EditorParamString m_sphericalMap = EditorParamString("Spherical map", TAB, "Sky", [this] { onSphericalMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 	glm::vec3 m_sunDirectionFromSphericalMap;
 	float m_sunIntensityFromSphericalMap;

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-static constexpr uint32_t MAX_CUSTOM_DEPTH_REQUESTS_COUNT = 8;
+static constexpr uint32_t MAX_CUSTOM_RENDER_REQUESTS_COUNT = 8;
 
 namespace CommonCameraIndices
 {
@@ -12,8 +12,8 @@ namespace CommonCameraIndices
 	constexpr uint32_t CAMERA_IDX_SHADOW_CASCADE_2 = 3;
 	constexpr uint32_t CAMERA_IDX_SHADOW_CASCADE_3 = 4;
 	constexpr uint32_t CAMERA_IDX_THUMBNAIL_GENERATION = 5;
-	constexpr uint32_t CAMERA_IDX_FIRST_CUSTOM_DEPTH_PASS = 6;
-	constexpr uint32_t CAMERA_IDX_LAST_CUSTOM_DEPTH_PASS = CAMERA_IDX_FIRST_CUSTOM_DEPTH_PASS + MAX_CUSTOM_DEPTH_REQUESTS_COUNT;
+	constexpr uint32_t CAMERA_IDX_FIRST_CUSTOM_RENDER_PASS = 6;
+	constexpr uint32_t CAMERA_IDX_LAST_CUSTOM_RENDER_PASS = CAMERA_IDX_FIRST_CUSTOM_RENDER_PASS + MAX_CUSTOM_RENDER_REQUESTS_COUNT;
 }
 
 namespace CommonPipelineIndices
@@ -22,7 +22,7 @@ namespace CommonPipelineIndices
 	constexpr uint32_t PIPELINE_IDX_SHADOW_MAP = 1;
 	constexpr uint32_t PIPELINE_IDX_FORWARD = 2;
 	constexpr uint32_t PIPELINE_IDX_OUTPUT_IDS = 3;
-	constexpr uint32_t PIPELINE_IDX_CUSTOM_DEPTH = 4;
+	constexpr uint32_t PIPELINE_IDX_CUSTOM_RENDER = 4;
 }
 
 namespace DescriptorSetSlots

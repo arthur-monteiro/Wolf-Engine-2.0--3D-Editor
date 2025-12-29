@@ -326,7 +326,7 @@ void AssetManager::subscribeToResource(AssetId resourceId, const void* instance,
 	m_meshes[resourceId - MESH_ASSET_IDX_OFFSET]->subscribe(instance, callback);
 }
 
-AssetManager::AssetId AssetManager::addImage(const std::string& loadingPath, bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU)
+AssetManager::AssetId AssetManager::addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU)
 {
 	if (m_images.size() >= MAX_IMAGE_ASSET_COUNT)
 	{
@@ -347,7 +347,7 @@ AssetManager::AssetId AssetManager::addImage(const std::string& loadingPath, boo
 	std::string iconFullPath = computeIconPath(loadingPath, 0);
 	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
 
-	m_images.emplace_back(new Image(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, loadMips, isSRGB, isHDR, keepDataOnCPU));
+	m_images.emplace_back(new Image(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, loadMips, format, keepDataOnCPU));
 	m_addResourceToUICallback(m_images.back()->computeName(), iconFullPath, resourceId);
 
 	return resourceId;
@@ -688,18 +688,9 @@ void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
 }
 
 AssetManager::Image::Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-	bool loadMips, bool isSRGB, bool isHDR, bool keepDataOnCPU)
-	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback), m_thumbnailGenerationRequested(needThumbnailsGeneration), m_loadMips(loadMips), m_isSRGB(isSRGB), m_isHDR(isHDR)
+	bool loadMips, Wolf::Format format, bool keepDataOnCPU)
+	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback), m_thumbnailGenerationRequested(needThumbnailsGeneration), m_loadMips(loadMips), m_format(format)
 {
-	if (m_isSRGB && m_isHDR)
-	{
-		Wolf::Debug::sendError("Can't use sRGB with HDR");
-	}
-	if (m_loadMips && m_isHDR)
-	{
-		Wolf::Debug::sendError("Mips are not supported with HDR");
-	}
-
 	m_imageLoadingRequested = true;
 	m_dataOnCPUStatus = keepDataOnCPU ? DataOnCPUStatus::NOT_LOADED_YET : DataOnCPUStatus::NEVER_KEPT;
 }
@@ -737,24 +728,24 @@ void AssetManager::Image::deleteImageData()
 
 void AssetManager::Image::loadImage()
 {
+	bool isHDR = false;
+	if (m_format == Wolf::Format::R32G32B32A32_SFLOAT)
+	{
+		isHDR = true;
+	}
+
 	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
-	Wolf::ImageFileLoader imageFileLoader(fullFilePath, m_isHDR);
+	Wolf::ImageFileLoader imageFileLoader(fullFilePath, isHDR);
 
 	Wolf::CreateImageInfo createImageInfo;
 	createImageInfo.extent = { imageFileLoader.getWidth(), imageFileLoader.getHeight(), imageFileLoader.getDepth() };
 	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 
-	Wolf::Format imageFormat = imageFileLoader.getFormat();
-	if (m_isSRGB)
+	Wolf::Format imageFileLoaderFormat = imageFileLoader.getFormat();
+
+	if (imageFileLoaderFormat == Wolf::Format::R8G8B8A8_UNORM && m_format == Wolf::Format::R8G8B8A8_SRGB)
 	{
-		if (imageFormat == Wolf::Format::R8G8B8A8_UNORM)
-		{
-			imageFormat = Wolf::Format::R8G8B8A8_SRGB;
-		}
-		else
-		{
-			Wolf::Debug::sendError("Format is not suppported for sRGB");
-		}
+		imageFileLoaderFormat = Wolf::Format::R8G8B8A8_SRGB;
 	}
 
 	Wolf::ResourceUniqueOwner<Wolf::MipMapGenerator> mipMapGenerator;
@@ -766,11 +757,11 @@ void AssetManager::Image::loadImage()
 			Wolf::Debug::sendError("Load mip with 3D images is not supported yet");
 		}
 
-		mipMapGenerator.reset(new Wolf::MipMapGenerator(imageFileLoader.getPixels(), { imageFileLoader.getWidth(), imageFileLoader.getHeight() }, imageFormat));
+		mipMapGenerator.reset(new Wolf::MipMapGenerator(imageFileLoader.getPixels(), { imageFileLoader.getWidth(), imageFileLoader.getHeight() }, imageFileLoaderFormat));
 		mipLevelCount = mipMapGenerator->getMipLevelCount();
 	}
 
-	createImageInfo.format = imageFormat;
+	createImageInfo.format = imageFileLoaderFormat;
 	createImageInfo.mipLevelCount = mipLevelCount;
 	createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
 	m_image.reset(Wolf::Image::createImage(createImageInfo));
@@ -823,6 +814,14 @@ void AssetManager::Image::loadImage()
 						pixel.g = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 1])) * 255.0f;
 						pixel.b = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 2])) * 255.0f;
 						pixel.a = 255.0f;
+					}
+					else if (imageFileLoader.getFormat() == Wolf::Format::R8G8B8A8_UNORM)
+					{
+						uint8_t* pixels = imageFileLoader.getPixels();
+						pixel.r = pixels[4 * samplingIndex];
+						pixel.g = pixels[4 * samplingIndex + 1];
+						pixel.b = pixels[4 * samplingIndex + 2];
+						pixel.a = pixels[4 * samplingIndex + 3];
 					}
 					else
 					{

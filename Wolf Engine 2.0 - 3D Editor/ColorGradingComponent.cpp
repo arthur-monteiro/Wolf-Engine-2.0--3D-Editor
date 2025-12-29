@@ -62,7 +62,7 @@ void ColorGradingComponent::onLUTImageMapChanged()
 {
     if (static_cast<std::string>(m_lutImageParam) != "")
     {
-        m_lutImageResourceId = m_resourceManager->addImage(m_lutImageParam, false, false, true, false);
+        m_lutImageResourceId = m_resourceManager->addImage(m_lutImageParam, false, Wolf::Format::R16G16B16A16_SFLOAT, false);
     }
     else
     {

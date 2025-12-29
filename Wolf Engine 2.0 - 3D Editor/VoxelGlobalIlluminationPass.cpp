@@ -34,7 +34,7 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
 
         Wolf::ModelData* modelData = m_resourceManager->getModelData(m_sphereMeshResourceId);
 
-        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->m_mesh.createNonOwnerResource(), m_debugPipelineSet.createConstNonOwnerResource() } };
+        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_debugPipelineSet.createConstNonOwnerResource() } };
 
         if (instancedMesh.mesh.perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
         {

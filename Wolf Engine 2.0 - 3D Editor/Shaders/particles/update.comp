@@ -43,7 +43,7 @@ struct EmitterInfo
 	uint collisionDepthTextureIdx;
 	float collisionDepthScale;
 	float collisionDepthOffset;
-	float padding;
+	uint collisionBehaviour;
 };
 
 const uint MAX_EMITTER_COUNT = 16;
@@ -187,6 +187,7 @@ void main()
 
 		vec3 newPosition = particlesInfo[particleIdx].position + direction;
 
+		bool hasCollided = false;
 		if (ub.emittersInfo[emitterIdx].collisionType == 1) // COLLISION_TYPE_DEPTH
 		{
 			vec4 posProjectionSpace = biasMat * ub.emittersInfo[emitterIdx].collisionViewProjMatrix * vec4(newPosition.xyz, 1.0);
@@ -197,6 +198,19 @@ void main()
 			if (closestDepth < currentDepth)
 			{
 				newPosition.y = (1.0 - closestDepth) * ub.emittersInfo[emitterIdx].collisionDepthScale + ub.emittersInfo[emitterIdx].collisionDepthOffset;
+				hasCollided = true;
+			}
+		}
+
+		if (hasCollided)
+		{
+			if (ub.emittersInfo[emitterIdx].collisionBehaviour == 0) // COLLISION_BEHAVIOUR_DIE
+			{
+				particlesInfo[particleIdx].createdTimer = 0;
+			}
+			else if (ub.emittersInfo[emitterIdx].collisionBehaviour == 1) // COLLISION_BEHAVIOUR_STOP
+			{
+				// Nothing to do
 			}
 		}
 

@@ -21,7 +21,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 		wolfInstance->initializePass(m_computeVertexDataPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
 
-	m_customDepthPass.reset(new CustomDepthPass);
+	m_customDepthPass.reset(new CustomSceneRenderPass);
 	wolfInstance->initializePass(m_customDepthPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_preDepthPass.reset(new PreDepthPass(editorParams, true, m_updateGPUBuffersPass.createNonOwnerResource(), m_computeVertexDataPass.createNonOwnerResource()));
@@ -228,7 +228,7 @@ Wolf::ResourceNonOwner<ContaminationUpdatePass> RenderingPipeline::getContaminat
 	return m_contaminationUpdatePass.createNonOwnerResource();
 }
 
-Wolf::ResourceNonOwner<CustomDepthPass> RenderingPipeline::getCustomDepthPass()
+Wolf::ResourceNonOwner<CustomSceneRenderPass> RenderingPipeline::getCustomRenderPass()
 {
 	return m_customDepthPass.createNonOwnerResource();
 }
