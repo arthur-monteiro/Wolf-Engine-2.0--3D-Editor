@@ -8,6 +8,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include "Debug.h"
+#include "EditorConfiguration.h"
 #include "ModelLoader.h"
 #include "Timer.h"
 
@@ -18,7 +19,8 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 
 	outputModel.m_animationData.reset(new AnimationData);
 
-	std::ifstream file(modelLoadingInfo.filename);
+	std::string fullpathFilename = g_editorConfiguration->computeFullPathFromLocalPath(modelLoadingInfo.filename);
+	std::ifstream file(fullpathFilename);
 
 	std::string line;
 	unsigned int currentLineIdx = 1;

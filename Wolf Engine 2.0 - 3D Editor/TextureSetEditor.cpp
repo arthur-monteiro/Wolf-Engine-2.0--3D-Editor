@@ -53,14 +53,20 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 
 				TextureSetLoader textureSetLoader(materialFileInfo, outputLayout, true, assetManager);
 
-				m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
-				m_textureSetInfo.slicesFolders[0] = assetManager->getImageSlicesFolder(textureSetLoader.getImageAssetId(0));
+				for (uint32_t i = 0; i < 2; i++)
+				{
+					if (AssetId assetId = textureSetLoader.getImageAssetId(i); assetId != NO_ASSET)
+					{
+						m_textureSetInfo.images2[i] = assetManager->getImage(assetId);
+						m_textureSetInfo.slicesFolders[i] = assetManager->getImageSlicesFolder(assetId);
+					}
+				}
 
-				m_textureSetInfo.images2[1] = assetManager->getImage(textureSetLoader.getImageAssetId(1));
-				m_textureSetInfo.slicesFolders[1] = assetManager->getImageSlicesFolder(textureSetLoader.getImageAssetId(1));
-
-				m_textureSetInfo.images2[2] = assetManager->getCombinedImage(textureSetLoader.getImageAssetId(2));
-				m_textureSetInfo.slicesFolders[2] = assetManager->getCombinedImageSlicesFolder(textureSetLoader.getImageAssetId(2));
+				if (AssetId assetId = textureSetLoader.getImageAssetId(2); assetId != NO_ASSET)
+				{
+					m_textureSetInfo.images2[2] = assetManager->getCombinedImage(assetId);
+					m_textureSetInfo.slicesFolders[2] = assetManager->getCombinedImageSlicesFolder(assetId);
+				}
 
 				materialGPUManager->lockTextureSets();
 				materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
