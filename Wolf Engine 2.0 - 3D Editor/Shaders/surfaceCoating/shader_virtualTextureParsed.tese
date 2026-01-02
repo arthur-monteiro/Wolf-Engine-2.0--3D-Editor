@@ -150,8 +150,6 @@ void main()
     {
         patternHeights[i] = texture(sampler2D(patternTextures[nonuniformEXT(patternIdces[i] * 2)], depthSampler), worldPos.xz * 0.5).r;
         patternNormals[i] = texture(sampler2D(patternTextures[nonuniformEXT(patternIdces[i] * 2 + 1)], depthSampler), worldPos.xz * 0.5).xyz;
-        patternNormals[i].xy = patternNormals[i].xy * 2.0 - vec2(1.0);
-        patternNormals[i].z = sqrt(1.0f - patternNormals[i].x * patternNormals[i].x - patternNormals[i].y * patternNormals[i].y);
     }
 
     float patternHeight1 = mix(patternHeights[0], patternHeights[1], patternIdxLerpCoeffs.x);

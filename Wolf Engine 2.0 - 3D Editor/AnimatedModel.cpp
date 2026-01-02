@@ -31,11 +31,11 @@ AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUMana
 			pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 
 			// IA
-			Wolf::SkeletonVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+			SkeletonVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
 			InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 1);
 
 			pipelineInfo.vertexInputBindingDescriptions.resize(2);
-			Wolf::SkeletonVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+			SkeletonVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
 
 			// Resources
@@ -104,7 +104,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 
 		if (m_waitingForMeshLoadingFrameCount == 0 && m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
-			std::unique_ptr<Wolf::AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
+			std::unique_ptr<AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
 
 			m_boneCount = animationData->boneCount;
 			m_bonesBuffer.reset(Wolf::Buffer::createBuffer(m_boneCount * sizeof(glm::mat4), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
@@ -140,7 +140,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 		if (m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
 			bool unused;
-			Wolf::AnimationData* animationData = findAnimationData(unused);
+			AnimationData* animationData = findAnimationData(unused);
 
 			if (!m_forceTPoseParam)
 			{
@@ -233,7 +233,7 @@ void AnimatedModel::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 	{
 		if (m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
-			std::unique_ptr<Wolf::AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
+			std::unique_ptr<AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
 			addBonesToDebug(animationData->rootBones.data(), debugRenderingManager);
 		}
 	}
@@ -294,7 +294,7 @@ void AnimatedModel::setAnimation(uint32_t animationIdx)
 	m_animationSelectParam = animationIdx;
 }
 
-void AnimatedModel::addBonesToDebug(const Wolf::AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager)
+void AnimatedModel::addBonesToDebug(const AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager)
 {
 	if (m_bonesInfoGPU.empty())
 		return;
@@ -307,23 +307,23 @@ void AnimatedModel::addBonesToDebug(const Wolf::AnimationData::Bone* bone, Debug
 	bool isHighlighted = m_boneNamesAndIndices[m_highlightBone].second == bone->idx;
 	debugRenderingManager.addSphere(m_bonesInfoCPU[bone->idx].position, isHighlighted ? DEBUG_SPHERE_RADIUS * 1.5f : DEBUG_SPHERE_RADIUS, isHighlighted ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(1.0f));
 
-	for (const Wolf::AnimationData::Bone& childBone : bone->children)
+	for (const AnimationData::Bone& childBone : bone->children)
 	{
 		addBonesToDebug(&childBone, debugRenderingManager);
 	}
 }
 
-void AnimatedModel::addBoneNamesAndIndices(const Wolf::AnimationData::Bone* bone)
+void AnimatedModel::addBoneNamesAndIndices(const AnimationData::Bone* bone)
 {
 	m_boneNamesAndIndices.emplace_back(bone->name, bone->idx);
 
-	for (const Wolf::AnimationData::Bone& childBone : bone->children)
+	for (const AnimationData::Bone& childBone : bone->children)
 	{
 		addBoneNamesAndIndices(&childBone);
 	}
 }
 
-Wolf::AnimationData* AnimatedModel::findAnimationData(bool& success)
+AnimationData* AnimatedModel::findAnimationData(bool& success)
 {
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
 	{
@@ -335,7 +335,7 @@ Wolf::AnimationData* AnimatedModel::findAnimationData(bool& success)
 
 	uint32_t animationIdx = m_animationSelectParam;
 
-	Wolf::AnimationData* animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData.get();
+	AnimationData* animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData.get();
 	if (animationIdx > 0)
 	{
 		uint32_t animationResourceId = m_animationsParam[animationIdx - 1 /* first one is default */].getResourceId();
@@ -357,7 +357,7 @@ void AnimatedModel::updateMaxTimer()
 	m_maxTimer = 0.0f;
 
 	bool success;
-	Wolf::AnimationData* animationData = findAnimationData(success);
+	AnimationData* animationData = findAnimationData(success);
 
 	findMaxTimer(animationData->rootBones.data(), m_maxTimer);
 	m_forceTimer.setMax(m_maxTimer);

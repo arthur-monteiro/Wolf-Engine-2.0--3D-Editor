@@ -648,6 +648,7 @@ li {
 .assetIcon {
     width: 100px;
     height: 100px;
+    opacity: 1.0;
 }
 
 .assetName {
@@ -656,4 +657,6 @@ li {
     align-items: center;
     justify-content: center;
     height: 25px;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }

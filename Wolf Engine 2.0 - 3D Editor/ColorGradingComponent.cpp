@@ -48,7 +48,7 @@ bool ColorGradingComponent::updateLUTImage()
         return true;
     }
 
-    if (m_lutImageResourceId == AssetManager::NO_ASSET || !m_resourceManager->isImageLoaded(m_lutImageResourceId))
+    if (m_lutImageResourceId == NO_ASSET || !m_resourceManager->isImageLoaded(m_lutImageResourceId))
         return false;
 
     Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_lutImageResourceId);
@@ -62,11 +62,11 @@ void ColorGradingComponent::onLUTImageMapChanged()
 {
     if (static_cast<std::string>(m_lutImageParam) != "")
     {
-        m_lutImageResourceId = m_resourceManager->addImage(m_lutImageParam, false, Wolf::Format::R16G16B16A16_SFLOAT, false);
+        m_lutImageResourceId = m_resourceManager->addImage(m_lutImageParam, false, Wolf::Format::R16G16B16A16_SFLOAT, false, false);
     }
     else
     {
-        m_lutImageResourceId = AssetManager::NO_ASSET;
+        m_lutImageResourceId = NO_ASSET;
     }
     m_lutImageUpdateRequested = true;
 }

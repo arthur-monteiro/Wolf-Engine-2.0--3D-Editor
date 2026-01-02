@@ -30,7 +30,7 @@ private:
     bool updateLUTImage();
 
     void onLUTImageMapChanged();
-    AssetManager::AssetId m_lutImageResourceId = AssetManager::NO_ASSET;
+    AssetId m_lutImageResourceId = NO_ASSET;
     bool m_lutImageUpdateRequested = true;
     EditorParamString m_lutImageParam = EditorParamString("LUT image", TAB, "Resources", [this]() { onLUTImageMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 

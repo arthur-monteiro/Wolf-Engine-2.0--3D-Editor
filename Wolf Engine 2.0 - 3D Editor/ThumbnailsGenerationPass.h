@@ -28,12 +28,12 @@ public:
 	class Request
 	{
 	public:
-		Request(Wolf::ModelData* modelData, uint32_t firstMaterialIdx, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix);
+		Request(ModelData* modelData, uint32_t firstMaterialIdx, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix);
 
 	private:
 		friend ThumbnailsGenerationPass;
 
-		Wolf::ModelData* m_modelData = nullptr;
+		ModelData* m_modelData = nullptr;
 		uint32_t m_firstMaterialIdx = 0;
 		std::string m_outputFullFilepath;
 		uint32_t m_imageLeftToDraw = 0;

@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG b53d4f4cced80b962dd7deef472b8b08b78f92f8
+        GIT_TAG 0e8dc73797b17963f65c2683bd40c0bb9ea39b04
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -30,6 +30,7 @@ include_directories("dependencies/wolfenginecontent-src/ThirdParty/stb_image")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/UltraLight/include")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/vulkan/Include")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/Tracy/tracy")
+include_directories("dependencies/wolfenginecontent-src/ThirdParty/meshoptimizer/src")
 include_directories("GifEncoder/egif")
 
 link_directories("dependencies/wolfenginecontent-src/x64/Debug/lib")
@@ -80,6 +81,18 @@ add_dependencies(WolfEngine_3DEditor GifEncoder)
 add_dependencies(WolfEngine_3DEditor Common)
 add_dependencies(WolfEngine_3DEditor GraphicAPIBroker)
 add_dependencies(WolfEngine_3DEditor WolfEngine)
+
+add_custom_command(COMMAND "../Dependencies/wolfenginecontent-src/x64/Debug/exe/GenerateCodeFileHashes.exe" "../Wolf Engine 2.0 - 3D Editor"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Wolf Engine 2.0 - 3D Editor"
+        OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/Wolf Engine 2.0 - 3D Editor/CodeFileHashes.h"
+        DEPENDS GenerateCodeFileHashes
+        VERBATIM)
+add_custom_target(
+        GenerateEditorHashesTarget
+        ALL
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Wolf Engine 2.0 - 3D Editor/CodeFileHashes.h"
+)
+add_dependencies(WolfEngine_3DEditor GenerateEditorHashesTarget)
 
 set_target_properties(WolfEngine_3DEditor
         PROPERTIES

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ModelLoader.h>
 #include <PipelineSet.h>
 
 #include "EditorModelInterface.h"
@@ -43,7 +42,7 @@ private:
 	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
-	AssetManager::AssetId m_meshResourceId = AssetManager::NO_ASSET;
+	AssetId m_meshResourceId = NO_ASSET;
 
 	bool m_isWaitingForMeshLoading = false;
 	void requestModelLoading();

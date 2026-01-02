@@ -94,7 +94,7 @@ private:
     bool m_enableDebug = false;
     uint32_t m_debugPositionFaceId = 0; // probe center
 
-    AssetManager::AssetId m_sphereMeshResourceId = AssetManager::NO_ASSET;
+    AssetId m_sphereMeshResourceId = NO_ASSET;
     Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_debugPipelineSet;
 
     Wolf::DescriptorSetLayoutGenerator m_debugDescriptorSetLayoutGenerator;

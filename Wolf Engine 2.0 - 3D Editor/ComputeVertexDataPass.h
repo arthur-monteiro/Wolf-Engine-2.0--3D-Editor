@@ -34,7 +34,7 @@ public:
         Request(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const Wolf::NullableResourceNonOwner<Wolf::Buffer>& overrideIndexBuffer, uint32_t firstMaterialIdx, const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& blas)
              : m_mesh(mesh), m_firstMaterialIdx(firstMaterialIdx), m_bottomLevelAccelerationStructure(blas), m_indexBuffer(mesh->getIndexBuffer())
         {
-            if (mesh->getVertexSize() != sizeof(Wolf::Vertex3D))
+            if (mesh->getVertexSize() != sizeof(Vertex3D))
             {
                 Wolf::Debug::sendCriticalError("Vertex must be Wolf::Vertex3D");
             }

@@ -23,7 +23,7 @@ public:
 	};
 
 	std::string getId() const override { return "meshResourceEditor"; }
-	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
+	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
 		const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
 		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
@@ -160,7 +160,7 @@ private:
 		bool hasDefaultName() const override;
 
 		void setRenderingPipeline(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline) { m_renderingPipeline = renderingPipeline; }
-		void setModelData(Wolf::ModelData* modelData) { m_modelData = modelData; }
+		void setModelData(ModelData* modelData) { m_modelData = modelData; }
 		void setFirstMaterialIdx(uint32_t firstMaterialIdx) { m_firstMaterialIdx = firstMaterialIdx; }
 		void setBottomLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& accelerationStructure) { m_bottomLevelAccelerationStructure = accelerationStructure; }
 		void setLODIndexAndType(uint32_t lodIdx, uint32_t lodType);
@@ -171,7 +171,7 @@ private:
 		inline static const std::string DEFAULT_NAME = "PLACEHOLDER";
 
 		Wolf::NullableResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
-		Wolf::ModelData* m_modelData;
+		ModelData* m_modelData;
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
 		uint32_t m_firstMaterialIdx;
 		uint32_t m_lodIdx = 0;

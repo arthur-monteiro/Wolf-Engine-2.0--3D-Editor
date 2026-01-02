@@ -32,7 +32,7 @@ class ComponentInstancier
 public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
-		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<AssetManager>& assetManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
 		const Wolf::ResourceNonOwner<EntityContainer>& entityContainer);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
@@ -45,7 +45,7 @@ private:
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
-	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
+	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
 	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
 
@@ -64,7 +64,7 @@ private:
 			StaticModel::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new StaticModel(m_materialsGPUManager, m_resourceManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new StaticModel(m_materialsGPUManager, m_assetManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
 			}
 		},
 		ComponentInfo
@@ -127,7 +127,7 @@ private:
 			SkyLight::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SkyLight(m_requestReloadCallback, m_resourceManager, m_renderingPipeline));
+				return static_cast<ComponentInterface*>(new SkyLight(m_requestReloadCallback, m_assetManager, m_renderingPipeline));
 			}
 		},
 		ComponentInfo
@@ -136,7 +136,7 @@ private:
 			TextureSetComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new TextureSetComponent(m_materialsGPUManager, m_editorConfiguration, m_requestReloadCallback));
+				return static_cast<ComponentInterface*>(new TextureSetComponent(m_materialsGPUManager, m_editorConfiguration, m_requestReloadCallback, m_assetManager));
 			}
 		},
 		ComponentInfo
@@ -154,7 +154,7 @@ private:
 			AnimatedModel::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new AnimatedModel(m_materialsGPUManager, m_resourceManager, m_getEntityFromLoadingPathCallback, m_renderingPipeline, m_requestReloadCallback));
+				return static_cast<ComponentInterface*>(new AnimatedModel(m_materialsGPUManager, m_assetManager, m_getEntityFromLoadingPathCallback, m_renderingPipeline, m_requestReloadCallback));
 			}
 		},
 		ComponentInfo
@@ -181,7 +181,7 @@ private:
 			ColorGradingComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ColorGradingComponent(m_resourceManager, m_renderingPipeline));
+				return static_cast<ComponentInterface*>(new ColorGradingComponent(m_assetManager, m_renderingPipeline));
 			}
 		},
 		ComponentInfo
@@ -199,7 +199,7 @@ private:
 			SurfaceCoatingComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SurfaceCoatingComponent(m_renderingPipeline, m_resourceManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new SurfaceCoatingComponent(m_renderingPipeline, m_assetManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
 			}
 		}
 	};

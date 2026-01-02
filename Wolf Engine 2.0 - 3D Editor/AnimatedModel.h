@@ -39,8 +39,8 @@ public:
 	void setAnimation(uint32_t animationIdx);
 
 private:
-	void addBonesToDebug(const Wolf::AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager);
-	void addBoneNamesAndIndices(const Wolf::AnimationData::Bone* bone);
+	void addBonesToDebug(const AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager);
+	void addBoneNamesAndIndices(const AnimationData::Bone* bone);
 
 	inline static const std::string TAB = "Model";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
@@ -48,9 +48,9 @@ private:
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	AssetManager::AssetId m_meshResourceId = AssetManager::NO_ASSET;
+	AssetId m_meshResourceId = NO_ASSET;
 
-	Wolf::AnimationData* findAnimationData(bool& success);
+	AnimationData* findAnimationData(bool& success);
 
 	void updateMaxTimer();
 	bool m_updateMaxTimerRequested = false;

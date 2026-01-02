@@ -90,7 +90,8 @@ MaterialListFakeEntity::MaterialInfo::MaterialInfo() : ParameterGroupInterface("
 
 void MaterialListFakeEntity::MaterialInfo::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
 {
-	m_material->updateBeforeFrame(materialGPUManager, editorConfiguration);
+	// TODO: still used?
+	//m_material->updateBeforeFrame(materialGPUManager, editorConfiguration);
 }
 
 void MaterialListFakeEntity::MaterialInfo::getAllParams(std::vector<EditorParamInterface*>& out) const

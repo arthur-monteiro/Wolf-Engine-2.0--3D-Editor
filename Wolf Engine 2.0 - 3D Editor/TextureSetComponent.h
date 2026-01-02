@@ -12,7 +12,7 @@ public:
 	std::string getId() const override { return ID; }
 
 	TextureSetComponent(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, 
-		const std::function<void(ComponentInterface*)>& requestReloadCallback);
+		const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -31,6 +31,7 @@ private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
+	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 
 	bool m_paramsLoaded = false;
 
@@ -41,7 +42,7 @@ private:
 		TextureSet();
 		TextureSet(const TextureSet&) = delete;
 
-		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceReference<AssetManager>& assetManager);
 
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;

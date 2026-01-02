@@ -29,10 +29,10 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
     if (m_enableDebug)
     {
         // ReSharper disable once CppDFAUnreachableCode
-        if (m_sphereMeshResourceId == AssetManager::NO_ASSET || !m_resourceManager->isModelLoaded(m_sphereMeshResourceId))
+        if (m_sphereMeshResourceId == NO_ASSET || !m_resourceManager->isModelLoaded(m_sphereMeshResourceId))
             return;
 
-        Wolf::ModelData* modelData = m_resourceManager->getModelData(m_sphereMeshResourceId);
+        ModelData* modelData = m_resourceManager->getModelData(m_sphereMeshResourceId);
 
         Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_debugPipelineSet.createConstNonOwnerResource() } };
 
@@ -356,10 +356,10 @@ void VoxelGlobalIlluminationPass::initializeDebugPipelineSet()
     pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 
     // IA
-    Wolf::Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+    Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
 
     pipelineInfo.vertexInputBindingDescriptions.resize(1);
-    Wolf::Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+    Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
     // Resources
     pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;

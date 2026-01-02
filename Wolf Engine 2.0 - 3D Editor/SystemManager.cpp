@@ -54,10 +54,10 @@ SystemManager::SystemManager()
 				m_entityReloadRequested = true;
 		};
 
-	m_assetManager.reset(new AssetManager([this](const std::string& resourceName, const std::string& iconPath, AssetManager::AssetId assetId)
+	m_assetManager.reset(new AssetManager([this](const std::string& resourceName, const std::string& iconPath, AssetId assetId)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("addAssetToList(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
-		}, [this](const std::string& resourceName, const std::string& iconPath, AssetManager::AssetId assetId)
+		}, [this](const std::string& resourceName, const std::string& iconPath, AssetId assetId)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("updateAsset(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
 		}
@@ -715,7 +715,7 @@ void SystemManager::duplicateEntityJSCallback(const ultralight::JSObject& thisOb
 void SystemManager::editAssetJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string resourceIdStr = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
-	AssetManager::AssetId resourceId = static_cast<AssetManager::AssetId>(std::stoi(resourceIdStr));
+	AssetId resourceId = static_cast<AssetId>(std::stoi(resourceIdStr));
 
 	m_selectedEntity.reset(nullptr);
 	Wolf::ResourceNonOwner<Entity> entity = m_assetManager->computeResourceEditor(resourceId);

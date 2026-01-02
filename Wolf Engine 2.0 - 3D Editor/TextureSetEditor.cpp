@@ -1,5 +1,6 @@
 #include "TextureSetEditor.h"
 
+#include "AssetManager.h"
 #include "EditorParamsHelper.h"
 #include "ImageFileLoader.h"
 #include "TextureSetLoader.h"
@@ -21,7 +22,7 @@ TextureSetEditor::TextureSetEditor(const std::string& tab, const std::string& ca
 	m_shadingMode = static_cast<uint32_t>(shadingMode);
 }
 
-void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceReference<AssetManager>& assetManager)
 {
 	if (m_textureSetCacheInfo.textureSetIdx == 0)
 	{
@@ -36,30 +37,30 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 	{
 		if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX) || m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AnisoGGX))
 		{
-			Wolf::TextureSetLoader::TextureSetFileInfoGGX materialFileInfo{};
+			TextureSetLoader::TextureSetFileInfoGGX materialFileInfo{};
 			materialFileInfo.name = "Custom material";
-			materialFileInfo.albedo = static_cast<std::string>(m_albedoPathParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_albedoPathParam);
-			materialFileInfo.normal = static_cast<std::string>(m_normalPathParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_normalPathParam);
-			materialFileInfo.roughness = static_cast<std::string>(m_roughnessParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_roughnessParam);
-			materialFileInfo.metalness = static_cast<std::string>(m_metalnessParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_metalnessParam);
-			materialFileInfo.ao = static_cast<std::string>(m_aoParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_aoParam);
+			materialFileInfo.albedo = m_albedoPathParam;
+			materialFileInfo.normal = m_normalPathParam;
+			materialFileInfo.roughness = m_roughnessParam;
+			materialFileInfo.metalness = m_metalnessParam;
+			materialFileInfo.ao = m_aoParam;
 
 			if (m_textureSetCacheInfo.imageNames.empty() || m_textureSetCacheInfo.imageNames[0] != materialFileInfo.albedo.substr(materialFileInfo.albedo.size() - m_textureSetCacheInfo.imageNames[0].size()))
 			{
-				Wolf::TextureSetLoader::OutputLayout outputLayout{};
+				TextureSetLoader::OutputLayout outputLayout{};
 				outputLayout.albedoCompression = m_enableAlpha ? Wolf::ImageCompression::Compression::BC3 : Wolf::ImageCompression::Compression::BC1;
 				outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
 
-				Wolf::TextureSetLoader materialLoader(materialFileInfo, outputLayout, false);
+				TextureSetLoader textureSetLoader(materialFileInfo, outputLayout, true, assetManager);
 
-				materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
-				m_textureSetInfo.slicesFolders[0] = materialLoader.getOutputSlicesFolder(0);
+				m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
+				m_textureSetInfo.slicesFolders[0] = assetManager->getImageSlicesFolder(textureSetLoader.getImageAssetId(0));
 
-				materialLoader.transferImageTo(1, m_textureSetInfo.images[1]);
-				m_textureSetInfo.slicesFolders[1] = materialLoader.getOutputSlicesFolder(1);
+				m_textureSetInfo.images2[1] = assetManager->getImage(textureSetLoader.getImageAssetId(1));
+				m_textureSetInfo.slicesFolders[1] = assetManager->getImageSlicesFolder(textureSetLoader.getImageAssetId(1));
 
-				materialLoader.transferImageTo(2, m_textureSetInfo.images[2]);
-				m_textureSetInfo.slicesFolders[2] = materialLoader.getOutputSlicesFolder(2);
+				m_textureSetInfo.images2[2] = assetManager->getCombinedImage(textureSetLoader.getImageAssetId(2));
+				m_textureSetInfo.slicesFolders[2] = assetManager->getCombinedImageSlicesFolder(textureSetLoader.getImageAssetId(2));
 
 				materialGPUManager->lockTextureSets();
 				materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
@@ -70,14 +71,14 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 		}
 		else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::SixWaysLighting))
 		{
-			Wolf::TextureSetLoader::TextureSetFileInfoSixWayLighting materialFileInfo;
+			TextureSetLoader::TextureSetFileInfoSixWayLighting materialFileInfo;
 			materialFileInfo.name = "Custom material";
-			materialFileInfo.tex0 = static_cast<std::string>(m_sixWaysLightmap0).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_sixWaysLightmap0);
-			materialFileInfo.tex1 = static_cast<std::string>(m_sixWaysLightmap1).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_sixWaysLightmap1);
+			materialFileInfo.tex0 = m_sixWaysLightmap0;
+			materialFileInfo.tex1 = m_sixWaysLightmap1;
 
-			Wolf::TextureSetLoader materialLoader(materialFileInfo, false);
-			materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
-			materialLoader.transferImageTo(1, m_textureSetInfo.images[1]);
+			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
+			m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
+			m_textureSetInfo.images2[1] = assetManager->getImage(textureSetLoader.getImageAssetId(1));
 
 			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
 
@@ -85,12 +86,12 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 		}
 		else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AlphaOnly))
 		{
-			Wolf::TextureSetLoader::TextureSetFileInfoAlphaOnly materialFileInfo;
+			TextureSetLoader::TextureSetFileInfoAlphaOnly materialFileInfo;
 			materialFileInfo.name = "Custom material";
-			materialFileInfo.alphaMap = static_cast<std::string>(m_alphaPathParam).empty() ? "" : editorConfiguration->computeFullPathFromLocalPath(m_alphaPathParam);
+			materialFileInfo.alphaMap = m_alphaPathParam;
 
-			Wolf::TextureSetLoader materialLoader(materialFileInfo, false);
-			materialLoader.transferImageTo(0, m_textureSetInfo.images[0]);
+			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
+			m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
 
 			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
 

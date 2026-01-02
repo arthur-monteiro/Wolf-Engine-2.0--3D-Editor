@@ -339,22 +339,22 @@ void SurfaceCoatingComponent::PatternImageArrayItem::setResourceManager(const Wo
 
 bool SurfaceCoatingComponent::PatternImageArrayItem::hasHeightImage() const
 {
-    return m_patternImageHeightAssetId != AssetManager::NO_ASSET;
+    return m_patternImageHeightAssetId != NO_ASSET;
 }
 
 bool SurfaceCoatingComponent::PatternImageArrayItem::hasNormalImage() const
 {
-    return m_patternImageNormalAssetId != AssetManager::NO_ASSET;
+    return m_patternImageNormalAssetId != NO_ASSET;
 }
 
 bool SurfaceCoatingComponent::PatternImageArrayItem::isHeightImageLoaded() const
 {
-    return m_patternImageHeightAssetId == AssetManager::NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageHeightAssetId);
+    return m_patternImageHeightAssetId == NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageHeightAssetId);
 }
 
 bool SurfaceCoatingComponent::PatternImageArrayItem::isNormalImageLoaded() const
 {
-    return m_patternImageNormalAssetId == AssetManager::NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageNormalAssetId);
+    return m_patternImageNormalAssetId == NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageNormalAssetId);
 }
 
 Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::PatternImageArrayItem::getHeightImage()
@@ -369,14 +369,14 @@ Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::PatternImageArrayIt
 
 void SurfaceCoatingComponent::PatternImageArrayItem::removeHeightImage()
 {
-    m_patternImageHeightAssetId = AssetManager::NO_ASSET;
+    m_patternImageHeightAssetId = NO_ASSET;
 }
 
 void SurfaceCoatingComponent::PatternImageArrayItem::onPatternImageHeightChanged()
 {
     if (static_cast<std::string>(m_patternImageHeight) != "")
     {
-        m_patternImageHeightAssetId = m_resourceManager->addImage(m_patternImageHeight, false, Wolf::Format::R8G8B8A8_UNORM, false);
+        m_patternImageHeightAssetId = m_resourceManager->addImage(m_patternImageHeight, false, Wolf::Format::R8G8B8A8_UNORM, false, false);
     }
     notifySubscribers();
 }
@@ -385,7 +385,7 @@ void SurfaceCoatingComponent::PatternImageArrayItem::onPatternImageNormalChanged
 {
     if (static_cast<std::string>(m_patternImageNormal) != "")
     {
-        m_patternImageNormalAssetId = m_resourceManager->addImage(m_patternImageNormal, false, Wolf::Format::R8G8B8A8_UNORM, false);
+        m_patternImageNormalAssetId = m_resourceManager->addImage(m_patternImageNormal, false, Wolf::Format::BC5_UNORM_BLOCK, false, false);
     }
     notifySubscribers();
 }

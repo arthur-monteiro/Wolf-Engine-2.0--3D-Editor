@@ -7,13 +7,15 @@
 #include "EditorTypes.h"
 #include "Notifier.h"
 
+class AssetManager;
+
 class TextureSetEditor : public Notifier
 {
 public:
 	TextureSetEditor(const std::string& tab, const std::string& category, Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode shadingMode);
 	TextureSetEditor(const TextureSetEditor&) = delete;
 
-	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration);
+	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceReference<AssetManager>& assetManager);
 
 	void activateParams();
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount, bool isLast);

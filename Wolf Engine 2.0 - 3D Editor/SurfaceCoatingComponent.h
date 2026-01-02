@@ -73,10 +73,10 @@ private:
         Wolf::NullableResourceNonOwner<AssetManager> m_resourceManager;
 
         void onPatternImageHeightChanged();
-        AssetManager::AssetId m_patternImageHeightAssetId = AssetManager::NO_ASSET;
+        AssetId m_patternImageHeightAssetId = NO_ASSET;
         EditorParamString m_patternImageHeight = EditorParamString("Pattern image height", TAB, "Pattern image", [this]() { onPatternImageHeightChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
         void onPatternImageNormalChanged();
-        AssetManager::AssetId m_patternImageNormalAssetId = AssetManager::NO_ASSET;
+        AssetId m_patternImageNormalAssetId = NO_ASSET;
         EditorParamString m_patternImageNormal = EditorParamString("Pattern image normal", TAB, "Pattern image", [this]() { onPatternImageNormalChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 
         std::array<EditorParamInterface*, 2> m_editorParams =

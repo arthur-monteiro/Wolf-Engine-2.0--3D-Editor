@@ -12,8 +12,11 @@
 
 #include "EditorConfiguration.h"
 #include "Entity.h"
+#include "ImageFormatter.h"
 #include "MeshAssetEditor.h"
 #include "RenderMeshList.h"
+
+AssetManager* AssetManager::ms_assetManager;
 
 AssetManager::AssetManager(const std::function<void(const std::string&, const std::string&, AssetId)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, 
                                  const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
@@ -23,6 +26,7 @@ AssetManager::AssetManager(const std::function<void(const std::string&, const st
       m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
 	  m_renderingPipeline(renderingPipeline)
 {
+	ms_assetManager = this;
 }
 
 void AssetManager::updateBeforeFrame()
@@ -47,7 +51,7 @@ void AssetManager::updateBeforeFrame()
 		}
 		if (m_currentAssetNeedRebuildFlags & static_cast<uint32_t>(MeshAssetEditor::ResourceEditorNotificationFlagBits::PHYSICS))
 		{
-			Wolf::ModelData* modelData = m_meshes[m_currentAssetInEdition]->getModelData();
+			ModelData* modelData = m_meshes[m_currentAssetInEdition]->getModelData();
 			modelData->m_physicsShapes.clear();
 
 			for (uint32_t i = 0; i < m_meshAssetEditor->getPhysicsMeshCount(); ++i)
@@ -152,7 +156,7 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 
 		if (!meshResourceEditor)
 		{
-			Wolf::ModelData* modelData = getModelData(assetId);
+			ModelData* modelData = getModelData(assetId);
 			uint32_t firstMaterialIdx = getFirstMaterialIdx(assetId);
 			Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> bottomLevelAccelerationStructure = getBLAS(assetId, 0, 0);
 			meshResourceEditor = new MeshAssetEditor(m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData, firstMaterialIdx, bottomLevelAccelerationStructure, m_isolateMeshCallback,
@@ -192,7 +196,12 @@ bool AssetManager::isImage(AssetId assetId)
 	return assetId == NO_ASSET || (assetId >= IMAGE_ASSET_IDX_OFFSET && assetId < IMAGE_ASSET_IDX_OFFSET + MAX_IMAGE_ASSET_COUNT);
 }
 
-AssetManager::AssetId AssetManager::addModel(const std::string& loadingPath)
+bool AssetManager::isCombinedImage(AssetId assetId)
+{
+	return assetId == NO_ASSET || (assetId >= COMBINED_IMAGE_ASSET_IDX_OFFSET && assetId < COMBINED_IMAGE_ASSET_IDX_OFFSET + MAX_COMBINED_IMAGE_ASSET_COUNT);
+}
+
+AssetId AssetManager::addModel(const std::string& loadingPath)
 {
 	if (m_meshes.size() >= MAX_ASSET_RESOURCE_COUNT)
 	{
@@ -276,7 +285,7 @@ bool AssetManager::isModelLoaded(AssetId modelResourceId) const
 	return modelResourceId != NO_ASSET && m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->isLoaded();
 }
 
-Wolf::ModelData* AssetManager::getModelData(AssetId modelResourceId) const
+ModelData* AssetManager::getModelData(AssetId modelResourceId) const
 {
 	if (!isMesh(modelResourceId))
 	{
@@ -316,41 +325,52 @@ uint32_t AssetManager::getFirstTextureSetIdx(AssetId modelResourceId) const
 	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getFirstTextureSetIdx();
 }
 
-void AssetManager::subscribeToResource(AssetId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const
+void AssetManager::subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const
 {
-	if (!isMesh(resourceId))
+	if (!isMesh(assetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	m_meshes[resourceId - MESH_ASSET_IDX_OFFSET]->subscribe(instance, callback);
+	m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->subscribe(instance, callback);
 }
 
-AssetManager::AssetId AssetManager::addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU)
+AssetId AssetManager::addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized, bool forceImmediateLoading)
 {
 	if (m_images.size() >= MAX_IMAGE_ASSET_COUNT)
 	{
-		Wolf::Debug::sendError("Maximum image resources reached");
+		Wolf::Debug::sendCriticalError("Maximum image resources reached");
 		return NO_ASSET;
 	}
+
+	AssetId assetId = NO_ASSET;
 
 	for (uint32_t i = 0; i < m_images.size(); ++i)
 	{
 		if (m_images[i]->getLoadingPath() == loadingPath)
 		{
-			return i + IMAGE_ASSET_IDX_OFFSET;
+			assetId = i + IMAGE_ASSET_IDX_OFFSET;
+			break;
 		}
 	}
 
-	AssetId resourceId = static_cast<uint32_t>(m_images.size()) + IMAGE_ASSET_IDX_OFFSET;
+	if (assetId == NO_ASSET)
+	{
+		assetId = static_cast<uint32_t>(m_images.size()) + IMAGE_ASSET_IDX_OFFSET;
 
-	std::string iconFullPath = computeIconPath(loadingPath, 0);
-	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+		std::string iconFullPath = computeIconPath(loadingPath, 0);
+		bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
 
-	m_images.emplace_back(new Image(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, loadMips, format, keepDataOnCPU));
-	m_addResourceToUICallback(m_images.back()->computeName(), iconFullPath, resourceId);
+		m_images.emplace_back(new Image(loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, loadMips, format, keepDataOnCPU, canBeVirtualized));
+		m_addResourceToUICallback(m_images.back()->computeName(), iconFullPath, assetId);
+	}
 
-	return resourceId;
+	if (forceImmediateLoading)
+	{
+		m_images[assetId - IMAGE_ASSET_IDX_OFFSET]->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
+	}
+
+	return assetId;
 }
 
 bool AssetManager::isImageLoaded(AssetId imageResourceId) const
@@ -363,33 +383,109 @@ bool AssetManager::isImageLoaded(AssetId imageResourceId) const
 	return m_images[imageResourceId - IMAGE_ASSET_IDX_OFFSET]->isLoaded();
 }
 
-Wolf::ResourceNonOwner<Wolf::Image> AssetManager::getImage(AssetId imageResourceId) const
+Wolf::ResourceNonOwner<Wolf::Image> AssetManager::getImage(AssetId imageAssetId) const
 {
-	if (!isImage(imageResourceId))
+	if (!isImage(imageAssetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not an image");
+		Wolf::Debug::sendError("AssetId is not an image");
 	}
 
-	return m_images[imageResourceId - IMAGE_ASSET_IDX_OFFSET]->getImage();
+	return m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->getImage();
 }
 
-const uint8_t* AssetManager::getImageData(AssetId imageResourceId) const
+const uint8_t* AssetManager::getImageData(AssetId imageAssetId) const
 {
-	if (!isImage(imageResourceId))
+	if (!isImage(imageAssetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not an image");
+		Wolf::Debug::sendError("AssetId is not an image");
 	}
 
-	return m_images[imageResourceId - IMAGE_ASSET_IDX_OFFSET]->getFirstMipData();
+	return m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->getFirstMipData();
 }
 
-void AssetManager::deleteImageData(AssetId imageResourceId) const
+void AssetManager::deleteImageData(AssetId imageAssetId) const
 {
-	if (!isImage(imageResourceId))
+	if (!isImage(imageAssetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not an image");
+		Wolf::Debug::sendError("AssetId is not an image");
 	}
-	m_images[imageResourceId - IMAGE_ASSET_IDX_OFFSET]->deleteImageData();
+
+	m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->deleteImageData();
+}
+
+std::string AssetManager::getImageSlicesFolder(AssetId imageAssetId) const
+{
+	if (!isImage(imageAssetId))
+	{
+		Wolf::Debug::sendError("AssetId is not an image");
+	}
+
+	return m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->getSlicesFolder();
+}
+
+AssetId AssetManager::addCombinedImage(const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool loadMips, Wolf::Format format,
+                                       bool keepDataOnCPU, bool canBeVirtualized, bool forceImmediateLoading)
+{
+	if (m_combinedImages.size() >= MAX_COMBINED_IMAGE_ASSET_COUNT)
+	{
+		Wolf::Debug::sendCriticalError("Maximum combined image resources reached");
+		return NO_ASSET;
+	}
+
+	std::string combinedLoadingPath = extractFolderFromFullPath(loadingPathR) + "combined_";
+	combinedLoadingPath += extractFilenameFromPath(loadingPathR) + "_";
+	combinedLoadingPath += extractFilenameFromPath(loadingPathG) + "_";
+	combinedLoadingPath += extractFilenameFromPath(loadingPathB) + "_";
+	combinedLoadingPath += extractFilenameFromPath(loadingPathA);
+
+	AssetId assetId = NO_ASSET;
+
+	for (uint32_t i = 0; i < m_combinedImages.size(); ++i)
+	{
+		if (m_combinedImages[i]->getLoadingPath() == combinedLoadingPath)
+		{
+			assetId = i + COMBINED_IMAGE_ASSET_IDX_OFFSET;
+			break;
+		}
+	}
+
+	if (assetId == NO_ASSET)
+	{
+		assetId = static_cast<uint32_t>(m_combinedImages.size()) + COMBINED_IMAGE_ASSET_IDX_OFFSET;
+
+		std::string iconFullPath = computeIconPath(combinedLoadingPath, 0);
+		bool iconFileExists = formatIconPath(combinedLoadingPath, iconFullPath);
+
+		m_combinedImages.emplace_back(new CombinedImage(combinedLoadingPath, loadingPathR, loadingPathG, loadingPathB, loadingPathA, !iconFileExists, assetId, m_updateResourceInUICallback, loadMips, format, keepDataOnCPU, canBeVirtualized));
+		m_addResourceToUICallback(m_combinedImages.back()->computeName(), iconFullPath, assetId);
+	}
+
+	if (forceImmediateLoading)
+	{
+		m_combinedImages[assetId - COMBINED_IMAGE_ASSET_IDX_OFFSET]->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
+	}
+
+	return assetId;
+}
+
+Wolf::ResourceNonOwner<Wolf::Image> AssetManager::getCombinedImage(AssetId combinedImageAssetId) const
+{
+	if (!isCombinedImage(combinedImageAssetId))
+	{
+		Wolf::Debug::sendError("AssetId is not a combined image");
+	}
+
+	return m_combinedImages[combinedImageAssetId - COMBINED_IMAGE_ASSET_IDX_OFFSET]->getImage();
+}
+
+std::string AssetManager::getCombinedImageSlicesFolder(AssetId combinedImageAssetId) const
+{
+	if (!isCombinedImage(combinedImageAssetId))
+	{
+		Wolf::Debug::sendError("AssetId is not a combined image");
+	}
+
+	return m_combinedImages[combinedImageAssetId - COMBINED_IMAGE_ASSET_IDX_OFFSET]->getSlicesFolder();
 }
 
 std::string AssetManager::computeModelFullIdentifier(const std::string& loadingPath)
@@ -493,12 +589,22 @@ void AssetManager::requestThumbnailReload(AssetId resourceId, const glm::mat4& v
 	}
 }
 
-AssetManager::ResourceInterface::ResourceInterface(std::string loadingPath, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback) 
-	: m_loadingPath(std::move(loadingPath)), m_resourceId(resourceId), m_updateAssetInUICallback(updateResourceInUICallback)
+std::string AssetManager::extractFilenameFromPath(const std::string& fullPath)
+{
+	return fullPath.substr(fullPath.find_last_of("/\\") + 1);
+}
+
+std::string AssetManager::extractFolderFromFullPath(const std::string& fullPath)
+{
+	return fullPath.substr(0, fullPath.find_last_of("/\\"));
+}
+
+AssetManager::AssetInterface::AssetInterface(std::string loadingPath, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback)
+	: m_loadingPath(std::move(loadingPath)), m_assetId(assetId), m_updateAssetInUICallback(updateResourceInUICallback)
 {
 }
 
-std::string AssetManager::ResourceInterface::computeName()
+std::string AssetManager::AssetInterface::computeName()
 {
     std::string::size_type pos = m_loadingPath.find_last_of('\\');
     if (pos != std::string::npos)
@@ -511,13 +617,13 @@ std::string AssetManager::ResourceInterface::computeName()
     }
 }
 
-void AssetManager::ResourceInterface::onChanged()
+void AssetManager::AssetInterface::onChanged()
 {
 	notifySubscribers();
 }
 
 AssetManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback)
-	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback)
+	: AssetInterface(loadingPath, resourceId, updateResourceInUICallback)
 {
 	m_modelLoadingRequested = true;
 	m_thumbnailGenerationRequested = needThumbnailsGeneration;
@@ -584,15 +690,13 @@ Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetMana
 
 void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
 {
-	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
-
 	Wolf::Timer timer(std::string(m_loadingPath) + " loading");
 
-	Wolf::ModelLoadingInfo modelLoadingInfo;
-	modelLoadingInfo.filename = fullFilePath;
-	modelLoadingInfo.mtlFolder = fullFilePath.substr(0, fullFilePath.find_last_of('\\'));
+	ModelLoadingInfo modelLoadingInfo;
+	modelLoadingInfo.filename = m_loadingPath;
+	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('\\'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
-	modelLoadingInfo.textureSetLayout = Wolf::TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
+	modelLoadingInfo.textureSetLayout = TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
 		VkBufferUsageFlags rayTracingFlags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -601,7 +705,7 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 	}
 	modelLoadingInfo.generateDefaultLODCount = 8;
 	modelLoadingInfo.generateSloppyLODCount= 16;
-	Wolf::ModelLoader::loadObject(m_modelData, modelLoadingInfo);
+	ModelLoader::loadObject(m_modelData, modelLoadingInfo, Wolf::ResourceReference<AssetManager>(ms_assetManager));
 
 	materialsGPUManager->lockMaterials();
 	materialsGPUManager->lockTextureSets();
@@ -647,7 +751,7 @@ void AssetManager::Mesh::generateThumbnail(const Wolf::ResourceNonOwner<Thumbnai
 	std::string iconPath = computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
 
 	thumbnailsGenerationPass->addRequestBeforeFrame({ &m_modelData, m_firstMaterialIdx, iconPath,
-		[this, iconPath]() { m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_resourceId); },
+		[this, iconPath]() { m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId); },
 			m_thumbnailGenerationViewMatrix });
 }
 
@@ -687,9 +791,145 @@ void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
 	m_bottomLevelAccelerationStructures[lodType][lod].reset(Wolf::BottomLevelAccelerationStructure::createBottomLevelAccelerationStructure(createInfo));
 }
 
-AssetManager::Image::Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-	bool loadMips, Wolf::Format format, bool keepDataOnCPU)
-	: ResourceInterface(loadingPath, resourceId, updateResourceInUICallback), m_thumbnailGenerationRequested(needThumbnailsGeneration), m_loadMips(loadMips), m_format(format)
+void AssetManager::ImageInterface::deleteImageData()
+{
+	m_firstMipData.clear();
+	m_dataOnCPUStatus = DataOnCPUStatus::DELETED;
+}
+
+bool AssetManager::ImageInterface::generateThumbnail(const std::string& fullFilePath, const std::string& iconPath)
+{
+	auto computeThumbnailData = [this](std::vector<Wolf::ImageCompression::RGBA8>& out, float samplingZ = 0.0f)
+	{
+		Wolf::Extent3D imageExtent = m_image->getExtent();
+
+		std::vector<Wolf::ImageCompression::RGBA8> RGBA8Pixels;
+		std::vector<Wolf::ImageCompression::RG8> RG8Pixels;
+		if (m_image->getFormat() == Wolf::Format::BC1_RGB_SRGB_BLOCK)
+		{
+			Wolf::ImageCompression::uncompressImage(Wolf::ImageCompression::Compression::BC1, m_firstMipData.data(), { imageExtent.width, imageExtent.height }, RGBA8Pixels);
+		}
+		else if (m_image->getFormat() == Wolf::Format::BC3_UNORM_BLOCK)
+		{
+			Wolf::ImageCompression::uncompressImage(Wolf::ImageCompression::Compression::BC3, m_firstMipData.data(), { imageExtent.width, imageExtent.height }, RGBA8Pixels);
+		}
+		else if (m_image->getFormat() == Wolf::Format::BC5_UNORM_BLOCK)
+		{
+			Wolf::ImageCompression::uncompressImage(Wolf::ImageCompression::Compression::BC5, m_firstMipData.data(), { imageExtent.width, imageExtent.height }, RG8Pixels);
+		}
+
+		bool hadAnErrorDuringGeneration = false;
+		for (uint32_t x = 0; x < ThumbnailsGenerationPass::OUTPUT_SIZE; ++x)
+		{
+			for (uint32_t y = 0; y < ThumbnailsGenerationPass::OUTPUT_SIZE; ++y)
+			{
+				// We don't do bilinear here... Good enough?
+				glm::vec3 samplingCoords = glm::vec3(static_cast<float>(x) / static_cast<float>(ThumbnailsGenerationPass::OUTPUT_SIZE), static_cast<float>(y) / static_cast<float>(ThumbnailsGenerationPass::OUTPUT_SIZE), samplingZ);
+				glm::ivec3 samplingIndices = glm::ivec3(samplingCoords * glm::vec3(static_cast<float>(imageExtent.width), static_cast<float>(imageExtent.height), static_cast<float>(imageExtent.depth)));
+				uint32_t samplingIndex = samplingIndices.x + samplingIndices.y * imageExtent.width + samplingIndices.z * imageExtent.width * imageExtent.height;
+
+				Wolf::ImageCompression::RGBA8& pixel = out[x + y * ThumbnailsGenerationPass::OUTPUT_SIZE];
+
+				if (m_image->getFormat() == Wolf::Format::R32G32B32A32_SFLOAT)
+				{
+					glm::vec4* pixels = reinterpret_cast<glm::vec4*>(m_firstMipData.data());
+					pixel.r = glm::min(1.0f, pixels[samplingIndex].r) * 255.0f;
+					pixel.g = glm::min(1.0f, pixels[samplingIndex].g) * 255.0f;
+					pixel.b = glm::min(1.0f, pixels[samplingIndex].b) * 255.0f;
+					pixel.a = 255.0f;
+				}
+				else if (m_image->getFormat() == Wolf::Format::R16G16B16A16_SFLOAT)
+				{
+					uint16_t* pixels = reinterpret_cast<uint16_t*>(m_firstMipData.data());
+					pixel.r = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex])) * 255.0f;
+					pixel.g = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 1])) * 255.0f;
+					pixel.b = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 2])) * 255.0f;
+					pixel.a = 255.0f;
+				}
+				else if (m_image->getFormat() == Wolf::Format::R8G8B8A8_UNORM)
+				{
+					uint8_t* pixels = m_firstMipData.data();
+					pixel.r = pixels[4 * samplingIndex];
+					pixel.g = pixels[4 * samplingIndex + 1];
+					pixel.b = pixels[4 * samplingIndex + 2];
+					pixel.a = pixels[4 * samplingIndex + 3];
+				}
+				else if (m_image->getFormat() == Wolf::Format::BC1_RGB_SRGB_BLOCK || m_image->getFormat() == Wolf::Format::BC3_UNORM_BLOCK)
+				{
+					pixel = RGBA8Pixels[samplingIndex];
+					pixel.a = 255;
+				}
+				else if (m_image->getFormat() == Wolf::Format::BC5_UNORM_BLOCK)
+				{
+					pixel.r = RG8Pixels[samplingIndex].r;
+					pixel.g = RG8Pixels[samplingIndex].g;
+					pixel.b = 0;
+					pixel.a = 255;
+				}
+				else
+				{
+					Wolf::Debug::sendMessageOnce("Image format is not supported for thumbnail generation", Wolf::Debug::Severity::WARNING, this);
+					hadAnErrorDuringGeneration = true;
+				}
+			}
+		}
+
+		return !hadAnErrorDuringGeneration;
+	};
+
+	std::string extension = fullFilePath.substr(fullFilePath.find_last_of('.') + 1);
+	bool hadAnErrorDuringGeneration = false;
+
+	if (extension == "cube")
+	{
+		GifEncoder gifEncoder;
+
+		static constexpr int quality = 30;
+		static constexpr bool useGlobalColorMap = false;
+		static constexpr int loop = 0;
+		static constexpr int preAllocSize = ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE * 3;
+
+		if (!gifEncoder.open(iconPath, ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE, quality, useGlobalColorMap, loop, preAllocSize))
+		{
+			Wolf::Debug::sendError("Error when opening gif file");
+		}
+
+		for (uint32_t z = 0; z < m_image->getExtent().depth; ++z)
+		{
+			std::vector<Wolf::ImageCompression::RGBA8> framePixels(ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE);
+			if (!computeThumbnailData(framePixels, static_cast<float>(z) / static_cast<float>(m_image->getExtent().depth)))
+			{
+				Wolf::Debug::sendMessageOnce("Error computing frame data for " + fullFilePath + " thumbnail generation", Wolf::Debug::Severity::ERROR, this);
+				hadAnErrorDuringGeneration = true;
+			}
+
+			gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, reinterpret_cast<const uint8_t*>(framePixels.data()), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
+				static_cast<uint32_t>(ThumbnailsGenerationPass::DELAY_BETWEEN_ICON_FRAMES_MS) / 10);
+		}
+
+		gifEncoder.close();
+	}
+	else
+	{
+		std::vector<Wolf::ImageCompression::RGBA8> thumbnailPixels(ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE);
+
+		if (computeThumbnailData(thumbnailPixels))
+		{
+			stbi_write_png(iconPath.c_str(), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
+				4, thumbnailPixels.data(), ThumbnailsGenerationPass::OUTPUT_SIZE * sizeof(Wolf::ImageCompression::RGBA8));
+		}
+		else
+		{
+			hadAnErrorDuringGeneration = true;
+		}
+	}
+
+	return !hadAnErrorDuringGeneration;
+}
+
+AssetManager::Image::Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+                           bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized)
+	: AssetInterface(loadingPath, assetId, updateResourceInUICallback), ImageInterface(needThumbnailsGeneration, loadMips, format, canBeVirtualized)
 {
 	m_imageLoadingRequested = true;
 	m_dataOnCPUStatus = keepDataOnCPU ? DataOnCPUStatus::NOT_LOADED_YET : DataOnCPUStatus::NEVER_KEPT;
@@ -720,170 +960,178 @@ const uint8_t* AssetManager::Image::getFirstMipData() const
 	return m_firstMipData.data();
 }
 
-void AssetManager::Image::deleteImageData()
-{
-	m_firstMipData.clear();
-	m_dataOnCPUStatus = DataOnCPUStatus::DELETED;
-}
-
 void AssetManager::Image::loadImage()
 {
-	bool isHDR = false;
-	if (m_format == Wolf::Format::R32G32B32A32_SFLOAT)
-	{
-		isHDR = true;
-	}
-
 	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
-	Wolf::ImageFileLoader imageFileLoader(fullFilePath, isHDR);
 
-	Wolf::CreateImageInfo createImageInfo;
-	createImageInfo.extent = { imageFileLoader.getWidth(), imageFileLoader.getHeight(), imageFileLoader.getDepth() };
-	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	ImageFormatter imageFormatter(fullFilePath, "", m_format, m_canBeVirtualized, m_thumbnailGenerationRequested || m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET, m_loadMips);
+	imageFormatter.transferImageTo(m_image);
+	m_slicesFolder = imageFormatter.getSlicesFolder();
 
-	Wolf::Format imageFileLoaderFormat = imageFileLoader.getFormat();
-
-	if (imageFileLoaderFormat == Wolf::Format::R8G8B8A8_UNORM && m_format == Wolf::Format::R8G8B8A8_SRGB)
+	if (m_thumbnailGenerationRequested || m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET)
 	{
-		imageFileLoaderFormat = Wolf::Format::R8G8B8A8_SRGB;
-	}
+		m_firstMipData.resize(m_image->getBPP() * m_image->getExtent().width * m_image->getExtent().height * m_image->getExtent().depth);
+		memcpy(m_firstMipData.data(), imageFormatter.getPixels(), m_firstMipData.size());
 
-	Wolf::ResourceUniqueOwner<Wolf::MipMapGenerator> mipMapGenerator;
-	uint32_t mipLevelCount = 1;
-	if (m_loadMips)
-	{
-		if (imageFileLoader.getDepth())
+		if (m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET)
 		{
-			Wolf::Debug::sendError("Load mip with 3D images is not supported yet");
+			m_dataOnCPUStatus = DataOnCPUStatus::AVAILABLE;
 		}
-
-		mipMapGenerator.reset(new Wolf::MipMapGenerator(imageFileLoader.getPixels(), { imageFileLoader.getWidth(), imageFileLoader.getHeight() }, imageFileLoaderFormat));
-		mipLevelCount = mipMapGenerator->getMipLevelCount();
-	}
-
-	createImageInfo.format = imageFileLoaderFormat;
-	createImageInfo.mipLevelCount = mipLevelCount;
-	createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
-	m_image.reset(Wolf::Image::createImage(createImageInfo));
-	m_image->copyCPUBuffer(imageFileLoader.getPixels(), Wolf::Image::SampledInFragmentShader());
-
-	if (m_loadMips)
-	{
-		for (uint32_t mipLevel = 1; mipLevel < mipMapGenerator->getMipLevelCount(); ++mipLevel)
-		{
-			m_image->copyCPUBuffer(mipMapGenerator->getMipLevel(mipLevel).data(), Wolf::Image::SampledInFragmentShader(mipLevel), mipLevel);
-		}
-	}
-
-	if (m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET)
-	{
-		m_firstMipData.resize(m_image->getBPP() * imageFileLoader.getWidth() * imageFileLoader.getHeight());
-		memcpy(m_firstMipData.data(), imageFileLoader.getPixels(), m_firstMipData.size());
-
-		m_dataOnCPUStatus = DataOnCPUStatus::AVAILABLE;
 	}
 
 	if (m_thumbnailGenerationRequested)
 	{
-		auto computeThumbnailData = [this, &imageFileLoader](std::vector<Wolf::ImageCompression::RGBA8>& out, float samplingZ = 0.0f)
+		std::string iconPath = computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+
+		if (generateThumbnail(fullFilePath, iconPath))
 		{
-			bool hadAnErrorDuringGeneration = false;
-			for (uint32_t x = 0; x < ThumbnailsGenerationPass::OUTPUT_SIZE; ++x)
-			{
-				for (uint32_t y = 0; y < ThumbnailsGenerationPass::OUTPUT_SIZE; ++y)
-				{
-					// We don't do bilinear here... Good enough?
-					glm::vec3 samplingCoords = glm::vec3(static_cast<float>(x) / static_cast<float>(ThumbnailsGenerationPass::OUTPUT_SIZE), static_cast<float>(y) / static_cast<float>(ThumbnailsGenerationPass::OUTPUT_SIZE), samplingZ);
-					glm::ivec3 samplingIndices = glm::ivec3(samplingCoords * glm::vec3(static_cast<float>(imageFileLoader.getWidth()), static_cast<float>(imageFileLoader.getHeight()), static_cast<float>(imageFileLoader.getDepth())));
-					uint32_t samplingIndex = samplingIndices.x + samplingIndices.y * imageFileLoader.getWidth() + samplingIndices.z * imageFileLoader.getWidth() * imageFileLoader.getHeight();
-
-					Wolf::ImageCompression::RGBA8& pixel = out[x + y * ThumbnailsGenerationPass::OUTPUT_SIZE];
-
-					if (imageFileLoader.getFormat() == Wolf::Format::R32G32B32A32_SFLOAT)
-					{
-						glm::vec4* pixels = reinterpret_cast<glm::vec4*>(imageFileLoader.getPixels());
-						pixel.r = glm::min(1.0f, pixels[samplingIndex].r) * 255.0f;
-						pixel.g = glm::min(1.0f, pixels[samplingIndex].g) * 255.0f;
-						pixel.b = glm::min(1.0f, pixels[samplingIndex].b) * 255.0f;
-						pixel.a = 255.0f;
-					}
-					else if (imageFileLoader.getFormat() == Wolf::Format::R16G16B16A16_SFLOAT)
-					{
-						uint16_t* pixels = reinterpret_cast<uint16_t*>(imageFileLoader.getPixels());
-						pixel.r = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex])) * 255.0f;
-						pixel.g = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 1])) * 255.0f;
-						pixel.b = glm::min(1.0f, glm::unpackHalf1x16(pixels[4 * samplingIndex + 2])) * 255.0f;
-						pixel.a = 255.0f;
-					}
-					else if (imageFileLoader.getFormat() == Wolf::Format::R8G8B8A8_UNORM)
-					{
-						uint8_t* pixels = imageFileLoader.getPixels();
-						pixel.r = pixels[4 * samplingIndex];
-						pixel.g = pixels[4 * samplingIndex + 1];
-						pixel.b = pixels[4 * samplingIndex + 2];
-						pixel.a = pixels[4 * samplingIndex + 3];
-					}
-					else
-					{
-						Wolf::Debug::sendMessageOnce("Image format is not supported for thumbnail generation", Wolf::Debug::Severity::WARNING, this);
-						hadAnErrorDuringGeneration = true;
-					}
-				}
-			}
-
-			return !hadAnErrorDuringGeneration;
-		};
-
-		std::string extension = fullFilePath.substr(fullFilePath.find_last_of('.') + 1);
-		bool hadAnErrorDuringGeneration = false;
-
-		if (extension == "cube")
-		{
-			GifEncoder gifEncoder;
-
-			static constexpr int quality = 30;
-			static constexpr bool useGlobalColorMap = false;
-			static constexpr int loop = 0;
-			static constexpr int preAllocSize = ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE * 3;
-
-			if (!gifEncoder.open(computeIconPath(m_loadingPath, m_thumbnailCountToMaintain), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE, quality, useGlobalColorMap, loop, preAllocSize))
-			{
-				Wolf::Debug::sendError("Error when opening gif file");
-			}
-
-			for (uint32_t z = 0; z < imageFileLoader.getDepth(); ++z)
-			{
-				std::vector<Wolf::ImageCompression::RGBA8> framePixels(ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE);
-				if (!computeThumbnailData(framePixels, static_cast<float>(z) / static_cast<float>(imageFileLoader.getDepth())))
-				{
-					Wolf::Debug::sendMessageOnce("Error computing frame data for " + fullFilePath + " thumbnail generation", Wolf::Debug::Severity::ERROR, this);
-					hadAnErrorDuringGeneration = true;
-				}
-
-				gifEncoder.push(GifEncoder::PIXEL_FORMAT_RGBA, reinterpret_cast<const uint8_t*>(framePixels.data()), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
-					static_cast<uint32_t>(ThumbnailsGenerationPass::DELAY_BETWEEN_ICON_FRAMES_MS) / 10);
-			}
-
-			gifEncoder.close();
-		}
-		else
-		{
-			std::vector<Wolf::ImageCompression::RGBA8> thumbnailPixels(ThumbnailsGenerationPass::OUTPUT_SIZE * ThumbnailsGenerationPass::OUTPUT_SIZE);
-
-			if (computeThumbnailData(thumbnailPixels))
-			{
-				stbi_write_png(computeIconPath(m_loadingPath, m_thumbnailCountToMaintain).c_str(), ThumbnailsGenerationPass::OUTPUT_SIZE, ThumbnailsGenerationPass::OUTPUT_SIZE,
-					4, thumbnailPixels.data(), ThumbnailsGenerationPass::OUTPUT_SIZE * sizeof(Wolf::ImageCompression::RGBA8));
-			}
-			else
-			{
-				hadAnErrorDuringGeneration = true;
-			}
+			m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
 		}
 
-		if (!hadAnErrorDuringGeneration)
+		if (m_dataOnCPUStatus != DataOnCPUStatus::AVAILABLE)
 		{
-			m_updateAssetInUICallback(computeName(), computeIconPath(m_loadingPath, m_thumbnailCountToMaintain).substr(3, computeIconPath(m_loadingPath, m_thumbnailCountToMaintain).size()), m_resourceId);
+			deleteImageData();
+		}
+	}
+}
+
+AssetManager::CombinedImage::CombinedImage(const std::string& combinedLoadingPath, const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool needThumbnailsGeneration,
+	AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized)
+ : AssetInterface(combinedLoadingPath, assetId, updateResourceInUICallback), ImageInterface(needThumbnailsGeneration, loadMips, format, canBeVirtualized)
+{
+	m_imageLoadingRequested = true;
+	m_dataOnCPUStatus = keepDataOnCPU ? DataOnCPUStatus::NOT_LOADED_YET : DataOnCPUStatus::NEVER_KEPT;
+
+	m_loadingPaths[0] = loadingPathR;
+	m_loadingPaths[1] = loadingPathG;
+	m_loadingPaths[2] = loadingPathB;
+	m_loadingPaths[3] = loadingPathA;
+
+	if (loadingPathR.empty())
+	{
+		Wolf::Debug::sendCriticalError("R component can't be empty");
+	}
+
+	if (m_format != Wolf::Format::BC3_UNORM_BLOCK)
+	{
+		Wolf::Debug::sendCriticalError("Format unsupported");
+	}
+}
+
+void AssetManager::CombinedImage::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+{
+	if (m_imageLoadingRequested)
+	{
+		loadImage();
+		if (m_thumbnailGenerationRequested)
+		{
+			// TODO
+		}
+		m_imageLoadingRequested = false;
+	}
+}
+
+bool AssetManager::CombinedImage::isLoaded() const
+{
+	return static_cast<bool>(m_image);
+}
+
+void AssetManager::CombinedImage::loadImage()
+{
+	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
+
+	std::string filenameNoExtensionR = m_loadingPaths[0].substr(m_loadingPaths[0].find_last_of("\\") + 1, m_loadingPaths[0].find_last_of("."));
+	std::string filenameNoExtensionG = m_loadingPaths[1].substr(m_loadingPaths[1].find_last_of("\\") + 1, m_loadingPaths[1].find_last_of("."));
+	std::string filenameNoExtensionB = m_loadingPaths[2].substr(m_loadingPaths[2].find_last_of("\\") + 1, m_loadingPaths[2].find_last_of("."));
+	std::string filenameNoExtensionA = m_loadingPaths[3].substr(m_loadingPaths[3].find_last_of("\\") + 1, m_loadingPaths[3].find_last_of("."));
+	std::string folder = m_loadingPaths[0].substr(0, m_loadingPaths[0].find_last_of("\\"));
+	std::string slicesFolder = g_editorConfiguration->computeFullPathFromLocalPath(folder + '\\' + filenameNoExtensionR + "_" + filenameNoExtensionG + "_" + filenameNoExtensionB + "_" + filenameNoExtensionA + "_bin" + "\\");
+
+	bool keepDataOnCPU = m_thumbnailGenerationRequested || m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET;
+
+	if (!keepDataOnCPU && ImageFormatter::isCacheAvailable(fullFilePath, slicesFolder, m_canBeVirtualized))
+	{
+		ImageFormatter imageFormatter(fullFilePath, slicesFolder, m_format, m_canBeVirtualized, false, m_loadMips);
+		imageFormatter.transferImageTo(m_image);
+		m_slicesFolder = imageFormatter.getSlicesFolder();
+		return;
+	}
+
+	std::vector<Wolf::ImageCompression::RGBA8> combinedData;
+	std::vector<std::vector<Wolf::ImageCompression::RGBA8>> combinedMipLevels;
+	Wolf::Extent3D combinedExtent = { 1, 1, 1};
+	combinedData.resize(1);
+
+	for (uint32_t channelIdx = 0; channelIdx < 4; channelIdx++)
+	{
+		if (m_loadingPaths[channelIdx].empty())
+			continue;
+
+		std::string channelFullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPaths[channelIdx]);
+
+		std::vector<Wolf::ImageCompression::RGBA8> pixels;
+		std::vector<std::vector<Wolf::ImageCompression::RGBA8>> mipLevels;
+		Wolf::Extent3D extent;
+		ImageFormatter::loadImageFile(channelFullFilePath, Wolf::Format::R8G8B8A8_UNORM, true, pixels, mipLevels, extent);
+
+		if (channelIdx == 0)
+		{
+			combinedData.resize(pixels.size());
+			combinedExtent = extent;
+		}
+		if (extent != combinedExtent)
+		{
+			Wolf::Debug::sendCriticalError("Extent of all channels must be the same");
+		}
+		for (uint32_t pixelIdx = 0; pixelIdx < pixels.size(); ++pixelIdx)
+		{
+			combinedData[pixelIdx][channelIdx] = pixels[pixelIdx][channelIdx];
+		}
+
+		if (channelIdx == 0)
+		{
+			combinedMipLevels.resize(mipLevels.size());
+		}
+		if (combinedMipLevels.size() != mipLevels.size())
+		{
+			Wolf::Debug::sendCriticalError("MipLevels of all channels must be the same");
+		}
+		for (uint32_t mipLevel = 0; mipLevel < mipLevels.size(); ++mipLevel)
+		{
+			if (channelIdx == 0)
+			{
+				combinedMipLevels[mipLevel].resize(mipLevels[mipLevel].size());
+			}
+
+			for (uint32_t pixelIdx = 0; pixelIdx < mipLevels[mipLevel].size(); ++pixelIdx)
+			{
+				combinedMipLevels[mipLevel][pixelIdx].r = mipLevels[mipLevel][pixelIdx].r;
+			}
+		}
+	}
+
+	ImageFormatter imageFormatter(combinedData, combinedMipLevels, combinedExtent, slicesFolder, fullFilePath, m_format, m_canBeVirtualized, keepDataOnCPU);
+	imageFormatter.transferImageTo(m_image);
+	m_slicesFolder = imageFormatter.getSlicesFolder();
+
+	if (keepDataOnCPU)
+	{
+		m_firstMipData.resize(m_image->getBPP() * m_image->getExtent().width * m_image->getExtent().height * m_image->getExtent().depth);
+		memcpy(m_firstMipData.data(), imageFormatter.getPixels(), m_firstMipData.size());
+	}
+
+	if (m_thumbnailGenerationRequested)
+	{
+		std::string iconPath = computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+
+		if (generateThumbnail(fullFilePath, iconPath))
+		{
+			m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+		}
+
+		if (m_dataOnCPUStatus != DataOnCPUStatus::AVAILABLE)
+		{
+			deleteImageData();
 		}
 	}
 }

@@ -28,11 +28,11 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
 
 			// IA
-			Wolf::Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
+			Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
 			InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 1);
 
 			pipelineInfo.vertexInputBindingDescriptions.resize(2);
-			Wolf::Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
+			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
 
 			// Resources
@@ -154,7 +154,7 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
 		return false;
 
-	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
+	ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
 	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { modelData->m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 	if (m_drawLOD > 0)
 	{
@@ -196,7 +196,7 @@ bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManage
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
 		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
 
-	Wolf::ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
+	ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
 	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform, firstMaterialIdx,
 		modelData->m_mesh.createNonOwnerResource() };
 
@@ -289,7 +289,7 @@ void StaticModel::requestModelLoading()
 		m_subMeshes.clear();
 
 		m_meshResourceId = m_resourceManager->addModel(std::string(m_loadingPathParam));
-		m_resourceManager->subscribeToResource(m_meshResourceId, this, [this](Flags) { notifySubscribers(); });
+		m_resourceManager->subscribeToMesh(m_meshResourceId, this, [this](Flags) { notifySubscribers(); });
 		m_isWaitingForMeshLoading = true;
 		notifySubscribers();
 	}

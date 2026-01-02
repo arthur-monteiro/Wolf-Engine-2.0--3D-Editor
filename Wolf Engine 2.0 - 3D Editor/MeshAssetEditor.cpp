@@ -9,7 +9,7 @@
 #include "MathsUtilsEditor.h"
 #include "ModelLoader.h"
 
-MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, Wolf::ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
+MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
 	const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
 : m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback), m_requestThumbnailReload(requestThumbnailReload),
@@ -37,7 +37,7 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 	lodInfo.setName("LOD 0");
 
 	uint32_t lodIdx = 1;
-	for (Wolf::ModelData::LODInfo& modelLODInfo : modelData->m_defaultLODsInfo)
+	for (ModelData::LODInfo& modelLODInfo : modelData->m_defaultLODsInfo)
 	{
 		LODInfo& editorLODInfo = m_defaultLODsInfo.emplace_back();
 		editorLODInfo.setRenderingPipeline(m_renderingPipeline);
@@ -55,7 +55,7 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 	if (!modelData->m_sloppyLODsInfo.empty())
 	{
 		uint32_t sloppyIdx = 1;
-		for (Wolf::ModelData::LODInfo& sloppyLODInfo : modelData->m_sloppyLODsInfo)
+		for (ModelData::LODInfo& sloppyLODInfo : modelData->m_sloppyLODsInfo)
 		{
 			LODInfo& editorSloppyInfo = m_sloppyLODsInfo.emplace_back();
 			editorSloppyInfo.setRenderingPipeline(m_renderingPipeline);

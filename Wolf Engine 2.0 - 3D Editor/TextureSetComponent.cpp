@@ -4,8 +4,8 @@
 #include "TextureSetLoader.h"
 
 TextureSetComponent::TextureSetComponent(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, 
-                                         const std::function<void(ComponentInterface*)>& requestReloadCallback)
-	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_requestReloadCallback(requestReloadCallback)
+                                         const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& assetManager)
+	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_requestReloadCallback(requestReloadCallback), m_assetManager(assetManager)
 {
 	m_textureSet.get().subscribe(this, [this](Flags) { });
 
@@ -55,8 +55,10 @@ void TextureSetComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCoun
 
 void TextureSetComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
+	// ReSharper disable once CppDFAConstantConditions
 	if (m_paramsLoaded)
 	{
+		// ReSharper disable once CppDFAUnreachableCode
 		if (m_changeSamplingModeRequested)
 		{
 			if (uint32_t textureSetIdx = m_textureSet.get().getTextureSetIdx(); textureSetIdx != 0)
@@ -103,7 +105,7 @@ void TextureSetComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, cons
 			}
 		}
 
-		m_textureSet.get().updateBeforeFrame(m_materialGPUManager, m_editorConfiguration);
+		m_textureSet.get().updateBeforeFrame(m_materialGPUManager, m_editorConfiguration, m_assetManager);
 	}
 }
 
@@ -120,9 +122,9 @@ TextureSetComponent::TextureSet::TextureSet() : ParameterGroupInterface(TextureS
 	m_textureSetEditor.subscribe(this, [this](Flags) { notifySubscribers(); });
 }
 
-void TextureSetComponent::TextureSet::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration)
+void TextureSetComponent::TextureSet::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceReference<AssetManager>& assetManager)
 {
-	m_textureSetEditor.updateBeforeFrame(materialGPUManager, editorConfiguration);
+	m_textureSetEditor.updateBeforeFrame(materialGPUManager, editorConfiguration, assetManager);
 }
 
 void TextureSetComponent::TextureSet::getAllParams(std::vector<EditorParamInterface*>& out) const

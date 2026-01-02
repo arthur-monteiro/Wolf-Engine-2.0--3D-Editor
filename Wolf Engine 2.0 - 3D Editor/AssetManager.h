@@ -1,10 +1,11 @@
 #pragma once
 
 #include <BottomLevelAccelerationStructure.h>
-#include <ModelLoader.h>
 
+#include "AssetId.h"
 #include "ComponentInterface.h"
 #include "MeshAssetEditor.h"
+#include "ModelLoader.h"
 #include "RenderingPipelineInterface.h"
 #include "ThumbnailsGenerationPass.h"
 
@@ -13,9 +14,6 @@ class Entity;
 class AssetManager
 {
 public:
-	using AssetId = uint32_t;
-	static constexpr AssetId NO_ASSET = -1;
-
 	AssetManager(const std::function<void(const std::string&, const std::string&, AssetId)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback);
@@ -28,20 +26,27 @@ public:
 
 	static bool isMesh(AssetId assetId);
 	static bool isImage(AssetId assetId);
+	static bool isCombinedImage(AssetId assetId);
 
 	[[nodiscard]] AssetId addModel(const std::string& loadingPath);
 	bool isModelLoaded(AssetId modelResourceId) const;
-	Wolf::ModelData* getModelData(AssetId modelResourceId) const;
+	ModelData* getModelData(AssetId modelResourceId) const;
 	Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(AssetId modelResourceId, uint32_t lod, uint32_t lodType);
 	uint32_t getFirstMaterialIdx(AssetId modelResourceId) const;
 	uint32_t getFirstTextureSetIdx(AssetId modelResourceId) const;
-	void subscribeToResource(AssetId resourceId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
+	void subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
-	[[nodiscard]] AssetId addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU);
+	[[nodiscard]] AssetId addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized, bool forceImmediateLoading = false);
 	bool isImageLoaded(AssetId imageResourceId) const;
-	Wolf::ResourceNonOwner<Wolf::Image> getImage(AssetId imageResourceId) const;
-	const uint8_t* getImageData(AssetId imageResourceId) const;
-	void deleteImageData(AssetId imageResourceId) const;
+	Wolf::ResourceNonOwner<Wolf::Image> getImage(AssetId imageAssetId) const;
+	const uint8_t* getImageData(AssetId imageAssetId) const;
+	void deleteImageData(AssetId imageAssetId) const;
+	std::string getImageSlicesFolder(AssetId imageAssetId) const;
+
+	[[nodiscard]] AssetId addCombinedImage(const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool loadMips, Wolf::Format format,
+		bool keepDataOnCPU, bool canBeVirtualized, bool forceImmediateLoading = false);
+	Wolf::ResourceNonOwner<Wolf::Image> getCombinedImage(AssetId combinedImageAssetId) const;
+	std::string getCombinedImageSlicesFolder(AssetId combinedImageAssetId) const;
 
 private:
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
@@ -51,6 +56,8 @@ private:
 	void addCurrentResourceEditionToSave();
 	void onResourceEditionChanged(Notifier::Flags flags);
 	void requestThumbnailReload(AssetId resourceId, const glm::mat4& viewMatrix);
+	static std::string extractFilenameFromPath(const std::string& fullPath);
+	static std::string extractFolderFromFullPath(const std::string& fullPath);
 
 	std::function<void(const std::string&, const std::string&, AssetId)> m_addResourceToUICallback;
 	std::function<void(const std::string&, const std::string&, AssetId)> m_updateResourceInUICallback;
@@ -60,12 +67,12 @@ private:
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
-	class ResourceInterface : public Notifier
+	class AssetInterface : public Notifier
 	{
 	public:
-		ResourceInterface(std::string loadingPath, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback);
-		ResourceInterface(const ResourceInterface&) = delete;
-		virtual ~ResourceInterface() = default;
+		AssetInterface(std::string loadingPath, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback);
+		AssetInterface(const AssetInterface&) = delete;
+		virtual ~AssetInterface() = default;
 
 		virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) = 0;
 
@@ -77,7 +84,7 @@ private:
 
 	protected:
 		std::string m_loadingPath;
-		AssetId m_resourceId = NO_ASSET;
+		AssetId m_assetId = NO_ASSET;
 		std::function<void(const std::string&, const std::string&, AssetId)> m_updateAssetInUICallback;
 
 		// Because the thumbnail file is locked by the UI, when we want to update it we need to create a new file with a new name
@@ -85,7 +92,7 @@ private:
 		uint32_t m_thumbnailCountToMaintain = 0;
 	};
 
-	class Mesh : public ResourceInterface
+	class Mesh : public AssetInterface
 	{
 	public:
 		Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback);
@@ -99,7 +106,7 @@ private:
 		void setThumbnailGenerationViewMatrix(const glm::mat4& viewMatrix) { m_thumbnailGenerationViewMatrix = viewMatrix;}
 
 		bool isLoaded() const override;
-		Wolf::ModelData* getModelData() { return &m_modelData; }
+		ModelData* getModelData() { return &m_modelData; }
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(uint32_t lod, uint32_t lodType);
 		uint32_t getFirstMaterialIdx() const { return m_firstMaterialIdx; }
 		uint32_t getFirstTextureSetIdx() const { return m_firstTextureSetIdx; }
@@ -111,7 +118,7 @@ private:
 
 		bool m_modelLoadingRequested = false;
 		bool m_thumbnailGenerationRequested = false;
-		Wolf::ModelData m_modelData;
+		ModelData m_modelData;
 		std::vector<std::vector<Wolf::ResourceUniqueOwner<Wolf::BottomLevelAccelerationStructure>>> m_bottomLevelAccelerationStructures;
 
 		uint32_t m_firstTextureSetIdx = 0;
@@ -122,32 +129,65 @@ private:
 		glm::mat4 m_thumbnailGenerationViewMatrix;
 	};
 
-	class Image : public ResourceInterface
+	class ImageInterface
 	{
 	public:
-		Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-			bool loadMips, Wolf::Format format, bool keepDataOnCPU);
+		ImageInterface() = delete;
+
+		Wolf::ResourceNonOwner<Wolf::Image> getImage() { return m_image.createNonOwnerResource(); }
+		std::string getSlicesFolder() { return m_slicesFolder; }
+
+		void deleteImageData();
+
+	protected:
+		ImageInterface(bool needThumbnailsGeneration, bool loadMips, Wolf::Format format, bool canBeVirtualized)
+			: m_thumbnailGenerationRequested(needThumbnailsGeneration), m_loadMips(loadMips), m_format(format), m_canBeVirtualized(canBeVirtualized)
+		{}
+
+		bool generateThumbnail(const std::string& fullFilePath, const std::string& iconPath);
+
+		bool m_imageLoadingRequested = false;
+		bool m_thumbnailGenerationRequested = false;
+		Wolf::ResourceUniqueOwner<Wolf::Image> m_image;
+		std::string m_slicesFolder;
+
+		bool m_loadMips;
+		Wolf::Format m_format;
+		bool m_canBeVirtualized;
+
+		enum class DataOnCPUStatus { NEVER_KEPT, NOT_LOADED_YET, AVAILABLE, DELETED } m_dataOnCPUStatus;
+		std::vector<uint8_t> m_firstMipData;
+	};
+
+	class Image : public AssetInterface, public ImageInterface
+	{
+	public:
+		Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+			bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized);
 		Image(const Image&) = delete;
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
 		bool isLoaded() const override;
 
-		Wolf::ResourceNonOwner<Wolf::Image> getImage() { return m_image.createNonOwnerResource(); }
 		const uint8_t* getFirstMipData() const;
-		void deleteImageData();
+
+	private:
+		void loadImage();
+	};
+
+	class CombinedImage : public AssetInterface, public ImageInterface
+	{
+	public:
+		CombinedImage(const std::string& combinedLoadingPath, const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+			bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized);
+
+		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
+		bool isLoaded() const override;
 
 	private:
 		void loadImage();
 
-		bool m_imageLoadingRequested = false;
-		bool m_thumbnailGenerationRequested = false;
-		Wolf::ResourceUniqueOwner<Wolf::Image> m_image;
-
-		bool m_loadMips;
-		Wolf::Format m_format;
-
-		enum class DataOnCPUStatus { NEVER_KEPT, NOT_LOADED_YET, AVAILABLE, DELETED } m_dataOnCPUStatus;
-		std::vector<uint8_t> m_firstMipData;
+		std::array<std::string, 4> m_loadingPaths;
 	};
 
 	static constexpr uint32_t MESH_ASSET_IDX_OFFSET = 0;
@@ -157,6 +197,10 @@ private:
 	static constexpr uint32_t IMAGE_ASSET_IDX_OFFSET = MESH_ASSET_IDX_OFFSET + MAX_ASSET_RESOURCE_COUNT;
 	static constexpr uint32_t MAX_IMAGE_ASSET_COUNT = 1000;
 	std::vector<Wolf::ResourceUniqueOwner<Image>> m_images;
+
+	static constexpr uint32_t COMBINED_IMAGE_ASSET_IDX_OFFSET = IMAGE_ASSET_IDX_OFFSET + MAX_IMAGE_ASSET_COUNT;
+	static constexpr uint32_t MAX_COMBINED_IMAGE_ASSET_COUNT = 1000;
+	std::vector<Wolf::ResourceUniqueOwner<CombinedImage>> m_combinedImages;
 
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
@@ -175,5 +219,7 @@ private:
 	Wolf::NullableResourceNonOwner<MeshAssetEditor> m_meshAssetEditor;
 	AssetId m_currentAssetInEdition = NO_ASSET;
 	uint32_t m_currentAssetNeedRebuildFlags = 0;
+
+	static AssetManager* ms_assetManager;
 };
 

@@ -101,6 +101,11 @@ private:
 			else
 			{
 				m_mode = Mode::FILL;
+
+				if (m_request.getResourceType() != Request::ResourceType::BUFFER)
+				{
+					Wolf::Debug::sendCriticalError("Fill request must be for a buffer");
+				}
 			}
 		}
 		InternalRequest(const InternalRequest& other) = delete;

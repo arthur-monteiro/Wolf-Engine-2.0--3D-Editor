@@ -153,7 +153,7 @@ bool SkyLight::updateCubeMap()
 			}
 		case LIGHT_TYPE_BAKED:
 			{
-				if (m_sphericalMapAssetId == AssetManager::NO_ASSET || !m_resourceManager->isImageLoaded(m_sphericalMapAssetId))
+				if (m_sphericalMapAssetId == NO_ASSET || !m_resourceManager->isImageLoaded(m_sphericalMapAssetId))
 					return false;
 
 				Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_sphericalMapAssetId);
@@ -229,7 +229,7 @@ void SkyLight::onSphericalMapChanged()
 {
 	if (static_cast<std::string>(m_sphericalMap) != "")
 	{
-		m_sphericalMapAssetId = m_resourceManager->addImage(m_sphericalMap, false, Wolf::Format::R32G32B32A32_SFLOAT, true);
+		m_sphericalMapAssetId = m_resourceManager->addImage(m_sphericalMap, false, Wolf::Format::R32G32B32A32_SFLOAT, true, false);
 		m_cubeMapUpdateRequested = true;
 	}
 }

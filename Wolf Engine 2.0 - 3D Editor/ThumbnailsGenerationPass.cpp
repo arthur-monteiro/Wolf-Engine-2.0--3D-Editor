@@ -8,12 +8,12 @@
 #include <FrameBuffer.h>
 #include <GraphicCameraInterface.h>
 #include <Image.h>
-#include <ModelLoader.h>
 #include <Pipeline.h>
 #include <RenderPass.h>
 
 #include "AnimationHelper.h"
 #include "CommonLayouts.h"
+#include "ModelLoader.h"
 
 class AnimatedModel;
 
@@ -74,12 +74,12 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 
 	// IA
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-	Wolf::Vertex3D::getAttributeDescriptions(attributeDescriptions, 0);
+	Vertex3D::getAttributeDescriptions(attributeDescriptions, 0);
 	pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
 
 	std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
 	bindingDescriptions[0] = {};
-	Wolf::Vertex3D::getBindingDescription(bindingDescriptions[0], 0);
+	Vertex3D::getBindingDescription(bindingDescriptions[0], 0);
 	pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
 
 	// Viewport
@@ -104,12 +104,12 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 
 	// IA
 	attributeDescriptions.clear();
-	Wolf::SkeletonVertex::getAttributeDescriptions(attributeDescriptions, 0);
+	SkeletonVertex::getAttributeDescriptions(attributeDescriptions, 0);
 	pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
 
 	bindingDescriptions.resize(1);
 	bindingDescriptions[0] = {};
-	Wolf::SkeletonVertex::getBindingDescription(bindingDescriptions[0], 0);
+	SkeletonVertex::getBindingDescription(bindingDescriptions[0], 0);
 	pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
 
 	// Resources
@@ -327,7 +327,7 @@ void ThumbnailsGenerationPass::addCameraForThisFrame(Wolf::CameraList& cameraLis
 	cameraList.addCameraForThisFrame(m_camera.get(), CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
 }
 
-ThumbnailsGenerationPass::Request::Request(Wolf::ModelData* modelData, uint32_t firstMaterialIdx, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix)
+ThumbnailsGenerationPass::Request::Request(ModelData* modelData, uint32_t firstMaterialIdx, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix)
 	: m_modelData(modelData), m_firstMaterialIdx(firstMaterialIdx), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback), m_viewMatrix(viewMatrix)
 {
 }

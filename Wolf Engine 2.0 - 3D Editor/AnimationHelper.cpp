@@ -6,20 +6,20 @@
 
 #include "Debug.h"
 
-void findMaxTimer(const Wolf::AnimationData::Bone* bone, float& maxTimer)
+void findMaxTimer(const AnimationData::Bone* bone, float& maxTimer)
 {
 	if (!bone->poses.empty() && bone->poses.back().time > maxTimer)
 	{
 		maxTimer = bone->poses.back().time;
 	}
 
-	for (const Wolf::AnimationData::Bone& childBone : bone->children)
+	for (const AnimationData::Bone& childBone : bone->children)
 	{
 		findMaxTimer(&childBone, maxTimer);
 	}
 }
 
-void computeBonesInfo(const Wolf::AnimationData::Bone* bone, glm::mat4 currentTransform, float time, const glm::mat4& modelTransform, std::vector<BoneInfoGPU>& outBonesInfoGPU, std::vector<BoneInfoCPU>& outBoneInfoCPU)
+void computeBonesInfo(const AnimationData::Bone* bone, glm::mat4 currentTransform, float time, const glm::mat4& modelTransform, std::vector<BoneInfoGPU>& outBonesInfoGPU, std::vector<BoneInfoCPU>& outBoneInfoCPU)
 {
 	glm::mat4 poseTransform(1.0f);
 	if (!bone->poses.empty())
@@ -57,7 +57,7 @@ void computeBonesInfo(const Wolf::AnimationData::Bone* bone, glm::mat4 currentTr
 	glm::vec3 offset = glm::inverse(bone->offsetMatrix) * glm::vec4(1.0f);
 	outBoneInfoCPU[bone->idx].position = modelTransform * (outBonesInfoGPU[bone->idx].transform * glm::vec4(offset, 1.0f));
 
-	for (const Wolf::AnimationData::Bone& childBone : bone->children)
+	for (const AnimationData::Bone& childBone : bone->children)
 	{
 		computeBonesInfo(&childBone, currentTransform, time, modelTransform, outBonesInfoGPU, outBoneInfoCPU);
 	}
