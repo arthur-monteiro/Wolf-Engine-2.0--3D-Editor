@@ -149,6 +149,7 @@ void SystemManager::run()
 	m_debugRenderingManager->clearAll();
 	m_selectedEntity.reset(nullptr);
 	m_entityContainer->clear();
+	m_assetManager->clear();
 }
 
 void SystemManager::createWolfInstance()

@@ -13,6 +13,7 @@ public:
 	[[nodiscard]] bool getEnableRayTracing() const { return m_enableRayTracing; }
 	[[nodiscard]] uint32_t getTakeScreenshotAfterFrameCount() const { return m_takeScreenshotAfterFrameCount; }
 	[[nodiscard]] bool getDisplayLogsToUI() const { return m_displayLogsToUI; }
+	[[nodiscard]] bool getDisableThumbnailGeneration() const { return m_disableThumbnailGeneration; }
 
 	void disableRayTracing() { m_enableRayTracing = false;}
 
@@ -30,6 +31,7 @@ private:
 	bool m_enableRayTracing = false;
 	uint32_t m_takeScreenshotAfterFrameCount = 0;
 	bool m_displayLogsToUI = true;
+	bool m_disableThumbnailGeneration = false;
 };
 
 extern const EditorConfiguration* g_editorConfiguration;

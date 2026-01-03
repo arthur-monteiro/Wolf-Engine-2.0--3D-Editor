@@ -130,6 +130,7 @@ void AssetManager::clear()
 {
 	m_meshes.clear();
 	m_images.clear();
+	m_combinedImages.clear();
 }
 
 Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId assetId)
@@ -626,7 +627,7 @@ AssetManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGene
 	: AssetInterface(loadingPath, resourceId, updateResourceInUICallback)
 {
 	m_modelLoadingRequested = true;
-	m_thumbnailGenerationRequested = needThumbnailsGeneration;
+	m_thumbnailGenerationRequested = !g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration;
 }
 
 void AssetManager::Mesh::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)

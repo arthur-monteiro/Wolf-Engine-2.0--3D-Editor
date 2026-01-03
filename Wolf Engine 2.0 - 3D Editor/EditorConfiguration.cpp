@@ -34,6 +34,8 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 				m_takeScreenshotAfterFrameCount = std::stoi(line);
 			else if (token == "displayLogsToUI")
 				m_displayLogsToUI = std::stoi(line);
+			else if (token == "disableThumbnailGeneration")
+				m_disableThumbnailGeneration = std::stoi(line);
 		}
 	}
 
