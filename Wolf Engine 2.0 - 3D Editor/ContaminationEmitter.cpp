@@ -24,7 +24,7 @@ ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<Renderin
 	Wolf::CreateImageInfo createImageInfo{};
 	createImageInfo.extent = { CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE };
 	createImageInfo.format = Wolf::Format::R8_UINT;
-	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
 	createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::STORAGE;
 	createImageInfo.mipLevelCount = 1;
 	m_contaminationIdsImage.reset(Wolf::Image::createImage(createImageInfo));

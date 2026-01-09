@@ -86,6 +86,11 @@ void MaterialComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const 
 	}
 }
 
+Wolf::NullableResourceNonOwner<TextureSetComponent> MaterialComponent::getTextureSetComponent(uint32_t textureSetIdx) const
+{
+	return m_textureSets[textureSetIdx].getTextureSetComponent();
+}
+
 void MaterialComponent::onShadingModeChanged()
 {
 	m_shadingModeChanged = true;
@@ -123,16 +128,9 @@ bool MaterialComponent::TextureSet::hasDefaultName() const
 
 uint32_t MaterialComponent::TextureSet::getTextureSetIdx() const
 {
-	if (m_textureSetEntity)
+	if (m_textureSetComponent)
 	{
-		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
-		{
-			return textureSetComponent->getTextureSetIdx();
-		}
-		else
-		{
-			Wolf::Debug::sendError("Entity should contain a texture set component");
-		}
+		return m_textureSetComponent->getTextureSetIdx();
 	}
 
 	return NO_TEXTURE_SET_IDX;
@@ -142,15 +140,22 @@ void MaterialComponent::TextureSet::onTextureSetEntityChanged()
 {
 	if (static_cast<std::string>(m_textureSetEntityParam).empty())
 	{
-		m_textureSetEntity.reset(nullptr);
+		m_textureSetComponent.release();
 	}
 	else
 	{
-		m_textureSetEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_textureSetEntityParam)));
-
-		if (const Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = (*m_textureSetEntity)->getComponent<TextureSetComponent>())
+		Wolf::ResourceNonOwner<Entity> entity = m_getEntityFromLoadingPathCallback(m_textureSetEntityParam);
+		m_textureSetComponent = entity->getComponent<TextureSetComponent>();
+		if (m_textureSetComponent)
 		{
-			textureSetComponent->subscribe(this, [this](Flags) { notifySubscribers(); });
+			if (entity->isSubscribed(this))
+				entity->unsubscribe(this);
+
+			m_textureSetComponent->subscribe(this, [this](Flags) { notifySubscribers(); });
+		}
+		else if (!entity->isSubscribed(this))
+		{
+			entity->subscribe(this, [this](Flags) { onTextureSetEntityChanged(); });
 		}
 	}
 

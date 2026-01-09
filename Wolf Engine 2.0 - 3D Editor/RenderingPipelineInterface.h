@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ResourceNonOwner.h>
+#include <Structs.h>
 
 class CustomSceneRenderPass;
 class CascadedShadowMapsPass;
@@ -11,6 +12,7 @@ class ContaminationUpdatePass;
 class ForwardPass;
 class ParticleUpdatePass;
 class SkyBoxManager;
+class SurfaceCoatingDataPreparationPass;
 class ThumbnailsGenerationPass;
 class UpdateGPUBuffersPass;
 class VoxelGlobalIlluminationPass;
@@ -24,6 +26,7 @@ public:
 	virtual Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() = 0;
 	virtual Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() = 0;
 	virtual Wolf::ResourceNonOwner<CustomSceneRenderPass> getCustomRenderPass() = 0;
+	virtual Wolf::ResourceNonOwner<SurfaceCoatingDataPreparationPass> getSurfaceCoatingDataPreparationPass() = 0;
 	virtual Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() = 0;
 	virtual Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() = 0;
 	virtual Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() = 0;
@@ -33,5 +36,6 @@ public:
 	virtual Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() = 0;
 	virtual Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() = 0;
 	virtual Wolf::ResourceNonOwner<ForwardPass> getForwardPass() = 0;
+	virtual Wolf::Viewport getRenderViewport() const = 0;
 };
 

@@ -36,7 +36,7 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.vertexInputBindingDescriptions.resize(1);
 		DebugVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
-		pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		pipelineInfo.topology = Wolf::PrimitiveTopology::LINE_LIST;
 
 		// Resources
 		pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
@@ -45,7 +45,7 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
 		// Dynamic states
-		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+		pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
 		m_linesPipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
 		const uint32_t pipelineIdx = m_linesPipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
@@ -161,7 +161,7 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.vertexInputBindingDescriptions.resize(1);
 		DebugVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
-		pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+		pipelineInfo.cullModeFlags = Wolf::CullModeFlagBits::NONE;
 
 		// Resources
 		pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
@@ -170,7 +170,7 @@ DebugRenderingManager::DebugRenderingManager()
 		pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
 		// Dynamic states
-		pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+		pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
 		m_rectanglesPipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
 		const uint32_t pipelineIdx = m_rectanglesPipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
@@ -369,9 +369,9 @@ void DebugRenderingManager::PerSpherePipeline::init(Wolf::PolygonMode polygonMod
 	DebugVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
 	pipelineInfo.polygonMode = polygonMode;
-	pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+	pipelineInfo.topology = Wolf::PrimitiveTopology::PATCH_LIST;
 	pipelineInfo.patchControlPoint = 4;
-	pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+	pipelineInfo.cullModeFlags = Wolf::CullModeFlagBits::NONE;
 
 	// Resources
 	pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
@@ -380,7 +380,7 @@ void DebugRenderingManager::PerSpherePipeline::init(Wolf::PolygonMode polygonMod
 	pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
 	// Dynamic states
-	pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+	pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
 	m_pipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
 	const uint32_t pipelineIdx = m_pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);

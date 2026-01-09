@@ -367,10 +367,10 @@ void VoxelGlobalIlluminationPass::initializeDebugPipelineSet()
     // Color Blend
     pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
-    pipelineInfo.cullMode = VK_CULL_MODE_NONE;
+    pipelineInfo.cullModeFlags = Wolf::CullModeFlagBits::NONE;
 
     // Dynamic states
-    pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+    pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
     m_debugPipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH);
 

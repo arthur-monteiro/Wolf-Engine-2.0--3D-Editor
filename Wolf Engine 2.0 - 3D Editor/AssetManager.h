@@ -4,6 +4,7 @@
 
 #include "AssetId.h"
 #include "ComponentInterface.h"
+#include "EditorConfiguration.h"
 #include "MeshAssetEditor.h"
 #include "ModelLoader.h"
 #include "RenderingPipelineInterface.h"
@@ -141,7 +142,7 @@ private:
 
 	protected:
 		ImageInterface(bool needThumbnailsGeneration, bool loadMips, Wolf::Format format, bool canBeVirtualized)
-			: m_thumbnailGenerationRequested(needThumbnailsGeneration), m_loadMips(loadMips), m_format(format), m_canBeVirtualized(canBeVirtualized)
+			: m_thumbnailGenerationRequested(!g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration), m_loadMips(loadMips), m_format(format), m_canBeVirtualized(canBeVirtualized)
 		{}
 
 		bool generateThumbnail(const std::string& fullFilePath, const std::string& iconPath);

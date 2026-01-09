@@ -8,7 +8,6 @@
 #include "CustomSceneRenderPass.h"
 #include "EditorModelInterface.h"
 #include "EditorTypes.h"
-#include "EditorTypes.h"
 
 class SurfaceCoatingComponent : public EditorModelInterface
 {
@@ -38,13 +37,22 @@ public:
     Wolf::BoundingSphere getBoundingSphere() const override;
     std::string getTypeString() override { return "surfaceCoating"; }
 
+    [[nodiscard]] Wolf::ResourceNonOwner<Wolf::Image> getDepthImage();
+    [[nodiscard]] Wolf::ResourceNonOwner<Wolf::Image> getPatchBoundsImage();
+    [[nodiscard]] Wolf::ResourceNonOwner<Wolf::Sampler> getSampler();
+    [[nodiscard]] glm::mat4 getDepthViewProj() const;
+    [[nodiscard]] glm::mat4 computeTransform();
+
 private:
+    Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
     Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customRenderPass;
     Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
     std::function<void(ComponentInterface*)> m_requestReloadCallback;
     std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
     inline static const std::string TAB = "Surface coating";
+
+    glm::vec4 computeCornerPos(uint32_t cornerIdx, glm::uvec2 gridCoords);
 
     void onCustomRenderResolutionChanged();
     EditorParamUInt m_customRenderResolution = EditorParamUInt("Custom render images resolution", TAB, "Geometry", 16, 4096, [this]() { onCustomRenderResolutionChanged(); });
@@ -59,36 +67,45 @@ private:
         bool hasDefaultName() const override;
 
         void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager);
+        void setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 
         [[nodiscard]] bool hasHeightImage() const;
-        [[nodiscard]] bool hasNormalImage() const;
         [[nodiscard]] bool isHeightImageLoaded() const;
-        [[nodiscard]] bool isNormalImageLoaded() const;
         [[nodiscard]] Wolf::ResourceNonOwner<Wolf::Image> getHeightImage();
-        [[nodiscard]] Wolf::ResourceNonOwner<Wolf::Image> getNormalImage();
         void removeHeightImage();
+        uint32_t getMaterialIdx() const { return m_materialIdx; }
+        glm::vec2 getPatternScale() const { return m_patternScale; }
 
     private:
         inline static const std::string DEFAULT_NAME = "New pattern image";
         Wolf::NullableResourceNonOwner<AssetManager> m_resourceManager;
+        std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
         void onPatternImageHeightChanged();
         AssetId m_patternImageHeightAssetId = NO_ASSET;
         EditorParamString m_patternImageHeight = EditorParamString("Pattern image height", TAB, "Pattern image", [this]() { onPatternImageHeightChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
-        void onPatternImageNormalChanged();
-        AssetId m_patternImageNormalAssetId = NO_ASSET;
-        EditorParamString m_patternImageNormal = EditorParamString("Pattern image normal", TAB, "Pattern image", [this]() { onPatternImageNormalChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 
-        std::array<EditorParamInterface*, 2> m_editorParams =
+        void onMaterialEntityChanged();
+        EditorParamString m_materialEntityParam = EditorParamString("Material entity", TAB, "Pattern image", [this]() { onMaterialEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
+
+        EditorParamVector2 m_patternScale = EditorParamVector2("Pattern scale", TAB, "Pattern image", 0.01f, 8.0f);
+
+        std::array<EditorParamInterface*, 3> m_editorParams =
         {
             &m_patternImageHeight,
-            &m_patternImageNormal
+            &m_materialEntityParam,
+            &m_patternScale
         };
+
+        Wolf::NullableResourceNonOwner<Entity> m_materialEntity;
+        void updateMaterialInfo();
+        uint32_t m_materialIdx = 0;
     };
     static constexpr uint32_t MAX_PATTERNS = 4;
     void onPatternImageAdded();
     void onPatternImageChanged(uint32_t idx);
     EditorParamArray<PatternImageArrayItem> m_patternImages = EditorParamArray<PatternImageArrayItem>("Pattern images", TAB, "Geometry", MAX_PATTERNS, [this] { onPatternImageAdded(); });
+
     EditorParamFloat m_geometryVerticalOffset = EditorParamFloat("Vertical offset", TAB, "Geometry", -1.0f, 1.0f);
     EditorParamFloat m_globalThickness = EditorParamFloat("Global thickness", TAB, "Geometry", 0.0f, 1.0f);
 
@@ -97,10 +114,9 @@ private:
     EditorParamVector3 m_rangeAABBMin = EditorParamVector3("AABB min", TAB, "Range", -50.0f, 50.0f, [this]() { onRangeChanged(); });
     EditorParamVector3 m_rangeAABBMax = EditorParamVector3("AABB max", TAB, "Range", -50.0f, 50.0f, [this]() { onRangeChanged(); });
 
-    void onMaterialEntityChanged();
-    EditorParamString m_materialEntityParam = EditorParamString("Material entity", TAB, "Visual", [this]() { onMaterialEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
-
-    EditorParamBool m_enableAABBDebug = EditorParamBool("Enable AABB debug", TAB, "Debug");
+    EditorParamBool m_enableGlobalAABBDebug = EditorParamBool("Enable global AABB debug", TAB, "Debug");
+    void onEnablePatchAABBDebug();
+    EditorParamBool m_enablePatchAABBDebug = EditorParamBool("Enable patch AABB debug", TAB, "Debug", [this]() { onEnablePatchAABBDebug(); });
 
     std::array<EditorParamInterface*, 8> m_editorParams =
     {
@@ -112,9 +128,8 @@ private:
         &m_rangeAABBMin,
         &m_rangeAABBMax,
 
-        &m_materialEntityParam,
-
-        &m_enableAABBDebug
+        &m_enableGlobalAABBDebug,
+        &m_enablePatchAABBDebug
     };
 
     // Graphic resources
@@ -130,11 +145,15 @@ private:
     Wolf::ResourceUniqueOwner<Wolf::Image> m_normalImage;
     Wolf::ResourceUniqueOwner<Wolf::Sampler> m_sampler;
 
+    void createSurfaceCoatingSpecificImages();
+    Wolf::ResourceUniqueOwner<Wolf::Image> m_patchBoundsImage;
+    bool m_patchBoundsDebugDataRebuildRequested = false;
+    std::array<Wolf::AABB, 32 * 32> m_patchBoundsAABBs;
+
     std::vector<uint32_t> m_patternsImageUpdateRequested;
     std::mutex m_patternsImageUpdateRequestedLock;
     void patternImagesSanityChecks();
     Wolf::ResourceNonOwner<Wolf::Image> getPatternHeightImage(uint32_t imageIdx);
-    Wolf::ResourceNonOwner<Wolf::Image> getPatternNormalImage(uint32_t imageIdx);
     void createDefaultPatternImage();
     Wolf::ResourceUniqueOwner<Wolf::Image> m_defaultPatternHeightImage;
 
@@ -144,6 +163,8 @@ private:
     void createDepthCamera();
     bool m_depthCameraCreationRequested = false;
     Wolf::ResourceUniqueOwner<Wolf::OrthographicCamera> m_depthCamera;
+    float m_depthScale;
+    float m_depthOffset;
 
     struct UniformBufferData
     {
@@ -155,8 +176,16 @@ private:
         float globalThickness;
 
         uint32_t patternImageCount;
-        uint32_t materialIdx;
-        glm::vec2 padding;
+        uint32_t viewportWidth;
+        uint32_t viewportHeight;
+        float depthScale;
+
+        uint32_t materialIndices[4];
+
+        glm::vec2 patternScales[4];
+
+        float depthOffset;
+        glm::vec3 padding;
     };
     Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_uniformBuffer;
 
@@ -165,8 +194,4 @@ private:
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
     void createOrUpdateDescriptorSet();
     void updatePatternInBindless(uint32_t patternIdx);
-
-    Wolf::NullableResourceNonOwner<Entity> m_materialEntity;
-    void updateMaterialIdx();
-    uint32_t m_materialIdx = 0;
 };

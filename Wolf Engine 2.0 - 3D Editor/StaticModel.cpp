@@ -42,7 +42,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
 			// Dynamic states
-			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+			pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH);
 
@@ -65,7 +65,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.customMask = AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO | AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 
 			// Dynamic states
-			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+			pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 			pipelineInfo.enableDepthWrite = false;
 			pipelineInfo.depthCompareOp = Wolf::CompareOp::EQUAL;
 

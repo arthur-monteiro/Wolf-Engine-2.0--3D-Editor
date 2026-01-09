@@ -357,7 +357,7 @@ void ParticleEmitter::createDepthCollisionImage()
 	createImageInfo.extent = { m_collisionDepthTextureSize, m_collisionDepthTextureSize, 1 };
 	createImageInfo.format = Wolf::Format::D32_SFLOAT;
 	createImageInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | Wolf::ImageUsageFlagBits::SAMPLED;
-	createImageInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+	createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::DEPTH;
 	createImageInfo.mipLevelCount = 1;
 	m_depthCollisionImage.reset(Wolf::Image::createImage(createImageInfo));
 }

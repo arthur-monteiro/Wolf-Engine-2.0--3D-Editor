@@ -65,7 +65,7 @@ Wolf::Attachment ParticleSeparateRenderPass::setupColorAttachment(const Wolf::In
 	depthImageCreateInfo.extent.height = context.swapChainHeight;
 	depthImageCreateInfo.extent.depth = 1;
 	depthImageCreateInfo.mipLevelCount = 1;
-	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	depthImageCreateInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT;
 	m_outputImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
 

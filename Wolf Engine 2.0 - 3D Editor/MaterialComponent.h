@@ -4,6 +4,7 @@
 #include "EditorTypesTemplated.h"
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
+#include "TextureSetComponent.h"
 
 class MaterialComponent : public ComponentInterface
 {
@@ -26,6 +27,9 @@ public:
 
 	static constexpr uint32_t DEFAULT_MATERIAL_IDX = 0;
 	uint32_t getMaterialIdx() const { return m_materialIdx; }
+
+	uint32_t getTextureSetCount() const { return m_textureSets.size(); }
+	Wolf::NullableResourceNonOwner<TextureSetComponent> getTextureSetComponent(uint32_t textureSetIdx) const;
 
 private:
 	inline static const std::string TAB = "Material";
@@ -54,6 +58,7 @@ private:
 		static constexpr uint32_t NO_TEXTURE_SET_IDX = -1;
 		uint32_t getTextureSetIdx() const;
 		float getStrength() const { return m_strength; }
+		Wolf::NullableResourceNonOwner<TextureSetComponent> getTextureSetComponent() const { return m_textureSetComponent; }
 
 	private:
 		inline static const std::string DEFAULT_NAME = "New texture set";
@@ -68,7 +73,7 @@ private:
 			&m_strength
 		};
 
-		std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_textureSetEntity;
+		Wolf::NullableResourceNonOwner<TextureSetComponent> m_textureSetComponent;
 	};
 
 	static constexpr uint32_t MAX_TEXTURE_SETS = 16;

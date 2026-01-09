@@ -7,15 +7,15 @@
 #include <ResourceUniqueOwner.h>
 #include <ShaderParser.h>
 
-#include "CustomSceneRenderPass.h"
 #include "ParticleEmitter.h"
+#include "ShadowMaskPassCascadedShadowMapping.h"
 
 class ParticleUpdatePass : public Wolf::CommandRecordBase
 {
 public:
 	static constexpr uint32_t NOISE_POINT_COUNT = 262144;
 
-	ParticleUpdatePass(const Wolf::ResourceNonOwner<CustomSceneRenderPass>& customDepthPass);
+	ParticleUpdatePass(const Wolf::ResourceNonOwner<ShadowMaskPassCascadedShadowMapping>& shadowMaskPassCascadedShadowMapping);
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -37,7 +37,7 @@ public:
 	uint32_t registerDepthTexture(const Wolf::ResourceNonOwner<Wolf::Image>& depthImage);
 
 private:
-	Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customDepthPass;
+	Wolf::ResourceNonOwner<ShadowMaskPassCascadedShadowMapping> m_shadowMaskPassCascadedShadowMapping;
 
 	void createPipeline();
 	void createNoiseBuffer();

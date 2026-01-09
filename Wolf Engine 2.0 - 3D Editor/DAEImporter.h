@@ -8,6 +8,7 @@
 #include <glm/gtx/hash.hpp>
 
 #include <GraphicAPIManager.h>
+#include <VertexInputs.h>
 
 struct ModelLoadingInfo;
 struct ModelData;
@@ -22,46 +23,46 @@ struct SkeletonVertex
 	glm::ivec4 bonesIds;
 	glm::vec4 bonesWeights;
 
-	static void getBindingDescription(VkVertexInputBindingDescription& bindingDescription, uint32_t binding)
+	static void getBindingDescription(Wolf::VertexInputBindingDescription& bindingDescription, uint32_t binding)
 	{
 		bindingDescription.binding = binding;
 		bindingDescription.stride = sizeof(SkeletonVertex);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		bindingDescription.inputRate = Wolf::VertexInputRate::VERTEX;
 	}
 
-	static void getAttributeDescriptions(std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
+	static void getAttributeDescriptions(std::vector<Wolf::VertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
 	{
 		const uint32_t attributeDescriptionCountBefore = static_cast<uint32_t>(attributeDescriptions.size());
 		attributeDescriptions.resize(attributeDescriptionCountBefore + 6);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 0].location = 0;
-		attributeDescriptions[attributeDescriptionCountBefore + 0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[attributeDescriptionCountBefore + 0].format = Wolf::Format::R32G32B32_SFLOAT;
 		attributeDescriptions[attributeDescriptionCountBefore + 0].offset = offsetof(SkeletonVertex, pos);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 1].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 1].location = 1;
-		attributeDescriptions[attributeDescriptionCountBefore + 1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[attributeDescriptionCountBefore + 1].format = Wolf::Format::R32G32B32_SFLOAT;
 		attributeDescriptions[attributeDescriptionCountBefore + 1].offset = offsetof(SkeletonVertex, normal);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 2].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 2].location = 2;
-		attributeDescriptions[attributeDescriptionCountBefore + 2].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[attributeDescriptionCountBefore + 2].format = Wolf::Format::R32G32B32_SFLOAT;
 		attributeDescriptions[attributeDescriptionCountBefore + 2].offset = offsetof(SkeletonVertex, tangent);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 3].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 3].location = 3;
-		attributeDescriptions[attributeDescriptionCountBefore + 3].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[attributeDescriptionCountBefore + 3].format = Wolf::Format::R32G32_SFLOAT;
 		attributeDescriptions[attributeDescriptionCountBefore + 3].offset = offsetof(SkeletonVertex, texCoords);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 4].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 4].location = 4;
-		attributeDescriptions[attributeDescriptionCountBefore + 4].format = VK_FORMAT_R32G32B32A32_SINT;
+		attributeDescriptions[attributeDescriptionCountBefore + 4].format = Wolf::Format::R32G32B32A32_SINT;
 		attributeDescriptions[attributeDescriptionCountBefore + 4].offset = offsetof(SkeletonVertex, bonesIds);
 
 		attributeDescriptions[attributeDescriptionCountBefore + 5].binding = binding;
 		attributeDescriptions[attributeDescriptionCountBefore + 5].location = 5;
-		attributeDescriptions[attributeDescriptionCountBefore + 5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		attributeDescriptions[attributeDescriptionCountBefore + 5].format = Wolf::Format::R32G32B32A32_SFLOAT;
 		attributeDescriptions[attributeDescriptionCountBefore + 5].offset = offsetof(SkeletonVertex, bonesWeights);
 	}
 

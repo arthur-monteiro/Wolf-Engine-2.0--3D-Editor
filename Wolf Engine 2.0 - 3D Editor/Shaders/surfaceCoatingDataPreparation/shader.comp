@@ -1,0 +1,84 @@
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_samplerless_texture_functions : require
+
+layout (binding = 0, set = 0) uniform texture2D depthImage;
+layout (binding = 1, set = 0) uniform sampler depthSampler;
+layout (binding = 2, set = 0, std140) uniform readonly UniformBuffer
+{
+    mat4 transform;
+
+    mat4 depthViewProjMatrix;
+
+    vec2 depthImageSize;
+    vec2 padding;
+} ub;
+layout (binding = 3, set = 0, rg16f) uniform image2D outputImage;
+
+const int GRID_SIZE = 32;
+
+vec4 computeCornerPos(uint cornerIdx, uvec2 gridCoords)
+{
+    vec2 offsets[4] = vec2[]
+    (
+        vec2(0.0, 0.0), vec2(1.0, 0.0), 
+        vec2(0.0, 1.0), vec2(1.0, 1.0)
+    );
+
+    vec2 uv = (vec2(float(gridCoords.x), float(gridCoords.y)) + offsets[cornerIdx]) / float(GRID_SIZE);
+    vec3 localPos = vec3(uv.x - 0.5, 0.0, uv.y - 0.5);
+    return ub.transform * vec4(localPos, 1.0);
+}
+
+const mat4 biasMat = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 );
+
+const uint LOCAL_SIZE = 16;
+layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
+void main()
+{
+    uvec2 gridCoords = uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+
+    vec4 minWorldPos = computeCornerPos(0, gridCoords);
+    vec4 minClipPos = biasMat * ub.depthViewProjMatrix * minWorldPos;
+    minClipPos.xyz = minClipPos.xyz / minClipPos.w;
+
+    vec4 maxWorldPos = computeCornerPos(3, gridCoords);
+    vec4 maxClipPos = biasMat * ub.depthViewProjMatrix * maxWorldPos;
+    maxClipPos.xyz = maxClipPos.xyz / maxClipPos.w;
+
+    vec2 lowerMinClip;
+    vec2 upperMaxClip;
+
+    lowerMinClip.x = min(minClipPos.x, maxClipPos.x);
+    lowerMinClip.y = min(minClipPos.y, maxClipPos.y);
+    
+    upperMaxClip.x = max(minClipPos.x, maxClipPos.x);
+    upperMaxClip.y = max(minClipPos.y, maxClipPos.y);
+
+    vec2 pixelCount = (upperMaxClip.xy - lowerMinClip.xy) * ub.depthImageSize;
+
+    float minDepth = 1.0;
+    float maxDepth = 0.0;
+    for (uint i = 0; i < uint(pixelCount.x); i++)
+    {
+        for (uint j = 0; j < uint(pixelCount.y); ++j)
+        {
+            vec2 projCoords = lowerMinClip + vec2(i, j) / float(ub.depthImageSize);
+            float depth = texture(sampler2D(depthImage, depthSampler), projCoords.xy).r;
+
+            if (depth > maxDepth)
+            {
+                maxDepth = depth;
+            }
+            if (depth < minDepth)
+            {
+                minDepth = depth;
+            }
+        }
+    }
+
+    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(minDepth, maxDepth, 0, 0));
+}

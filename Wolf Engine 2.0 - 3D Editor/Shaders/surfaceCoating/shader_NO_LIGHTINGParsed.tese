@@ -23,6 +23,8 @@ layout(binding = 0, set = 0) uniform UniformBufferCamera
 	float far;
 	uint  frameIndex;
 	uint  extentWidth;
+
+	vec4 frustumPlanes[6]; // left, right, bottom, top, near, far
 } ubCamera;
 
 mat4 getViewMatrix()
@@ -84,6 +86,11 @@ uint getScreenWidth()
 {
 	return ubCamera.extentWidth;
 }
+
+vec4 getFrustumPlane(uint idx)
+{
+	return ubCamera.frustumPlanes[idx];
+}
 #extension GL_EXT_nonuniform_qualifier : enable
 
 layout(quads, equal_spacing, ccw) in;
@@ -93,6 +100,7 @@ layout(location = 1) in vec2 inGridUVs[];
 
 layout(location = 0) flat out uint outEntityId;
 layout(location = 1) out vec3 outNormal;
+layout(location = 2) out vec4 outMaterialWeights;
 
 #include "resources.glsl"
 
@@ -105,6 +113,28 @@ const mat4 biasMat = mat4(
 float rand(vec2 co)
 {
     return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+vec4 computeWeights(float u, float v, uint indices[4]) 
+{
+    float basis[4];
+    basis[0] = (1.0 - u) * (1.0 - v);
+    basis[1] = u * (1.0 - v);
+    basis[2] = (1.0 - u) * v;
+    basis[3] = u * v;
+
+    vec4 finalWeights = vec4(0.0);
+    
+    for(int i = 0; i < 4; i++) 
+    {
+        uint targetIdx = indices[i];
+        if (targetIdx == 0) finalWeights.x += basis[i];
+        else if (targetIdx == 1) finalWeights.y += basis[i];
+        else if (targetIdx == 2) finalWeights.z += basis[i];
+        else if (targetIdx == 3) finalWeights.w += basis[i];
+    }
+    
+    return finalWeights;
 }
 
 void main() 
@@ -146,36 +176,21 @@ void main()
     patternIdces[3] = (imageLoad(patternIdxImage, patternIdxPixelICoord + ivec2(1, 1)).r * ub.patternImageCount) / (MAX_PATTERN_IMAGES + 1); // Top-Right
 
     float patternHeights[4];
-    vec3 patternNormals[4];
     for (uint i = 0; i < 4; ++i)
     {
-        patternHeights[i] = texture(sampler2D(patternTextures[nonuniformEXT(patternIdces[i] * 2)], depthSampler), worldPos.xz * 0.5).r;
-        patternNormals[i] = texture(sampler2D(patternTextures[nonuniformEXT(patternIdces[i] * 2 + 1)], depthSampler), worldPos.xz * 0.5).xyz;
-        patternNormals[i].xy = patternNormals[i].xy * 2.0 - vec2(1.0);
-        patternNormals[i].z = sqrt(1.0f - patternNormals[i].x * patternNormals[i].x - patternNormals[i].y * patternNormals[i].y);
+        patternHeights[i] = texture(sampler2D(patternTextures[nonuniformEXT(patternIdces[i])], depthSampler), worldPos.xz * getPatternScale(0)).r; // TODO: we should get pattern scale with right index
     }
 
     float patternHeight1 = mix(patternHeights[0], patternHeights[1], patternIdxLerpCoeffs.x);
     float patternHeight2 = mix(patternHeights[2], patternHeights[3], patternIdxLerpCoeffs.x);
     float patternHeight = mix(patternHeight1, patternHeight2, patternIdxLerpCoeffs.y);
 
-    vec3 patternNormal1 = mix(patternNormals[0], patternNormals[1], patternIdxLerpCoeffs.x);
-    vec3 patternNormal2 = mix(patternNormals[2], patternNormals[3], patternIdxLerpCoeffs.x);
-    vec3 patternNormal = mix(patternNormal1, patternNormal2, patternIdxLerpCoeffs.y);
-    patternNormal.xy *= vec2(ub.globalThickness);
-    patternNormal = normalize(patternNormal);
-
     worldPos.y += patternHeight * ub.globalThickness;
-
-    vec3 n = normal;
-    vec3 t = vec3(1, 0, 0);
-    vec3 b = normalize(cross(t, n));
-    mat3 TBN = transpose(mat3(t, b, n));
-    normal = patternNormal * TBN;
 
     // Output data
     gl_Position = vec4(worldPos.xyz, 1.0f);
 
     outEntityId = inEntityId[0];
     outNormal = normal;
+    outMaterialWeights = computeWeights(patternIdxLerpCoeffs.x, patternIdxLerpCoeffs.y, patternIdces);
 }

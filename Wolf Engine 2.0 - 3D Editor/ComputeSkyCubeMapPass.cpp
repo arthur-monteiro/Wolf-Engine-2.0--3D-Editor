@@ -207,11 +207,11 @@ void ComputeSkyCubeMapPass::createComputeFromSphericalMapPipeline()
     pipelineCreateInfo.shaderCreateInfos[1].stage =Wolf:: FRAGMENT;
 
     // IA
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+    std::vector<Wolf::VertexInputAttributeDescription> attributeDescriptions;
     SkyBoxManager::VertexOnlyPosition::getAttributeDescriptions(attributeDescriptions, 0);
     pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
 
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+    std::vector<Wolf::VertexInputBindingDescription> bindingDescriptions(1);
     bindingDescriptions[0] = {};
     SkyBoxManager::VertexOnlyPosition::getBindingDescription(bindingDescriptions[0], 0);
     pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
@@ -224,7 +224,7 @@ void ComputeSkyCubeMapPass::createComputeFromSphericalMapPipeline()
     pipelineCreateInfo.blendModes = blendModes;
 
     // Rasterization
-    pipelineCreateInfo.cullMode = VK_CULL_MODE_NONE;
+    pipelineCreateInfo.cullModeFlags = Wolf::CullModeFlagBits::NONE;
 
     // Depth testing
     pipelineCreateInfo.enableDepthTesting = false;

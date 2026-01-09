@@ -67,18 +67,30 @@ In tessellation evaluation shader, vertices are ajusted to the geometry height u
   <img src="./Screenshots/snowySponza/snow_to_geometry_normal.png" width="380"/>
 </p>
 
-Then to create some little dunes, 4 patterns images generated with perlin noise are applyed on top of the vertices. Modifying height and normals.
+Then to create some little dunes, 4 displacement images are applied on top of the vertices. Modifying height and normals. \
+Using multiple patterns is useful to break tiling. From left to right: 1 pattern is used, then 2, ...
 
 <p align="center">
-  <img src="./Screenshots/snowySponza/snow_with_patterns_albedo.png" width="350"/>
+  <img src="./Screenshots/snowySponza/1_pattern_albedo.png" width="160"/>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="./Screenshots/snowySponza/snow_with_patterns_normal.png" width="380"/>
+  <img src="./Screenshots/snowySponza/2_patterns_albedo.png" width="160"/>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/snowySponza/3_patterns_albedo.png" width="160"/>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/snowySponza/4_patterns_albedo.png" width="160"/>
 </p>
 
 Patterns to sample are chosen using a randomly generated map:
 
 <p align="center">
   <img src="./Screenshots/snowySponza/pattern_idx_map.png"  width="1080"/>
+</p>
+
+To adapt tessellation level and discard out of frustum patches, and separated pass computes the min and max depth for all the patches:
+<p align="center">
+  <img src="./Screenshots/snowySponza/patch_bounds_image.png" width="300"/>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/snowySponza/patch_bounds_debug.png" width="420"/>
 </p>
 
 Global snow height and offset can be controlled with editor parameters:

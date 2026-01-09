@@ -37,6 +37,7 @@ public:
 	void submit(const Wolf::SubmitContext& context) override;
 
 	Wolf::Image& getOutput() { return *m_outputImage; }
+	Wolf::Viewport getRenderViewport() const { return m_editorParams->getRenderViewport(); }
 
 	void setShadowMaskPass(const Wolf::ResourceNonOwner<ShadowMaskPassInterface>& shadowMaskPassInterface, Wolf::GraphicAPIManager* graphicApiManager);
 	void setEnableTrilinearVoxelGI(bool value) { m_enableTrilinearVoxelGI = value; }

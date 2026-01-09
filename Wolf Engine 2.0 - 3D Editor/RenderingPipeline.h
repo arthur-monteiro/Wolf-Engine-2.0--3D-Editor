@@ -20,6 +20,7 @@
 #include "RayTracedWorldManager.h"
 #include "RenderingPipelineInterface.h"
 #include "ShadowMaskPassCascadedShadowMapping.h"
+#include "SurfaceCoatingDataPreparationPass.h"
 #include "ThumbnailsGenerationPass.h"
 #include "UpdateGPUBuffersPass.h"
 #include "UpdateRayTracedWorldPass.h"
@@ -45,6 +46,7 @@ public:
 	Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() override;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> getContaminationUpdatePass() override;
 	Wolf::ResourceNonOwner<CustomSceneRenderPass> getCustomRenderPass() override;
+	Wolf::ResourceNonOwner<SurfaceCoatingDataPreparationPass> getSurfaceCoatingDataPreparationPass() override;
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() override;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
@@ -54,6 +56,7 @@ public:
 	Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() override;
 	Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() override;
 	Wolf::ResourceNonOwner<ForwardPass> getForwardPass() override;
+	Wolf::Viewport getRenderViewport() const override;
 	void requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const;
 
 private:
@@ -62,7 +65,8 @@ private:
 	Wolf::ResourceUniqueOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
 	Wolf::ResourceUniqueOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceUniqueOwner<ComputeVertexDataPass> m_computeVertexDataPass;
-	Wolf::ResourceUniqueOwner<CustomSceneRenderPass> m_customDepthPass;
+	Wolf::ResourceUniqueOwner<CustomSceneRenderPass> m_customRenderPass;
+	Wolf::ResourceUniqueOwner<SurfaceCoatingDataPreparationPass> m_surfaceCoatingDataPreparationPass;
 	Wolf::ResourceUniqueOwner<PreDepthPass> m_preDepthPass;
 	Wolf::ResourceUniqueOwner<CascadedShadowMapsPass> m_cascadedShadowMapsPass;
 	Wolf::ResourceUniqueOwner<ShadowMaskPassCascadedShadowMapping> m_shadowMaskPassCascadedShadowMapping;

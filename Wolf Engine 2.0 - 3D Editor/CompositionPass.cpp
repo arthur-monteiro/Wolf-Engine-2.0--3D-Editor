@@ -16,7 +16,7 @@ CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::Resourc
 
 void CompositionPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false /* isTransient */));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false));
     createSemaphores(context, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, true);
 
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::STORAGE_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE, 0, 1); // forward result
@@ -165,7 +165,9 @@ void CompositionPass::record(const Wolf::RecordContext& context)
 
 void CompositionPass::submit(const Wolf::SubmitContext& context)
 {
-    std::vector<const Wolf::Semaphore*> waitSemaphores{ context.swapChainImageAvailableSemaphore, context.userInterfaceImageAvailableSemaphore, m_forwardPass->getSemaphore(context.swapChainImageIndex) };
+    std::vector<const Wolf::Semaphore*> waitSemaphores{ context.swapChainImageAvailableSemaphore, m_forwardPass->getSemaphore(context.swapChainImageIndex) };
+    if (context.userInterfaceImageAvailableSemaphore)
+        waitSemaphores.push_back(context.userInterfaceImageAvailableSemaphore);
 
     const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
     m_commandBuffer->submit(waitSemaphores, signalSemaphores, m_finalPassFrameIdx == Wolf::g_runtimeContext->getCurrentCPUFrameNumber() ? context.frameFence : nullptr);

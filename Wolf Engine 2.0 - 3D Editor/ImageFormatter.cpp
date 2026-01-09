@@ -357,7 +357,7 @@ void ImageFormatter::createImageFromData(Wolf::Extent3D extent, Wolf::Format for
 {
 	Wolf::CreateImageInfo createImageInfo;
 	createImageInfo.extent = extent;
-	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
 	createImageInfo.format = format;
 	createImageInfo.mipLevelCount = static_cast<uint32_t>(mipLevels.size()) + 1;
 	createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;

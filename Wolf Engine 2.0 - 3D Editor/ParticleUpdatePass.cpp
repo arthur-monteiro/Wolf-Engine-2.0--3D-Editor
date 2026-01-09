@@ -8,7 +8,7 @@
 #include "Pipeline.h"
 #include "UpdateGPUBuffersPass.h"
 
-ParticleUpdatePass::ParticleUpdatePass(const Wolf::ResourceNonOwner<CustomSceneRenderPass>& customDepthPass) : m_customDepthPass(customDepthPass)
+ParticleUpdatePass::ParticleUpdatePass(const Wolf::ResourceNonOwner<ShadowMaskPassCascadedShadowMapping>& shadowMaskPassCascadedShadowMapping) : m_shadowMaskPassCascadedShadowMapping(shadowMaskPassCascadedShadowMapping)
 {
 }
 
@@ -42,7 +42,7 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	imageCreateInfo.format = Wolf::Format::D32_SFLOAT;
 	imageCreateInfo.usage = Wolf::ImageUsageFlagBits::SAMPLED;
 	imageCreateInfo.extent = { 1, 1, 1 };
-	imageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+	imageCreateInfo.aspectFlags = Wolf::ImageAspectFlagBits::DEPTH;
 	imageCreateInfo.mipLevelCount = 1;
 	m_defaultDepthImage.reset(Wolf::Image::createImage(imageCreateInfo));
 
@@ -96,10 +96,7 @@ void ParticleUpdatePass::submit(const Wolf::SubmitContext& context)
 		return;
 
 	std::vector<const Wolf::Semaphore*> waitSemaphores;
-	if (m_customDepthPass->commandsRecordedThisFrame())
-	{
-		waitSemaphores.push_back(m_customDepthPass->getSemaphore(context.swapChainImageIndex));
-	}
+	waitSemaphores.push_back(m_shadowMaskPassCascadedShadowMapping->getSemaphore());
 
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);

@@ -54,11 +54,11 @@ void DrawRectInterface::createPipeline(const Wolf::RenderPass* renderPass)
     pipelineCreateInfo.shaderCreateInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
     // IA
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+    std::vector<Wolf::VertexInputAttributeDescription> attributeDescriptions;
     Vertex2DTextured::getAttributeDescriptions(attributeDescriptions, 0);
     pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
 
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+    std::vector<Wolf::VertexInputBindingDescription> bindingDescriptions(1);
     bindingDescriptions[0] = {};
     Vertex2DTextured::getBindingDescription(bindingDescriptions[0], 0);
     pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
@@ -73,7 +73,7 @@ void DrawRectInterface::createPipeline(const Wolf::RenderPass* renderPass)
     pipelineCreateInfo.descriptorSetLayouts = { m_drawRectDescriptorSetLayout.createConstNonOwnerResource() };
 
     // Dynamic state
-    pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+    pipelineCreateInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
     // Color Blend
     pipelineCreateInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };

@@ -190,14 +190,20 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 void ForwardPass::submit(const Wolf::SubmitContext& context)
 {
 	std::vector<const Wolf::Semaphore*> waitSemaphores{ };
+	bool needPreDepthPassSemaphore = true;
+
 	if (m_contaminationUpdatePass->wasEnabledThisFrame())
 		waitSemaphores.push_back(m_contaminationUpdatePass->getSemaphore(context.swapChainImageIndex));
 	if (m_particlesUpdatePass->getParticleCount() > 0)
+	{
 		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore(context.swapChainImageIndex));
-	if (m_shadowMaskPass->wasEnabledThisFrame())
+		needPreDepthPassSemaphore = false;
+	}
+	else if (m_shadowMaskPass->wasEnabledThisFrame()) // note: particles update pass wait for shadow mask
+	{
 		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
-	else
-		waitSemaphores.push_back(m_preDepthPass->getSemaphore(context.swapChainImageIndex));
+		needPreDepthPassSemaphore = false;
+	}
 	if (m_rayTracedWorldDebugPass && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
 		waitSemaphores.push_back(m_rayTracedWorldDebugPass->getSemaphore(context.swapChainImageIndex));
 	if (m_pathTracingPass && m_pathTracingPass->wasEnabledThisFrame())
@@ -206,6 +212,9 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 		waitSemaphores.push_back({ m_computeSkyCubeMapPass->getSemaphore(context.swapChainImageIndex) });
 	if (m_globalIrradiancePass->wasEnabledThisFrame())
 		waitSemaphores.push_back(m_globalIrradiancePass->getSemaphore());
+
+	if (needPreDepthPassSemaphore)
+		waitSemaphores.push_back(m_preDepthPass->getSemaphore(context.swapChainImageIndex));
 
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, VK_NULL_HANDLE);
@@ -290,7 +299,7 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.extent = { m_renderWidth, m_renderHeight };
 
 		// Rasterization
-		pipelineCreateInfo.cullMode = VK_CULL_MODE_NONE;
+		pipelineCreateInfo.cullModeFlags = Wolf::CullModeFlagBits::NONE;
 
 		// Resources
 		pipelineCreateInfo.descriptorSetLayouts = 
@@ -315,7 +324,7 @@ void ForwardPass::createPipelines()
 		pipelineCreateInfo.enableDepthWrite = false;
 
 		// Dynamic state
-		pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+		pipelineCreateInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
 		m_particlesPipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 	}

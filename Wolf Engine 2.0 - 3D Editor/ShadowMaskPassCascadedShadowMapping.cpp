@@ -201,7 +201,7 @@ void ShadowMaskPassCascadedShadowMapping::createOutputImages(uint32_t width, uin
 	createImageInfo.extent = { width, height, 1 };
 	createImageInfo.format = Wolf::Format::R16_SFLOAT;
 	createImageInfo.mipLevelCount = 1;
-	createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
 	createImageInfo.usage = Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::SAMPLED;
 	m_outputMask.reset(Wolf::Image::createImage(createImageInfo));
 	m_outputMask->setImageLayout({ VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });

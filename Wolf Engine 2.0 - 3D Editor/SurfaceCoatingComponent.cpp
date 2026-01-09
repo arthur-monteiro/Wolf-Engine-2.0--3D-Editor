@@ -1,19 +1,20 @@
 #include "SurfaceCoatingComponent.h"
-#include "SurfaceCoatingComponent.h"
+
+#include <random>
 
 #include <Pipeline.h>
-#include <random>
 
 #include "CommonLayouts.h"
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
 #include "MaterialComponent.h"
+#include "SurfaceCoatingDataPreparationPass.h"
 
 SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
                                                  std::function<void(ComponentInterface*)> requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
-: m_customRenderPass(renderingPipeline->getCustomRenderPass()), m_resourceManager(resourceManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+: m_renderingPipeline(renderingPipeline), m_customRenderPass(renderingPipeline->getCustomRenderPass()), m_resourceManager(resourceManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
-    Wolf::ShaderStageFlags resourcesAccessibility = Wolf::ShaderStageFlagBits::TESSELLATION_EVALUATION | Wolf::ShaderStageFlagBits::GEOMETRY;
+    Wolf::ShaderStageFlags resourcesAccessibility = Wolf::ShaderStageFlagBits::TESSELLATION_CONTROL | Wolf::ShaderStageFlagBits::TESSELLATION_EVALUATION | Wolf::ShaderStageFlagBits::GEOMETRY;
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, resourcesAccessibility, 0, 1); // Depth texture
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, resourcesAccessibility, 1, 1); // Normal texture
     m_descriptorSetLayoutGenerator.addSampler(resourcesAccessibility, 2); // Sampler
@@ -21,6 +22,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, resourcesAccessibility, 4, MAX_PATTERNS * 2,
         VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT); // Pattern images
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::STORAGE_IMAGE, resourcesAccessibility, 5, 1); // Pattern index image
+    m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::STORAGE_IMAGE, resourcesAccessibility, 6, 1); // Min / max depth image
     m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT));
 
     m_sampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1, VK_FILTER_LINEAR));
@@ -28,6 +30,8 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 
     createDefaultPatternImage();
     createPatternIdxImage();
+
+    createSurfaceCoatingSpecificImages();
 
     m_customRenderResolution = 2048;
     createCustomRenderImages();
@@ -51,6 +55,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 
             pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/surfaceCoating/shader.tesc";
             pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::TESSELLATION_CONTROL;
+            pipelineInfo.shaderInfos[1].conditionBlocksToInclude.emplace_back("NO_LIGHTING");
 
             pipelineInfo.shaderInfos[2].shaderFilename = "Shaders/surfaceCoating/shader.tese";
             pipelineInfo.shaderInfos[2].stage = Wolf::ShaderStageFlagBits::TESSELLATION_EVALUATION;
@@ -66,7 +71,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 			pipelineInfo.vertexInputBindingDescriptions.resize(1);
 			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
 
-            pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+            pipelineInfo.topology = Wolf::PrimitiveTopology::PATCH_LIST;
 
             pipelineInfo.patchControlPoint = 4;
 
@@ -77,7 +82,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 			pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
 
 			// Dynamic states
-			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+			pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH);
 
@@ -90,10 +95,11 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 			pipelineInfo.depthBiasSlopeFactor = 0.0f;
 
 			/* Forward */
+            pipelineInfo.shaderInfos[1].conditionBlocksToInclude.clear();
             pipelineInfo.shaderInfos[2].conditionBlocksToInclude.clear();
             pipelineInfo.shaderInfos[3].conditionBlocksToInclude.clear();
 			pipelineInfo.shaderInfos.resize(5);
-			pipelineInfo.shaderInfos[4].shaderFilename = "Shaders/defaultPipeline/shader.frag";
+			pipelineInfo.shaderInfos[4].shaderFilename = "Shaders/surfaceCoating/shader.frag";
 			pipelineInfo.shaderInfos[4].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 			// Resources
@@ -102,7 +108,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 			pipelineInfo.customMask = AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO | AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 
 			// Dynamic states
-			pipelineInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+			pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 			pipelineInfo.enableDepthWrite = false;
 			pipelineInfo.depthCompareOp = Wolf::CompareOp::EQUAL;
 
@@ -112,6 +118,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 			pipelineInfo.bindlessDescriptorSlot = -1;
 			pipelineInfo.lightDescriptorSlot = -1;
             pipelineInfo.customMask = 0;
+            pipelineInfo.shaderInfos[1].conditionBlocksToInclude.emplace_back("NO_LIGHTING");
             pipelineInfo.shaderInfos[2].conditionBlocksToInclude.emplace_back("NO_LIGHTING");
             pipelineInfo.shaderInfos[3].conditionBlocksToInclude.emplace_back("NO_LIGHTING");
 			pipelineInfo.shaderInfos[4].shaderFilename = "Shaders/surfaceCoating/outputIds.frag";
@@ -139,6 +146,8 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 
     // Tessellation (quads)
     m_mesh.reset(new Wolf::NoVertexMesh(31 * 31 * 4));
+
+    m_renderingPipeline->getSurfaceCoatingDataPreparationPass()->registerComponent(this);
 }
 
 SurfaceCoatingComponent::~SurfaceCoatingComponent() = default;
@@ -173,11 +182,13 @@ void SurfaceCoatingComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, 
         if (isCustomRenderRequestRunning)
         {
             m_customRenderPass->pauseRequestBeforeFrame(m_registeredCustomRenderId);
+            m_renderingPipeline->getSurfaceCoatingDataPreparationPass()->unregisterComponent(this);
         }
         else
         {
             createCustomRenderImages();
             m_customRenderImagesCreationRequested = false;
+            m_renderingPipeline->getSurfaceCoatingDataPreparationPass()->registerComponent(this);
 
             if (m_registeredCustomRenderId != CustomSceneRenderPass::NO_REQUEST_ID)
             {
@@ -226,14 +237,42 @@ void SurfaceCoatingComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, 
     for (int32_t i = static_cast<int32_t>(m_patternsImageUpdateRequested.size()) - 1; i >= 0; i--)
     {
         uint32_t patternImageIdx = m_patternsImageUpdateRequested[i];
-        if ((!m_patternImages[patternImageIdx].hasHeightImage() || m_patternImages[patternImageIdx].isHeightImageLoaded()) &&
-            (!m_patternImages[patternImageIdx].hasNormalImage() || m_patternImages[patternImageIdx].isNormalImageLoaded()))
+        if (!m_patternImages[patternImageIdx].hasHeightImage() || m_patternImages[patternImageIdx].isHeightImageLoaded())
         {
             updatePatternInBindless(patternImageIdx);
             m_patternsImageUpdateRequested.erase(m_patternsImageUpdateRequested.begin() + i);
         }
     }
     m_patternsImageUpdateRequestedLock.unlock();
+
+    if (m_patchBoundsDebugDataRebuildRequested)
+    {
+        std::vector<uint8_t> patchBoundsDebugData;
+        m_patchBoundsImage->exportToBuffer(patchBoundsDebugData);
+
+        short* patchBoundsData = reinterpret_cast<short*>(patchBoundsDebugData.data());
+        for (uint32_t i = 0; i < 32; i++)
+        {
+            for (uint32_t j = 0; j < 32; j++)
+            {
+                uint32_t dataIdx = i + j * 32;
+
+                short min16bit = patchBoundsData[dataIdx * 2 + 1];
+                float minFloat = (1.0f - glm::detail::toFloat32(min16bit)) * m_depthScale + m_depthOffset + m_geometryVerticalOffset;
+
+                short max16bit = patchBoundsData[dataIdx * 2];
+                float maxFloat = (1.0f - glm::detail::toFloat32(max16bit)) * m_depthScale + m_depthOffset + m_geometryVerticalOffset + m_globalThickness;
+
+                glm::vec4 minPos = computeCornerPos(0, glm::uvec2(i, j));
+                glm::vec4 maxPos = computeCornerPos(3, glm::uvec2(i, j));
+                Wolf::AABB aabb(glm::vec3(minPos.x, minFloat, minPos.z), glm::vec3(maxPos.x, maxFloat, maxPos.z));
+
+                m_patchBoundsAABBs[dataIdx] = aabb;
+            }
+        }
+
+        m_patchBoundsDebugDataRebuildRequested = false;
+    }
 
     UniformBufferData ubData{};
     ubData.viewProjectionMatrix = m_depthCamera->getProjectionMatrix() * m_depthCamera->getViewMatrix();
@@ -244,16 +283,36 @@ void SurfaceCoatingComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, 
     ubData.verticalOffset = m_geometryVerticalOffset;
     ubData.globalThickness = m_globalThickness;
     ubData.patternImageCount = m_patternImages.size();
-    ubData.materialIdx = m_materialIdx;
+
+    const Wolf::Viewport renderViewport = m_renderingPipeline->getRenderViewport();
+    ubData.viewportWidth = static_cast<uint32_t>(renderViewport.width);
+    ubData.viewportHeight = static_cast<uint32_t>(renderViewport.height);
+
+    ubData.depthScale = m_depthScale;
+    ubData.depthOffset = m_depthOffset;
+
+    for (uint32_t i = 0; i < ubData.patternImageCount; i++)
+    {
+        ubData.materialIndices[i] = m_patternImages[i].getMaterialIdx();
+        ubData.patternScales[i] = m_patternImages[i].getPatternScale();;
+    }
 
     m_uniformBuffer->transferCPUMemory(&ubData, sizeof(UniformBufferData));
 }
 
 void SurfaceCoatingComponent::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 {
-    if (m_enableAABBDebug)
+    if (m_enableGlobalAABBDebug)
     {
         debugRenderingManager.addAABB(computeRangeAABB());
+    }
+
+    if (m_enablePatchAABBDebug)
+    {
+        for (const Wolf::AABB& aabb : m_patchBoundsAABBs)
+        {
+            debugRenderingManager.addAABB(aabb);
+        }
     }
 }
 
@@ -305,6 +364,55 @@ Wolf::BoundingSphere SurfaceCoatingComponent::getBoundingSphere() const
     return Wolf::BoundingSphere(aabb.getCenter(), aabb.getSize().x * 0.5f);
 }
 
+Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getDepthImage()
+{
+    return m_depthImage.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getPatchBoundsImage()
+{
+    return m_patchBoundsImage.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<Wolf::Sampler> SurfaceCoatingComponent::getSampler()
+{
+    return m_sampler.createNonOwnerResource();
+}
+
+glm::mat4 SurfaceCoatingComponent::getDepthViewProj() const
+{
+    return m_depthCamera->getProjectionMatrix() * m_depthCamera->getViewMatrix();
+}
+
+glm::mat4 SurfaceCoatingComponent::computeTransform()
+{
+    Wolf::AABB aabb = computeRangeAABB();
+
+    glm::mat4 transform(1.0f);
+    transform = glm::translate(transform, aabb.getCenter());
+    transform = glm::scale(transform, aabb.getSize());
+
+    if (getTransform() != glm::mat4(1.0f))
+    {
+        Wolf::Debug::sendCriticalError("Unhandled transform");
+    }
+
+    return transform;
+}
+
+glm::vec4 SurfaceCoatingComponent::computeCornerPos(uint32_t cornerIdx, glm::uvec2 gridCoords)
+{
+    glm::vec2 offsets[4] =
+    {
+        glm::vec2(0.0, 0.0), glm::vec2(1.0, 0.0),
+        glm::vec2(0.0, 1.0), glm::vec2(1.0, 1.0)
+    };
+
+    glm::vec2 uv = (glm::vec2(static_cast<float>(gridCoords.x), static_cast<float>(gridCoords.y)) + offsets[cornerIdx]) / 32.0f;
+    glm::vec3 localPos = glm::vec3(uv.x - 0.5f, 0.0, uv.y - 0.5f);
+    return computeTransform() * glm::vec4(localPos, 1.0);
+}
+
 void SurfaceCoatingComponent::onCustomRenderResolutionChanged()
 {
     if (m_depthImage && m_customRenderResolution != m_depthImage->getExtent().width)
@@ -315,6 +423,8 @@ void SurfaceCoatingComponent::onCustomRenderResolutionChanged()
 
 SurfaceCoatingComponent::PatternImageArrayItem::PatternImageArrayItem() : ParameterGroupInterface(TAB)
 {
+    m_name = DEFAULT_NAME;
+    m_patternScale = glm::vec2(1.0f);
 }
 
 void SurfaceCoatingComponent::PatternImageArrayItem::getAllParams(std::vector<EditorParamInterface*>& out) const
@@ -337,14 +447,14 @@ void SurfaceCoatingComponent::PatternImageArrayItem::setResourceManager(const Wo
     m_resourceManager = resourceManager;
 }
 
+void SurfaceCoatingComponent::PatternImageArrayItem::setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+{
+    m_getEntityFromLoadingPathCallback = getEntityFromLoadingPathCallback;
+}
+
 bool SurfaceCoatingComponent::PatternImageArrayItem::hasHeightImage() const
 {
     return m_patternImageHeightAssetId != NO_ASSET;
-}
-
-bool SurfaceCoatingComponent::PatternImageArrayItem::hasNormalImage() const
-{
-    return m_patternImageNormalAssetId != NO_ASSET;
 }
 
 bool SurfaceCoatingComponent::PatternImageArrayItem::isHeightImageLoaded() const
@@ -352,19 +462,9 @@ bool SurfaceCoatingComponent::PatternImageArrayItem::isHeightImageLoaded() const
     return m_patternImageHeightAssetId == NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageHeightAssetId);
 }
 
-bool SurfaceCoatingComponent::PatternImageArrayItem::isNormalImageLoaded() const
-{
-    return m_patternImageNormalAssetId == NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageNormalAssetId);
-}
-
 Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::PatternImageArrayItem::getHeightImage()
 {
     return m_resourceManager->getImage(m_patternImageHeightAssetId);
-}
-
-Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::PatternImageArrayItem::getNormalImage()
-{
-    return m_resourceManager->getImage(m_patternImageNormalAssetId);
 }
 
 void SurfaceCoatingComponent::PatternImageArrayItem::removeHeightImage()
@@ -381,18 +481,69 @@ void SurfaceCoatingComponent::PatternImageArrayItem::onPatternImageHeightChanged
     notifySubscribers();
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::onPatternImageNormalChanged()
+void SurfaceCoatingComponent::PatternImageArrayItem::onMaterialEntityChanged()
 {
-    if (static_cast<std::string>(m_patternImageNormal) != "")
+    if (static_cast<std::string>(m_materialEntityParam).empty())
     {
-        m_patternImageNormalAssetId = m_resourceManager->addImage(m_patternImageNormal, false, Wolf::Format::BC5_UNORM_BLOCK, false, false);
+        m_materialEntity = Wolf::NullableResourceNonOwner<Entity>();
+        return;
     }
-    notifySubscribers();
+
+    m_materialEntity = m_getEntityFromLoadingPathCallback(m_materialEntityParam);
+    if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
+    {
+        if (!materialComponent->isSubscribed(this))
+        {
+            materialComponent->subscribe(this, [this](Flags) { updateMaterialInfo();});
+        }
+    }
+
+    // Subscribe to be notified if a material component is added to the entity
+    if (!m_materialEntity->isSubscribed(this))
+    {
+        m_materialEntity->subscribe(this, [this](Flags)
+        {
+            onMaterialEntityChanged();
+        });
+    }
+
+    updateMaterialInfo();
+}
+
+void SurfaceCoatingComponent::PatternImageArrayItem::updateMaterialInfo()
+{
+    if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
+    {
+        // Sanity checks
+        uint32_t textureSetCountInMaterial = materialComponent->getTextureSetCount();
+        for (uint32_t i = 0; i < textureSetCountInMaterial; i++)
+        {
+            if (Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = materialComponent->getTextureSetComponent(i))
+            {
+                if (textureSetComponent->getSamplingMode() == static_cast<uint32_t>(Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TRIPLANAR))
+                {
+                    glm::vec3 triplanarScale = textureSetComponent->getTriplanarScale();
+                }
+                else
+                {
+                    Wolf::Debug::sendError("Surface coating pattern image: all texture set sampling modes should be triplanar");
+                }
+            }
+        }
+
+        m_materialIdx = materialComponent->getMaterialIdx();
+
+    }
+    else
+    {
+        m_materialIdx = 0;
+    }
 }
 
 void SurfaceCoatingComponent::onPatternImageAdded()
 {
     m_patternImages.back().setResourceManager(m_resourceManager);
+    m_patternImages.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
     uint32_t patterImageIdx = m_patternImages.size() - 1;
     m_patternImages.back().subscribe(this, [this, patterImageIdx](Flags) { onPatternImageChanged(patterImageIdx); });
 
@@ -416,33 +567,9 @@ void SurfaceCoatingComponent::onRangeChanged()
     m_depthCameraCreationRequested = true;
 }
 
-void SurfaceCoatingComponent::onMaterialEntityChanged()
+void SurfaceCoatingComponent::onEnablePatchAABBDebug()
 {
-    if (static_cast<std::string>(m_materialEntityParam).empty())
-    {
-        m_materialEntity = Wolf::NullableResourceNonOwner<Entity>();
-        return;
-    }
-
-    m_materialEntity = m_getEntityFromLoadingPathCallback(m_materialEntityParam);
-    if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
-    {
-        if (!materialComponent->isSubscribed(this))
-        {
-            materialComponent->subscribe(this, [this](Flags) { updateMaterialIdx();});
-        }
-    }
-
-    // Subscribe to be notified if a material component is added to the entity
-    if (!m_materialEntity->isSubscribed(this))
-    {
-        m_materialEntity->subscribe(this, [this](Flags)
-        {
-            onMaterialEntityChanged();
-        });
-    }
-
-    updateMaterialIdx();
+    m_patchBoundsDebugDataRebuildRequested = true;
 }
 
 void SurfaceCoatingComponent::createCustomRenderImages()
@@ -451,17 +578,21 @@ void SurfaceCoatingComponent::createCustomRenderImages()
     createDepthImageInfo.extent = { m_customRenderResolution, m_customRenderResolution, 1 };
     createDepthImageInfo.format = Wolf::Format::D32_SFLOAT;
     createDepthImageInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | Wolf::ImageUsageFlagBits::SAMPLED;
-    createDepthImageInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+    createDepthImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::DEPTH;
     createDepthImageInfo.mipLevelCount = 1;
     m_depthImage.reset(Wolf::Image::createImage(createDepthImageInfo));
+    m_depthImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, 0,
+        1, VK_IMAGE_LAYOUT_UNDEFINED));
 
     Wolf::CreateImageInfo createNormalImageInfo{};
     createNormalImageInfo.extent = { m_customRenderResolution, m_customRenderResolution, 1 };
     createNormalImageInfo.format = Wolf::Format::R16G16B16A16_SFLOAT;
     createNormalImageInfo.usage = Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT | Wolf::ImageUsageFlagBits::SAMPLED;
-    createNormalImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    createNormalImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
     createNormalImageInfo.mipLevelCount = 1;
     m_normalImage.reset(Wolf::Image::createImage(createNormalImageInfo));
+    m_normalImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0,
+        1, VK_IMAGE_LAYOUT_UNDEFINED));
 
     m_needToRegisterCustomRenderImages = true;
     createOrUpdateDescriptorSet();
@@ -473,6 +604,9 @@ void SurfaceCoatingComponent::createDepthCamera()
     Wolf::AABB rangeAABB = computeRangeAABB();
     m_depthCamera.reset(new Wolf::OrthographicCamera(rangeAABB.getCenter(), rangeAABB.getSize().x * 0.5f, rangeAABB.getSize().y * 0.5, glm::vec3(0.0f, -1.0f, 0.0f),
         0.0f, rangeAABB.getSize().y));
+
+    m_depthScale = rangeAABB.getSize().y;
+    m_depthOffset = rangeAABB.getCenter().y - m_depthScale * 0.5f;
 
     m_needToRegisterCustomRenderImages = true;
 }
@@ -504,6 +638,11 @@ void SurfaceCoatingComponent::createOrUpdateDescriptorSet()
     patternIdxImageDesc.imageView = m_patternIdxImage->getDefaultImageView();
     descriptorSetGenerator.setImage(5, patternIdxImageDesc);
 
+    Wolf::DescriptorSetGenerator::ImageDescription patchBoundsImageDesc{};
+    patchBoundsImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    patchBoundsImageDesc.imageView = m_patchBoundsImage->getDefaultImageView();
+    descriptorSetGenerator.setImage(6, patchBoundsImageDesc);
+
     if (!m_descriptorSet)
     {
         m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
@@ -514,7 +653,7 @@ void SurfaceCoatingComponent::createOrUpdateDescriptorSet()
 void SurfaceCoatingComponent::updatePatternInBindless(uint32_t patternIdx)
 {
     Wolf::DescriptorSetUpdateInfo descriptorSetUpdateInfo;
-    descriptorSetUpdateInfo.descriptorImages.resize(2);
+    descriptorSetUpdateInfo.descriptorImages.resize(1);
 
     {
         descriptorSetUpdateInfo.descriptorImages[0].images.resize(1);
@@ -524,42 +663,29 @@ void SurfaceCoatingComponent::updatePatternInBindless(uint32_t patternIdx)
 
         Wolf::DescriptorLayout& descriptorLayout = descriptorSetUpdateInfo.descriptorImages[0].descriptorLayout;
         descriptorLayout.binding = 4;
-        descriptorLayout.arrayIndex = patternIdx * 2;
-        descriptorLayout.descriptorType = Wolf::DescriptorType::SAMPLED_IMAGE;
-    }
-
-    {
-        descriptorSetUpdateInfo.descriptorImages[1].images.resize(1);
-        Wolf::DescriptorSetUpdateInfo::ImageData& imageData = descriptorSetUpdateInfo.descriptorImages[1].images.back();
-        imageData.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageData.imageView = getPatternNormalImage(patternIdx)->getDefaultImageView();
-
-        Wolf::DescriptorLayout& descriptorLayout = descriptorSetUpdateInfo.descriptorImages[1].descriptorLayout;
-        descriptorLayout.binding = 4;
-        descriptorLayout.arrayIndex = patternIdx * 2 + 1;
+        descriptorLayout.arrayIndex = patternIdx;
         descriptorLayout.descriptorType = Wolf::DescriptorType::SAMPLED_IMAGE;
     }
 
     m_descriptorSet->update(descriptorSetUpdateInfo);
 }
 
-void SurfaceCoatingComponent::updateMaterialIdx()
+void SurfaceCoatingComponent::createSurfaceCoatingSpecificImages()
 {
-    if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
-    {
-        // TODO: check that all texture sets registered in material have "triplanar" sampling mode
-        m_materialIdx = materialComponent->getMaterialIdx();
-    }
-    else
-    {
-        m_materialIdx = 0;
-    }
+    Wolf::CreateImageInfo createPatchBoundsImageInfo{};
+    createPatchBoundsImageInfo.extent = { 32, 32, 1 }; // grid size
+    createPatchBoundsImageInfo.format = Wolf::Format::R16G16_SFLOAT;
+    createPatchBoundsImageInfo.usage = Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::SAMPLED;
+    createPatchBoundsImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
+    createPatchBoundsImageInfo.mipLevelCount = 1;
+    m_patchBoundsImage.reset(Wolf::Image::createImage(createPatchBoundsImageInfo));
+    m_patchBoundsImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, 0,
+        1, VK_IMAGE_LAYOUT_UNDEFINED));
+
 }
 
 void SurfaceCoatingComponent::patternImagesSanityChecks()
 {
-    // TODO: check also normal image
-
     uint32_t patternImageSize = 0;
     for (uint32_t patternImageIdx = 0; patternImageIdx < m_patternImages.size(); patternImageIdx++)
     {
@@ -602,23 +728,13 @@ Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getPatternHeightIma
     return m_patternImages[imageIdx].getHeightImage();
 }
 
-Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getPatternNormalImage(uint32_t imageIdx)
-{
-    if (m_patternImages.size() <= imageIdx || !m_patternImages[imageIdx].hasNormalImage() || !m_patternImages[imageIdx].isNormalImageLoaded())
-    {
-        return m_defaultPatternHeightImage.createNonOwnerResource(); // TODO: use a default normal
-    }
-
-    return m_patternImages[imageIdx].getNormalImage();
-}
-
 void SurfaceCoatingComponent::createDefaultPatternImage()
 {
     Wolf::CreateImageInfo createImageInfo{};
     createImageInfo.extent = { 1, 1, 1 };
     createImageInfo.format = Wolf::Format::R32_SFLOAT;
     createImageInfo.usage = Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_DST;
-    createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
     createImageInfo.mipLevelCount = 1;
     m_defaultPatternHeightImage.reset(Wolf::Image::createImage(createImageInfo));
 
@@ -632,7 +748,7 @@ void SurfaceCoatingComponent::createPatternIdxImage()
     createImageInfo.extent = { 32, 32, 1 }; // this is the size of the grid
     createImageInfo.format = Wolf::Format::R32_UINT;
     createImageInfo.usage = Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::TRANSFER_DST;
-    createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
     createImageInfo.mipLevelCount = 1;
     m_patternIdxImage.reset(Wolf::Image::createImage(createImageInfo));
 

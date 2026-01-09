@@ -6,6 +6,7 @@
 #include <Image.h>
 
 #include "ComputeVertexDataPass.h"
+#include "CustomSceneRenderPass.h"
 #include "EditorParams.h"
 #include "UpdateGPUBuffersPass.h"
 
@@ -14,8 +15,9 @@ class SceneElements;
 class PreDepthPass : public Wolf::CommandRecordBase, public Wolf::DepthPassBase
 {
 public:
-	PreDepthPass(EditorParams* editorParams, bool copyOutput, const Wolf::ResourceNonOwner<UpdateGPUBuffersPass>& updateGPUBuffersPass, const Wolf::ResourceNonOwner<ComputeVertexDataPass>& computeVertexDataPass)
-		: m_editorParams(editorParams), m_copyOutput(copyOutput), m_updateGPUBuffersPass(updateGPUBuffersPass), m_computeVertexDataPass(computeVertexDataPass) {}
+	PreDepthPass(EditorParams* editorParams, bool copyOutput, const Wolf::ResourceNonOwner<UpdateGPUBuffersPass>& updateGPUBuffersPass, const Wolf::ResourceNonOwner<ComputeVertexDataPass>& computeVertexDataPass,
+		const Wolf::ResourceNonOwner<CustomSceneRenderPass>& customSceneRenderPass)
+		: m_editorParams(editorParams), m_copyOutput(copyOutput), m_updateGPUBuffersPass(updateGPUBuffersPass), m_computeVertexDataPass(computeVertexDataPass), m_customSceneRenderPass(customSceneRenderPass) {}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -45,5 +47,6 @@ private:
 	/* Extern */
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceNonOwner<ComputeVertexDataPass> m_computeVertexDataPass;
+	Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customSceneRenderPass;
 };
 

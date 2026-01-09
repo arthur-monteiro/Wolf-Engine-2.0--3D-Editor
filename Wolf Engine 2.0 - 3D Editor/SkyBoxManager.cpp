@@ -109,7 +109,7 @@ void SkyBoxManager::createCubeMap()
     Wolf::CreateImageInfo createImageInfo;
     createImageInfo.extent = { m_cubeMapResolution, m_cubeMapResolution, 1 };
     createImageInfo.arrayLayerCount = 6;
-    createImageInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
     createImageInfo.format = Wolf::Format::R32G32B32A32_SFLOAT;
     createImageInfo.mipLevelCount = 1;
     createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
@@ -143,13 +143,13 @@ void SkyBoxManager::createPipelineIfNeeded(const Wolf::RenderPass& renderPass)
     pipelineCreateInfo.shaderCreateInfos[1].stage = Wolf::FRAGMENT;
 
     // IA
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    SkyBoxManager::VertexOnlyPosition::getAttributeDescriptions(attributeDescriptions, 0);
+    std::vector<Wolf::VertexInputAttributeDescription> attributeDescriptions;
+    VertexOnlyPosition::getAttributeDescriptions(attributeDescriptions, 0);
     pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
 
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+    std::vector<Wolf::VertexInputBindingDescription> bindingDescriptions(1);
     bindingDescriptions[0] = {};
-    SkyBoxManager::VertexOnlyPosition::getBindingDescription(bindingDescriptions[0], 0);
+    VertexOnlyPosition::getBindingDescription(bindingDescriptions[0], 0);
     pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;
 
     // Viewport
@@ -160,7 +160,7 @@ void SkyBoxManager::createPipelineIfNeeded(const Wolf::RenderPass& renderPass)
     pipelineCreateInfo.blendModes = blendModes;
 
     // Rasterization
-    pipelineCreateInfo.cullMode = VK_CULL_MODE_NONE;
+    pipelineCreateInfo.cullModeFlags = Wolf::CullModeFlagBits::NONE;
 
     // Depth testing
     pipelineCreateInfo.enableDepthTesting = false;
@@ -169,7 +169,7 @@ void SkyBoxManager::createPipelineIfNeeded(const Wolf::RenderPass& renderPass)
     pipelineCreateInfo.descriptorSetLayouts = { m_descriptorSetLayout.createConstNonOwnerResource(), Wolf::GraphicCameraInterface::getDescriptorSetLayout().createConstNonOwnerResource() };
 
     // Dynamic state
-    pipelineCreateInfo.dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+    pipelineCreateInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
 
     m_pipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 }

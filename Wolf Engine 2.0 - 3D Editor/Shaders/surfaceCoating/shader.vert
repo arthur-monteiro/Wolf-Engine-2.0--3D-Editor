@@ -7,7 +7,7 @@ layout(location = 5) in uint inEntityId;
 layout(location = 0) out uint outEntityId;
 layout(location = 1) out vec2 outGridUVs;
 
-const int GRID_SIZE = 31;
+const int GRID_SIZE = 32;
 
 void main() 
 {
@@ -18,7 +18,8 @@ void main()
     int z = patchID / GRID_SIZE;
 
     // Local UVs for the 4 corners of the patch
-    vec2 offsets[4] = vec2[](
+    vec2 offsets[4] = vec2[]
+    (
         vec2(0.0, 0.0), vec2(1.0, 0.0), 
         vec2(0.0, 1.0), vec2(1.0, 1.0)
     );

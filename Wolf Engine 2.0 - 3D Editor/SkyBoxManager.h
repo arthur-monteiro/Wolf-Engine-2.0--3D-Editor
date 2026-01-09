@@ -12,21 +12,21 @@ public:
     {
         glm::vec3 pos;
 
-        static void getBindingDescription(VkVertexInputBindingDescription& bindingDescription, uint32_t binding)
+        static void getBindingDescription(Wolf::VertexInputBindingDescription& bindingDescription, uint32_t binding)
         {
             bindingDescription.binding = binding;
             bindingDescription.stride = sizeof(VertexOnlyPosition);
-            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            bindingDescription.inputRate = Wolf::VertexInputRate::VERTEX;
         }
 
-        static void getAttributeDescriptions(std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
+        static void getAttributeDescriptions(std::vector<Wolf::VertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
         {
             const uint32_t attributeDescriptionCountBefore = static_cast<uint32_t>(attributeDescriptions.size());
             attributeDescriptions.resize(attributeDescriptionCountBefore + 1);
 
             attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
             attributeDescriptions[attributeDescriptionCountBefore + 0].location = 0;
-            attributeDescriptions[attributeDescriptionCountBefore + 0].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[attributeDescriptionCountBefore + 0].format = Wolf::Format::R32G32B32_SFLOAT;
             attributeDescriptions[attributeDescriptionCountBefore + 0].offset = offsetof(VertexOnlyPosition, pos);
         }
 

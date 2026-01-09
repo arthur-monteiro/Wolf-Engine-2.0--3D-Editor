@@ -39,7 +39,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	depthImageCreateInfo.extent.height = OUTPUT_SIZE;
 	depthImageCreateInfo.extent.depth = 1;
 	depthImageCreateInfo.mipLevelCount = 1;
-	depthImageCreateInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+	depthImageCreateInfo.aspectFlags = Wolf::ImageAspectFlagBits::DEPTH;
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
 	m_depthImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
 	Wolf::Attachment depth = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
@@ -73,11 +73,11 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	pipelineCreateInfo.shaderCreateInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 	// IA
-	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+	std::vector<Wolf::VertexInputAttributeDescription> attributeDescriptions;
 	Vertex3D::getAttributeDescriptions(attributeDescriptions, 0);
 	pipelineCreateInfo.vertexInputAttributeDescriptions = attributeDescriptions;
 
-	std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+	std::vector<Wolf::VertexInputBindingDescription> bindingDescriptions(1);
 	bindingDescriptions[0] = {};
 	Vertex3D::getBindingDescription(bindingDescriptions[0], 0);
 	pipelineCreateInfo.vertexInputBindingDescriptions = bindingDescriptions;

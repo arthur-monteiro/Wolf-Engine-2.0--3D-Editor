@@ -25,6 +25,8 @@ public:
 	void saveCustom() const override {}
 
 	uint32_t getTextureSetIdx() const;
+	uint32_t getSamplingMode() const { return m_samplingMode; }
+	glm::vec3 getTriplanarScale() const { return m_triplanarScale; }
 
 private:
 	inline static const std::string TAB = "Texture Set";
