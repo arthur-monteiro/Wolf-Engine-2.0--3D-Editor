@@ -199,7 +199,7 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 		waitSemaphores.push_back(m_particlesUpdatePass->getSemaphore(context.swapChainImageIndex));
 		needPreDepthPassSemaphore = false;
 	}
-	else if (m_shadowMaskPass->wasEnabledThisFrame()) // note: particles update pass wait for shadow mask
+	if (m_shadowMaskPass->wasEnabledThisFrame())
 	{
 		waitSemaphores.push_back(m_shadowMaskPass->getSemaphore());
 		needPreDepthPassSemaphore = false;

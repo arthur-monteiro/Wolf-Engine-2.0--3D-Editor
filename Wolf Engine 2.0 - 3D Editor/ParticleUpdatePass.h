@@ -15,7 +15,7 @@ class ParticleUpdatePass : public Wolf::CommandRecordBase
 public:
 	static constexpr uint32_t NOISE_POINT_COUNT = 262144;
 
-	ParticleUpdatePass(const Wolf::ResourceNonOwner<ShadowMaskPassCascadedShadowMapping>& shadowMaskPassCascadedShadowMapping);
+	ParticleUpdatePass();
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -37,8 +37,6 @@ public:
 	uint32_t registerDepthTexture(const Wolf::ResourceNonOwner<Wolf::Image>& depthImage);
 
 private:
-	Wolf::ResourceNonOwner<ShadowMaskPassCascadedShadowMapping> m_shadowMaskPassCascadedShadowMapping;
-
 	void createPipeline();
 	void createNoiseBuffer();
 

@@ -36,6 +36,6 @@ public:
 	virtual Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() = 0;
 	virtual Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() = 0;
 	virtual Wolf::ResourceNonOwner<ForwardPass> getForwardPass() = 0;
-	virtual Wolf::Viewport getRenderViewport() const = 0;
+	[[nodiscard]] virtual Wolf::Viewport getRenderViewport() const = 0;
 };
 

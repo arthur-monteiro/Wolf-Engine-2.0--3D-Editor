@@ -8,7 +8,7 @@
 #include "Pipeline.h"
 #include "UpdateGPUBuffersPass.h"
 
-ParticleUpdatePass::ParticleUpdatePass(const Wolf::ResourceNonOwner<ShadowMaskPassCascadedShadowMapping>& shadowMaskPassCascadedShadowMapping) : m_shadowMaskPassCascadedShadowMapping(shadowMaskPassCascadedShadowMapping)
+ParticleUpdatePass::ParticleUpdatePass()
 {
 }
 
@@ -96,8 +96,6 @@ void ParticleUpdatePass::submit(const Wolf::SubmitContext& context)
 		return;
 
 	std::vector<const Wolf::Semaphore*> waitSemaphores;
-	waitSemaphores.push_back(m_shadowMaskPassCascadedShadowMapping->getSemaphore());
-
 	const std::vector<const Wolf::Semaphore*> signalSemaphores{ getSemaphore(context.swapChainImageIndex) };
 	m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
 

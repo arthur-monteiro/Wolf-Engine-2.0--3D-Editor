@@ -40,7 +40,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_contaminationUpdatePass.reset(new ContaminationUpdatePass);
 	wolfInstance->initializePass(m_contaminationUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_particleUpdatePass.reset(new ParticleUpdatePass(m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource()));
+	m_particleUpdatePass.reset(new ParticleUpdatePass());
 	wolfInstance->initializePass(m_particleUpdatePass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_thumbnailsGenerationPass.reset(new ThumbnailsGenerationPass);
