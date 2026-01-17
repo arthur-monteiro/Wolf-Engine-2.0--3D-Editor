@@ -86,6 +86,14 @@ void MaterialComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const 
 	}
 }
 
+void MaterialComponent::releaseAllNullableNonOwnerResources()
+{
+	for (uint32_t i = 0; i < m_textureSets.size(); ++i)
+	{
+		m_textureSets[i].releaseAllNullableNonOwnerResources();
+	}
+}
+
 Wolf::NullableResourceNonOwner<TextureSetComponent> MaterialComponent::getTextureSetComponent(uint32_t textureSetIdx) const
 {
 	return m_textureSets[textureSetIdx].getTextureSetComponent();
@@ -124,6 +132,11 @@ void MaterialComponent::TextureSet::getAllVisibleParams(std::vector<EditorParamI
 bool MaterialComponent::TextureSet::hasDefaultName() const
 {
 	return std::string(m_name) == DEFAULT_NAME;
+}
+
+void MaterialComponent::TextureSet::releaseAllNullableNonOwnerResources()
+{
+	m_textureSetComponent.release();
 }
 
 uint32_t MaterialComponent::TextureSet::getTextureSetIdx() const

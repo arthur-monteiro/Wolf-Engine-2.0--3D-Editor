@@ -24,6 +24,7 @@ public:
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
 	void saveCustom() const override {}
+	void releaseAllNullableNonOwnerResources() override;
 
 	static constexpr uint32_t DEFAULT_MATERIAL_IDX = 0;
 	uint32_t getMaterialIdx() const { return m_materialIdx; }
@@ -54,6 +55,8 @@ private:
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
 		bool hasDefaultName() const override;
+
+		void releaseAllNullableNonOwnerResources();
 
 		static constexpr uint32_t NO_TEXTURE_SET_IDX = -1;
 		uint32_t getTextureSetIdx() const;

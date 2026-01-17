@@ -28,6 +28,7 @@ public:
 	void loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent);
 
 	void addComponent(ComponentInterface* component);
+	void releaseAllComponentNullableNonOwnerResources() const;
 	void removeAllComponents();
 	void setIdx(uint32_t idx) { m_idx = idx; }
 

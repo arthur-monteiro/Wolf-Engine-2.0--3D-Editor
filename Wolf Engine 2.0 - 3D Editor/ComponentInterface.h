@@ -52,6 +52,7 @@ public:
 	virtual void addDebugInfo(DebugRenderingManager& debugRenderingManager) = 0;
 
 	virtual void saveCustom() const = 0;
+	virtual void releaseAllNullableNonOwnerResources() {};
 
 protected:
 	ComponentInterface() = default;

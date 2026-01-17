@@ -67,6 +67,11 @@ void Entity::addComponent(ComponentInterface* component)
 	notifySubscribers();
 }
 
+void Entity::releaseAllComponentNullableNonOwnerResources() const
+{
+	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->releaseAllNullableNonOwnerResources();)
+}
+
 std::string Entity::computeEscapedLoadingPath() const
 {
 	std::string escapedLoadingPath;

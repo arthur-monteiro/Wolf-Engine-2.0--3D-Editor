@@ -40,6 +40,16 @@ void EntityContainer::clear()
 {
 	for (const Wolf::ResourceUniqueOwner<Entity>& entity : m_currentEntities)
 	{
+		entity->releaseAllComponentNullableNonOwnerResources();
+	}
+
+	for (const Wolf::ResourceUniqueOwner<Entity>& entity : m_newEntities)
+	{
+		entity->releaseAllComponentNullableNonOwnerResources();
+	}
+
+	for (const Wolf::ResourceUniqueOwner<Entity>& entity : m_currentEntities)
+	{
 		entity->removeAllComponents();
 	}
 
