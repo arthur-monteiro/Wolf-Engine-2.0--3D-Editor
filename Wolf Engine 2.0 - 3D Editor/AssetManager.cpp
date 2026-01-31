@@ -21,10 +21,10 @@ AssetManager* AssetManager::ms_assetManager;
 AssetManager::AssetManager(const std::function<void(const std::string&, const std::string&, AssetId)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, 
                                  const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
                                  const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string& loadingPath)>& isolateMeshCallback,
-                                 const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback)
+                                 const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
 	: m_addResourceToUICallback(addAssetToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration),
       m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
-	  m_renderingPipeline(renderingPipeline)
+	  m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU)
 {
 	ms_assetManager = this;
 }
@@ -161,7 +161,7 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 			uint32_t firstMaterialIdx = getFirstMaterialIdx(assetId);
 			Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> bottomLevelAccelerationStructure = getBLAS(assetId, 0, 0);
 			meshResourceEditor = new MeshAssetEditor(m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, modelData, firstMaterialIdx, bottomLevelAccelerationStructure, m_isolateMeshCallback,
-				m_removeIsolationAndGetViewMatrixCallback, [this, assetId](const glm::mat4& viewMatrix) { requestThumbnailReload(assetId, viewMatrix); }, m_renderingPipeline);
+				m_removeIsolationAndGetViewMatrixCallback, [this, assetId](const glm::mat4& viewMatrix) { requestThumbnailReload(assetId, viewMatrix); }, m_renderingPipeline, m_editorPushDataToGPU);
 
 			for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape : modelData->m_physicsShapes)
 			{
@@ -362,7 +362,7 @@ AssetId AssetManager::addImage(const std::string& loadingPath, bool loadMips, Wo
 		std::string iconFullPath = computeIconPath(loadingPath, 0);
 		bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
 
-		m_images.emplace_back(new Image(loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, loadMips, format, keepDataOnCPU, canBeVirtualized));
+		m_images.emplace_back(new Image(m_editorPushDataToGPU, loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, loadMips, format, keepDataOnCPU, canBeVirtualized));
 		m_addResourceToUICallback(m_images.back()->computeName(), iconFullPath, assetId);
 	}
 
@@ -457,7 +457,8 @@ AssetId AssetManager::addCombinedImage(const std::string& loadingPathR, const st
 		std::string iconFullPath = computeIconPath(combinedLoadingPath, 0);
 		bool iconFileExists = formatIconPath(combinedLoadingPath, iconFullPath);
 
-		m_combinedImages.emplace_back(new CombinedImage(combinedLoadingPath, loadingPathR, loadingPathG, loadingPathB, loadingPathA, !iconFileExists, assetId, m_updateResourceInUICallback, loadMips, format, keepDataOnCPU, canBeVirtualized));
+		m_combinedImages.emplace_back(new CombinedImage(m_editorPushDataToGPU, combinedLoadingPath, loadingPathR, loadingPathG, loadingPathB, loadingPathA, !iconFileExists, assetId, m_updateResourceInUICallback,
+			loadMips, format, keepDataOnCPU, canBeVirtualized));
 		m_addResourceToUICallback(m_combinedImages.back()->computeName(), iconFullPath, assetId);
 	}
 
@@ -928,9 +929,9 @@ bool AssetManager::ImageInterface::generateThumbnail(const std::string& fullFile
 	return !hadAnErrorDuringGeneration;
 }
 
-AssetManager::Image::Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-                           bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized)
-	: AssetInterface(loadingPath, assetId, updateResourceInUICallback), ImageInterface(needThumbnailsGeneration, loadMips, format, canBeVirtualized)
+AssetManager::Image::Image(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId,
+	const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized)
+	: AssetInterface(loadingPath, assetId, updateResourceInUICallback), ImageInterface(editorPushDataToGPU, needThumbnailsGeneration, loadMips, format, canBeVirtualized)
 {
 	m_imageLoadingRequested = true;
 	m_dataOnCPUStatus = keepDataOnCPU ? DataOnCPUStatus::NOT_LOADED_YET : DataOnCPUStatus::NEVER_KEPT;
@@ -965,7 +966,7 @@ void AssetManager::Image::loadImage()
 {
 	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
 
-	ImageFormatter imageFormatter(fullFilePath, "", m_format, m_canBeVirtualized, m_thumbnailGenerationRequested || m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET, m_loadMips);
+	ImageFormatter imageFormatter(m_editorPushDataToGPU, fullFilePath, "", m_format, m_canBeVirtualized, m_thumbnailGenerationRequested || m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET, m_loadMips);
 	imageFormatter.transferImageTo(m_image);
 	m_slicesFolder = imageFormatter.getSlicesFolder();
 
@@ -996,9 +997,9 @@ void AssetManager::Image::loadImage()
 	}
 }
 
-AssetManager::CombinedImage::CombinedImage(const std::string& combinedLoadingPath, const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool needThumbnailsGeneration,
+AssetManager::CombinedImage::CombinedImage(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& combinedLoadingPath, const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool needThumbnailsGeneration,
 	AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized)
- : AssetInterface(combinedLoadingPath, assetId, updateResourceInUICallback), ImageInterface(needThumbnailsGeneration, loadMips, format, canBeVirtualized)
+ : AssetInterface(combinedLoadingPath, assetId, updateResourceInUICallback), ImageInterface(editorPushDataToGPU, needThumbnailsGeneration, loadMips, format, canBeVirtualized)
 {
 	m_imageLoadingRequested = true;
 	m_dataOnCPUStatus = keepDataOnCPU ? DataOnCPUStatus::NOT_LOADED_YET : DataOnCPUStatus::NEVER_KEPT;
@@ -1052,7 +1053,7 @@ void AssetManager::CombinedImage::loadImage()
 
 	if (!keepDataOnCPU && ImageFormatter::isCacheAvailable(fullFilePath, slicesFolder, m_canBeVirtualized))
 	{
-		ImageFormatter imageFormatter(fullFilePath, slicesFolder, m_format, m_canBeVirtualized, false, m_loadMips);
+		ImageFormatter imageFormatter(m_editorPushDataToGPU,fullFilePath, slicesFolder, m_format, m_canBeVirtualized, false, m_loadMips);
 		imageFormatter.transferImageTo(m_image);
 		m_slicesFolder = imageFormatter.getSlicesFolder();
 		return;
@@ -1111,7 +1112,7 @@ void AssetManager::CombinedImage::loadImage()
 		}
 	}
 
-	ImageFormatter imageFormatter(combinedData, combinedMipLevels, combinedExtent, slicesFolder, fullFilePath, m_format, m_canBeVirtualized, keepDataOnCPU);
+	ImageFormatter imageFormatter(m_editorPushDataToGPU, combinedData, combinedMipLevels, combinedExtent, slicesFolder, fullFilePath, m_format, m_canBeVirtualized, keepDataOnCPU);
 	imageFormatter.transferImageTo(m_image);
 	m_slicesFolder = imageFormatter.getSlicesFolder();
 

@@ -72,7 +72,7 @@ void DrawIdsPass::record(const Wolf::RecordContext& context)
     context.renderMeshList->draw(context, *m_commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS, CommonCameraIndices::CAMERA_IDX_MAIN, {}, {});
 
     m_commandBuffer->endRenderPass();
-    m_outputImage->setImageLayoutWithoutOperation(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    m_outputImage->setImageLayoutWithoutOperation(Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL);
 
     VkImageCopy copyRegion = {};
 
@@ -92,8 +92,8 @@ void DrawIdsPass::record(const Wolf::RecordContext& context)
     copyRegion.extent = { extent.width, extent.height, extent.depth };
 
     m_copyImage->recordCopyGPUImage(*m_outputImage, copyRegion, *m_commandBuffer);
-    m_outputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL });
+    m_outputImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0, 1, Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL });
 
     Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -140,18 +140,18 @@ Wolf::Attachment DrawIdsPass::setupColorAttachment(const Wolf::InitializationCon
     createCopyInfo.imageTiling = VK_IMAGE_TILING_LINEAR;
     createCopyInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     m_copyImage.reset(Wolf::Image::createImage(createCopyInfo));
-    m_copyImage->setImageLayout({ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_UNDEFINED });
+    m_copyImage->setImageLayout({ Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, 0, 1, Wolf::ImageLayout::UNDEFINED });
 
-    return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, OUTPUT_FORMAT, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
+    return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, OUTPUT_FORMAT, Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
         Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, m_outputImage->getDefaultImageView());
 }
 
 Wolf::Attachment DrawIdsPass::setupDepthAttachment(const Wolf::InitializationContext& context)
 {
-    Wolf::Attachment attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    Wolf::Attachment attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_preDepthPass->getOutput()->getDefaultImageView());
-    attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    attachment.initialLayout = Wolf::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     attachment.loadOperation = Wolf::AttachmentLoadOp::LOAD;
 
     return attachment;

@@ -13,7 +13,7 @@
 class UpdateGPUBuffersPass : public Wolf::CommandRecordBase
 {
 public:
-	UpdateGPUBuffersPass();
+	UpdateGPUBuffersPass() = default;
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;

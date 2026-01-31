@@ -25,7 +25,7 @@ public:
 	std::string getId() const override { return "meshResourceEditor"; }
 	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
 		const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
-		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
+		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override {}
 	void addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape);
@@ -57,6 +57,7 @@ private:
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
 	std::function<void(const glm::mat4&)> m_requestThumbnailReload;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
+	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
 	EditorParamString m_filepath = EditorParamString("Filepath", TAB, "General", EditorParamString::ParamStringType::STRING, false, false, true);
 
@@ -160,6 +161,7 @@ private:
 		bool hasDefaultName() const override;
 
 		void setRenderingPipeline(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline) { m_renderingPipeline = renderingPipeline; }
+		void setEditorPushDataToGPU(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU) { m_editorPushDataToGPU = editorPushDataToGPU; }
 		void setModelData(ModelData* modelData) { m_modelData = modelData; }
 		void setFirstMaterialIdx(uint32_t firstMaterialIdx) { m_firstMaterialIdx = firstMaterialIdx; }
 		void setBottomLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& accelerationStructure) { m_bottomLevelAccelerationStructure = accelerationStructure; }
@@ -171,6 +173,7 @@ private:
 		inline static const std::string DEFAULT_NAME = "PLACEHOLDER";
 
 		Wolf::NullableResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
+		Wolf::NullableResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;;
 		ModelData* m_modelData;
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
 		uint32_t m_firstMaterialIdx;

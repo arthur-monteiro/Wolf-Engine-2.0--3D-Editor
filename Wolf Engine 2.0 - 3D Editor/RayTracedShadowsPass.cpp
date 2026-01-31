@@ -5,6 +5,7 @@
 #include <fstream>
 #include <GraphicCameraInterface.h>
 #include <MaterialsGPUManager.h>
+#include <Pipeline.h>
 #include <RayTracingShaderGroupGenerator.h>
 #include <ShaderBindingTable.h>
 
@@ -140,8 +141,8 @@ void RayTracedShadowsPass::createOutputImage(const Wolf::InitializationContext& 
     createInfo.format = Wolf::Format::R16_SFLOAT;
     createInfo.mipLevelCount = 1;
     m_outputImage.reset(Wolf::Image::createImage(createInfo));
-    m_outputImage->setImageLayout({ VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, 0, 1,
-        VK_IMAGE_LAYOUT_UNDEFINED });
+    m_outputImage->setImageLayout({ Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, 0, 1,
+        Wolf::ImageLayout::UNDEFINED });
 }
 
 void RayTracedShadowsPass::createPipeline()
@@ -187,10 +188,10 @@ void RayTracedShadowsPass::createPipeline()
 void RayTracedShadowsPass::createDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_rayTracingDescriptorSetLayoutGenerator.getDescriptorLayouts());
-    const Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc(VK_IMAGE_LAYOUT_GENERAL, m_outputImage->getDefaultImageView());
+    const Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc(Wolf::ImageLayout::GENERAL, m_outputImage->getDefaultImageView());
     descriptorSetGenerator.setImage(0, outputImageDesc);
 
-    const Wolf::DescriptorSetGenerator::ImageDescription depthImageDesc(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_preDepthPass->getOutput()->getDefaultImageView());
+    const Wolf::DescriptorSetGenerator::ImageDescription depthImageDesc(Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_preDepthPass->getOutput()->getDefaultImageView());
     descriptorSetGenerator.setImage(1, depthImageDesc);
 
     descriptorSetGenerator.setUniformBuffer(2, *m_uniformBuffer);
@@ -202,7 +203,7 @@ void RayTracedShadowsPass::createDescriptorSet()
     {
         Wolf::DescriptorSetGenerator descriptorSetGenerator(m_outputMaskDescriptorSetLayoutGenerator.getDescriptorLayouts());
         Wolf::DescriptorSetGenerator::ImageDescription shadowMaskDesc;
-        shadowMaskDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        shadowMaskDesc.imageLayout = Wolf::ImageLayout::GENERAL;
         shadowMaskDesc.imageView = m_outputImage->getDefaultImageView();
         descriptorSetGenerator.setImage(0, shadowMaskDesc);
 

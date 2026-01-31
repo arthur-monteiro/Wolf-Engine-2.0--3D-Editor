@@ -9,15 +9,15 @@
 #include "EditorModelInterface.h"
 #include "EditorTypes.h"
 
-class SurfaceCoatingComponent : public EditorModelInterface
+class SurfaceCoatingEmitterComponent : public EditorModelInterface
 {
 public:
-    static inline std::string ID = "surfaceCoating";
+    static inline std::string ID = "surfaceCoatingEmitter";
     std::string getId() const override { return ID; }
 
-    SurfaceCoatingComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
-        std::function<void(ComponentInterface*)> requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
-    ~SurfaceCoatingComponent() override;
+    SurfaceCoatingEmitterComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
+        const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+    ~SurfaceCoatingEmitterComponent() override;
 
     void loadParams(Wolf::JSONReader& jsonReader) override;
     void activateParams() override;
@@ -133,7 +133,7 @@ private:
     };
 
     // Graphic resources
-    std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, SurfaceCoatingComponent>> m_defaultPipelineSet;
+    std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, SurfaceCoatingEmitterComponent>> m_defaultPipelineSet;
     Wolf::ResourceUniqueOwner<Wolf::NoVertexMesh> m_mesh;
 
     bool m_needToRegisterCustomRenderImages = false;

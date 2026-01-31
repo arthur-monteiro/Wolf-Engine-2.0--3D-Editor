@@ -140,8 +140,8 @@ void PathTracingPass::record(const Wolf::RecordContext& context)
 
     Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::rayTracePassDebugColor, "Path tracing Pass");
 
-    m_outputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1,
-        0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+    m_outputImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1,
+        0, 1, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL });
 
     m_commandBuffer->bindPipeline(m_pipeline.createConstNonOwnerResource());
     m_commandBuffer->bindDescriptorSet(m_descriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
@@ -168,13 +168,13 @@ void PathTracingPass::record(const Wolf::RecordContext& context)
     Wolf::Extent3D extent = m_inputImage->getExtent();
     copyRegion.extent = { extent.width, extent.height, extent.depth };
 
-    m_inputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-            0, 1, 0, 1, VK_IMAGE_LAYOUT_GENERAL });
+    m_inputImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+            0, 1, 0, 1, Wolf::ImageLayout::GENERAL });
     m_inputImage->recordCopyGPUImage(*m_outputImage, copyRegion, *m_commandBuffer);
-    m_inputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-            0, 1, 0, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL });
+    m_inputImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+            0, 1, 0, 1, Wolf::ImageLayout::TRANSFER_DST_OPTIMAL });
 
-    m_outputImage->transitionImageLayout(*m_commandBuffer, Wolf::Image::SampledInFragmentShader(0, VK_IMAGE_LAYOUT_GENERAL));
+    m_outputImage->transitionImageLayout(*m_commandBuffer, Wolf::Image::SampledInFragmentShader(0, Wolf::ImageLayout::GENERAL));
 
     Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -342,11 +342,11 @@ void PathTracingPass::createPipeline()
 void PathTracingPass::createDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
-    const Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc(VK_IMAGE_LAYOUT_GENERAL, m_outputImage->getDefaultImageView());
+    const Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc(Wolf::ImageLayout::GENERAL, m_outputImage->getDefaultImageView());
     descriptorSetGenerator.setImage(0, outputImageDesc);
-    const Wolf::DescriptorSetGenerator::ImageDescription inputImageDesc(VK_IMAGE_LAYOUT_GENERAL, m_inputImage->getDefaultImageView());
+    const Wolf::DescriptorSetGenerator::ImageDescription inputImageDesc(Wolf::ImageLayout::GENERAL, m_inputImage->getDefaultImageView());
     descriptorSetGenerator.setImage(1, inputImageDesc);
-    descriptorSetGenerator.setCombinedImageSampler(2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
+    descriptorSetGenerator.setCombinedImageSampler(2, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
     descriptorSetGenerator.setUniformBuffer(3, *m_uniformBuffer);
 
     if (!m_descriptorSet)
@@ -400,9 +400,9 @@ void PathTracingPass::initImagesContent(uint64_t infoHash, const std::string& cu
         memcpy(&fullImageData[fullPixelCopyOffset], &imageFileLoader.getPixels()[sourcePixelCopyOffset * sizeof(glm::vec4)], fullPixelCopySize * sizeof(glm::vec4));
     }
 
-    m_inputImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(fullImageData.data()), { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+    m_inputImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(fullImageData.data()), { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
             0, 1, 0 });
-    m_outputImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(fullImageData.data()), Wolf::Image::SampledInFragmentShader(0, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+    m_outputImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(fullImageData.data()), Wolf::Image::SampledInFragmentShader(0, Wolf::ImageLayout::TRANSFER_DST_OPTIMAL));
 
     m_ditherIdx = std::stoi(Wolf::ConfigurationHelper::readInfoFromFile(infoFilePath, "DitherIdx"));
     m_internalFrameIdx = std::stoi(Wolf::ConfigurationHelper::readInfoFromFile(infoFilePath, "FrameCount"));

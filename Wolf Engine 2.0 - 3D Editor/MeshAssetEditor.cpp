@@ -11,9 +11,9 @@
 
 MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, ModelData* modelData, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
 	const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
-	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
 : m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback), m_requestThumbnailReload(requestThumbnailReload),
-  m_renderingPipeline(renderingPipeline)
+  m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU)
 {
 	m_filepath = filepath;
 
@@ -28,6 +28,7 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 
 	LODInfo& lodInfo = m_defaultLODsInfo.emplace_back();
 	lodInfo.setRenderingPipeline(m_renderingPipeline);
+	lodInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
 	lodInfo.setModelData(modelData);
 	lodInfo.setFirstMaterialIdx(firstMaterialIdx);
 	lodInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
@@ -41,6 +42,7 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 	{
 		LODInfo& editorLODInfo = m_defaultLODsInfo.emplace_back();
 		editorLODInfo.setRenderingPipeline(m_renderingPipeline);
+		editorLODInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
 		editorLODInfo.setModelData(modelData);
 		editorLODInfo.setFirstMaterialIdx(firstMaterialIdx);
 		editorLODInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
@@ -59,6 +61,7 @@ MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::functio
 		{
 			LODInfo& editorSloppyInfo = m_sloppyLODsInfo.emplace_back();
 			editorSloppyInfo.setRenderingPipeline(m_renderingPipeline);
+			editorSloppyInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
 			editorSloppyInfo.setModelData(modelData);
 			editorSloppyInfo.setFirstMaterialIdx(firstMaterialIdx);
 			editorSloppyInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
@@ -377,6 +380,6 @@ void MeshAssetEditor::LODInfo::onComputeVertexColorsAndNormals()
 		}
 	}
 
-	ComputeVertexDataPass::Request request(m_modelData->m_mesh.createNonOwnerResource(), overrideIndexBuffer, m_firstMaterialIdx, m_bottomLevelAccelerationStructure);
+	ComputeVertexDataPass::Request request(m_editorPushDataToGPU, m_modelData->m_mesh.createNonOwnerResource(), overrideIndexBuffer, m_firstMaterialIdx, m_bottomLevelAccelerationStructure);
 	computeVertexDataPass->addRequestBeforeFrame(request);
 }

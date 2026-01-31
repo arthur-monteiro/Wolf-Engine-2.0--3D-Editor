@@ -50,6 +50,7 @@ public:
 	Wolf::ResourceNonOwner<ParticleUpdatePass> getParticleUpdatePass() override;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> getThumbnailsGenerationPass() override;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> getUpdateGPUBuffersPass() override;
+	Wolf::ResourceNonOwner<GPUBufferToGPUBufferCopyPass> getGPUBufferToGPUBufferCopyPass();
 	Wolf::NullableResourceNonOwner<ComputeVertexDataPass> getComputeVertexDataPass() override;
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() override;
 	Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() override;

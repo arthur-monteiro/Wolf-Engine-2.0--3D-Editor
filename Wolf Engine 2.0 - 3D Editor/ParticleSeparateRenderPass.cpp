@@ -69,16 +69,16 @@ Wolf::Attachment ParticleSeparateRenderPass::setupColorAttachment(const Wolf::In
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT;
 	m_outputImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
 
-	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, Wolf::Format::R8G8B8A8_UNORM, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, Wolf::Format::R8G8B8A8_UNORM, Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
 		Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, m_outputImage->getDefaultImageView());
 }
 
 Wolf::Attachment ParticleSeparateRenderPass::setupDepthAttachment(const Wolf::InitializationContext& context)
 {
-	Wolf::Attachment depth({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::DONT_CARE,
+	Wolf::Attachment depth({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1,Wolf::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::DONT_CARE,
 		Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_preDepthPass->getOutput()->getDefaultImageView());
 	depth.loadOperation = Wolf::AttachmentLoadOp::LOAD;
-	depth.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depth.initialLayout = Wolf::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	return depth;
 }

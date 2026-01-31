@@ -258,6 +258,11 @@ Wolf::ResourceNonOwner<UpdateGPUBuffersPass> RenderingPipeline::getUpdateGPUBuff
 	return m_updateGPUBuffersPass.createNonOwnerResource();
 }
 
+Wolf::ResourceNonOwner<GPUBufferToGPUBufferCopyPass> RenderingPipeline::getGPUBufferToGPUBufferCopyPass()
+{
+	return m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource();
+}
+
 Wolf::NullableResourceNonOwner<ComputeVertexDataPass> RenderingPipeline::getComputeVertexDataPass()
 {
 	if (m_computeVertexDataPass)

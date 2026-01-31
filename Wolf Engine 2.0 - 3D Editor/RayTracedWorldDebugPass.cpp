@@ -76,8 +76,8 @@ void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
 
     Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::rayTracePassDebugColor, "Ray Traced World Debug Pass");
 
-    m_outputImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1,
-        0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+    m_outputImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1,
+        0, 1, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL });
 
     m_commandBuffer->bindPipeline(m_pipeline.createConstNonOwnerResource());
     m_commandBuffer->bindDescriptorSet(m_rayTracingDescriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
@@ -87,7 +87,7 @@ void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
 
     m_commandBuffer->traceRays(m_shaderBindingTable.createConstNonOwnerResource(), { m_editorParams->getRenderWidth(), m_editorParams->getRenderHeight(), 1 });
 
-    m_outputImage->transitionImageLayout(*m_commandBuffer, Wolf::Image::SampledInFragmentShader(0, VK_IMAGE_LAYOUT_GENERAL));
+    m_outputImage->transitionImageLayout(*m_commandBuffer, Wolf::Image::SampledInFragmentShader(0, Wolf::ImageLayout::GENERAL));
 
     Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -173,7 +173,7 @@ void RayTracedWorldDebugPass::createPipeline()
 void RayTracedWorldDebugPass::createDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_rayTracingDescriptorSetLayoutGenerator.getDescriptorLayouts());
-    const Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc(VK_IMAGE_LAYOUT_GENERAL, m_outputImage->getDefaultImageView());
+    const Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc(Wolf::ImageLayout::GENERAL, m_outputImage->getDefaultImageView());
     descriptorSetGenerator.setImage(0, outputImageDesc);
     descriptorSetGenerator.setUniformBuffer(1, *m_displayOptionsUniformBuffer);
 

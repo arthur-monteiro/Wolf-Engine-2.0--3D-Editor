@@ -3,7 +3,7 @@
 #include <DebugMarker.h>
 #include <DescriptorSetGenerator.h>
 
-#include "SurfaceCoatingComponent.h"
+#include "SurfaceCoatingEmitterComponent.h"
 
 SurfaceCoatingDataPreparationPass::SurfaceCoatingDataPreparationPass(const Wolf::ResourceNonOwner<CustomSceneRenderPass>& customSceneRenderPass)
     : m_customSceneRenderPass(customSceneRenderPass)
@@ -82,7 +82,7 @@ void SurfaceCoatingDataPreparationPass::submit(const Wolf::SubmitContext& contex
     m_commandBuffer->submit(waitSemaphores, signalSemaphores, nullptr);
 }
 
-void SurfaceCoatingDataPreparationPass::registerComponent(SurfaceCoatingComponent* component)
+void SurfaceCoatingDataPreparationPass::registerComponent(SurfaceCoatingEmitterComponent* component)
 {
     if (m_component != nullptr)
     {
@@ -92,7 +92,7 @@ void SurfaceCoatingDataPreparationPass::registerComponent(SurfaceCoatingComponen
     createOrUpdateDescriptorSet();
 }
 
-void SurfaceCoatingDataPreparationPass::unregisterComponent(const SurfaceCoatingComponent* component)
+void SurfaceCoatingDataPreparationPass::unregisterComponent(const SurfaceCoatingEmitterComponent* component)
 {
     if (m_component != component)
     {
@@ -122,7 +122,7 @@ void SurfaceCoatingDataPreparationPass::createOrUpdateDescriptorSet()
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 
     Wolf::DescriptorSetGenerator::ImageDescription inputDepthImageDesc{};
-    inputDepthImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    inputDepthImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     inputDepthImageDesc.imageView = m_component->getDepthImage()->getDefaultImageView();
     descriptorSetGenerator.setImage(0, inputDepthImageDesc);
 
@@ -130,7 +130,7 @@ void SurfaceCoatingDataPreparationPass::createOrUpdateDescriptorSet()
     descriptorSetGenerator.setUniformBuffer(2, *m_uniformBuffer);
 
     Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc{};
-    outputImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    outputImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     outputImageDesc.imageView = m_component->getPatchBoundsImage()->getDefaultImageView();
     descriptorSetGenerator.setImage(3, outputImageDesc);
 

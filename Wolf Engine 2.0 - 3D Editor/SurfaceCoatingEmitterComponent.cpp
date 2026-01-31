@@ -1,4 +1,4 @@
-#include "SurfaceCoatingComponent.h"
+#include "SurfaceCoatingEmitterComponent.h"
 
 #include <random>
 
@@ -10,8 +10,8 @@
 #include "MaterialComponent.h"
 #include "SurfaceCoatingDataPreparationPass.h"
 
-SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
-                                                 std::function<void(ComponentInterface*)> requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
+    const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
 : m_renderingPipeline(renderingPipeline), m_customRenderPass(renderingPipeline->getCustomRenderPass()), m_resourceManager(resourceManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
     Wolf::ShaderStageFlags resourcesAccessibility = Wolf::ShaderStageFlagBits::TESSELLATION_CONTROL | Wolf::ShaderStageFlagBits::TESSELLATION_EVALUATION | Wolf::ShaderStageFlagBits::GEOMETRY;
@@ -20,7 +20,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
     m_descriptorSetLayoutGenerator.addSampler(resourcesAccessibility, 2); // Sampler
     m_descriptorSetLayoutGenerator.addUniformBuffer(resourcesAccessibility, 3); // Uniform buffer
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, resourcesAccessibility, 4, MAX_PATTERNS * 2,
-        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT); // Pattern images
+        Wolf::DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | Wolf::DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT); // Pattern images
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::STORAGE_IMAGE, resourcesAccessibility, 5, 1); // Pattern index image
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::STORAGE_IMAGE, resourcesAccessibility, 6, 1); // Min / max depth image
     m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT));
@@ -42,7 +42,7 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
 
     m_globalThickness = 0.0f;
 
-    m_defaultPipelineSet.reset(new Wolf::LazyInitSharedResource<Wolf::PipelineSet, SurfaceCoatingComponent>([](Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& pipelineSet)
+    m_defaultPipelineSet.reset(new Wolf::LazyInitSharedResource<Wolf::PipelineSet, SurfaceCoatingEmitterComponent>([](Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& pipelineSet)
     {
         pipelineSet.reset(new Wolf::PipelineSet);
 
@@ -150,14 +150,14 @@ SurfaceCoatingComponent::SurfaceCoatingComponent(const Wolf::ResourceNonOwner<Re
     m_renderingPipeline->getSurfaceCoatingDataPreparationPass()->registerComponent(this);
 }
 
-SurfaceCoatingComponent::~SurfaceCoatingComponent() = default;
+SurfaceCoatingEmitterComponent::~SurfaceCoatingEmitterComponent() = default;
 
-void SurfaceCoatingComponent::loadParams(Wolf::JSONReader& jsonReader)
+void SurfaceCoatingEmitterComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
     ::loadParams<PatternImageArrayItem>(jsonReader, ID, m_editorParams);
 }
 
-void SurfaceCoatingComponent::activateParams()
+void SurfaceCoatingEmitterComponent::activateParams()
 {
     for (EditorParamInterface* editorParam : m_editorParams)
     {
@@ -165,7 +165,7 @@ void SurfaceCoatingComponent::activateParams()
     }
 }
 
-void SurfaceCoatingComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
+void SurfaceCoatingEmitterComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
     for (const EditorParamInterface* editorParam : m_editorParams)
     {
@@ -173,7 +173,7 @@ void SurfaceCoatingComponent::addParamsToJSON(std::string& outJSON, uint32_t tab
     }
 }
 
-void SurfaceCoatingComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
+void SurfaceCoatingEmitterComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
     bool isCustomRenderRequestRunning = m_registeredCustomRenderId != CustomSceneRenderPass::NO_REQUEST_ID && m_customRenderPass->isRequestRunning(m_registeredCustomRenderId);
 
@@ -300,7 +300,7 @@ void SurfaceCoatingComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, 
     m_uniformBuffer->transferCPUMemory(&ubData, sizeof(UniformBufferData));
 }
 
-void SurfaceCoatingComponent::addDebugInfo(DebugRenderingManager& debugRenderingManager)
+void SurfaceCoatingEmitterComponent::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 {
     if (m_enableGlobalAABBDebug)
     {
@@ -316,7 +316,7 @@ void SurfaceCoatingComponent::addDebugInfo(DebugRenderingManager& debugRendering
     }
 }
 
-bool SurfaceCoatingComponent::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
+bool SurfaceCoatingEmitterComponent::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
 {
     Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
@@ -343,48 +343,48 @@ bool SurfaceCoatingComponent::getMeshesToRender(std::vector<DrawManager::DrawMes
     return true;
 }
 
-bool SurfaceCoatingComponent::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos)
+bool SurfaceCoatingEmitterComponent::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos)
 {
     return EditorModelInterface::getInstancesForRayTracedWorld(instanceInfos);
 }
 
-bool SurfaceCoatingComponent::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)
+bool SurfaceCoatingEmitterComponent::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)
 {
     return true;
 }
 
-Wolf::AABB SurfaceCoatingComponent::getAABB() const
+Wolf::AABB SurfaceCoatingEmitterComponent::getAABB() const
 {
     return computeRangeAABB();
 }
 
-Wolf::BoundingSphere SurfaceCoatingComponent::getBoundingSphere() const
+Wolf::BoundingSphere SurfaceCoatingEmitterComponent::getBoundingSphere() const
 {
     Wolf::AABB aabb = computeRangeAABB();
     return Wolf::BoundingSphere(aabb.getCenter(), aabb.getSize().x * 0.5f);
 }
 
-Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getDepthImage()
+Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingEmitterComponent::getDepthImage()
 {
     return m_depthImage.createNonOwnerResource();
 }
 
-Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getPatchBoundsImage()
+Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingEmitterComponent::getPatchBoundsImage()
 {
     return m_patchBoundsImage.createNonOwnerResource();
 }
 
-Wolf::ResourceNonOwner<Wolf::Sampler> SurfaceCoatingComponent::getSampler()
+Wolf::ResourceNonOwner<Wolf::Sampler> SurfaceCoatingEmitterComponent::getSampler()
 {
     return m_sampler.createNonOwnerResource();
 }
 
-glm::mat4 SurfaceCoatingComponent::getDepthViewProj() const
+glm::mat4 SurfaceCoatingEmitterComponent::getDepthViewProj() const
 {
     return m_depthCamera->getProjectionMatrix() * m_depthCamera->getViewMatrix();
 }
 
-glm::mat4 SurfaceCoatingComponent::computeTransform()
+glm::mat4 SurfaceCoatingEmitterComponent::computeTransform()
 {
     Wolf::AABB aabb = computeRangeAABB();
 
@@ -400,7 +400,7 @@ glm::mat4 SurfaceCoatingComponent::computeTransform()
     return transform;
 }
 
-glm::vec4 SurfaceCoatingComponent::computeCornerPos(uint32_t cornerIdx, glm::uvec2 gridCoords)
+glm::vec4 SurfaceCoatingEmitterComponent::computeCornerPos(uint32_t cornerIdx, glm::uvec2 gridCoords)
 {
     glm::vec2 offsets[4] =
     {
@@ -413,7 +413,7 @@ glm::vec4 SurfaceCoatingComponent::computeCornerPos(uint32_t cornerIdx, glm::uve
     return computeTransform() * glm::vec4(localPos, 1.0);
 }
 
-void SurfaceCoatingComponent::onCustomRenderResolutionChanged()
+void SurfaceCoatingEmitterComponent::onCustomRenderResolutionChanged()
 {
     if (m_depthImage && m_customRenderResolution != m_depthImage->getExtent().width)
     {
@@ -421,58 +421,58 @@ void SurfaceCoatingComponent::onCustomRenderResolutionChanged()
     }
 }
 
-SurfaceCoatingComponent::PatternImageArrayItem::PatternImageArrayItem() : ParameterGroupInterface(TAB)
+SurfaceCoatingEmitterComponent::PatternImageArrayItem::PatternImageArrayItem() : ParameterGroupInterface(TAB)
 {
     m_name = DEFAULT_NAME;
     m_patternScale = glm::vec2(1.0f);
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::getAllParams(std::vector<EditorParamInterface*>& out) const
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::getAllParams(std::vector<EditorParamInterface*>& out) const
 {
     std::copy(m_editorParams.data(), &m_editorParams.back() + 1, std::back_inserter(out));
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::getAllVisibleParams(std::vector<EditorParamInterface*>& out) const
 {
     std::copy(m_editorParams.data(), &m_editorParams.back() + 1, std::back_inserter(out));
 }
 
-bool SurfaceCoatingComponent::PatternImageArrayItem::hasDefaultName() const
+bool SurfaceCoatingEmitterComponent::PatternImageArrayItem::hasDefaultName() const
 {
     return std::string(m_name) == DEFAULT_NAME;
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager)
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager)
 {
     m_resourceManager = resourceManager;
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
 {
     m_getEntityFromLoadingPathCallback = getEntityFromLoadingPathCallback;
 }
 
-bool SurfaceCoatingComponent::PatternImageArrayItem::hasHeightImage() const
+bool SurfaceCoatingEmitterComponent::PatternImageArrayItem::hasHeightImage() const
 {
     return m_patternImageHeightAssetId != NO_ASSET;
 }
 
-bool SurfaceCoatingComponent::PatternImageArrayItem::isHeightImageLoaded() const
+bool SurfaceCoatingEmitterComponent::PatternImageArrayItem::isHeightImageLoaded() const
 {
     return m_patternImageHeightAssetId == NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageHeightAssetId);
 }
 
-Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::PatternImageArrayItem::getHeightImage()
+Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingEmitterComponent::PatternImageArrayItem::getHeightImage()
 {
     return m_resourceManager->getImage(m_patternImageHeightAssetId);
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::removeHeightImage()
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::removeHeightImage()
 {
     m_patternImageHeightAssetId = NO_ASSET;
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::onPatternImageHeightChanged()
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::onPatternImageHeightChanged()
 {
     if (static_cast<std::string>(m_patternImageHeight) != "")
     {
@@ -481,7 +481,7 @@ void SurfaceCoatingComponent::PatternImageArrayItem::onPatternImageHeightChanged
     notifySubscribers();
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::onMaterialEntityChanged()
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::onMaterialEntityChanged()
 {
     if (static_cast<std::string>(m_materialEntityParam).empty())
     {
@@ -510,7 +510,7 @@ void SurfaceCoatingComponent::PatternImageArrayItem::onMaterialEntityChanged()
     updateMaterialInfo();
 }
 
-void SurfaceCoatingComponent::PatternImageArrayItem::updateMaterialInfo()
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::updateMaterialInfo()
 {
     if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
     {
@@ -540,7 +540,7 @@ void SurfaceCoatingComponent::PatternImageArrayItem::updateMaterialInfo()
     }
 }
 
-void SurfaceCoatingComponent::onPatternImageAdded()
+void SurfaceCoatingEmitterComponent::onPatternImageAdded()
 {
     m_patternImages.back().setResourceManager(m_resourceManager);
     m_patternImages.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
@@ -550,29 +550,29 @@ void SurfaceCoatingComponent::onPatternImageAdded()
     m_requestReloadCallback(this);
 }
 
-void SurfaceCoatingComponent::onPatternImageChanged(uint32_t idx)
+void SurfaceCoatingEmitterComponent::onPatternImageChanged(uint32_t idx)
 {
     m_patternsImageUpdateRequestedLock.lock();
     m_patternsImageUpdateRequested.push_back(idx);
     m_patternsImageUpdateRequestedLock.unlock();
 }
 
-Wolf::AABB SurfaceCoatingComponent::computeRangeAABB() const
+Wolf::AABB SurfaceCoatingEmitterComponent::computeRangeAABB() const
 {
     return Wolf::AABB(m_rangeAABBMin, m_rangeAABBMax);
 }
 
-void SurfaceCoatingComponent::onRangeChanged()
+void SurfaceCoatingEmitterComponent::onRangeChanged()
 {
     m_depthCameraCreationRequested = true;
 }
 
-void SurfaceCoatingComponent::onEnablePatchAABBDebug()
+void SurfaceCoatingEmitterComponent::onEnablePatchAABBDebug()
 {
     m_patchBoundsDebugDataRebuildRequested = true;
 }
 
-void SurfaceCoatingComponent::createCustomRenderImages()
+void SurfaceCoatingEmitterComponent::createCustomRenderImages()
 {
     Wolf::CreateImageInfo createDepthImageInfo{};
     createDepthImageInfo.extent = { m_customRenderResolution, m_customRenderResolution, 1 };
@@ -581,8 +581,8 @@ void SurfaceCoatingComponent::createCustomRenderImages()
     createDepthImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::DEPTH;
     createDepthImageInfo.mipLevelCount = 1;
     m_depthImage.reset(Wolf::Image::createImage(createDepthImageInfo));
-    m_depthImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, 0,
-        1, VK_IMAGE_LAYOUT_UNDEFINED));
+    m_depthImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(Wolf::ImageLayout::GENERAL, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, 0,
+        1, Wolf::ImageLayout::UNDEFINED));
 
     Wolf::CreateImageInfo createNormalImageInfo{};
     createNormalImageInfo.extent = { m_customRenderResolution, m_customRenderResolution, 1 };
@@ -591,14 +591,14 @@ void SurfaceCoatingComponent::createCustomRenderImages()
     createNormalImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
     createNormalImageInfo.mipLevelCount = 1;
     m_normalImage.reset(Wolf::Image::createImage(createNormalImageInfo));
-    m_normalImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0,
-        1, VK_IMAGE_LAYOUT_UNDEFINED));
+    m_normalImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(Wolf::ImageLayout::GENERAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0,
+        1, Wolf::ImageLayout::UNDEFINED));
 
     m_needToRegisterCustomRenderImages = true;
     createOrUpdateDescriptorSet();
 }
 
-void SurfaceCoatingComponent::createDepthCamera()
+void SurfaceCoatingEmitterComponent::createDepthCamera()
 {
     // TODO: recreating the camera is overkill and needs a new descriptor set, we should update the existing one
     Wolf::AABB rangeAABB = computeRangeAABB();
@@ -611,17 +611,17 @@ void SurfaceCoatingComponent::createDepthCamera()
     m_needToRegisterCustomRenderImages = true;
 }
 
-void SurfaceCoatingComponent::createOrUpdateDescriptorSet()
+void SurfaceCoatingEmitterComponent::createOrUpdateDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 
     Wolf::DescriptorSetGenerator::ImageDescription depthImageDesc{};
-    depthImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    depthImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     depthImageDesc.imageView = m_depthImage->getDefaultImageView();
     descriptorSetGenerator.setImage(0, depthImageDesc);
 
     Wolf::DescriptorSetGenerator::ImageDescription normalImageDesc{};
-    normalImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    normalImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     normalImageDesc.imageView = m_normalImage->getDefaultImageView();
     descriptorSetGenerator.setImage(1, normalImageDesc);
 
@@ -629,17 +629,17 @@ void SurfaceCoatingComponent::createOrUpdateDescriptorSet()
     descriptorSetGenerator.setUniformBuffer(3, *m_uniformBuffer);
 
     std::vector<Wolf::DescriptorSetGenerator::ImageDescription> defaultParticleDepthImages(1);
-    defaultParticleDepthImages[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    defaultParticleDepthImages[0].imageLayout = Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
     defaultParticleDepthImages[0].imageView = m_defaultPatternHeightImage->getDefaultImageView();
     descriptorSetGenerator.setImages(4, defaultParticleDepthImages);
 
     Wolf::DescriptorSetGenerator::ImageDescription patternIdxImageDesc{};
-    patternIdxImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    patternIdxImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     patternIdxImageDesc.imageView = m_patternIdxImage->getDefaultImageView();
     descriptorSetGenerator.setImage(5, patternIdxImageDesc);
 
     Wolf::DescriptorSetGenerator::ImageDescription patchBoundsImageDesc{};
-    patchBoundsImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    patchBoundsImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     patchBoundsImageDesc.imageView = m_patchBoundsImage->getDefaultImageView();
     descriptorSetGenerator.setImage(6, patchBoundsImageDesc);
 
@@ -650,7 +650,7 @@ void SurfaceCoatingComponent::createOrUpdateDescriptorSet()
     m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }
 
-void SurfaceCoatingComponent::updatePatternInBindless(uint32_t patternIdx)
+void SurfaceCoatingEmitterComponent::updatePatternInBindless(uint32_t patternIdx)
 {
     Wolf::DescriptorSetUpdateInfo descriptorSetUpdateInfo;
     descriptorSetUpdateInfo.descriptorImages.resize(1);
@@ -658,7 +658,7 @@ void SurfaceCoatingComponent::updatePatternInBindless(uint32_t patternIdx)
     {
         descriptorSetUpdateInfo.descriptorImages[0].images.resize(1);
         Wolf::DescriptorSetUpdateInfo::ImageData& imageData = descriptorSetUpdateInfo.descriptorImages[0].images.back();
-        imageData.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageData.imageLayout = Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
         imageData.imageView = getPatternHeightImage(patternIdx)->getDefaultImageView();
 
         Wolf::DescriptorLayout& descriptorLayout = descriptorSetUpdateInfo.descriptorImages[0].descriptorLayout;
@@ -670,7 +670,7 @@ void SurfaceCoatingComponent::updatePatternInBindless(uint32_t patternIdx)
     m_descriptorSet->update(descriptorSetUpdateInfo);
 }
 
-void SurfaceCoatingComponent::createSurfaceCoatingSpecificImages()
+void SurfaceCoatingEmitterComponent::createSurfaceCoatingSpecificImages()
 {
     Wolf::CreateImageInfo createPatchBoundsImageInfo{};
     createPatchBoundsImageInfo.extent = { 32, 32, 1 }; // grid size
@@ -679,12 +679,12 @@ void SurfaceCoatingComponent::createSurfaceCoatingSpecificImages()
     createPatchBoundsImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
     createPatchBoundsImageInfo.mipLevelCount = 1;
     m_patchBoundsImage.reset(Wolf::Image::createImage(createPatchBoundsImageInfo));
-    m_patchBoundsImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, 0,
-        1, VK_IMAGE_LAYOUT_UNDEFINED));
+    m_patchBoundsImage->setImageLayout(Wolf::Image::TransitionLayoutInfo(Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, 0,
+        1, Wolf::ImageLayout::UNDEFINED));
 
 }
 
-void SurfaceCoatingComponent::patternImagesSanityChecks()
+void SurfaceCoatingEmitterComponent::patternImagesSanityChecks()
 {
     uint32_t patternImageSize = 0;
     for (uint32_t patternImageIdx = 0; patternImageIdx < m_patternImages.size(); patternImageIdx++)
@@ -718,7 +718,7 @@ void SurfaceCoatingComponent::patternImagesSanityChecks()
     }
 }
 
-Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getPatternHeightImage(uint32_t imageIdx)
+Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingEmitterComponent::getPatternHeightImage(uint32_t imageIdx)
 {
     if (m_patternImages.size() <= imageIdx || !m_patternImages[imageIdx].hasHeightImage() || !m_patternImages[imageIdx].isHeightImageLoaded())
     {
@@ -728,7 +728,7 @@ Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingComponent::getPatternHeightIma
     return m_patternImages[imageIdx].getHeightImage();
 }
 
-void SurfaceCoatingComponent::createDefaultPatternImage()
+void SurfaceCoatingEmitterComponent::createDefaultPatternImage()
 {
     Wolf::CreateImageInfo createImageInfo{};
     createImageInfo.extent = { 1, 1, 1 };
@@ -742,7 +742,7 @@ void SurfaceCoatingComponent::createDefaultPatternImage()
     m_defaultPatternHeightImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(&defaultData), Wolf::Image::SampledInFragmentShader());
 }
 
-void SurfaceCoatingComponent::createPatternIdxImage()
+void SurfaceCoatingEmitterComponent::createPatternIdxImage()
 {
     Wolf::CreateImageInfo createImageInfo{};
     createImageInfo.extent = { 32, 32, 1 }; // this is the size of the grid
@@ -761,7 +761,7 @@ void SurfaceCoatingComponent::createPatternIdxImage()
     {
         random = static_cast<uint32_t>(distrib(generator));
     }
-    m_patternIdxImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(randomData.data()), { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT,
-        0, 1, 0, 1, VK_IMAGE_LAYOUT_UNDEFINED });
+    m_patternIdxImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(randomData.data()), { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT,
+        0, 1, 0, 1, Wolf::ImageLayout::UNDEFINED });
 }
 

@@ -4,6 +4,7 @@
 
 #include <CameraInterface.h>
 #include <CommandRecordBase.h>
+#include <DescriptorSetLayout.h>
 #include <DescriptorSetLayoutGenerator.h>
 #include <DynamicResourceUniqueOwnerArray.h>
 #include <FrameBuffer.h>

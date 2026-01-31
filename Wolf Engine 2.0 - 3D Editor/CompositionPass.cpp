@@ -53,7 +53,7 @@ void CompositionPass::initializeResources(const Wolf::InitializationContext& con
             }
         }
     }
-    m_defaultLUTImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(defaultLUTData.data()),  { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT });
+    m_defaultLUTImage->copyCPUBuffer(reinterpret_cast<const unsigned char*>(defaultLUTData.data()),  { Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT });
 
     m_swapChainImages = context.swapChainImages;
     m_uiImage = context.userInterfaceImage;
@@ -144,7 +144,7 @@ void CompositionPass::record(const Wolf::RecordContext& context)
 
     Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "Composition Pass");
 
-    context.swapchainImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
+    context.swapchainImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
 
     m_commandBuffer->bindPipeline(m_pipeline.createConstNonOwnerResource());
     m_commandBuffer->bindDescriptorSet(m_descriptorSets[context.swapChainImageIdx].createConstNonOwnerResource(), 0, *m_pipeline);
@@ -154,7 +154,7 @@ void CompositionPass::record(const Wolf::RecordContext& context)
     const uint32_t groupSizeY = context.swapchainImage->getExtent().height % dispatchGroups.height != 0 ? context.swapchainImage->getExtent().height / dispatchGroups.height + 1 : context.swapchainImage->getExtent().height / dispatchGroups.height;
     m_commandBuffer->dispatch(groupSizeX, groupSizeY, dispatchGroups.depth);
 
-    context.swapchainImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_NONE, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT });
+    context.swapchainImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::PRESENT_SRC_KHR, VK_ACCESS_NONE, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT });
 
     Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -239,11 +239,11 @@ void CompositionPass::saveSwapChainToFile()
 void CompositionPass::updateDescriptorSets()
 {
     Wolf::DescriptorSetGenerator::ImageDescription forwardResultImageDesc;
-    forwardResultImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    forwardResultImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     forwardResultImageDesc.imageView = m_forwardPass->getOutput().getDefaultImageView();
 
     Wolf::DescriptorSetGenerator::ImageDescription uiResultImageDesc;
-    uiResultImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    uiResultImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
     uiResultImageDesc.imageView = m_uiImage->getDefaultImageView();
 
     for (uint32_t i = 0; i < m_descriptorSets.size(); i++)
@@ -251,11 +251,11 @@ void CompositionPass::updateDescriptorSets()
         Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
         descriptorSetGenerator.setImage(0, forwardResultImageDesc);
         descriptorSetGenerator.setImage(1, uiResultImageDesc);
-        descriptorSetGenerator.setCombinedImageSampler(2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_lutImage ? m_lutImage->getDefaultImageView() : m_defaultLUTImage->getDefaultImageView(), *m_sampler);
+        descriptorSetGenerator.setCombinedImageSampler(2, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_lutImage ? m_lutImage->getDefaultImageView() : m_defaultLUTImage->getDefaultImageView(), *m_sampler);
         descriptorSetGenerator.setUniformBuffer(3, *m_uniformBuffer);
 
         Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc;
-        outputImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        outputImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
         outputImageDesc.imageView = m_swapChainImages[i]->getDefaultImageView();
         descriptorSetGenerator.setImage(4, outputImageDesc);
 

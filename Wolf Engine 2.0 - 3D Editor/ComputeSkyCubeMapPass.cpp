@@ -77,8 +77,8 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
 
     m_commandBuffer->beginCommandBuffer();
 
-    cubeMapImage->transitionImageLayout(*m_commandBuffer, Wolf::Image::TransitionLayoutInfo { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-        0, 1, 0, 6, VK_IMAGE_LAYOUT_UNDEFINED });
+    cubeMapImage->transitionImageLayout(*m_commandBuffer, Wolf::Image::TransitionLayoutInfo { Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+        0, 1, 0, 6, Wolf::ImageLayout::UNDEFINED });
 
     for (uint32_t captureViewIdx = 0; captureViewIdx < captureViews.size(); ++captureViewIdx)
     {
@@ -113,14 +113,14 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
         Wolf::Extent3D extent = cubeMapImage->getExtent();
         copyRegion.extent = { extent.width, extent.height, extent.depth };
 
-        m_renderTargetImage->setImageLayoutWithoutOperation(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        m_renderTargetImage->setImageLayoutWithoutOperation(Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL);
         cubeMapImage->recordCopyGPUImage(*m_renderTargetImage, copyRegion, *m_commandBuffer);
-        m_renderTargetImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-            0, 1, 0, 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL});
+        m_renderTargetImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_MEMORY_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+            0, 1, 0, 1, Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL});
     }
 
-    cubeMapImage->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-        0, 1, 0, 6, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL });
+    cubeMapImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+        0, 1, 0, 6, Wolf::ImageLayout::TRANSFER_DST_OPTIMAL });
 
     m_commandBuffer->endCommandBuffer();
 
@@ -175,7 +175,7 @@ void ComputeSkyCubeMapPass::createRenderPass()
 
     Wolf::Extent3D cubMapExtent = cubeMapImage->getExtent();
 
-    Wolf::Attachment color =  Wolf::Attachment({ cubMapExtent.width, cubMapExtent.height }, cubeMapImage->getFormat(), Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    Wolf::Attachment color =  Wolf::Attachment({ cubMapExtent.width, cubMapExtent.height }, cubeMapImage->getFormat(), Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL,
            Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, m_renderTargetImage->getDefaultImageView());
 
     m_renderPass.reset(Wolf::RenderPass::createRenderPass({ color }));
@@ -187,7 +187,7 @@ void ComputeSkyCubeMapPass::updateComputeFromSphericalMapDescriptorSets()
     for (uint32_t captureViewIdx = 0; captureViewIdx < 6; ++captureViewIdx)
     {
         Wolf::DescriptorSetGenerator descriptorSetGenerator(m_computeFromSphericalMapDescriptorSetLayoutGenerator.getDescriptorLayouts());
-        descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_sphericalMapImage->getDefaultImageView(), *m_computeFromSphericalMapSampler);
+        descriptorSetGenerator.setCombinedImageSampler(0, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_sphericalMapImage->getDefaultImageView(), *m_computeFromSphericalMapSampler);
         descriptorSetGenerator.setUniformBuffer(1, *m_computeFromSphericalMapUniformBuffers[captureViewIdx]);
 
         m_computeFromSphericalMapDescriptorSets[captureViewIdx]->update(descriptorSetGenerator.getDescriptorSetCreateInfo());

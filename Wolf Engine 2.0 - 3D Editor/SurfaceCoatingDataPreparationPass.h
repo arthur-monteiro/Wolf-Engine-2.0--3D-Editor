@@ -12,7 +12,7 @@
 
 #include "CustomSceneRenderPass.h"
 
-class SurfaceCoatingComponent;
+class SurfaceCoatingEmitterComponent;
 
 class SurfaceCoatingDataPreparationPass : public Wolf::CommandRecordBase
 {
@@ -24,8 +24,8 @@ public:
     void record(const Wolf::RecordContext& context) override;
     void submit(const Wolf::SubmitContext& context) override;
 
-    void registerComponent(SurfaceCoatingComponent* component);
-    void unregisterComponent(const SurfaceCoatingComponent* component);
+    void registerComponent(SurfaceCoatingEmitterComponent* component);
+    void unregisterComponent(const SurfaceCoatingEmitterComponent* component);
 
 private:
     Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customSceneRenderPass;
@@ -34,7 +34,7 @@ private:
     void createOrUpdateDescriptorSet();
 
     bool m_commandsRecordedThisFrame = false;
-    SurfaceCoatingComponent* m_component = nullptr;
+    SurfaceCoatingEmitterComponent* m_component = nullptr;
 
     Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;

@@ -14,10 +14,12 @@
 #include <Mesh.h>
 #include <ShaderParser.h>
 
+#include "EditorGPUDataTransfersManager.h"
+
 class RayTracedWorldManager
 {
 public:
-    RayTracedWorldManager();
+    RayTracedWorldManager(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
 
     struct RayTracedWorldInfo
     {
@@ -51,6 +53,7 @@ private:
     uint32_t addStorageBuffer(const Wolf::ResourceNonOwner<Wolf::Buffer>& buffer);
     uint64_t computeBufferListHash() const;
 
+    Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
     Wolf::ResourceUniqueOwner<Wolf::TopLevelAccelerationStructure> m_topLevelAccelerationStructure;
 
     struct InstanceData

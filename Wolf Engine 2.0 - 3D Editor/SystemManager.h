@@ -12,6 +12,7 @@
 #include "RayTracedWorldManager.h"
 #include "RenderingPipeline.h"
 #include "AssetManager.h"
+#include "EditorGPUDataTransfersManager.h"
 
 class SystemManager
 {
@@ -84,6 +85,7 @@ private:
 	Wolf::ResourceUniqueOwner<RenderingPipeline> m_renderer;
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
 	Wolf::ResourceUniqueOwner<AssetManager> m_assetManager;
+	Wolf::ResourceUniqueOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
 	/* FPS counter */
 	uint32_t m_currentFramesAccumulated = 0;

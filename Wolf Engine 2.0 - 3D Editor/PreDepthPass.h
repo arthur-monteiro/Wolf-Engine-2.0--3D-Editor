@@ -30,7 +30,7 @@ private:
 	uint32_t getWidth() override { return m_swapChainWidth; }
 	uint32_t getHeight() override { return m_swapChainHeight; }
 	Wolf::ImageUsageFlags getAdditionalUsages() override { return Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_SRC; }
-	VkImageLayout getFinalLayout() override { return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; }
+	Wolf::ImageLayout getFinalLayout() override { return Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL; }
 
 	void recordDraws(const Wolf::RecordContext& context) override;
 	const Wolf::CommandBuffer& getCommandBuffer(const Wolf::RecordContext& context) override;

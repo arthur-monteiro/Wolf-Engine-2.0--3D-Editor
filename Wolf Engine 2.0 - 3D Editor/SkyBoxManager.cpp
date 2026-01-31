@@ -118,7 +118,7 @@ void SkyBoxManager::createCubeMap()
     std::vector<glm::vec4> initData(m_cubeMapResolution * m_cubeMapResolution, glm::vec4(CLEAR_VALUE, CLEAR_VALUE, CLEAR_VALUE, 1.0f));
     for (uint32_t i = 0; i < 6; ++i)
     {
-        m_cubeMapImage->copyCPUBuffer(reinterpret_cast<unsigned char*>(initData.data()), { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+        m_cubeMapImage->copyCPUBuffer(reinterpret_cast<unsigned char*>(initData.data()), { Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
            0, 1, i, 1 }, 0, i);
     }
 }
@@ -177,7 +177,7 @@ void SkyBoxManager::createPipelineIfNeeded(const Wolf::RenderPass& renderPass)
 void SkyBoxManager::updateDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
-    descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_cubeMapImage->getDefaultImageView(), *m_sampler);
+    descriptorSetGenerator.setCombinedImageSampler(0, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_cubeMapImage->getDefaultImageView(), *m_sampler);
 
     m_descriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 }

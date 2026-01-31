@@ -37,7 +37,7 @@ ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<Renderin
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 
 	m_sampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1, VK_FILTER_NEAREST));
-	descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_contaminationIdsImage->getDefaultImageView(), *m_sampler);
+	descriptorSetGenerator.setCombinedImageSampler(0, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_contaminationIdsImage->getDefaultImageView(), *m_sampler);
 
 	m_contaminationInfoBuffer.reset(Wolf::Buffer::createBuffer(sizeof(ContaminationInfo), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 	descriptorSetGenerator.setBuffer(1, *m_contaminationInfoBuffer);

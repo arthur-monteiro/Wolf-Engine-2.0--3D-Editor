@@ -6,6 +6,7 @@
 #include <ShaderParser.h>
 #include <UniformBuffer.h>
 
+#include "EditorGPUDataTransfersManager.h"
 #include "Mesh.h"
 #include "ModelLoader.h"
 #include "RayTracedWorldManager.h"
@@ -18,7 +19,7 @@ namespace Wolf
 class ComputeVertexDataPass : public Wolf::CommandRecordBase
 {
 public:
-    ~ComputeVertexDataPass();
+    ~ComputeVertexDataPass() override;
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
@@ -31,8 +32,9 @@ public:
     {
     public:
         Request() = default;
-        Request(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const Wolf::NullableResourceNonOwner<Wolf::Buffer>& overrideIndexBuffer, uint32_t firstMaterialIdx, const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& blas)
-             : m_mesh(mesh), m_firstMaterialIdx(firstMaterialIdx), m_bottomLevelAccelerationStructure(blas), m_indexBuffer(mesh->getIndexBuffer())
+        Request(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const Wolf::NullableResourceNonOwner<Wolf::Buffer>& overrideIndexBuffer,
+            uint32_t firstMaterialIdx, const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& blas)
+             : m_editorPushDataToGPU(editorPushDataToGPU), m_mesh(mesh), m_indexBuffer(mesh->getIndexBuffer()), m_firstMaterialIdx(firstMaterialIdx), m_bottomLevelAccelerationStructure(blas)
         {
             if (mesh->getVertexSize() != sizeof(Vertex3D))
             {
@@ -46,7 +48,7 @@ public:
 
             initResources();
         }
-        Request(Request& other) : m_mesh(other.m_mesh), m_indexBuffer(other.m_indexBuffer), m_bottomLevelAccelerationStructure(other.m_bottomLevelAccelerationStructure)
+        Request(Request& other) : m_editorPushDataToGPU(other.m_editorPushDataToGPU), m_mesh(other.m_mesh), m_indexBuffer(other.m_indexBuffer), m_bottomLevelAccelerationStructure(other.m_bottomLevelAccelerationStructure)
         {
             m_firstMaterialIdx = other.m_firstMaterialIdx;
 
@@ -72,6 +74,7 @@ public:
         void createAccumulateColorsDescriptorSet();
         void createAverageColorsDescriptorSet();
 
+        Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
         Wolf::ResourceNonOwner<Wolf::Mesh> m_mesh;
         Wolf::ResourceNonOwner<Wolf::Buffer> m_indexBuffer;
         uint32_t m_firstMaterialIdx;

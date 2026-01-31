@@ -11,7 +11,7 @@
 #include "EditorConfiguration.h"
 #include "ImageFileLoader.h"
 #include "MipMapGenerator.h"
-#include "PushDataToGPU.h"
+#include "GPUDataTransfersManager.h"
 #include "Timer.h"
 #include "VirtualTextureManager.h"
 

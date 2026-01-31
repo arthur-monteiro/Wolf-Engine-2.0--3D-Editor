@@ -22,6 +22,8 @@ layout(binding = 0, set = 0) uniform UniformBufferCamera
 	float far;
 	uint  frameIndex;
 	uint  extentWidth;
+
+	vec4 frustumPlanes[6]; // left, right, bottom, top, near, far
 } ubCamera;
 
 mat4 getViewMatrix()
@@ -82,6 +84,11 @@ uint getCameraFrameIndex()
 uint getScreenWidth()
 {
 	return ubCamera.extentWidth;
+}
+
+vec4 getFrustumPlane(uint idx)
+{
+	return ubCamera.frustumPlanes[idx];
 }
 layout(quads, equal_spacing, ccw) in;
 

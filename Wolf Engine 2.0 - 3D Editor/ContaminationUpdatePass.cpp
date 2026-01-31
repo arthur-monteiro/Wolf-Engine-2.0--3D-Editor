@@ -80,8 +80,8 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 
 	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::computePassDebugColor, "Contamination update pass");
 
-	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, 0, 1, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL });
 
 	m_commandBuffer->bindPipeline(m_computePipeline.createConstNonOwnerResource());
 	m_commandBuffer->bindDescriptorSet(m_contaminationEmitters[0].getUpdateDescriptorSet().createConstNonOwnerResource(), 0, *m_computePipeline);
@@ -92,8 +92,8 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 	constexpr uint32_t groupSizeZ = ContaminationEmitter::CONTAMINATION_IDS_IMAGE_SIZE / dispatchGroups.depth;
 	m_commandBuffer->dispatch(groupSizeX, groupSizeY, groupSizeZ);
 
-	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT,
-		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_GENERAL });
+	m_contaminationEmitters[0].getContaminationEmitter()->getContaminationIdsImage()->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, 0, 1, Wolf::ImageLayout::GENERAL });
 
 	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -165,7 +165,7 @@ ContaminationUpdatePass::PerEmitterInfo::PerEmitterInfo(ContaminationEmitter* co
 	m_componentPtr = contaminationEmitter;
 
 	Wolf::DescriptorSetGenerator descriptorSetGenerator(descriptorSetLayoutGenerator.getDescriptorLayouts());
-	descriptorSetGenerator.setImage(0, { VK_IMAGE_LAYOUT_GENERAL, contaminationEmitter->getContaminationIdsImage()->getDefaultImageView() });
+	descriptorSetGenerator.setImage(0, { Wolf::ImageLayout::GENERAL, contaminationEmitter->getContaminationIdsImage()->getDefaultImageView() });
 	descriptorSetGenerator.setBuffer(1, *contaminationEmitter->getContaminationInfoBuffer());
 	descriptorSetGenerator.setUniformBuffer(2, *shootRequestsBuffer);
 

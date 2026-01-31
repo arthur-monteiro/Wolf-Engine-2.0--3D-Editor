@@ -17,6 +17,7 @@ SystemManager::SystemManager()
 {
 	m_configuration.reset(new EditorConfiguration("config/editor.ini"));
 	m_editorParams.reset(new EditorParams(1920, 1080));
+	m_editorPushDataToGPU.reset(new EditorGPUDataTransfersManager);
 
 	createWolfInstance();
 
@@ -38,7 +39,7 @@ SystemManager::SystemManager()
 
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
-		m_rayTracedWorldManager.reset(new RayTracedWorldManager);
+		m_rayTracedWorldManager.reset(new RayTracedWorldManager(m_editorPushDataToGPU.createNonOwnerResource()));
 
 		if (Wolf::g_configuration->getUseVirtualTexture())
 		{
@@ -47,6 +48,9 @@ SystemManager::SystemManager()
 	}
 
 	createRenderer();
+
+	m_editorPushDataToGPU->setUpdateGPUBuffersPass(m_renderer->getUpdateGPUBuffersPass());
+	m_editorPushDataToGPU->setGPUBufferToGPUBufferCopyPass(m_renderer->getGPUBufferToGPUBufferCopyPass());
 
 	m_requestReloadCallback = [this](ComponentInterface* component)
 		{
@@ -67,7 +71,8 @@ SystemManager::SystemManager()
 		{
 			outViewMatrix = m_camera->getViewMatrix();
 			removeCustomView();
-		}));
+		},
+		m_editorPushDataToGPU.createNonOwnerResource()));
 	m_renderer->setResourceManager(m_assetManager.createNonOwnerResource());
 	
 	m_entityContainer.reset(new EntityContainer);
@@ -155,17 +160,18 @@ void SystemManager::run()
 void SystemManager::createWolfInstance()
 {
 	Wolf::WolfInstanceCreateInfo wolfInstanceCreateInfo;
-	wolfInstanceCreateInfo.configFilename = "config/config.ini";
-	wolfInstanceCreateInfo.debugCallback = std::bind(&SystemManager::debugCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	wolfInstanceCreateInfo.resizeCallback = [this](uint32_t width, uint32_t height)
+	wolfInstanceCreateInfo.m_configFilename = "config/config.ini";
+	wolfInstanceCreateInfo.m_debugCallback = std::bind(&SystemManager::debugCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+	wolfInstanceCreateInfo.m_resizeCallback = [this](uint32_t width, uint32_t height)
 	{
 		resizeCallback(width, height);
 	};
-	wolfInstanceCreateInfo.htmlURL = "UI/UI.html";
-	wolfInstanceCreateInfo.uiFinalLayout = VK_IMAGE_LAYOUT_GENERAL;
-	wolfInstanceCreateInfo.bindUltralightCallbacks = [this](ultralight::JSObject& jsObject) { bindUltralightCallbacks(jsObject); };
-	wolfInstanceCreateInfo.useBindlessDescriptor = true;
-	wolfInstanceCreateInfo.threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
+	wolfInstanceCreateInfo.m_htmlURL = "UI/UI.html";
+	wolfInstanceCreateInfo.m_uiFinalLayout = Wolf::ImageLayout::GENERAL;
+	wolfInstanceCreateInfo.m_bindUltralightCallbacks = [this](ultralight::JSObject& jsObject) { bindUltralightCallbacks(jsObject); };
+	wolfInstanceCreateInfo.m_useBindlessDescriptor = true;
+	wolfInstanceCreateInfo.m_threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
+	wolfInstanceCreateInfo.m_pushDataToGPU = m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>();
 
 	m_wolfInstance.reset(new Wolf::WolfEngine(wolfInstanceCreateInfo));
 

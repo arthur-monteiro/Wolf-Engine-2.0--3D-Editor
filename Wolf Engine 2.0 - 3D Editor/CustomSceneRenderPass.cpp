@@ -154,12 +154,12 @@ void CustomSceneRenderPass::Request::recordCommands(const Wolf::CommandBuffer* c
 void CustomSceneRenderPass::Request::initResources()
 {
     std::vector<Wolf::Attachment> attachments;
-    attachments.emplace_back(Wolf::Extent2D{ m_outputDepth->getExtent().width, m_outputDepth->getExtent().height }, m_outputDepth->getFormat(), Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_GENERAL,
+    attachments.emplace_back(Wolf::Extent2D{ m_outputDepth->getExtent().width, m_outputDepth->getExtent().height }, m_outputDepth->getFormat(), Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::GENERAL,
         Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_outputDepth->getDefaultImageView());
 
     for (const Output& output : m_outputs)
     {
-        attachments.emplace_back(Wolf::Extent2D{ output.m_image->getExtent().width, output.m_image->getExtent().height }, output.m_image->getFormat(), Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_GENERAL,
+        attachments.emplace_back(Wolf::Extent2D{ output.m_image->getExtent().width, output.m_image->getExtent().height }, output.m_image->getFormat(), Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::GENERAL,
             Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, output.m_image->getDefaultImageView());
     }
 

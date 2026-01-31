@@ -23,7 +23,7 @@
 #include "PointLight.h"
 #include "SkyLight.h"
 #include "StaticModel.h"
-#include "SurfaceCoatingComponent.h"
+#include "SurfaceCoatingEmitterComponent.h"
 
 class RenderingPipelineInterface;
 
@@ -195,11 +195,11 @@ private:
 		},
 		ComponentInfo
 		{
-			"Surface coating",
-			SurfaceCoatingComponent::ID,
+			"Surface coating emitter",
+			SurfaceCoatingEmitterComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SurfaceCoatingComponent(m_renderingPipeline, m_assetManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new SurfaceCoatingEmitterComponent(m_renderingPipeline, m_assetManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
 			}
 		}
 	};

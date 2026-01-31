@@ -261,7 +261,7 @@ void VoxelGlobalIlluminationPass::createDescriptorSet()
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_rayTracingDescriptorSetLayoutGenerator.getDescriptorLayouts());
     descriptorSetGenerator.setBuffer(0, *m_voxelGrid);
     descriptorSetGenerator.setUniformBuffer(1, *m_uniformBuffer);
-    descriptorSetGenerator.setCombinedImageSampler(2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
+    descriptorSetGenerator.setCombinedImageSampler(2, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
     descriptorSetGenerator.setBuffer(3, *m_requestsBuffer);
 
     if (!m_rayTracingDescriptorSet)

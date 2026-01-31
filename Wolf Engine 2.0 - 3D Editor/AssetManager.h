@@ -17,7 +17,8 @@ class AssetManager
 public:
 	AssetManager(const std::function<void(const std::string&, const std::string&, AssetId)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
-		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback);
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
+		const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
 
 	void updateBeforeFrame();
 	void save();
@@ -67,6 +68,7 @@ private:
 	std::function<void(const std::string&)> m_isolateMeshCallback;
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
+	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
 	class AssetInterface : public Notifier
 	{
@@ -141,11 +143,14 @@ private:
 		void deleteImageData();
 
 	protected:
-		ImageInterface(bool needThumbnailsGeneration, bool loadMips, Wolf::Format format, bool canBeVirtualized)
-			: m_thumbnailGenerationRequested(!g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration), m_loadMips(loadMips), m_format(format), m_canBeVirtualized(canBeVirtualized)
+		ImageInterface(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, bool needThumbnailsGeneration, bool loadMips, Wolf::Format format, bool canBeVirtualized)
+			: m_editorPushDataToGPU(editorPushDataToGPU), m_thumbnailGenerationRequested(!g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration), m_loadMips(loadMips), m_format(format),
+			  m_canBeVirtualized(canBeVirtualized)
 		{}
 
 		bool generateThumbnail(const std::string& fullFilePath, const std::string& iconPath);
+
+		Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
 		bool m_imageLoadingRequested = false;
 		bool m_thumbnailGenerationRequested = false;
@@ -163,7 +168,7 @@ private:
 	class Image : public AssetInterface, public ImageInterface
 	{
 	public:
-		Image(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+		Image(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
 			bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized);
 		Image(const Image&) = delete;
 
@@ -179,7 +184,8 @@ private:
 	class CombinedImage : public AssetInterface, public ImageInterface
 	{
 	public:
-		CombinedImage(const std::string& combinedLoadingPath, const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+		CombinedImage(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& combinedLoadingPath, const std::string& loadingPathR, const std::string& loadingPathG,
+			const std::string& loadingPathB, const std::string& loadingPathA, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
 			bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized);
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;

@@ -1,10 +1,12 @@
 #include "ComputeVertexDataPass.h"
 
-#include <Configuration.h>
 #include <random>
+
+#include <Configuration.h>
+#include <DebugMarker.h>
+#include <Pipeline.h>
 #include <RayTracingShaderGroupGenerator.h>
 
-#include "DebugMarker.h"
 #include "RayTracedWorldManager.h"
 
 Wolf::DescriptorSetLayoutGenerator ComputeVertexDataPass::m_resetBuffersDescriptorSetLayoutGenerator;
@@ -274,7 +276,7 @@ void ComputeVertexDataPass::Request::initResources()
     createAccumulateNormalsDescriptorSet();
 
     // Step 3: Accumulate colors
-    m_rayTracedWorldManager.reset(new RayTracedWorldManager());
+    m_rayTracedWorldManager.reset(new RayTracedWorldManager(m_editorPushDataToGPU));
 
     RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo = { m_bottomLevelAccelerationStructure, glm::mat4(1.0f), m_firstMaterialIdx, m_mesh };
     RayTracedWorldManager::RayTracedWorldInfo rayTracedWorldInfo{};

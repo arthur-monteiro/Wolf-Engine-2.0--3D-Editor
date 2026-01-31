@@ -11,13 +11,15 @@
 #include <VirtualTextureManager.h>
 
 #include "CodeFileHashes.h"
+#include "EditorGPUDataTransfersManager.h"
 
 class ImageFormatter
 {
 public:
-	ImageFormatter(const std::string& filename, const std::string& slicesFolder, Wolf::Format finalFormat, bool canBeVirtualized, bool keepDataOnCPU, bool loadMips);
-	ImageFormatter(const std::vector<Wolf::ImageCompression::RGBA8>& data, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels, Wolf::Extent3D extent, const std::string& binFolder,
-		const std::string& path, Wolf::Format finalFormat, bool canBeVirtualized, bool keepDataOnCPU);
+	ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& filename, const std::string& slicesFolder, Wolf::Format finalFormat, bool canBeVirtualized, bool keepDataOnCPU,
+		bool loadMips);
+	ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::vector<Wolf::ImageCompression::RGBA8>& data, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels,
+		Wolf::Extent3D extent, const std::string& binFolder, const std::string& path, Wolf::Format finalFormat, bool canBeVirtualized, bool keepDataOnCPU);
 
 	void transferImageTo(Wolf::ResourceUniqueOwner<Wolf::Image>& output);
 	std::string getSlicesFolder() const { return m_slicesFolder; }
@@ -34,6 +36,7 @@ private:
 	bool m_keepDataOnCPU;
 	std::vector<uint8_t> m_pixels;
 	bool m_loadMips;
+	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
 	static Wolf::ImageCompression::Compression findCompressionFromFormat(Wolf::Format format);
 	static Wolf::Format findUncompressedFormat(Wolf::Format format);

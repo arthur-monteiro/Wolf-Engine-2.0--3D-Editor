@@ -5,11 +5,11 @@
 #include <Buffer.h>
 #include <DescriptorSetGenerator.h>
 #include <DescriptorSetLayoutGenerator.h>
-#include <PushDataToGPU.h>
+#include <GPUDataTransfersManager.h>
 
 #include "ProfilerCommon.h"
 
-RayTracedWorldManager::RayTracedWorldManager()
+RayTracedWorldManager::RayTracedWorldManager(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU) : m_editorPushDataToGPU(editorPushDataToGPU)
 {
     m_instanceBuffer.reset(Wolf::Buffer::createBuffer(MAX_INSTANCES * sizeof(InstanceData), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 
@@ -17,7 +17,7 @@ RayTracedWorldManager::RayTracedWorldManager()
     m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::RAYGEN | Wolf::ShaderStageFlagBits::CLOSEST_HIT, 0); // instance buffer
     m_descriptorSetLayoutGenerator.addAccelerationStructure(Wolf::ShaderStageFlagBits::RAYGEN | Wolf::ShaderStageFlagBits::CLOSEST_HIT, 1); // TLAS
     m_descriptorSetLayoutGenerator.addStorageBuffers(Wolf::ShaderStageFlagBits::RAYGEN | Wolf::ShaderStageFlagBits::CLOSEST_HIT, 2,
-        2 * MAX_INSTANCES, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT); // Vertex and indices buffers
+        2 * MAX_INSTANCES, Wolf::DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT); // Vertex and indices buffers
 
     m_descriptorSetLayout.reset(new Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, RayTracedWorldManager>([this](Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout>& descriptorSetLayout)
     {
@@ -121,8 +121,7 @@ void RayTracedWorldManager::populateInstanceBuffer(const RayTracedWorldInfo& inf
         }
     }
 
-
-    Wolf::pushDataToGPUBuffer(m_instanceData.data(), m_instanceData.size() * sizeof(InstanceData), m_instanceBuffer.createNonOwnerResource(), 0);
+    m_editorPushDataToGPU->pushDataToGPUBuffer(m_instanceData.data(), m_instanceData.size() * sizeof(InstanceData), m_instanceBuffer.createNonOwnerResource(), 0);
 }
 
 void RayTracedWorldManager::createDescriptorSet()

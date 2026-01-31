@@ -5,37 +5,7 @@
 #include <ProfilerCommon.h>
 #include <RuntimeContext.h>
 
-#include <PushDataToGPU.h>
-
-UpdateGPUBuffersPass* g_updateGPUBufferPassInst = nullptr;
-
-void Wolf::pushDataToGPUBuffer(const void* data, uint32_t size, const ResourceNonOwner<Buffer>& outputBuffer, uint32_t outputOffset)
-{
-	g_updateGPUBufferPassInst->addRequestBeforeFrame({ data, size, outputBuffer, outputOffset });
-}
-
-void Wolf::fillGPUBuffer(uint32_t fillValue, uint32_t size, const ResourceNonOwner<Buffer>& outputBuffer, uint32_t outputOffset)
-{
-	g_updateGPUBufferPassInst->addRequestBeforeFrame({ fillValue, size, outputBuffer, outputOffset });
-}
-
-void Wolf::pushDataToGPUImage(const unsigned char* pixels, const ResourceNonOwner<Image>& outputImage, const Image::TransitionLayoutInfo& finalLayout, uint32_t mipLevel,
-	const glm::ivec2& copySize, const glm::ivec2& imageOffset)
-{
-	glm::ivec2 realCopySize = copySize;
-	if (realCopySize.x == 0 && realCopySize.y == 0)
-	{
-		const Wolf::Extent3D imageExtent = { outputImage->getExtent().width >> mipLevel, outputImage->getExtent().height >> mipLevel, outputImage->getExtent().depth };
-		realCopySize = glm::ivec2(imageExtent.width, imageExtent.height);
-	}
-
-	g_updateGPUBufferPassInst->addRequestBeforeFrame({ pixels, outputImage, finalLayout, mipLevel, realCopySize, imageOffset });
-}
-
-UpdateGPUBuffersPass::UpdateGPUBuffersPass()
-{
-	g_updateGPUBufferPassInst = this;
-}
+#include <GPUDataTransfersManager.h>
 
 void UpdateGPUBuffersPass::initializeResources(const Wolf::InitializationContext& context)
 {

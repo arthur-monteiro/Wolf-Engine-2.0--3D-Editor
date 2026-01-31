@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+#include <VertexInputs.h>
+
 struct Vertex2DTextured
 {
 	glm::vec2 pos;

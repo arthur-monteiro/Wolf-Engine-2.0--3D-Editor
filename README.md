@@ -42,14 +42,14 @@ enableRayTracing=1
 
 ## Features
 
-### [Ray traced global illumination](voxelGI_README.md) 
+### [Real-time Voxel-Based Global Illumination (VXGI)](voxelGI_README.md) 
 Realtime capture of indirect lighting and sky lighting.
 
 <p align="center">
   <img src="./Screenshots/global_irradiance.png"  width="1080"/>
 </p>
 
-### Vertex color and normal re-computation
+### Automated LOD optimization pipeline
 Re-compute vertex color and normal for lower LODs in order to keep correct data. Before / after:
 <p align="center">
   <img src="./Screenshots/vertexDataRecomputation/vertex_color_before.png" width="350" alt="Description of the image before changes" />
@@ -82,7 +82,7 @@ You can load a .cube file (rec709) to apply a "look" on the final image.
   <img src="./Screenshots/animations.gif"  width="1080"/>
 </p>
 
-### Texture streaming
+### Dynamic texture streaming and virtual texturing
 Textures are divided into mutliple slices to only load what's visible on screen.
 
 <p align="center">

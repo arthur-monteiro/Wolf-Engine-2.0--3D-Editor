@@ -30,7 +30,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	createRenderTargetInfo.format = OUTPUT_FORMAT;
 	createRenderTargetInfo.mipLevelCount = 1;
 	m_renderTargetImage.reset(Wolf::Image::createImage(createRenderTargetInfo));
-	Wolf::Attachment color = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, OUTPUT_FORMAT, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
+	Wolf::Attachment color = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, OUTPUT_FORMAT, Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
 		Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT, m_renderTargetImage->getDefaultImageView());
 
 	Wolf::CreateImageInfo depthImageCreateInfo;
@@ -42,7 +42,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	depthImageCreateInfo.aspectFlags = Wolf::ImageAspectFlagBits::DEPTH;
 	depthImageCreateInfo.usage = Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT;
 	m_depthImage.reset(Wolf::Image::createImage(depthImageCreateInfo));
-	Wolf::Attachment depth = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
+	Wolf::Attachment depth = Wolf::Attachment({ OUTPUT_SIZE, OUTPUT_SIZE }, context.depthFormat, Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL, Wolf::AttachmentStoreOp::STORE,
 		Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_depthImage->getDefaultImageView());
 
 	Wolf::CreateImageInfo createCopyInfo;
@@ -53,7 +53,8 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	createCopyInfo.imageTiling = VK_IMAGE_TILING_LINEAR;
 	createCopyInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	m_copyImage.reset(Wolf::Image::createImage(createCopyInfo));
-	m_copyImage->setImageLayout({ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, 0, 1, VK_IMAGE_LAYOUT_UNDEFINED });
+	m_copyImage->setImageLayout({ Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, 0, 1,
+		Wolf::ImageLayout::UNDEFINED });
 
 	m_renderPass.reset(Wolf::RenderPass::createRenderPass({ color, depth }));
 	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
@@ -285,7 +286,7 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	Wolf::Extent3D extent = m_copyImage->getExtent();
 	copyRegion.extent = { extent.width, extent.height, extent.depth };
 
-	m_renderTargetImage->setImageLayoutWithoutOperation(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL); // at this point, render pass should have set final layout
+	m_renderTargetImage->setImageLayoutWithoutOperation(Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL); // at this point, render pass should have set final layout
 	m_copyImage->recordCopyGPUImage(*m_renderTargetImage, copyRegion, *m_commandBuffer);
 
 	Wolf::DebugMarker::endRegion(m_commandBuffer.get());

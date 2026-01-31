@@ -2,6 +2,7 @@
 
 #include <DescriptorSetGenerator.h>
 #include <DescriptorSetLayout.h>
+#include <Pipeline.h>
 #include <RenderPass.h>
 
 #include "Vertex2DTextured.h"
@@ -29,7 +30,7 @@ void DrawRectInterface::initializeResources(const Wolf::InitializationContext& c
 void DrawRectInterface::createDescriptorSet(const Wolf::InitializationContext& context)
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_drawRectDescriptorSetLayoutGenerator.getDescriptorLayouts());
-    descriptorSetGenerator.setCombinedImageSampler(0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, getOutputImage()->getDefaultImageView(), *m_drawRectSampler);
+    descriptorSetGenerator.setCombinedImageSampler(0, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, getOutputImage()->getDefaultImageView(), *m_drawRectSampler);
 
     if (!m_drawRectDescriptorSet)
         m_drawRectDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_drawRectDescriptorSetLayout));

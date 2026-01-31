@@ -255,21 +255,21 @@ void ForwardPass::createOutputImage(const Wolf::InitializationContext& context)
 	createInfo.format = Wolf::Format::R16G16B16A16_SFLOAT;
 	createInfo.mipLevelCount = 1;
 	m_outputImage.reset(Wolf::Image::createImage(createInfo));
-	m_outputImage->setImageLayout({ VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0, 1,
-		VK_IMAGE_LAYOUT_UNDEFINED });
+	m_outputImage->setImageLayout({ Wolf::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0, 1,
+		Wolf::ImageLayout::UNDEFINED });
 }
 
 Wolf::Attachment ForwardPass::setupColorAttachment(const Wolf::InitializationContext& context)
 {
-	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, Wolf::Format::R16G16B16A16_SFLOAT, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_GENERAL, Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
+	return Wolf::Attachment({ context.swapChainWidth, context.swapChainHeight }, Wolf::Format::R16G16B16A16_SFLOAT, Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::GENERAL, Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::COLOR_ATTACHMENT,
 		m_outputImage->getDefaultImageView());
 }
 
 Wolf::Attachment ForwardPass::setupDepthAttachment(const Wolf::InitializationContext& context)
 {
-	Wolf::Attachment attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+	Wolf::Attachment attachment({ context.swapChainWidth, context.swapChainHeight }, context.depthFormat, Wolf::SAMPLE_COUNT_1, Wolf::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		Wolf::AttachmentStoreOp::STORE, Wolf::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT, m_preDepthPass->getOutput()->getDefaultImageView());
-	attachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;;
+	attachment.initialLayout = Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL;;
 	attachment.loadOperation = Wolf::AttachmentLoadOp::LOAD;
 
 	return attachment;

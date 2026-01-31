@@ -5,19 +5,10 @@
 #include <RuntimeContext.h>
 
 #include <DebugMarker.h>
-#include <ReadbackDataFromGPU.h>
-
-GPUBufferToGPUBufferCopyPass* g_GPUBufferToGPUBufferCopyPassInst = nullptr;
-
-void Wolf::requestGPUBufferReadbackRecord(const ResourceNonOwner<Buffer>& srcBuffer, uint32_t srcOffset, const ResourceNonOwner<ReadableBuffer>& readableBuffer, uint32_t size)
-{
-    g_GPUBufferToGPUBufferCopyPassInst->addRequestBeforeFrame({ srcBuffer, srcOffset, readableBuffer, size });
-}
 
 GPUBufferToGPUBufferCopyPass::GPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<const CompositionPass>& compositionPass, const Wolf::ResourceNonOwner<const DrawIdsPass>& drawIdsPass)
 : m_compositionPass(compositionPass), m_drawIdsPass(drawIdsPass)
 {
-    g_GPUBufferToGPUBufferCopyPassInst = this;
 }
 
 void GPUBufferToGPUBufferCopyPass::initializeResources(const Wolf::InitializationContext& context)

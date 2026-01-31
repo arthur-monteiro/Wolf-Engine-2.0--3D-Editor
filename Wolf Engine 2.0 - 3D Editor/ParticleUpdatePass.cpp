@@ -29,7 +29,7 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 1);
 	m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::COMPUTE, 2);
 	m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE, 3, MAX_DEPTH_IMAGES,
-			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT); // depth images
+			Wolf::DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | Wolf::DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT); // depth images
 	m_descriptorSetLayoutGenerator.addSampler(Wolf::ShaderStageFlagBits::COMPUTE, 4); // sampler for depth images
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT));
 
@@ -47,7 +47,7 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	m_defaultDepthImage.reset(Wolf::Image::createImage(imageCreateInfo));
 
 	std::vector<Wolf::DescriptorSetGenerator::ImageDescription> defaultParticleDepthImages(1);
-	defaultParticleDepthImages[0].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	defaultParticleDepthImages[0].imageLayout = Wolf::ImageLayout::GENERAL;
 	defaultParticleDepthImages[0].imageView = m_defaultDepthImage->getDefaultImageView();
 	descriptorSetGenerator.setImages(3, defaultParticleDepthImages);
 
@@ -232,7 +232,7 @@ uint32_t ParticleUpdatePass::registerDepthTexture(const Wolf::ResourceNonOwner<W
 		return 0;
 	}
 
-	Wolf::DescriptorSetGenerator::ImageDescription imageDescription{ VK_IMAGE_LAYOUT_GENERAL, depthImage->getDefaultImageView() };
+	Wolf::DescriptorSetGenerator::ImageDescription imageDescription{ Wolf::ImageLayout::GENERAL, depthImage->getDefaultImageView() };
 	return addDepthTexturesToBindless({ imageDescription });
 }
 

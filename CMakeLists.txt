@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG e05abfa5351b2a1c7648ce2b516bc4a35ef61072
+        GIT_TAG f8247e61864a13c56025ec3fce1e765e6df16c25
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -23,12 +23,19 @@ include_directories("dependencies/wolfenginecontent-src/Wolf-Engine-2.0")
 # Includes third parties
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/xxh64")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/glm")
-include_directories("dependencies/wolfenginecontent-src/ThirdParty/GLFW/include")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/tiny_obj")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/FrustumCull")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/stb_image")
-include_directories("dependencies/wolfenginecontent-src/ThirdParty/UltraLight/include")
-include_directories("dependencies/wolfenginecontent-src/ThirdParty/vulkan/Include")
+if(WIN32)
+    include_directories(dependencies/wolfenginecontent-src/ThirdParty/UltraLight/windows/include)
+    include_directories(dependencies/wolfenginecontent-src/ThirdParty/vulkan/Include)
+    include_directories(dependencies/wolfenginecontent-src/ThirdParty/GLFW/include)
+elseif(UNIX AND NOT APPLE)
+    include_directories(ThirdParty/UltraLight/linux/include)
+    find_package(Vulkan REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GLFW REQUIRED glfw3)
+endif()
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/Tracy/tracy")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/meshoptimizer/src")
 include_directories("GifEncoder/egif")
@@ -36,7 +43,7 @@ include_directories("GifEncoder/egif")
 link_directories("dependencies/wolfenginecontent-src/x64/Debug/lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/vulkan/Lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/GLFW/lib-vc2019")
-link_directories("dependencies/wolfenginecontent-src/ThirdParty/UltraLight/lib")
+link_directories("dependencies/wolfenginecontent-src/ThirdParty/UltraLight/windows/lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/meshoptimizer/lib")
 link_directories("x64/Debug/lib")
 

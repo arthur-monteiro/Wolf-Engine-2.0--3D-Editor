@@ -204,7 +204,7 @@ void ShadowMaskPassCascadedShadowMapping::createOutputImages(uint32_t width, uin
 	createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
 	createImageInfo.usage = Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::SAMPLED;
 	m_outputMask.reset(Wolf::Image::createImage(createImageInfo));
-	m_outputMask->setImageLayout({ VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
+	m_outputMask->setImageLayout({ Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
 }
 
 void ShadowMaskPassCascadedShadowMapping::createPipeline()
@@ -231,19 +231,19 @@ void ShadowMaskPassCascadedShadowMapping::updateDescriptorSet() const
 	Wolf::DescriptorSetGenerator outputDescriptorSetGenerator(m_outputComputeDescriptorSetLayoutGenerator.getDescriptorLayouts());
 
 	Wolf::DescriptorSetGenerator::ImageDescription preDepthImageDesc;
-	preDepthImageDesc.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	preDepthImageDesc.imageLayout = Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
 	preDepthImageDesc.imageView = m_preDepthPass->getOutput()->getDefaultImageView();
 	outputDescriptorSetGenerator.setImage(0, preDepthImageDesc);
 	outputDescriptorSetGenerator.setUniformBuffer(1, *m_uniformBuffer);
 	std::vector<Wolf::DescriptorSetGenerator::ImageDescription> shadowMapImageDescriptions(CascadedShadowMapsPass::CASCADE_COUNT);
 	for (uint32_t i = 0; i < CascadedShadowMapsPass::CASCADE_COUNT; ++i)
 	{
-		shadowMapImageDescriptions[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		shadowMapImageDescriptions[i].imageLayout = Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
 		shadowMapImageDescriptions[i].imageView = m_csmPass->getShadowMap(i)->getDefaultImageView();
 	}
 	outputDescriptorSetGenerator.setImages(2, shadowMapImageDescriptions);
 	outputDescriptorSetGenerator.setSampler(3, *m_shadowMapsSampler);
-	outputDescriptorSetGenerator.setCombinedImageSampler(4, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
+	outputDescriptorSetGenerator.setCombinedImageSampler(4, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
 
 	m_outputComputeDescriptorSet->update(outputDescriptorSetGenerator.getDescriptorSetCreateInfo());
 
@@ -251,7 +251,7 @@ void ShadowMaskPassCascadedShadowMapping::updateDescriptorSet() const
 	{
 		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_descriptorSetLayoutGenerator.getDescriptorLayouts());
 		Wolf::DescriptorSetGenerator::ImageDescription outputImageDesc;
-		outputImageDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		outputImageDesc.imageLayout = Wolf::ImageLayout::GENERAL;
 		outputImageDesc.imageView = m_outputMask->getDefaultImageView();
 		descriptorSetGenerator.setImage(0, outputImageDesc);
 
@@ -261,7 +261,7 @@ void ShadowMaskPassCascadedShadowMapping::updateDescriptorSet() const
 	{
 		Wolf::DescriptorSetGenerator descriptorSetGenerator(m_outputMaskDescriptorSetLayoutGenerator.getDescriptorLayouts());
 		Wolf::DescriptorSetGenerator::ImageDescription shadowMaskDesc;
-		shadowMaskDesc.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		shadowMaskDesc.imageLayout = Wolf::ImageLayout::GENERAL;
 		shadowMaskDesc.imageView = m_outputMask->getDefaultImageView();
 		descriptorSetGenerator.setImage(0, shadowMaskDesc);
 
