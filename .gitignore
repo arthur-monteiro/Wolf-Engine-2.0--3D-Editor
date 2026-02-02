@@ -387,7 +387,7 @@ tmp/
 */Data*/
 Wolf Engine 2.0 - 3D Editor/UI/media/resourceIcon/
 
-Dependencies/*
+dependencies/*
 */PathTracingResults/*
 
 */BrowseToFile.exe
@@ -399,3 +399,5 @@ Wolf Engine 2.0 - 3D Editor/config/editor.ini
 
 Wolf Engine 2.0 - 3D Editor/default/cookie.jar.db-wal
 Wolf Engine 2.0 - 3D Editor/default/cookie.jar.db-shm
+
+.lib_links/*

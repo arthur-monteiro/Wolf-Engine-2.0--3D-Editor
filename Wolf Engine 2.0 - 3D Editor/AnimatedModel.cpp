@@ -372,8 +372,15 @@ void AnimatedModel::updateMaxTimer()
 
 void AnimatedModel::requestModelLoading()
 {
-	if (!std::string(m_loadingPathParam).empty())
+	std::string loadingPathStr = std::string(m_loadingPathParam);
+	if (!loadingPathStr.empty())
 	{
+		if (std::string sanitizedLoadingPath = EditorConfiguration::sanitizeFilePath(loadingPathStr); sanitizedLoadingPath != loadingPathStr)
+		{
+			m_loadingPathParam = sanitizedLoadingPath;
+			return;
+		}
+
 		m_meshResourceId = m_resourceManager->addModel(std::string(m_loadingPathParam));
 		m_waitingForMeshLoadingFrameCount = 2; // wait a bit to ensure bone matrices upload is finished
 		notifySubscribers();
@@ -382,13 +389,20 @@ void AnimatedModel::requestModelLoading()
 
 void AnimatedModel::onTextureSetEntityChanged()
 {
-	if (static_cast<std::string>(m_textureSetEntityParam).empty())
+	std::string entityStr = static_cast<std::string>(m_textureSetEntityParam);
+	if (std::string sanitizedEntity = EditorConfiguration::sanitizeFilePath(entityStr); sanitizedEntity != entityStr)
+	{
+		m_textureSetEntityParam = sanitizedEntity;
+		return;
+	}
+
+	if (entityStr.empty())
 	{
 		m_textureSetEntity.reset(nullptr);
 	}
 	else
 	{
-		m_textureSetEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_textureSetEntityParam)));
+		m_textureSetEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(entityStr)));
 	}
 
 	if (m_textureSetEntity)
@@ -436,9 +450,16 @@ bool AnimatedModel::Animation::hasDefaultName() const
 
 void AnimatedModel::Animation::onFileParamChanged()
 {
-	if (!std::string(m_fileParam).empty())
+	std::string fileStr = static_cast<std::string>(m_fileParam);
+	if (std::string sanitizedFile = EditorConfiguration::sanitizeFilePath(fileStr); sanitizedFile != fileStr)
 	{
-		m_resourceId = (*m_resourceManager)->addModel(std::string(m_fileParam));
+		m_fileParam = sanitizedFile;
+		return;
+	}
+
+	if (!fileStr.empty())
+	{
+		m_resourceId = (*m_resourceManager)->addModel(std::string(fileStr));
 		notifySubscribers();
 	}
 }

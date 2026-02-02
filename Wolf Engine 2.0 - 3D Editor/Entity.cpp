@@ -17,7 +17,7 @@ Entity::Entity(std::string filePath, const std::function<void(Entity*)>&& onChan
 void Entity::loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent)
 {
 	const std::ifstream inFile(g_editorConfiguration->computeFullPathFromLocalPath(m_filepath));
-	if (inFile.good())
+	if (!m_filepath.empty() && inFile.good())
 	{
 		Wolf::JSONReader jsonReader(Wolf::JSONReader::FileReadInfo { g_editorConfiguration->computeFullPathFromLocalPath(m_filepath) });
 

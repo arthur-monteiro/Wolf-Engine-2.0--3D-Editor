@@ -1,5 +1,7 @@
 #include "ImageFormatter.h"
 
+#include <cstring>
+
 #include <Configuration.h>
 #include <ImageFileLoader.h>
 #include <GPUDataTransfersManager.h>

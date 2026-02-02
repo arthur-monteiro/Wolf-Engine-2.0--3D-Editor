@@ -86,7 +86,7 @@ private:
 		&m_gasCylinderBottomBoneOffset
 	};
 
-	std::chrono::steady_clock::time_point m_lastUpdateTimePoint;
+	std::chrono::high_resolution_clock::time_point m_lastUpdateTimePoint;
 
 	// Shoot
 	float m_currentShootX = 0.0f, m_currentShootY = 0.0f;

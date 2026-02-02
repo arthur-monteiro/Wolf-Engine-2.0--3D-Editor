@@ -349,11 +349,21 @@ ultralight::JSValue SystemManager::getVRAMUsedJSCallback(const ultralight::JSObj
 	return { vramUsedStr.c_str() };
 }
 
+
+#ifdef _WIN32
+#define POPEN _popen
+#define PCLOSE _pclose
+#else
+#include <stdio.h>
+#define POPEN popen
+#define PCLOSE pclose
+#endif
+
 std::string exec(const char* cmd)
 {
 	std::array<char, 128> buffer{};
 	std::string result;
-	FILE* pipe = _popen(cmd, "r");
+	FILE* pipe = POPEN(cmd, "r");
 	if (!pipe)
 		Wolf::Debug::sendError("Can't open " + std::string(cmd));
 	
@@ -362,7 +372,7 @@ std::string exec(const char* cmd)
 		result += buffer.data();
 	}
 
-	if(_pclose(pipe) < 0)
+	if(PCLOSE(pipe) < 0)
 	{
 		Wolf::Debug::sendError("Error with command " + std::string(cmd) + ": " + result);
 		return "";
@@ -380,8 +390,11 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 #ifdef _WIN32
 	const std::string cmd = "BrowseToFile.exe " + inputOption + " " + inputFilter + ' ' + m_configuration->getDataFolderPath();
 	fullFilePath = exec(cmd.c_str());
+#elif __linux__
+	const std::string cmd = "./BrowseToFile " + inputOption + " " + inputFilter + ' ' + m_configuration->getDataFolderPath();
+	fullFilePath = exec(cmd.c_str());
 #else
-	Debug::sendError("Pick file not implemented for this platform");
+	Wolf::Debug::sendCriticalError("Pick file not implemented for this platform");
 #endif
 
 	fullFilePath = m_configuration->computeLocalPathFromFullPath(fullFilePath);
@@ -391,8 +404,7 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 
 ultralight::JSValue SystemManager::pickFolderJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const
 {
-	// Not implemented
-	__debugbreak();
+	Wolf::Debug::sendCriticalError("Not implemented");
 
 	return "";
 }
@@ -460,6 +472,12 @@ void SystemManager::selectEntityByNameJSCallback(const ultralight::JSObject& thi
 		}
 	}
 }
+
+#if !defined(_WIN32)
+inline struct tm* localtime_s(struct tm* _Tm, const time_t* _Time) {
+	return localtime_r(_Time, _Tm);
+}
+#endif
 
 void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
@@ -1033,9 +1051,14 @@ void SystemManager::loadScene()
 			}
 
 			if (character == '\\')
+			{
+				deduplicatedLoadingPath += '/';
 				ignoreNextCharacter = true;
-
-			deduplicatedLoadingPath += character;
+			}
+			else
+			{
+				deduplicatedLoadingPath += character;
+			}
 		}
 
 		addEntity(deduplicatedLoadingPath);

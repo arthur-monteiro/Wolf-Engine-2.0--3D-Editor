@@ -284,11 +284,18 @@ void StaticModel::subscribeToAllSubMeshes()
 
 void StaticModel::requestModelLoading()
 {
-	if (!std::string(m_loadingPathParam).empty())
+	std::string loadingPathStr = std::string(m_loadingPathParam);
+	if (!loadingPathStr.empty())
 	{
+		if (std::string sanitizedLoadingPath = EditorConfiguration::sanitizeFilePath(loadingPathStr); sanitizedLoadingPath != loadingPathStr)
+		{
+			m_loadingPathParam = sanitizedLoadingPath;
+			return;
+		}
+
 		m_subMeshes.clear();
 
-		m_meshResourceId = m_resourceManager->addModel(std::string(m_loadingPathParam));
+		m_meshResourceId = m_resourceManager->addModel(loadingPathStr);
 		m_resourceManager->subscribeToMesh(m_meshResourceId, this, [this](Flags) { notifySubscribers(); });
 		m_isWaitingForMeshLoading = true;
 		notifySubscribers();

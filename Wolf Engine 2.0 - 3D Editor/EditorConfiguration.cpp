@@ -41,3 +41,18 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 
 	configFile.close();
 }
+
+std::string EditorConfiguration::sanitizeFilePath(const std::string& filePath)
+{
+	std::string result;
+
+	for (char c : filePath)
+	{
+		if (c == '\\')
+			result += '/';
+		else
+			result += c;
+	}
+
+	return result;
+}

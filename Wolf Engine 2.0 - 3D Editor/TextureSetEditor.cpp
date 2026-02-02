@@ -39,11 +39,11 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 		{
 			TextureSetLoader::TextureSetFileInfoGGX materialFileInfo{};
 			materialFileInfo.name = "Custom material";
-			materialFileInfo.albedo = m_albedoPathParam;
-			materialFileInfo.normal = m_normalPathParam;
-			materialFileInfo.roughness = m_roughnessParam;
-			materialFileInfo.metalness = m_metalnessParam;
-			materialFileInfo.ao = m_aoParam;
+			materialFileInfo.albedo = EditorConfiguration::sanitizeFilePath(m_albedoPathParam);
+			materialFileInfo.normal = EditorConfiguration::sanitizeFilePath(m_normalPathParam);
+			materialFileInfo.roughness = EditorConfiguration::sanitizeFilePath(m_roughnessParam);
+			materialFileInfo.metalness = EditorConfiguration::sanitizeFilePath(m_metalnessParam);
+			materialFileInfo.ao = EditorConfiguration::sanitizeFilePath(m_aoParam);
 
 			if (m_textureSetCacheInfo.imageNames.empty() || m_textureSetCacheInfo.imageNames[0] != materialFileInfo.albedo.substr(materialFileInfo.albedo.size() - m_textureSetCacheInfo.imageNames[0].size()))
 			{
@@ -79,8 +79,8 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 		{
 			TextureSetLoader::TextureSetFileInfoSixWayLighting materialFileInfo;
 			materialFileInfo.name = "Custom material";
-			materialFileInfo.tex0 = m_sixWaysLightmap0;
-			materialFileInfo.tex1 = m_sixWaysLightmap1;
+			materialFileInfo.tex0 = EditorConfiguration::sanitizeFilePath(m_sixWaysLightmap0);
+			materialFileInfo.tex1 = EditorConfiguration::sanitizeFilePath(m_sixWaysLightmap1);
 
 			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
 			m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
@@ -94,7 +94,7 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 		{
 			TextureSetLoader::TextureSetFileInfoAlphaOnly materialFileInfo;
 			materialFileInfo.name = "Custom material";
-			materialFileInfo.alphaMap = m_alphaPathParam;
+			materialFileInfo.alphaMap = EditorConfiguration::sanitizeFilePath(m_alphaPathParam);
 
 			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
 			m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));

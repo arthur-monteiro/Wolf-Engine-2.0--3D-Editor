@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 class EditorConfiguration
@@ -17,6 +18,7 @@ public:
 
 	void disableRayTracing() { m_enableRayTracing = false;}
 
+	[[nodiscard]] static std::string sanitizeFilePath(const std::string& filePath);
 	[[nodiscard]] std::string computeFullPathFromLocalPath(const std::string& localPath) const { return m_dataFolderPath + '/' + localPath; }
 	[[nodiscard]] std::string computeLocalPathFromFullPath(const std::string& fullPath) const { return fullPath.substr(m_dataFolderPath.size() + 1); }
 

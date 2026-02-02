@@ -45,7 +45,9 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
 		filename = szFile;
 	}
 }
-#elif defined(UNIX)
+#elif __linux__
+#include <gtk/gtk.h>
+
 void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFileFilter filter)
 {
     if (!gtk_init_check(NULL, NULL))
@@ -66,6 +68,7 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
         button_text,
         "_Cancel"
     );
+	gtk_native_dialog_set_modal(GTK_NATIVE_DIALOG(native), TRUE);
 
     // Create and add filters
     GtkFileFilter *gtk_filter = gtk_file_filter_new();

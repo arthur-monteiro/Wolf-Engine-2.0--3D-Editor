@@ -483,13 +483,20 @@ void SurfaceCoatingEmitterComponent::PatternImageArrayItem::onPatternImageHeight
 
 void SurfaceCoatingEmitterComponent::PatternImageArrayItem::onMaterialEntityChanged()
 {
-    if (static_cast<std::string>(m_materialEntityParam).empty())
+    std::string entityStr = static_cast<std::string>(m_materialEntityParam);
+    if (std::string sanitizedEntity = EditorConfiguration::sanitizeFilePath(entityStr); sanitizedEntity != entityStr)
+    {
+        m_materialEntityParam = sanitizedEntity;
+        return;
+    }
+
+    if (entityStr.empty())
     {
         m_materialEntity = Wolf::NullableResourceNonOwner<Entity>();
         return;
     }
 
-    m_materialEntity = m_getEntityFromLoadingPathCallback(m_materialEntityParam);
+    m_materialEntity = m_getEntityFromLoadingPathCallback(entityStr);
     if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
     {
         if (!materialComponent->isSubscribed(this))

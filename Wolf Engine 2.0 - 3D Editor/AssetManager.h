@@ -199,15 +199,15 @@ private:
 
 	static constexpr uint32_t MESH_ASSET_IDX_OFFSET = 0;
 	static constexpr uint32_t MAX_ASSET_RESOURCE_COUNT = 1000;
-	std::vector<Wolf::ResourceUniqueOwner<Mesh>> m_meshes;
+	Wolf::DynamicResourceUniqueOwnerArray<Mesh, 16> m_meshes;
 
 	static constexpr uint32_t IMAGE_ASSET_IDX_OFFSET = MESH_ASSET_IDX_OFFSET + MAX_ASSET_RESOURCE_COUNT;
 	static constexpr uint32_t MAX_IMAGE_ASSET_COUNT = 1000;
-	std::vector<Wolf::ResourceUniqueOwner<Image>> m_images;
+	Wolf::DynamicResourceUniqueOwnerArray<Image, 16> m_images;
 
 	static constexpr uint32_t COMBINED_IMAGE_ASSET_IDX_OFFSET = IMAGE_ASSET_IDX_OFFSET + MAX_IMAGE_ASSET_COUNT;
 	static constexpr uint32_t MAX_COMBINED_IMAGE_ASSET_COUNT = 1000;
-	std::vector<Wolf::ResourceUniqueOwner<CombinedImage>> m_combinedImages;
+	Wolf::DynamicResourceUniqueOwnerArray<CombinedImage, 16>  m_combinedImages;
 
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;

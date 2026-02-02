@@ -151,7 +151,14 @@ uint32_t MaterialComponent::TextureSet::getTextureSetIdx() const
 
 void MaterialComponent::TextureSet::onTextureSetEntityChanged()
 {
-	if (static_cast<std::string>(m_textureSetEntityParam).empty())
+	std::string entityStr = static_cast<std::string>(m_textureSetEntityParam);
+	if (std::string sanitizedEntity = EditorConfiguration::sanitizeFilePath(entityStr); sanitizedEntity != entityStr)
+	{
+		m_textureSetEntityParam = sanitizedEntity;
+		return;
+	}
+
+	if (entityStr.empty())
 	{
 		m_textureSetComponent.release();
 	}

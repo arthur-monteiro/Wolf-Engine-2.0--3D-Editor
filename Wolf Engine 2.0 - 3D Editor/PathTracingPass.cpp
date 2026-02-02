@@ -1,6 +1,8 @@
 #include "PathTracingPass.h"
 
 #include <random>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <xxh64.hpp>
 
 #include <CameraList.h>

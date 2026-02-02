@@ -286,9 +286,16 @@ void ParticleEmitter::onParticleEntityChanged()
 	if (!m_entity)
 		return;
 
-	if (!static_cast<std::string>(m_particleEntityParam).empty())
+	std::string entityStr = static_cast<std::string>(m_particleEntityParam);
+	if (std::string sanitizedEntity = EditorConfiguration::sanitizeFilePath(entityStr); sanitizedEntity != entityStr)
 	{
-		if (Wolf::NullableResourceNonOwner<Particle> particleComponent = m_getEntityFromLoadingPathCallback(m_particleEntityParam)->getComponent<Particle>())
+		m_particleEntityParam = sanitizedEntity;
+		return;
+	}
+
+	if (!entityStr.empty())
+	{
+		if (Wolf::NullableResourceNonOwner<Particle> particleComponent = m_getEntityFromLoadingPathCallback(entityStr)->getComponent<Particle>())
 		{
 			m_particleComponent = particleComponent;
 			//m_usedTileCountInFlipBook = 0; // will be set to max in 'onParticleDataChanged'

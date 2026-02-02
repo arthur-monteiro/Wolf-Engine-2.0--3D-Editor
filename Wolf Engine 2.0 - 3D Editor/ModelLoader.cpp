@@ -593,12 +593,12 @@ bool ModelLoader::loadCache(ModelLoadingInfo& modelLoadingInfo)
 		{
 			TextureSetLoader::TextureSetFileInfoGGX textureSetFileInfoGGX;
 			textureSetFileInfoGGX.name = readStringFromCache(input);
-			textureSetFileInfoGGX.albedo = readStringFromCache(input);
-			textureSetFileInfoGGX.normal = readStringFromCache(input);
-			textureSetFileInfoGGX.roughness = readStringFromCache(input);
-			textureSetFileInfoGGX.metalness = readStringFromCache(input);
-			textureSetFileInfoGGX.ao = readStringFromCache(input);
-			textureSetFileInfoGGX.anisoStrength = readStringFromCache(input);
+			textureSetFileInfoGGX.albedo = EditorConfiguration::sanitizeFilePath(readStringFromCache(input));
+			textureSetFileInfoGGX.normal = EditorConfiguration::sanitizeFilePath(readStringFromCache(input));
+			textureSetFileInfoGGX.roughness = EditorConfiguration::sanitizeFilePath(readStringFromCache(input));
+			textureSetFileInfoGGX.metalness = EditorConfiguration::sanitizeFilePath(readStringFromCache(input));
+			textureSetFileInfoGGX.ao = EditorConfiguration::sanitizeFilePath(readStringFromCache(input));
+			textureSetFileInfoGGX.anisoStrength = EditorConfiguration::sanitizeFilePath(readStringFromCache(input));
 
 			loadTextureSet(textureSetFileInfoGGX, textureSetIdx);
 

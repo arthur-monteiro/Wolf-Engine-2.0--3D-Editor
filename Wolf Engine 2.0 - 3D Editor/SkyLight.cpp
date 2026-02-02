@@ -227,8 +227,15 @@ void SkyLight::onAngleChanged()
 
 void SkyLight::onSphericalMapChanged()
 {
-	if (static_cast<std::string>(m_sphericalMap) != "")
+	std::string filePathStr = static_cast<std::string>(m_sphericalMap);
+	if (!filePathStr.empty())
 	{
+		if (std::string sanitizedFilePath = EditorConfiguration::sanitizeFilePath(filePathStr); sanitizedFilePath != filePathStr)
+		{
+			m_sphericalMap = sanitizedFilePath;
+			return;
+		}
+
 		m_sphericalMapAssetId = m_resourceManager->addImage(m_sphericalMap, false, Wolf::Format::R32G32B32A32_SFLOAT, true, false);
 		m_cubeMapUpdateRequested = true;
 	}

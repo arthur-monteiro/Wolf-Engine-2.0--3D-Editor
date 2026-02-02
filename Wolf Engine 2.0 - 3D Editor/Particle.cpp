@@ -62,9 +62,16 @@ uint32_t Particle::getMaterialIdx() const
 
 void Particle::onMaterialEntityChanged()
 {
-	if (static_cast<std::string>(m_materialEntityParam) != "")
+	std::string entityStr = static_cast<std::string>(m_materialEntityParam);
+	if (std::string sanitizedEntity = EditorConfiguration::sanitizeFilePath(entityStr); sanitizedEntity != entityStr)
 	{
-		m_materialEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(m_materialEntityParam)));
+		m_materialEntityParam = sanitizedEntity;
+		return;
+	}
+
+	if (!entityStr.empty())
+	{
+		m_materialEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_getEntityFromLoadingPathCallback(entityStr)));
 		m_materialNotificationRegistered = false;
 	}
 }
