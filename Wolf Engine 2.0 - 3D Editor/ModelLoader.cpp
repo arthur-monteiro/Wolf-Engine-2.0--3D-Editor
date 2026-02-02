@@ -680,12 +680,12 @@ TextureSetLoader::TextureSetFileInfoGGX ModelLoader::createTextureSetFileInfoGGX
 {
 	TextureSetLoader::TextureSetFileInfoGGX materialFileInfo{};
 	materialFileInfo.name = material.name;
-	materialFileInfo.albedo = getTexName(material.diffuse_texname, mtlFolder);
-	materialFileInfo.normal =  getTexName(material.bump_texname, mtlFolder);
-	materialFileInfo.roughness =  getTexName(material.specular_highlight_texname, mtlFolder);
-	materialFileInfo.metalness =  getTexName(material.specular_texname, mtlFolder);
-	materialFileInfo.ao = getTexName(material.ambient_texname, mtlFolder);
-	materialFileInfo.anisoStrength = getTexName(material.sheen_texname, mtlFolder);
+	materialFileInfo.albedo = EditorConfiguration::sanitizeFilePath(getTexName(material.diffuse_texname, mtlFolder));
+	materialFileInfo.normal =  EditorConfiguration::sanitizeFilePath(getTexName(material.bump_texname, mtlFolder));
+	materialFileInfo.roughness =  EditorConfiguration::sanitizeFilePath(getTexName(material.specular_highlight_texname, mtlFolder));
+	materialFileInfo.metalness =  EditorConfiguration::sanitizeFilePath(getTexName(material.specular_texname, mtlFolder));
+	materialFileInfo.ao = EditorConfiguration::sanitizeFilePath(getTexName(material.ambient_texname, mtlFolder));
+	materialFileInfo.anisoStrength = EditorConfiguration::sanitizeFilePath(getTexName(material.sheen_texname, mtlFolder));
 
 	return materialFileInfo;
 }

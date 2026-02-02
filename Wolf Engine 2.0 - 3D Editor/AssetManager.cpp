@@ -698,7 +698,7 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 
 	ModelLoadingInfo modelLoadingInfo;
 	modelLoadingInfo.filename = m_loadingPath;
-	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('\\'));
+	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('/'));
 	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.textureSetLayout = TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
 	if (g_editorConfiguration->getEnableRayTracing())
