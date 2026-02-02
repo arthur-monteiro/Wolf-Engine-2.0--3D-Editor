@@ -33,13 +33,15 @@ void AssetManager::updateBeforeFrame()
 {
 	PROFILE_FUNCTION
 
-	for (Wolf::ResourceUniqueOwner<Mesh>& mesh : m_meshes)
+	for (uint32_t i = 0; i < m_meshes.size(); ++i)
 	{
+		Wolf::ResourceUniqueOwner<Mesh>& mesh = m_meshes[i];
 		mesh->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
 	}
 
-	for (Wolf::ResourceUniqueOwner<Image>& image : m_images)
+	for (uint32_t i = 0; i < m_images.size(); ++i)
 	{
+		Wolf::ResourceUniqueOwner<Image>& image = m_images[i];
 		image->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
 	}
 
