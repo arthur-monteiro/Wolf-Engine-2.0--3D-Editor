@@ -11,6 +11,8 @@ public:
     EditorGPUDataTransfersManager() = default;
     ~EditorGPUDataTransfersManager() override = default;
 
+    void clear();
+
     void setUpdateGPUBuffersPass(const Wolf::ResourceNonOwner<UpdateGPUBuffersPass>& updateGPUBuffersPass);
     void setGPUBufferToGPUBufferCopyPass(const Wolf::ResourceNonOwner<GPUBufferToGPUBufferCopyPass>& gpuBufferToGPUBufferCopyPass);
 

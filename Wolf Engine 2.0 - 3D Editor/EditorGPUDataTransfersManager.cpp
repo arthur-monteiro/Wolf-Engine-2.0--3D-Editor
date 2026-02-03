@@ -2,6 +2,12 @@
 
 #include "GPUBufferToGPUBufferCopyPass.h"
 
+void EditorGPUDataTransfersManager::clear()
+{
+    m_updateGPUBufferPass.release();
+    m_gpuBufferToGPUBufferCopyPass.release();
+}
+
 void EditorGPUDataTransfersManager::setUpdateGPUBuffersPass(const Wolf::ResourceNonOwner<UpdateGPUBuffersPass>& UpdateGPUBuffersPass)
 {
     m_updateGPUBufferPass = UpdateGPUBuffersPass;

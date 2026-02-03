@@ -81,11 +81,12 @@ private:
 	void removeSelectedEntity();
 	void updateUISelectedEntity() const;
 
+	Wolf::ResourceUniqueOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU; // Needs to be deleted after wolf instance
+
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
 	Wolf::ResourceUniqueOwner<RenderingPipeline> m_renderer;
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
 	Wolf::ResourceUniqueOwner<AssetManager> m_assetManager;
-	Wolf::ResourceUniqueOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
 	/* FPS counter */
 	uint32_t m_currentFramesAccumulated = 0;

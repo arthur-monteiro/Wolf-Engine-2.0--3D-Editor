@@ -147,6 +147,7 @@ void SystemManager::run()
 
 	m_wolfInstance->waitIdle();
 
+	m_editorPushDataToGPU->clear();
 	m_renderer->clear();
 	m_wolfInstance->getRenderMeshList()->clear();
 	m_wolfInstance->getLightManager()->resetSkyCubeMap();
