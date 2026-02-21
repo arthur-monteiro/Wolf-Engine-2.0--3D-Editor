@@ -323,12 +323,12 @@ void AnimatedModel::addBoneNamesAndIndices(const AnimationData::Bone* bone)
 	}
 }
 
-Wolf::ResourceNonOwner<AnimationData> AnimatedModel::findAnimationData(bool& success)
+Wolf::NullableResourceNonOwner<AnimationData> AnimatedModel::findAnimationData(bool& success)
 {
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
 	{
 		success = false;
-		return nullptr;
+		return Wolf::NullableResourceNonOwner<AnimationData>();
 	}
 
 	success = true; // will be set to false if we encounter an error

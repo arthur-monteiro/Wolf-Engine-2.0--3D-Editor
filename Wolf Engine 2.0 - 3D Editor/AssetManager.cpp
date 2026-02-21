@@ -1020,7 +1020,7 @@ void AssetManager::Mesh::generateThumbnail(const Wolf::ResourceNonOwner<Thumbnai
 {
 	std::string iconPath = computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
 
-	thumbnailsGenerationPass->addRequestBeforeFrame({ getMesh(), isAnimated() ? getAnimationData() : Wolf::NullableResourceNonOwner<AnimationData>(nullptr), m_firstMaterialIdx, iconPath,
+	thumbnailsGenerationPass->addRequestBeforeFrame({ getMesh(), isAnimated() ? Wolf::NullableResourceNonOwner<AnimationData>(getAnimationData()) : Wolf::NullableResourceNonOwner<AnimationData>(), m_firstMaterialIdx, iconPath,
 		[this, iconPath]() { m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId); },
 			m_thumbnailGenerationViewMatrix });
 }

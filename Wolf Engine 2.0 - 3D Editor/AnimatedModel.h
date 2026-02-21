@@ -50,7 +50,7 @@ private:
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	AssetId m_meshResourceId = NO_ASSET;
 
-	Wolf::ResourceNonOwner<AnimationData> findAnimationData(bool& success);
+	Wolf::NullableResourceNonOwner<AnimationData> findAnimationData(bool& success);
 
 	void updateMaxTimer();
 	bool m_updateMaxTimerRequested = false;
