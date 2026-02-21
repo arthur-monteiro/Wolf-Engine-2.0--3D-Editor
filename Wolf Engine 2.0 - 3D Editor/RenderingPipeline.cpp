@@ -213,6 +213,7 @@ void RenderingPipeline::clear()
 	m_updateGPUBuffersPass->clear();
 	m_computeSkyCubeMapPass->clear();
 	m_compositionPass->clear();
+	m_thumbnailsGenerationPass->clear();
 }
 
 void RenderingPipeline::setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) const

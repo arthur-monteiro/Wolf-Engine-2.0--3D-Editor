@@ -18,6 +18,8 @@ public:
 
 	ThumbnailsGenerationPass();
 
+	void clear();
+
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
 	void record(const Wolf::RecordContext& context) override;

@@ -22,6 +22,12 @@ ThumbnailsGenerationPass::ThumbnailsGenerationPass()
 	m_camera.reset(new Wolf::FirstPersonCamera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 0.0f, 0.0f, 1.0f));
 }
 
+void ThumbnailsGenerationPass::clear()
+{
+	m_pendingRequests.clear();
+	m_currentRequests.clear();
+}
+
 void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationContext& context)
 {
 	Wolf::CreateImageInfo createRenderTargetInfo;
