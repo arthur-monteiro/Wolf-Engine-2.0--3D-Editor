@@ -177,7 +177,7 @@ private:
 		inline static const std::string DEFAULT_NAME = "PLACEHOLDER";
 
 		Wolf::NullableResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
-		Wolf::NullableResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;;
+		Wolf::NullableResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
 		Wolf::NullableResourceNonOwner<Wolf::Mesh> m_mesh;
 		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> m_defaultSimplifiedIndexBuffers;

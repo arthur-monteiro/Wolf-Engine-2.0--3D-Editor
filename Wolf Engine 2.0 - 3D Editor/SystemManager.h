@@ -85,11 +85,11 @@ private:
 	void updateUISelectedEntity() const;
 
 	Wolf::ResourceUniqueOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU; // Needs to be deleted after wolf instance
-
 	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
+	Wolf::ResourceUniqueOwner<RayTracedWorldManager> m_rayTracedWorldManager; // Needs to be deleted after renderer
+	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration; // Needs to be deleted after asset manager
+	Wolf::ResourceUniqueOwner<AssetManager> m_assetManager; // Needs to be deleted after renderer
 	Wolf::ResourceUniqueOwner<RenderingPipeline> m_renderer;
-	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration;
-	Wolf::ResourceUniqueOwner<AssetManager> m_assetManager;
 
 	/* FPS counter */
 	uint32_t m_currentFramesAccumulated = 0;
@@ -107,7 +107,6 @@ private:
 	Wolf::ResourceUniqueOwner<ComponentInstancier> m_componentInstancier;
 	std::unique_ptr<Wolf::FirstPersonCamera> m_camera;
 	Wolf::ResourceUniqueOwner<DrawManager> m_drawManager;
-	Wolf::ResourceUniqueOwner<RayTracedWorldManager> m_rayTracedWorldManager;
 	bool m_rayTracedWorldBuildNeeded = false;
 	Wolf::ResourceUniqueOwner<EditorPhysicsManager> m_editorPhysicsManager;
 

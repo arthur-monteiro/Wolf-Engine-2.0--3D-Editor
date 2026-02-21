@@ -156,6 +156,7 @@ void SystemManager::run()
 	m_selectedEntity.reset(nullptr);
 	m_entityContainer->clear();
 	m_assetManager->clear();
+	m_assetManager->releaseRenderingPipeline();
 }
 
 void SystemManager::createWolfInstance()

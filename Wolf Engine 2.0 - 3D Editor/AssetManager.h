@@ -25,6 +25,8 @@ public:
 	void save();
 	void clear();
 
+	void releaseRenderingPipeline();
+
 	void dump(const std::string& dumpLocalFolder);
 
 	Wolf::ResourceNonOwner<Entity> computeResourceEditor(AssetId assetId);
@@ -78,7 +80,7 @@ private:
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	std::function<void(const std::string&)> m_isolateMeshCallback;
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
-	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
+	Wolf::NullableResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
 	class AssetInterface : public Notifier
@@ -250,7 +252,7 @@ private:
 	Wolf::DynamicResourceUniqueOwnerArray<CombinedImage, 16>  m_combinedImages;
 
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-	Wolf::ResourceNonOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
+	Wolf::NullableResourceNonOwner<ThumbnailsGenerationPass> m_thumbnailsGenerationPass;
 
 	// Edition
 	struct ResourceEditedParamsToSave

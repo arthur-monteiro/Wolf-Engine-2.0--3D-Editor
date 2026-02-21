@@ -35,6 +35,7 @@ class RenderingPipeline : public RenderingPipelineInterface
 {
 public:
 	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
+	~RenderingPipeline() override = default;
 
 	void update(Wolf::WolfEngine* wolfInstance);
 	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext);

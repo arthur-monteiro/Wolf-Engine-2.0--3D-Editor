@@ -135,6 +135,12 @@ void AssetManager::clear()
 	m_combinedImages.clear();
 }
 
+void AssetManager::releaseRenderingPipeline()
+{
+	m_thumbnailsGenerationPass.release();
+	m_renderingPipeline.release();
+}
+
 void AssetManager::dump(const std::string& dumpLocalFolder)
 {
 	std::ofstream outputJSON;
