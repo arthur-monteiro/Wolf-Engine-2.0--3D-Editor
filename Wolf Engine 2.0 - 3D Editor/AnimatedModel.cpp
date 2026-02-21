@@ -65,7 +65,7 @@ AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUMana
 			pipelineInfo.shaderInfos[0].conditionBlocksToInclude.emplace_back("FORWARD");
 
 			// Resources
-			pipelineInfo.bindlessDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_BINDLESS;
+			pipelineInfo.materialsDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MATERIAL_MANAGER;
 			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
 			pipelineInfo.customMask = AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO | AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 
@@ -104,7 +104,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 
 		if (m_waitingForMeshLoadingFrameCount == 0 && m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
-			std::unique_ptr<AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
+			Wolf::ResourceNonOwner<AnimationData> animationData = m_resourceManager->getAnimationData(m_meshResourceId);
 
 			m_boneCount = animationData->boneCount;
 			m_bonesBuffer.reset(Wolf::Buffer::createBuffer(m_boneCount * sizeof(glm::mat4), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
@@ -140,7 +140,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 		if (m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
 			bool unused;
-			AnimationData* animationData = findAnimationData(unused);
+			Wolf::ResourceNonOwner<AnimationData> animationData = findAnimationData(unused);
 
 			if (!m_forceTPoseParam)
 			{
@@ -207,14 +207,14 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 	if (m_hideModel == true)
 		return true;
 
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelData(m_meshResourceId)->m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelMesh(m_meshResourceId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
 	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
-	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
-	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].emplace_back(descriptorSetBindInfo);
+	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
+	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].emplace_back(descriptorSetBindInfo);
 
 	descriptorSetBindInfo.setBindingSlot(6);
-	meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(descriptorSetBindInfo);
+	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(descriptorSetBindInfo);
 
 	outList.push_back({ meshToRenderInfo, { m_transform, m_materialIdx } });
 
@@ -233,7 +233,7 @@ void AnimatedModel::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 	{
 		if (m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
-			std::unique_ptr<AnimationData>& animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData;
+			Wolf::ResourceNonOwner<AnimationData> animationData = m_resourceManager->getAnimationData(m_meshResourceId);
 			addBonesToDebug(animationData->rootBones.data(), debugRenderingManager);
 		}
 	}
@@ -262,7 +262,7 @@ void AnimatedModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 Wolf::AABB AnimatedModel::getAABB() const
 {
 	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getAABB() * m_transform;
+		return m_resourceManager->getModelMesh(m_meshResourceId)->getAABB() * m_transform;
 
 	return Wolf::AABB();
 }
@@ -270,7 +270,7 @@ Wolf::AABB AnimatedModel::getAABB() const
 Wolf::BoundingSphere AnimatedModel::getBoundingSphere() const
 {
 	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getBoundingSphere() * m_scaleParam + m_translationParam;
+		return m_resourceManager->getModelMesh(m_meshResourceId)->getBoundingSphere() * m_scaleParam + m_translationParam;
 
 	return Wolf::BoundingSphere();
 }
@@ -323,7 +323,7 @@ void AnimatedModel::addBoneNamesAndIndices(const AnimationData::Bone* bone)
 	}
 }
 
-AnimationData* AnimatedModel::findAnimationData(bool& success)
+Wolf::ResourceNonOwner<AnimationData> AnimatedModel::findAnimationData(bool& success)
 {
 	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
 	{
@@ -335,13 +335,13 @@ AnimationData* AnimatedModel::findAnimationData(bool& success)
 
 	uint32_t animationIdx = m_animationSelectParam;
 
-	AnimationData* animationData = m_resourceManager->getModelData(m_meshResourceId)->m_animationData.get();
+	Wolf::ResourceNonOwner<AnimationData> animationData = m_resourceManager->getAnimationData(m_meshResourceId);
 	if (animationIdx > 0)
 	{
 		uint32_t animationResourceId = m_animationsParam[animationIdx - 1 /* first one is default */].getResourceId();
 		if (m_resourceManager->isModelLoaded(animationResourceId))
 		{
-			animationData = m_resourceManager->getModelData(animationResourceId)->m_animationData.get();
+			animationData = m_resourceManager->getAnimationData(animationResourceId);
 		}
 		else
 		{
@@ -357,7 +357,7 @@ void AnimatedModel::updateMaxTimer()
 	m_maxTimer = 0.0f;
 
 	bool success;
-	AnimationData* animationData = findAnimationData(success);
+	Wolf::ResourceNonOwner<AnimationData> animationData = findAnimationData(success);
 
 	findMaxTimer(animationData->rootBones.data(), m_maxTimer);
 	m_forceTimer.setMax(m_maxTimer);

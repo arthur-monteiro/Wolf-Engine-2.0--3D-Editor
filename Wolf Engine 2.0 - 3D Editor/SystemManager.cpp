@@ -170,7 +170,7 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_htmlURL = "UI/UI.html";
 	wolfInstanceCreateInfo.m_uiFinalLayout = Wolf::ImageLayout::GENERAL;
 	wolfInstanceCreateInfo.m_bindUltralightCallbacks = [this](ultralight::JSObject& jsObject) { bindUltralightCallbacks(jsObject); };
-	wolfInstanceCreateInfo.m_useBindlessDescriptor = true;
+	wolfInstanceCreateInfo.m_useMaterialGPUManager = true;
 	wolfInstanceCreateInfo.m_threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
 	wolfInstanceCreateInfo.m_pushDataToGPU = m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>();
 
@@ -272,6 +272,7 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["selectEntityByName"] = std::bind(&SystemManager::selectEntityByNameJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["saveScene"] = std::bind(&SystemManager::saveSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["exportScene"] = std::bind(&SystemManager::exportSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openUIInBrowser"] = std::bind(&SystemManager::openUIInBrowserJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["takeScreenshot"] = std::bind(&SystemManager::takeScreenshotJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -398,7 +399,10 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 	Wolf::Debug::sendCriticalError("Pick file not implemented for this platform");
 #endif
 
-	fullFilePath = m_configuration->computeLocalPathFromFullPath(fullFilePath);
+	if (inputFilter != "exportExe")
+	{
+		fullFilePath = m_configuration->computeLocalPathFromFullPath(fullFilePath);
+	}
 
 	return fullFilePath.c_str();
 }
@@ -556,6 +560,12 @@ void SystemManager::loadSceneJSCallback(const ultralight::JSObject& thisObject, 
 {
 	const std::string filePath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 	m_loadSceneRequest = filePath;
+}
+
+void SystemManager::exportSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string& exportExePath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	m_exportSceneRequest = exportExePath;
 }
 
 void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -830,6 +840,11 @@ void SystemManager::updateBeforeFrame()
 		loadScene();
 	}
 
+	if (!m_exportSceneRequest.empty())
+	{
+		exportScene();
+	}
+
 	// Context update
 	{
 		const uint32_t contextId = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
@@ -1067,6 +1082,7 @@ void SystemManager::loadScene()
 
 	m_wolfInstance->evaluateUserInterfaceScript("setSceneName(\"" + sceneName + "\")");
 	m_currentSceneName = sceneName;
+	m_currentSceneJSON = m_loadSceneRequest;
 
 	m_loadSceneRequest.clear();
 }
@@ -1154,4 +1170,48 @@ void SystemManager::updateUISelectedEntity() const
 	jsFunctionCall += "\")";
 	m_wolfInstance->evaluateUserInterfaceScript(jsFunctionCall);
 	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
+}
+
+void SystemManager::exportScene()
+{
+	auto removeSpaces = [](const std::string& line)
+	{
+		std::string out;
+		for (char c : line)
+		{
+			if (c == ' ')
+				out += '_';
+			else
+				out += c;
+		}
+		return out;
+	};
+
+	auto now = std::chrono::system_clock::now();
+	std::string currentDateAndTimeStr = std::format("{:%Y-%m-%d_%H-%M-%S}", now);
+
+	std::string dumpLocalPath = "dumps/" + removeSpaces(m_currentSceneName) + "/" + currentDateAndTimeStr;
+	std::filesystem::create_directories(m_configuration->computeFullPathFromLocalPath(dumpLocalPath));
+
+	std::ofstream outputJSON;
+	outputJSON.open(m_configuration->computeFullPathFromLocalPath(dumpLocalPath + "/scene.json"));
+	outputJSON << "{" << std::endl;
+
+	std::string escapedDataFolder;
+	for (const char character : m_configuration->getDataFolderPath())
+	{
+		if (character == '\\')
+			escapedDataFolder += "\\\\";
+		else
+			escapedDataFolder += character;
+	}
+	outputJSON << "\t\"dataFolder\": \"" + escapedDataFolder + "\",\n";
+
+	outputJSON << "\t\"sceneJSON\": \"" + m_currentSceneJSON + "\"\n";
+	outputJSON << "}" << std::endl;
+	outputJSON.close();
+
+	m_assetManager->dump(dumpLocalPath);
+
+	m_exportSceneRequest = "";
 }

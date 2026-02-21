@@ -42,7 +42,7 @@ private:
 	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
-	AssetId m_meshResourceId = NO_ASSET;
+	AssetId m_modelAssetId = NO_ASSET;
 
 	bool m_isWaitingForMeshLoading = false;
 	void requestModelLoading();

@@ -2,7 +2,7 @@
 #include <string>
 
 enum class BrowseToFileOption { FILE_OPEN, FILE_SAVE };
-enum class BrowseToFileFilter { SAVE, OBJ, DAE, IMG };
+enum class BrowseToFileFilter { SAVE, OBJ, DAE, IMG, EXPORT_EXE };
 
 #if defined(WIN32)
 #include <shtypes.h>
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
 
 	const std::string inputOption = argv[1];
 	const std::string inputFilter = argv[2];
-	const std::string folderRestriction = argv[3];
+	std::string folderRestriction = argv[3];
 
 	BrowseToFileOption browseToFileOption;
 	if (inputOption == "open")
@@ -145,6 +145,11 @@ int main(int argc, char** argv)
 		browseToFileFilter = BrowseToFileFilter::DAE;
 	else if (inputFilter == "img")
 		browseToFileFilter = BrowseToFileFilter::IMG;
+	else if (inputFilter == "exportExe")
+	{
+		browseToFileFilter = BrowseToFileFilter::EXPORT_EXE;
+		folderRestriction = "";
+	}
 	else
 	{
 		std::cout << "Unsupported pick file filter \"" + inputFilter + "\"\n";

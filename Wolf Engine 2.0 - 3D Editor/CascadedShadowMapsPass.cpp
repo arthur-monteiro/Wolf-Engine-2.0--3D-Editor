@@ -31,7 +31,7 @@ void CascadeDepthPass::setCameraInfos(const glm::vec3& center, float radius, con
 void CascadeDepthPass::recordDraws(const Wolf::RecordContext& context)
 {
 	const Wolf::CommandBuffer& commandBuffer = getCommandBuffer(context);
-	context.renderMeshList->draw(context, commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP, m_cameraIdx, {}, {});
+	context.m_renderMeshList->draw(context, commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP, m_cameraIdx, {}, {});
 }
 
 const Wolf::CommandBuffer& CascadeDepthPass::getCommandBuffer(const Wolf::RecordContext& context)
@@ -61,9 +61,9 @@ void CascadedShadowMapsPass::record(const Wolf::RecordContext& context)
 {
 	PROFILE_FUNCTION
 
-	const Wolf::CameraInterface* camera = context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
+	const Wolf::CameraInterface* camera = context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
 
-	uint32_t sunLightCount = context.lightManager->getSunLightCount();
+	uint32_t sunLightCount = context.m_lightManager->getSunLightCount();
 	if (sunLightCount == 0)
 	{
 		m_wasEnabledThisFrame = false;
@@ -73,7 +73,7 @@ void CascadedShadowMapsPass::record(const Wolf::RecordContext& context)
 	if (sunLightCount > 1)
 		Wolf::Debug::sendError("CSM doesn't support more than 1 sun");
 
-	glm::vec3 sunDirection = context.lightManager->getSunLightInfo(0).direction;
+	glm::vec3 sunDirection = context.m_lightManager->getSunLightInfo(0).direction;
 
 	/* Update */
 	float lastSplitDist = camera->getNear();
@@ -84,7 +84,7 @@ void CascadedShadowMapsPass::record(const Wolf::RecordContext& context)
 
 		float radius = (endCascade - startCascade) / 2.0f;
 
-		const float ar = static_cast<float>(context.swapchainImage[0].getExtent().height) / static_cast<float>(context.swapchainImage[0].getExtent().width);
+		const float ar = static_cast<float>(context.m_swapchainImage[0].getExtent().height) / static_cast<float>(context.m_swapchainImage[0].getExtent().width);
 		const float cosHalfHFOV = glm::cos(camera->getFOV() * (1.0f / ar) / 2.0f);
 		const float b = endCascade / cosHalfHFOV;
 		radius = glm::sqrt(b * b + (startCascade + radius) * (startCascade + radius) - 2.0f * b * startCascade * cosHalfHFOV) * 0.75f;

@@ -66,12 +66,12 @@ void GasCylinderComponent::alterMeshesToRender(std::vector<DrawManager::DrawMesh
 	{
 		Wolf::RenderMeshList::MeshToRender& meshToRender = drawMeshInfo.meshToRender;
 
-		Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.pipelineSet->getPipelineHash(0)]; // TODO: use all pipelines hashes
+		Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.m_pipelineSet->getPipelineHash(0)]; // TODO: use all pipelines hashes
 		if (!replacePipelineSet)
 		{
 			replacePipelineSet.reset(new Wolf::PipelineSet);
 
-			std::vector<const Wolf::PipelineSet::PipelineInfo*> allPipelinesInfo = meshToRender.pipelineSet->retrieveAllPipelinesInfo();
+			std::vector<const Wolf::PipelineSet::PipelineInfo*> allPipelinesInfo = meshToRender.m_pipelineSet->retrieveAllPipelinesInfo();
 			for (uint32_t i = 0; i < allPipelinesInfo.size(); ++i)
 			{
 				const Wolf::PipelineSet::PipelineInfo* pipelineInfo = allPipelinesInfo[i];
@@ -92,8 +92,8 @@ void GasCylinderComponent::alterMeshesToRender(std::vector<DrawManager::DrawMesh
 			}
 		}
 
-		meshToRender.pipelineSet = replacePipelineSet.createConstNonOwnerResource();
-		meshToRender.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), 
+		meshToRender.m_pipelineSet = replacePipelineSet.createConstNonOwnerResource();
+		meshToRender.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), 
 			DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
 	}
 }

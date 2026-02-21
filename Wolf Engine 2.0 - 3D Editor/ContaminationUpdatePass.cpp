@@ -41,7 +41,7 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 	// Remove old requests
 	for (int32_t i = static_cast<int32_t>(m_shootRequests.size()) - 1; i >= 0; --i)
 	{
-		if (static_cast<uint32_t>(context.globalTimer->getCurrentCachedMillisecondsDuration()) - m_shootRequests[i].startTimerInMs > static_cast<uint32_t>(SHOOT_DURATION_MS))
+		if (static_cast<uint32_t>(context.m_globalTimer->getCurrentCachedMillisecondsDuration()) - m_shootRequests[i].startTimerInMs > static_cast<uint32_t>(SHOOT_DURATION_MS))
 		{
 			m_shootRequests.erase(m_shootRequests.begin() + i);
 		}
@@ -65,7 +65,7 @@ void ContaminationUpdatePass::record(const Wolf::RecordContext& context)
 	ShootRequestGPUInfo shootRequestGPUInfo{};
 	for (const ShootRequest& shootRequest : m_shootRequests)
 	{
-		float shootRequestLength = shootRequest.length * (static_cast<float>(static_cast<uint32_t>(context.globalTimer->getCurrentCachedMillisecondsDuration()) - shootRequest.startTimerInMs) / SHOOT_DURATION_MS);
+		float shootRequestLength = shootRequest.length * (static_cast<float>(static_cast<uint32_t>(context.m_globalTimer->getCurrentCachedMillisecondsDuration()) - shootRequest.startTimerInMs) / SHOOT_DURATION_MS);
 
 		shootRequestGPUInfo.startPointAndLength[shootRequestGPUInfo.shootRequestCount] = glm::vec4(shootRequest.startPoint, shootRequestLength);
 		shootRequestGPUInfo.directionAndRadius[shootRequestGPUInfo.shootRequestCount] = glm::vec4(shootRequest.direction, shootRequest.radius);

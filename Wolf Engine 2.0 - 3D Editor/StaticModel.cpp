@@ -60,7 +60,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 			// Resources
-			pipelineInfo.bindlessDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_BINDLESS;
+			pipelineInfo.materialsDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MATERIAL_MANAGER;
 			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
 			pipelineInfo.customMask = AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO | AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 
@@ -72,13 +72,13 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
 
 			// Output Ids
-			pipelineInfo.bindlessDescriptorSlot = -1;
+			pipelineInfo.materialsDescriptorSlot = -1;
 			pipelineInfo.lightDescriptorSlot = -1;
 			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/outputIds.frag";
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
 
 			// Custom depth
-			pipelineInfo.bindlessDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_BINDLESS;
+			pipelineInfo.materialsDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MATERIAL_MANAGER;
 			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
 			pipelineInfo.dynamicStates.clear();
 			pipelineInfo.enableDepthWrite = true;
@@ -108,11 +108,11 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 
 	if (m_isWaitingForMeshLoading)
 	{
-		if (m_resourceManager->isModelLoaded(m_meshResourceId))
+		if (m_resourceManager->isModelLoaded(m_modelAssetId))
 		{
 			if (m_subMeshes.empty())
 			{
-				const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& textureSetInfo = m_resourceManager->getModelData(m_meshResourceId)->m_textureSets;
+				const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& textureSetInfo = m_resourceManager->getModelTextureSetInfo(m_modelAssetId);
 				for (uint32_t subMeshIdx = 0; subMeshIdx < textureSetInfo.size(); ++subMeshIdx)
 				{
 					m_subMeshes.emplace_back();
@@ -143,7 +143,7 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 
 	for (uint32_t subMeshIdx = 0; subMeshIdx < m_subMeshes.size(); ++subMeshIdx)
 	{
-		m_subMeshes[subMeshIdx].update(m_materialsGPUManager, m_resourceManager->getFirstTextureSetIdx(m_meshResourceId) + subMeshIdx);
+		m_subMeshes[subMeshIdx].update(m_materialsGPUManager, m_resourceManager->getFirstTextureSetIdx(m_modelAssetId) + subMeshIdx);
 	}
 }
 
@@ -151,20 +151,19 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 {
 	PROFILE_FUNCTION
 
-	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
+	if (!m_resourceManager->isModelLoaded(m_modelAssetId))
 		return false;
 
-	ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { modelData->m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelMesh(m_modelAssetId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 	if (m_drawLOD > 0)
 	{
 		if (m_drawLODType == 0) // Default
 		{
-			meshToRenderInfo.overrideIndexBuffer = modelData->m_defaultSimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
+			meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
 		}
 		else if (m_drawLODType == 1) // Sloppy
 		{
-			meshToRenderInfo.overrideIndexBuffer = modelData->m_sloppySimplifiedIndexBuffers[m_drawLOD - 1].createNonOwnerResource();
+			meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
 		}
 		else
 		{
@@ -174,7 +173,7 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 
 	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
-		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
+		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_modelAssetId);
 
 	InstanceData instanceData{};
 	instanceData.transform = m_transform;
@@ -189,26 +188,25 @@ bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManage
 {
 	PROFILE_FUNCTION
 
-	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
+	if (!m_resourceManager->isModelLoaded(m_modelAssetId))
 		return false;
 
 	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
 	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
-		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_meshResourceId);
+		firstMaterialIdx = m_resourceManager->getFirstMaterialIdx(m_modelAssetId);
 
-	ModelData* modelData = m_resourceManager->getModelData(m_meshResourceId);
-	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_meshResourceId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform, firstMaterialIdx,
-		modelData->m_mesh.createNonOwnerResource() };
+	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_resourceManager->getBLAS(m_modelAssetId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform, firstMaterialIdx,
+		m_resourceManager->getModelMesh(m_modelAssetId) };
 
 	if (m_rayTracedWorldLOD > 0)
 	{
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			instanceInfo.m_overrideIndexBuffer = modelData->m_defaultSimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+			instanceInfo.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId)[m_rayTracedWorldLOD - 1];
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			instanceInfo.m_overrideIndexBuffer = modelData->m_sloppySimplifiedIndexBuffers[m_rayTracedWorldLOD - 1].createNonOwnerResource();
+			instanceInfo.m_overrideIndexBuffer = m_resourceManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId)[m_rayTracedWorldLOD - 1];
 		}
 		else
 		{
@@ -223,10 +221,10 @@ bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManage
 
 bool StaticModel::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)
 {
-	if (!m_resourceManager->isModelLoaded(m_meshResourceId))
+	if (!m_resourceManager->isModelLoaded(m_modelAssetId))
 		return false;
 
-	for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& physicsShape : m_resourceManager->getModelData(m_meshResourceId)->m_physicsShapes)
+	for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& physicsShape : m_resourceManager->getPhysicsShapes(m_modelAssetId))
 	{
 		outList.push_back({physicsShape.createNonOwnerResource(), m_transform });
 	}
@@ -260,16 +258,16 @@ void StaticModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 Wolf::AABB StaticModel::getAABB() const
 {
-	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getAABB() * m_transform;
+	if (m_resourceManager->isModelLoaded(m_modelAssetId))
+		return m_resourceManager->getModelMesh(m_modelAssetId)->getAABB() * m_transform;
 
 	return Wolf::AABB();
 }
 
 Wolf::BoundingSphere StaticModel::getBoundingSphere() const
 {
-	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelData(m_meshResourceId)->m_mesh->getBoundingSphere() * m_scaleParam + m_translationParam;
+	if (m_resourceManager->isModelLoaded(m_modelAssetId))
+		return m_resourceManager->getModelMesh(m_modelAssetId)->getBoundingSphere() * m_scaleParam + m_translationParam;
 
 	return Wolf::BoundingSphere();
 }
@@ -295,8 +293,8 @@ void StaticModel::requestModelLoading()
 
 		m_subMeshes.clear();
 
-		m_meshResourceId = m_resourceManager->addModel(loadingPathStr);
-		m_resourceManager->subscribeToMesh(m_meshResourceId, this, [this](Flags) { notifySubscribers(); });
+		m_modelAssetId = m_resourceManager->addModel(loadingPathStr);
+		m_resourceManager->subscribeToMesh(m_modelAssetId, this, [this](Flags) { notifySubscribers(); });
 		m_isWaitingForMeshLoading = true;
 		notifySubscribers();
 	}
@@ -490,16 +488,16 @@ void StaticModel::SubMesh::onTextureSetAdded()
 
 void StaticModel::onDrawLODTypeChanged()
 {
-	if (m_resourceManager->isModelLoaded(m_meshResourceId))
+	if (m_resourceManager->isModelLoaded(m_modelAssetId))
 	{
 		uint32_t maxLOD;
 		if (m_drawLODType == 0) // Default
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_defaultSimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId).size();
 		}
 		else if (m_drawLODType == 1) // Sloppy
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_sloppySimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId).size();
 		}
 		else
 		{
@@ -514,16 +512,16 @@ void StaticModel::onDrawLODTypeChanged()
 
 void StaticModel::onRayTracedWorldLODTypeChanged()
 {
-	if (m_resourceManager->isModelLoaded(m_meshResourceId))
+	if (m_resourceManager->isModelLoaded(m_modelAssetId))
 	{
 		uint32_t maxLOD;
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_defaultSimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId).size();
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			maxLOD = m_resourceManager->getModelData(m_meshResourceId)->m_sloppySimplifiedIndexBuffers.size();
+			maxLOD = m_resourceManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId).size();
 		}
 		else
 		{

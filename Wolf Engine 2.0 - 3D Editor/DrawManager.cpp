@@ -162,18 +162,18 @@ DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(Wolf::RenderMeshLi
 
 bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::RenderMeshList::MeshToRender& otherMeshToRender) const
 {
-	bool hasSameDescriptorSets = m_meshToRender.perPipelineDescriptorSets.size() == otherMeshToRender.perPipelineDescriptorSets.size();
-	for (uint32_t pipelineIdx = 0; hasSameDescriptorSets && pipelineIdx < m_meshToRender.perPipelineDescriptorSets.size(); ++pipelineIdx)
+	bool hasSameDescriptorSets = m_meshToRender.m_perPipelineDescriptorSets.size() == otherMeshToRender.m_perPipelineDescriptorSets.size();
+	for (uint32_t pipelineIdx = 0; hasSameDescriptorSets && pipelineIdx < m_meshToRender.m_perPipelineDescriptorSets.size(); ++pipelineIdx)
 	{
-		hasSameDescriptorSets = m_meshToRender.perPipelineDescriptorSets[pipelineIdx].size() == otherMeshToRender.perPipelineDescriptorSets[pipelineIdx].size();
+		hasSameDescriptorSets = m_meshToRender.m_perPipelineDescriptorSets[pipelineIdx].size() == otherMeshToRender.m_perPipelineDescriptorSets[pipelineIdx].size();
 
-		for (uint32_t descriptorSetIdx = 0; hasSameDescriptorSets && descriptorSetIdx < m_meshToRender.perPipelineDescriptorSets[pipelineIdx].size(); ++descriptorSetIdx)
+		for (uint32_t descriptorSetIdx = 0; hasSameDescriptorSets && descriptorSetIdx < m_meshToRender.m_perPipelineDescriptorSets[pipelineIdx].size(); ++descriptorSetIdx)
 		{
-			if (m_meshToRender.perPipelineDescriptorSets[pipelineIdx][descriptorSetIdx].getDescriptorSet() != otherMeshToRender.perPipelineDescriptorSets[pipelineIdx][descriptorSetIdx].getDescriptorSet())
+			if (m_meshToRender.m_perPipelineDescriptorSets[pipelineIdx][descriptorSetIdx].getDescriptorSet() != otherMeshToRender.m_perPipelineDescriptorSets[pipelineIdx][descriptorSetIdx].getDescriptorSet())
 				hasSameDescriptorSets = false;
 		}
 	}
 
-	return hasSameDescriptorSets && m_meshToRender.mesh == otherMeshToRender.mesh && m_meshToRender.pipelineSet == otherMeshToRender.pipelineSet
-		&& m_meshToRender.overrideIndexBuffer == otherMeshToRender.overrideIndexBuffer;
+	return hasSameDescriptorSets && m_meshToRender.m_mesh == otherMeshToRender.m_mesh && m_meshToRender.m_pipelineSet == otherMeshToRender.m_pipelineSet
+		&& m_meshToRender.m_overrideIndexBuffer == otherMeshToRender.m_overrideIndexBuffer;
 }

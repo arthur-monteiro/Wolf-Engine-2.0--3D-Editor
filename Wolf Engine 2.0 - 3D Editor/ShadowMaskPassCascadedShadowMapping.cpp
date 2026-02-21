@@ -105,13 +105,13 @@ void ShadowMaskPassCascadedShadowMapping::record(const Wolf::RecordContext& cont
 {
 	PROFILE_FUNCTION
 
-	uint32_t sunLightCount = context.lightManager->getSunLightCount();
+	uint32_t sunLightCount = context.m_lightManager->getSunLightCount();
 	if (sunLightCount == 0)
 	{
 		return;
 	}
 
-	const Wolf::CameraInterface* camera = context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
+	const Wolf::CameraInterface* camera = context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
 
 	/* Update data */
 	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
@@ -133,7 +133,7 @@ void ShadowMaskPassCascadedShadowMapping::record(const Wolf::RecordContext& cont
 
 	shadowUBData.cascadeTextureSize = glm::uvec4(m_csmPass->getCascadeTextureSize(0), m_csmPass->getCascadeTextureSize(1), m_csmPass->getCascadeTextureSize(2), m_csmPass->getCascadeTextureSize(3));
 
-	shadowUBData.noiseRotation = m_noiseRotations[context.currentFrameIdx % m_noiseRotations.size()];
+	shadowUBData.noiseRotation = m_noiseRotations[context.m_currentFrameIdx % m_noiseRotations.size()];
 
 	shadowUBData.viewportOffset = glm::uvec2(renderViewport.x, renderViewport.y);
 	shadowUBData.viewportSize = glm::uvec2(renderViewport.width, renderViewport.height);

@@ -247,7 +247,7 @@ void ComputeVertexDataPass::Request::recordCommands(const Wolf::CommandBuffer* c
     commandBuffer->bindPipeline(m_accumulateColorsPipeline.createConstNonOwnerResource());
     commandBuffer->bindDescriptorSet(m_accumulateColorsDescriptorSet.createConstNonOwnerResource(), 0, *m_accumulateColorsPipeline);
     commandBuffer->bindDescriptorSet(m_rayTracedWorldManager->getDescriptorSet(), 1, *m_accumulateColorsPipeline);
-    commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_accumulateColorsPipeline);
+    commandBuffer->bindDescriptorSet(context.m_materialGPUManagerDescriptorSet, 2, *m_accumulateColorsPipeline);
 
     commandBuffer->traceRays(m_accumulateColorsShaderBindingTable.createConstNonOwnerResource(), { indexCount, 1, 1 });
 

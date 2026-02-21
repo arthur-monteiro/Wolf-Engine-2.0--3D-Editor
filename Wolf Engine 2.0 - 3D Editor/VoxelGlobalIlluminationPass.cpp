@@ -32,19 +32,17 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
         if (m_sphereMeshResourceId == NO_ASSET || !m_resourceManager->isModelLoaded(m_sphereMeshResourceId))
             return;
 
-        ModelData* modelData = m_resourceManager->getModelData(m_sphereMeshResourceId);
+        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {m_resourceManager->getModelMesh(m_sphereMeshResourceId).duplicateAs<Wolf::MeshInterface>(), m_debugPipelineSet.createConstNonOwnerResource() } };
 
-        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {modelData->m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_debugPipelineSet.createConstNonOwnerResource() } };
-
-        if (instancedMesh.mesh.perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+        if (instancedMesh.mesh.m_perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
         {
             Wolf::Debug::sendCriticalError("Pipeline can't be overridden for forward pass");
             return;
         }
 
-        instancedMesh.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
+        instancedMesh.mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
             m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
-        instancedMesh.mesh.overrideIndexBuffer = modelData->m_defaultSimplifiedIndexBuffers[0].createNonOwnerResource();
+        instancedMesh.mesh.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_sphereMeshResourceId)[0];
 
         renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
     }
@@ -93,7 +91,7 @@ void VoxelGlobalIlluminationPass::record(const Wolf::RecordContext& context)
     }
 
     UniformBufferData uniformBufferData{};
-    uniformBufferData.frameIdx = context.currentFrameIdx;
+    uniformBufferData.frameIdx = context.m_currentFrameIdx;
     m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));
 
     DebugUniformBufferData debugUniformBufferData{};
@@ -111,8 +109,8 @@ void VoxelGlobalIlluminationPass::record(const Wolf::RecordContext& context)
     m_commandBuffer->bindPipeline(m_pipeline.createConstNonOwnerResource());
     m_commandBuffer->bindDescriptorSet(m_rayTracingDescriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
     m_commandBuffer->bindDescriptorSet(m_rayTracedWorldManager->getDescriptorSet(), 1, *m_pipeline);
-    m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_pipeline);
-    m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(context.m_materialGPUManagerDescriptorSet, 2, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(context.m_lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_pipeline);
 
     m_commandBuffer->traceRays(m_shaderBindingTable.createConstNonOwnerResource(), { GRID_SIZE, GRID_SIZE, GRID_SIZE });
 

@@ -69,13 +69,13 @@ void PathTracingPass::resize(const Wolf::InitializationContext& context)
 
 void PathTracingPass::record(const Wolf::RecordContext& context)
 {
-    const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
+    const GameContext* gameContext = static_cast<const GameContext*>(context.m_gameContext);
     if (!m_rayTracedWorldManager->hasInstance() || gameContext->displayType != GameContext::DisplayType::PATH_TRACING)
     {
         m_wasEnabledThisFrame = false;
         return;
     }
-    const Wolf::CameraInterface* camera = context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
+    const Wolf::CameraInterface* camera = context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
     uint64_t currentInfoHash = computeInfoHash(camera->getViewMatrix());
 
     if (m_isFirstRecord)
@@ -149,8 +149,8 @@ void PathTracingPass::record(const Wolf::RecordContext& context)
     m_commandBuffer->bindDescriptorSet(m_descriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
     m_commandBuffer->bindDescriptorSet(camera->getDescriptorSet(), 1, *m_pipeline);
     m_commandBuffer->bindDescriptorSet(m_rayTracedWorldManager->getDescriptorSet(), 2, *m_pipeline);
-    m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 3, *m_pipeline);
-    m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 4, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(context.m_materialGPUManagerDescriptorSet, 3, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(context.m_lightManager->getDescriptorSet().createConstNonOwnerResource(), 4, *m_pipeline);
 
     m_commandBuffer->traceRays(m_shaderBindingTable.createConstNonOwnerResource(), { m_editorParams->getRenderWidth(), m_editorParams->getRenderHeight(), 1 });
 

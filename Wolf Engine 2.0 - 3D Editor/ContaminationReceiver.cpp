@@ -40,12 +40,12 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<DrawManager::DrawMes
 			{
 				Wolf::RenderMeshList::MeshToRender& meshToRender = drawMeshInfo.meshToRender;
 
-				Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.pipelineSet->getPipelineHash(0)]; // TODO: use all pipelines hashes
+				Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.m_pipelineSet->getPipelineHash(0)]; // TODO: use all pipelines hashes
 				if (!replacePipelineSet)
 				{
 					replacePipelineSet.reset(new Wolf::PipelineSet);
 
-					std::vector<const Wolf::PipelineSet::PipelineInfo*> allPipelinesInfo = meshToRender.pipelineSet->retrieveAllPipelinesInfo();
+					std::vector<const Wolf::PipelineSet::PipelineInfo*> allPipelinesInfo = meshToRender.m_pipelineSet->retrieveAllPipelinesInfo();
 					for (uint32_t i = 0; i < allPipelinesInfo.size(); ++i)
 					{
 						const Wolf::PipelineSet::PipelineInfo* pipelineInfo = allPipelinesInfo[i];
@@ -80,8 +80,8 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<DrawManager::DrawMes
 					}
 				}
 
-				meshToRender.pipelineSet = replacePipelineSet.createConstNonOwnerResource();
-				meshToRender.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), 
+				meshToRender.m_pipelineSet = replacePipelineSet.createConstNonOwnerResource();
+				meshToRender.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(contaminationEmitterComponent->getDescriptorSet().createConstNonOwnerResource(), 
 					contaminationEmitterComponent->getDescriptorSetLayout().createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
 			}
 		}

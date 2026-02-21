@@ -57,14 +57,14 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 				{
 					if (AssetId assetId = textureSetLoader.getImageAssetId(i); assetId != NO_ASSET)
 					{
-						m_textureSetInfo.images2[i] = assetManager->getImage(assetId);
+						m_textureSetInfo.images[i] = assetManager->getImage(assetId);
 						m_textureSetInfo.slicesFolders[i] = assetManager->getImageSlicesFolder(assetId);
 					}
 				}
 
 				if (AssetId assetId = textureSetLoader.getImageAssetId(2); assetId != NO_ASSET)
 				{
-					m_textureSetInfo.images2[2] = assetManager->getCombinedImage(assetId);
+					m_textureSetInfo.images[2] = assetManager->getCombinedImage(assetId);
 					m_textureSetInfo.slicesFolders[2] = assetManager->getCombinedImageSlicesFolder(assetId);
 				}
 
@@ -83,8 +83,8 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 			materialFileInfo.tex1 = EditorConfiguration::sanitizeFilePath(m_sixWaysLightmap1);
 
 			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
-			m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
-			m_textureSetInfo.images2[1] = assetManager->getImage(textureSetLoader.getImageAssetId(1));
+			m_textureSetInfo.images[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
+			m_textureSetInfo.images[1] = assetManager->getImage(textureSetLoader.getImageAssetId(1));
 
 			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
 
@@ -97,7 +97,7 @@ void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Mate
 			materialFileInfo.alphaMap = EditorConfiguration::sanitizeFilePath(m_alphaPathParam);
 
 			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
-			m_textureSetInfo.images2[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
+			m_textureSetInfo.images[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
 
 			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
 

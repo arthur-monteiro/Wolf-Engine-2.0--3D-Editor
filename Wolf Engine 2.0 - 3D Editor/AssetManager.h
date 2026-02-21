@@ -11,6 +11,7 @@
 #include "ThumbnailsGenerationPass.h"
 
 class Entity;
+class ImageFormatter;
 
 class AssetManager
 {
@@ -24,6 +25,8 @@ public:
 	void save();
 	void clear();
 
+	void dump(const std::string& dumpLocalFolder);
+
 	Wolf::ResourceNonOwner<Entity> computeResourceEditor(AssetId assetId);
 
 	static bool isMesh(AssetId assetId);
@@ -32,10 +35,18 @@ public:
 
 	[[nodiscard]] AssetId addModel(const std::string& loadingPath);
 	bool isModelLoaded(AssetId modelResourceId) const;
-	ModelData* getModelData(AssetId modelResourceId) const;
+	Wolf::ResourceNonOwner<Wolf::Mesh> getModelMesh(AssetId modelResourceId) const;
+	bool isModelCentered(AssetId modelResourceId) const;
+	const std::vector<ModelData::LODInfo>& getModelDefaultLODInfo(AssetId modelResourceId) const;
+	const std::vector<ModelData::LODInfo>& getModelSloppyLODInfo(AssetId modelResourceId) const;
+	std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getModelDefaultSimplifiedIndexBuffers(AssetId modelResourceId) const;
+	std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getModelSloppySimplifiedIndexBuffers(AssetId modelResourceId) const;
+	Wolf::ResourceNonOwner<AnimationData> getAnimationData(AssetId modelResourceId) const;
 	Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(AssetId modelResourceId, uint32_t lod, uint32_t lodType);
+	std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& getPhysicsShapes(AssetId modelResourceId) const;
 	uint32_t getFirstMaterialIdx(AssetId modelResourceId) const;
 	uint32_t getFirstTextureSetIdx(AssetId modelResourceId) const;
+	const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& getModelTextureSetInfo(AssetId modelResourceId) const;
 	void subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
 	[[nodiscard]] AssetId addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized, bool forceImmediateLoading = false);
@@ -78,6 +89,7 @@ private:
 		virtual ~AssetInterface() = default;
 
 		virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) = 0;
+		virtual void dump(std::ofstream& outputJSON, uint32_t tabCount, const std::string& folderPath);
 
 		virtual bool isLoaded() const = 0;
 		std::string getLoadingPath() const { return m_loadingPath; }
@@ -106,13 +118,24 @@ private:
 		void forceReload(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass);
 		void requestThumbnailReload();
 
+		void dump(std::ofstream& outputJSON, uint32_t tabCount, const std::string& folderPath) override;
+
 		void setThumbnailGenerationViewMatrix(const glm::mat4& viewMatrix) { m_thumbnailGenerationViewMatrix = viewMatrix;}
 
 		bool isLoaded() const override;
-		ModelData* getModelData() { return &m_modelData; }
+		Wolf::ResourceNonOwner<Wolf::Mesh> getMesh() { return m_mesh.createNonOwnerResource(); }
+		bool isCentered() const { return m_isCentered; }
+		const std::vector<ModelData::LODInfo>& getDefaultLODInfo() const { return m_defaultLODsInfo; }
+		const std::vector<ModelData::LODInfo>& getSloppyLODInfo() const { return m_sloppyLODsInfo; }
+		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getDefaultSimplifiedIndexBuffers();
+		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getSloppySimplifiedIndexBuffers();
+		bool isAnimated() const { return static_cast<bool>(m_animationData);}
+		Wolf::ResourceNonOwner<AnimationData> getAnimationData() { return m_animationData.createNonOwnerResource(); }
+		std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& getPhysicsShapes() { return m_physicsShapes; }
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(uint32_t lod, uint32_t lodType);
 		uint32_t getFirstMaterialIdx() const { return m_firstMaterialIdx; }
 		uint32_t getFirstTextureSetIdx() const { return m_firstTextureSetIdx; }
+		const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& getTextureSetInfo() const { return m_textureSetInfo; }
 
 	private:
 		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
@@ -121,11 +144,23 @@ private:
 
 		bool m_modelLoadingRequested = false;
 		bool m_thumbnailGenerationRequested = false;
-		ModelData m_modelData;
+		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
+		bool m_isCentered = false;
+
+		std::vector<ModelData::LODInfo> m_defaultLODsInfo;
+		std::vector<ModelData::LODInfo> m_sloppyLODsInfo;
+		std::vector<Wolf::ResourceUniqueOwner<Wolf::Buffer>> m_defaultSimplifiedIndexBuffers;
+		std::vector<Wolf::ResourceUniqueOwner<Wolf::Buffer>> m_sloppySimplifiedIndexBuffers;
+
+		Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
+
+		std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>> m_physicsShapes;
+
 		std::vector<std::vector<Wolf::ResourceUniqueOwner<Wolf::BottomLevelAccelerationStructure>>> m_bottomLevelAccelerationStructures;
 
 		uint32_t m_firstTextureSetIdx = 0;
 		uint32_t m_firstMaterialIdx = 0;
+		std::vector<Wolf::MaterialsGPUManager::TextureSetInfo> m_textureSetInfo;
 
 		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_meshToKeepInMemory;
 
@@ -149,6 +184,7 @@ private:
 		{}
 
 		bool generateThumbnail(const std::string& fullFilePath, const std::string& iconPath);
+		void dump(const std::string& folderPath, AssetId assetId, ImageFormatter& imageFormatter) const;
 
 		Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
@@ -175,6 +211,8 @@ private:
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
 		bool isLoaded() const override;
 
+		void dump(std::ofstream& outputJSON, uint32_t tabCount, const std::string& folderPath) override;
+
 		const uint8_t* getFirstMipData() const;
 
 	private:
@@ -190,6 +228,8 @@ private:
 
 		void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
 		bool isLoaded() const override;
+
+		void dump(std::ofstream& outputJSON, uint32_t tabCount, const std::string& folderPath) override;
 
 	private:
 		void loadImage();

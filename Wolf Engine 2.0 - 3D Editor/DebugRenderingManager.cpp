@@ -286,7 +286,7 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 		PerGroupOfLines& AABBInfo = m_AABBInfoArray[i];
 
 		Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { AABBInfo.mesh.duplicateAs<Wolf::MeshInterface>(), m_linesPipelineSet.createConstNonOwnerResource() };
-		meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), 
+		meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), 
 			m_linesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
 		renderMeshList->addTransientMesh(meshToRenderInfo);
@@ -297,7 +297,7 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 		PerGroupOfLines& customInfo = m_customLinesInfoArray[requestQueueIdx][i];
 
 		Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { customInfo.mesh.duplicateAs<Wolf::MeshInterface>(), m_linesPipelineSet.createConstNonOwnerResource() };
-		meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(customInfo.linesDescriptorSet.createConstNonOwnerResource(), 
+		meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(customInfo.linesDescriptorSet.createConstNonOwnerResource(), 
 			m_linesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
 		renderMeshList->addTransientMesh(meshToRenderInfo);
@@ -311,7 +311,7 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 		m_rectanglesUniformBuffer->transferCPUMemory(&m_rectanglesData, sizeof(RectanglesUBData));
 
 		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {m_rectangleMesh.createNonOwnerResource<Wolf::MeshInterface>(), m_rectanglesPipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
-		meshToRenderInfo.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_rectanglesDescriptorSet.createConstNonOwnerResource(),
+		meshToRenderInfo.mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_rectanglesDescriptorSet.createConstNonOwnerResource(),
 			m_rectanglesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
 		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_rectanglesCount);
@@ -415,7 +415,7 @@ void DebugRenderingManager::PerSpherePipeline::registerMeshes(const Wolf::Resour
 		m_uniformBuffer->transferCPUMemory(&m_uniformData, sizeof(SpheresUBData));
 
 		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {cubeQuadMesh.createNonOwnerResource<Wolf::MeshInterface>(), m_pipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
-		meshToRenderInfo.mesh.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(),
+		meshToRenderInfo.mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(),
 			m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
 		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_count);

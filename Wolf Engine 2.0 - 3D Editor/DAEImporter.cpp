@@ -461,11 +461,11 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 
 		if (!uniqueVertices.contains(vertex))
 		{
-			uniqueVertices[vertex] = static_cast<uint32_t>(m_vertices.size());
-			m_vertices.push_back(vertex);
+			uniqueVertices[vertex] = static_cast<uint32_t>(m_outputModel->m_skeletonVertices.size());
+			m_outputModel->m_skeletonVertices.push_back(vertex);
 		}
 
-		m_indices.push_back(uniqueVertices[vertex]);
+		m_outputModel->m_indices.push_back(uniqueVertices[vertex]);
 	}
 
 	glm::vec3 center = (maxPos + minPos) * 0.5f;
@@ -474,12 +474,10 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		Wolf::Debug::sendWarning("Model " + modelLoadingInfo.filename + " is not centered");
 	}
 
-	Wolf::AABB aabb(minPos, maxPos);
-	Wolf::BoundingSphere boundingSphere(glm::vec3(0.0f), glm::max(glm::length(minPos), glm::length(maxPos)));
-	m_outputModel->m_mesh.reset(new Wolf::Mesh(m_vertices, m_indices, aabb, boundingSphere, modelLoadingInfo.additionalVertexBufferUsages, modelLoadingInfo.additionalIndexBufferUsages));
+	m_outputModel->m_aabb = Wolf::AABB(minPos, maxPos);
+	m_outputModel->m_boundingSphere = Wolf::BoundingSphere(glm::vec3(0.0f), glm::max(glm::length(minPos), glm::length(maxPos)));
 
 	// Animation
-
 	Node* animationNode = m_rootNodes[0]->getFirstChildByName("library_animations");
 	uint32_t animationIdx = 0;
 	while (Node* boneAnimationNode = animationNode->getChildByName("animation", animationIdx))

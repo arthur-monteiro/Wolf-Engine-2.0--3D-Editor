@@ -42,6 +42,8 @@ private:
 	void forceCustomViewForMesh(const std::string& loadingPath);
 	void removeCustomView();
 
+	void exportScene();
+
 	// JS callbacks
 	ultralight::JSValue getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -59,6 +61,7 @@ private:
 	void selectEntityByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void saveSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void exportSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void takeScreenshotJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -94,6 +97,7 @@ private:
 	std::chrono::steady_clock::time_point m_startTimeFPSCounter = std::chrono::steady_clock::now();
 
 	std::string m_currentSceneName = "Unknown scene";
+	std::string m_currentSceneJSON = "";
 
 	GameContext m_inModificationGameContext;
 	std::mutex m_contextMutex;
@@ -125,6 +129,8 @@ private:
 	std::string m_loadSceneRequest;
 	bool m_isLoading = false;
 	bool m_screenshotRequested = false;
+
+	std::string m_exportSceneRequest;
 
 	Wolf::ResourceUniqueOwner<Entity> m_temporaryEntityForThumbnailSetup;
 	glm::vec3 m_positionBeforeCustomView;

@@ -143,7 +143,7 @@ void ThumbnailsGenerationPass::resize(const Wolf::InitializationContext& context
 uint32_t ThumbnailsGenerationPass::computeTotalImageToDraw(const Request& request)
 {
 	float maxTimer;
-	findMaxTimer(request.m_modelData->m_animationData->rootBones.data(), maxTimer);
+	findMaxTimer(request.m_animationData->rootBones.data(), maxTimer);
 	return std::max(static_cast<uint32_t>((maxTimer * 1000.0f) / DELAY_BETWEEN_ICON_FRAMES_MS), 1u);
 }
 
@@ -154,13 +154,13 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 		Request& previousRequest = m_currentRequests.front();
 
 		// TODO: This is not very elegant, we should try the next frame if data is not ready instead of blocking the frame
-		context.graphicAPIManager->waitIdle();
+		context.m_graphicAPIManager->waitIdle();
 
 		const void* outputBytes = m_copyImage->map();
 		VkSubresourceLayout copyResourceLayout;
 		m_copyImage->getResourceLayout(copyResourceLayout);
 
-		if (!previousRequest.m_modelData->m_animationData)
+		if (!previousRequest.m_animationData)
 		{
 			stbi_write_png(previousRequest.m_outputFullFilepath.c_str(), OUTPUT_SIZE, OUTPUT_SIZE, 4, outputBytes, static_cast<int>(copyResourceLayout.rowPitch));
 		}
@@ -224,15 +224,15 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	uniformBufferData.firstMaterialIdx = request.m_firstMaterialIdx;
 	m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));
 
-	if (request.m_modelData->m_animationData)
+	if (request.m_animationData)
 	{
 		uint32_t totalImagesToDraw = computeTotalImageToDraw(request);
 
-		uint32_t boneCount = request.m_modelData->m_animationData->boneCount;
+		uint32_t boneCount = request.m_animationData->boneCount;
 		std::vector<BoneInfoGPU> bonesInfoGPU(boneCount);
 		std::vector<BoneInfoCPU> bonesInfoCPU(boneCount);
 
-		computeBonesInfo(request.m_modelData->m_animationData->rootBones.data(), glm::mat4(1.0f), (static_cast<float>(totalImagesToDraw - request.m_imageLeftToDraw) * DELAY_BETWEEN_ICON_FRAMES_MS) / 1000.0f, 
+		computeBonesInfo(request.m_animationData->rootBones.data(), glm::mat4(1.0f), (static_cast<float>(totalImagesToDraw - request.m_imageLeftToDraw) * DELAY_BETWEEN_ICON_FRAMES_MS) / 1000.0f,
 			glm::mat4(1.0f), bonesInfoGPU, bonesInfoCPU);
 
 		m_bonesBuffer->transferCPUMemory(bonesInfoGPU.data(), static_cast<uint32_t>(bonesInfoGPU.size() * sizeof(BoneInfoGPU)));
@@ -248,7 +248,7 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->beginRenderPass(*m_renderPass, *m_frameBuffer, clearValues);
 
 	Wolf::Pipeline* pipeline;
-	if (request.m_modelData->m_animationData)
+	if (request.m_animationData)
 	{
 		pipeline = m_animatedPipeline.get();
 	}
@@ -258,14 +258,14 @@ void ThumbnailsGenerationPass::record(const Wolf::RecordContext& context)
 	}
 
 	m_commandBuffer->bindPipeline(pipeline);
-	m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION)->getDescriptorSet(), 0, *pipeline);
-	m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 1, *pipeline);
+	m_commandBuffer->bindDescriptorSet(context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION)->getDescriptorSet(), 0, *pipeline);
+	m_commandBuffer->bindDescriptorSet(context.m_materialGPUManagerDescriptorSet, 1, *pipeline);
 	m_commandBuffer->bindDescriptorSet(m_descriptorSet.createConstNonOwnerResource(), 2, *pipeline);
-	if (request.m_modelData->m_animationData)
+	if (request.m_animationData)
 	{
 		m_commandBuffer->bindDescriptorSet(m_animationDescriptorSet.createConstNonOwnerResource(), 3, *pipeline);
 	}
-	request.m_modelData->m_mesh->draw(*m_commandBuffer, CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
+	request.m_mesh->draw(*m_commandBuffer, CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
 
 	m_commandBuffer->endRenderPass();
 
@@ -320,7 +320,7 @@ void ThumbnailsGenerationPass::addCameraForThisFrame(Wolf::CameraList& cameraLis
 
 	const Request& request = m_pendingRequests.front();
 
-	Wolf::AABB entityAABB = request.m_modelData->m_mesh->getAABB();
+	Wolf::AABB entityAABB = request.m_mesh->getAABB();
 	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, glm::length(entityAABB.getMax() - entityAABB.getMin()) * 4.0f);
 	projection[1][1] *= -1;
 	m_camera->overrideMatrices(request.m_viewMatrix, projection);
@@ -328,15 +328,16 @@ void ThumbnailsGenerationPass::addCameraForThisFrame(Wolf::CameraList& cameraLis
 	cameraList.addCameraForThisFrame(m_camera.get(), CommonCameraIndices::CAMERA_IDX_THUMBNAIL_GENERATION);
 }
 
-ThumbnailsGenerationPass::Request::Request(ModelData* modelData, uint32_t firstMaterialIdx, std::string outputFullFilepath, const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix)
-	: m_modelData(modelData), m_firstMaterialIdx(firstMaterialIdx), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback), m_viewMatrix(viewMatrix)
+ThumbnailsGenerationPass::Request::Request(Wolf::ResourceNonOwner<Wolf::Mesh> mesh, Wolf::NullableResourceNonOwner<AnimationData> animationData, uint32_t firstMaterialIdx, std::string outputFullFilepath,
+	const std::function<void()>& onGeneratedCallback, const glm::mat4& viewMatrix)
+	: m_mesh(mesh), m_animationData(animationData), m_firstMaterialIdx(firstMaterialIdx), m_outputFullFilepath(std::move(outputFullFilepath)), m_onGeneratedCallback(onGeneratedCallback), m_viewMatrix(viewMatrix)
 {
 }
 
 void ThumbnailsGenerationPass::addRequestBeforeFrame(const Request& request)
 {
 	m_pendingRequests.push_back(request);
-	if (request.m_modelData->m_animationData)
+	if (request.m_animationData)
 	{
 		uint32_t totalImagesToDraw = computeTotalImageToDraw(request);
 		m_pendingRequests.back().m_imageLeftToDraw = totalImagesToDraw;

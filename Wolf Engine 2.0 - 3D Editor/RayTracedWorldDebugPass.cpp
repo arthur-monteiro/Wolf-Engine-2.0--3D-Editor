@@ -55,7 +55,7 @@ void RayTracedWorldDebugPass::resize(const Wolf::InitializationContext& context)
 
 void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
 {
-    const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
+    const GameContext* gameContext = static_cast<const GameContext*>(context.m_gameContext);
     if (!m_rayTracedWorldManager->hasInstance() ||
         (gameContext->displayType != GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_ALBEDO && gameContext->displayType != GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_INSTANCE_ID
             && gameContext->displayType != GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID))
@@ -70,7 +70,7 @@ void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
     uniformBufferData.screenOffsetY = m_editorParams->getRenderOffsetTop();
     m_displayOptionsUniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(uniformBufferData), 0);
 
-    const Wolf::CameraInterface* camera = context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
+    const Wolf::CameraInterface* camera = context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
 
     m_commandBuffer->beginCommandBuffer();
 
@@ -83,7 +83,7 @@ void RayTracedWorldDebugPass::record(const Wolf::RecordContext& context)
     m_commandBuffer->bindDescriptorSet(m_rayTracingDescriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
     m_commandBuffer->bindDescriptorSet(camera->getDescriptorSet(), 1, *m_pipeline);
     m_commandBuffer->bindDescriptorSet(m_rayTracedWorldManager->getDescriptorSet(), 2, *m_pipeline);
-    m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 3, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(context.m_materialGPUManagerDescriptorSet, 3, *m_pipeline);
 
     m_commandBuffer->traceRays(m_shaderBindingTable.createConstNonOwnerResource(), { m_editorParams->getRenderWidth(), m_editorParams->getRenderHeight(), 1 });
 

@@ -106,7 +106,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	PROFILE_FUNCTION
 
 	/* Command buffer record */
-	const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
+	const GameContext* gameContext = static_cast<const GameContext*>(context.m_gameContext);
 
 	m_commandBuffer->beginCommandBuffer();
 
@@ -143,7 +143,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		m_globalIrradiancePass->addShaderCode(shadersCodeToAdd[0].shaderCodeToAdd, DescriptorSetSlots::DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO);
 		shadersCodeToAdd[0].requiredMask = AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 
-		context.renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
+		context.m_renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
 	}
 
 	/* Particles */
@@ -152,9 +152,9 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		m_commandBuffer->bindPipeline(m_particlesPipeline.get());
 		m_commandBuffer->setViewport(renderViewport);
 		m_commandBuffer->bindDescriptorSet(m_particlesDescriptorSet.get(), 0, *m_particlesPipeline);
-		m_commandBuffer->bindDescriptorSet(context.cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
-		m_commandBuffer->bindDescriptorSet(context.bindlessDescriptorSet, 2, *m_particlesPipeline);
-		m_commandBuffer->bindDescriptorSet(context.lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(context.m_cameraList->getCamera(0)->getDescriptorSet(), 1, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(context.m_materialGPUManagerDescriptorSet, 2, *m_particlesPipeline);
+		m_commandBuffer->bindDescriptorSet(context.m_lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(m_commonDescriptorSet.createConstNonOwnerResource(), 4, *m_particlesPipeline);
 		m_commandBuffer->bindDescriptorSet(m_globalIrradiancePass->getDescriptorSetToBind().getDescriptorSet(), GLOBAL_IRRADIANCE_COMPUTE_DESCRIPTOR_SET_SLOT_FOR_PARTICLES, *m_particlesPipeline);
 		if (m_shadowMaskPass->hasDescriptorSetToBindForCompute())
@@ -166,7 +166,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	}
 
 	/* UI and draw rects */
-	m_commandBuffer->setViewport({ 0, 0, static_cast<float>(context.swapchainImage->getExtent().width), static_cast<float>(context.swapchainImage->getExtent().height), 0, 1.0f });
+	m_commandBuffer->setViewport({ 0, 0, static_cast<float>(context.m_swapchainImage->getExtent().width), static_cast<float>(context.m_swapchainImage->getExtent().height), 0, 1.0f });
 	bool isRayTracedDebugEnabled = gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_ALBEDO || gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_INSTANCE_ID ||
 		gameContext->displayType == GameContext::DisplayType::RAY_TRACED_WORLD_DEBUG_PRIMITIVE_ID;
 	if (isRayTracedDebugEnabled && m_rayTracedWorldDebugPass && m_rayTracedWorldDebugPass->wasEnabledThisFrame())

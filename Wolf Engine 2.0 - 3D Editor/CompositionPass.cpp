@@ -120,7 +120,7 @@ void CompositionPass::record(const Wolf::RecordContext& context)
 {
     PROFILE_FUNCTION
 
-    const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
+    const GameContext* gameContext = static_cast<const GameContext*>(context.m_gameContext);
     const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
 
     UBData ubData{};
@@ -134,7 +134,7 @@ void CompositionPass::record(const Wolf::RecordContext& context)
 
     if (m_updateDescriptorSetRequested)
     {
-        context.graphicAPIManager->waitIdle(); // unsure descriptor set is not used
+        context.m_graphicAPIManager->waitIdle(); // make sure descriptor set is not used
         updateDescriptorSets();
 
         m_updateDescriptorSetRequested = false;
@@ -144,23 +144,23 @@ void CompositionPass::record(const Wolf::RecordContext& context)
 
     Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "Composition Pass");
 
-    context.swapchainImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
+    context.m_swapchainImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT });
 
     m_commandBuffer->bindPipeline(m_pipeline.createConstNonOwnerResource());
-    m_commandBuffer->bindDescriptorSet(m_descriptorSets[context.swapChainImageIdx].createConstNonOwnerResource(), 0, *m_pipeline);
+    m_commandBuffer->bindDescriptorSet(m_descriptorSets[context.m_swapChainImageIdx].createConstNonOwnerResource(), 0, *m_pipeline);
 
     constexpr Wolf::Extent3D dispatchGroups = { 16, 16, 1 };
-    const uint32_t groupSizeX = context.swapchainImage->getExtent().width % dispatchGroups.width != 0 ? context.swapchainImage->getExtent().width / dispatchGroups.width + 1 : context.swapchainImage->getExtent().width / dispatchGroups.width;
-    const uint32_t groupSizeY = context.swapchainImage->getExtent().height % dispatchGroups.height != 0 ? context.swapchainImage->getExtent().height / dispatchGroups.height + 1 : context.swapchainImage->getExtent().height / dispatchGroups.height;
+    const uint32_t groupSizeX = context.m_swapchainImage->getExtent().width % dispatchGroups.width != 0 ? context.m_swapchainImage->getExtent().width / dispatchGroups.width + 1 : context.m_swapchainImage->getExtent().width / dispatchGroups.width;
+    const uint32_t groupSizeY = context.m_swapchainImage->getExtent().height % dispatchGroups.height != 0 ? context.m_swapchainImage->getExtent().height / dispatchGroups.height + 1 : context.m_swapchainImage->getExtent().height / dispatchGroups.height;
     m_commandBuffer->dispatch(groupSizeX, groupSizeY, dispatchGroups.depth);
 
-    context.swapchainImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::PRESENT_SRC_KHR, VK_ACCESS_NONE, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT });
+    context.m_swapchainImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::PRESENT_SRC_KHR, VK_ACCESS_NONE, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT });
 
     Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
     m_commandBuffer->endCommandBuffer();
 
-    m_lastSwapChainImage = context.swapchainImage;
+    m_lastSwapChainImage = context.m_swapchainImage;
 }
 
 void CompositionPass::submit(const Wolf::SubmitContext& context)

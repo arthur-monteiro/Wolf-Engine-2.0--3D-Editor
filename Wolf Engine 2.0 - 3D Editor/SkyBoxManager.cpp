@@ -86,7 +86,7 @@ void SkyBoxManager::drawSkyBox(const Wolf::CommandBuffer& commandBuffer, const W
 
     commandBuffer.bindPipeline(m_pipeline.createConstNonOwnerResource());
     commandBuffer.bindDescriptorSet(m_descriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
-    commandBuffer.bindDescriptorSet(context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN)->getDescriptorSet(), 1, *m_pipeline);
+    commandBuffer.bindDescriptorSet(context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN)->getDescriptorSet(), 1, *m_pipeline);
     m_cubeMesh->draw(commandBuffer, CommonCameraIndices::CAMERA_IDX_MAIN);
 }
 

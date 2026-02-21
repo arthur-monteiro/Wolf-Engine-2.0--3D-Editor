@@ -110,15 +110,17 @@ struct ModelLoadingInfo
 
 	// Multi-threading options
 	std::mutex* vulkanQueueLock = nullptr;
-
-	// Addidional flags
-	VkBufferUsageFlags additionalVertexBufferUsages = 0;
-	VkBufferUsageFlags additionalIndexBufferUsages = 0;
 };
 
 struct ModelData
 {
-	Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
+	std::vector<Vertex3D> m_staticVertices;
+	std::vector<SkeletonVertex> m_skeletonVertices;
+
+	std::vector<uint32_t> m_indices;
+	Wolf::AABB m_aabb;
+	Wolf::BoundingSphere m_boundingSphere;
+	Wolf::Format m_vertexFormat = Wolf::Format::R32G32B32_SFLOAT;
 
 	// LOD data
 	struct LODInfo
@@ -126,9 +128,10 @@ struct ModelData
 		float m_error;
 		uint32_t m_indexCount;
 	};
-	std::vector<Wolf::ResourceUniqueOwner<Wolf::Buffer>> m_defaultSimplifiedIndexBuffers;
+
+	std::vector<std::vector<uint32_t>> m_defaultSimplifiedIndices;
 	std::vector<LODInfo> m_defaultLODsInfo;
-	std::vector<Wolf::ResourceUniqueOwner<Wolf::Buffer>> m_sloppySimplifiedIndexBuffers;
+	std::vector<std::vector<uint32_t>> m_sloppySimplifiedIndices;
 	std::vector<LODInfo> m_sloppyLODsInfo;
 
 #ifdef MATERIAL_DEBUG
@@ -138,7 +141,7 @@ struct ModelData
 
 	std::vector<Wolf::MaterialsGPUManager::TextureSetInfo> m_textureSets;
 
-	std::unique_ptr<AnimationData> m_animationData;
+	Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>> m_physicsShapes;
 };
 

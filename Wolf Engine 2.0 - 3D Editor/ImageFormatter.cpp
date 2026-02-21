@@ -9,7 +9,7 @@
 #include "MipMapGenerator.h"
 
 ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& filename, const std::string& slicesFolder, Wolf::Format finalFormat, bool canBeVirtualized,
-	bool keepDataOnCPU, bool loadMips) : m_keepDataOnCPU(keepDataOnCPU), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU)
+	KeepDataMode keepDataMode, bool loadMips) : m_keepDataMode(keepDataMode), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU)
 {
     if (canBeVirtualized && Wolf::g_configuration->getUseVirtualTexture())
     {
@@ -65,8 +65,8 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
 }
 
 ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::vector<Wolf::ImageCompression::RGBA8>& data, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels,
-	Wolf::Extent3D extent, const std::string& binFolder, const std::string& path, Wolf::Format finalFormat, bool canBeVirtualized, bool keepDataOnCPU)
-: m_keepDataOnCPU(keepDataOnCPU), m_editorPushDataToGPU(editorPushDataToGPU)
+	Wolf::Extent3D extent, const std::string& binFolder, const std::string& path, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode)
+: m_keepDataMode(keepDataMode), m_editorPushDataToGPU(editorPushDataToGPU)
 {
 	if (finalFormat != Wolf::Format::BC3_UNORM_BLOCK)
 	{
@@ -110,9 +110,12 @@ void ImageFormatter::transferImageTo(Wolf::ResourceUniqueOwner<Wolf::Image>& out
 	return output.transferFrom(m_outputImage);
 }
 
-const uint8_t* ImageFormatter::getPixels() const
+const uint8_t* ImageFormatter::getPixels(uint32_t mipLevel) const
 {
-	return m_pixels.data();
+	if (mipLevel == 0)
+		return m_pixels.data();
+	else
+		return m_mipLevelPixels[mipLevel - 1].data();
 }
 
 bool ImageFormatter::isCacheAvailable(const std::string& filename, const std::string& binFolder, bool canBeVirtualized)
@@ -359,29 +362,41 @@ void ImageFormatter::loadImageFile(const std::string& filename, Wolf::Format for
 
 void ImageFormatter::createImageFromData(Wolf::Extent3D extent, Wolf::Format format, const uint8_t* pixels, const std::vector<const unsigned char*>& mipLevels)
 {
-	Wolf::CreateImageInfo createImageInfo;
-	createImageInfo.extent = extent;
-	createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
-	createImageInfo.format = format;
-	createImageInfo.mipLevelCount = static_cast<uint32_t>(mipLevels.size()) + 1;
-	createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
-	m_outputImage.reset(Wolf::Image::createImage(createImageInfo));
-
+	if (m_keepDataMode != KeepDataMode::ONLY_CPU)
 	{
-		Wolf::GPUDataTransfersManagerInterface::PushDataToGPUImageInfo pushDataToGpuImageInfo(pixels, m_outputImage.createNonOwnerResource(), Wolf::Image::SampledInFragmentShader());
-		m_editorPushDataToGPU->pushDataToGPUImage(pushDataToGpuImageInfo);
+		Wolf::CreateImageInfo createImageInfo;
+		createImageInfo.extent = extent;
+		createImageInfo.aspectFlags = Wolf::ImageAspectFlagBits::COLOR;
+		createImageInfo.format = format;
+		createImageInfo.mipLevelCount = static_cast<uint32_t>(mipLevels.size()) + 1;
+		createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
+		m_outputImage.reset(Wolf::Image::createImage(createImageInfo));
+
+		{
+			Wolf::GPUDataTransfersManagerInterface::PushDataToGPUImageInfo pushDataToGpuImageInfo(pixels, m_outputImage.createNonOwnerResource(), Wolf::Image::SampledInFragmentShader());
+			m_editorPushDataToGPU->pushDataToGPUImage(pushDataToGpuImageInfo);
+		}
+
+		for (uint32_t mipLevel = 1; mipLevel < mipLevels.size() + 1; ++mipLevel)
+		{
+			Wolf::GPUDataTransfersManagerInterface::PushDataToGPUImageInfo pushDataToGpuImageInfo(mipLevels[mipLevel - 1], m_outputImage.createNonOwnerResource(), Wolf::Image::SampledInFragmentShader(mipLevel), mipLevel);
+			m_editorPushDataToGPU->pushDataToGPUImage(pushDataToGpuImageInfo);
+		}
 	}
 
-	for (uint32_t mipLevel = 1; mipLevel < mipLevels.size() + 1; ++mipLevel)
+	if (m_keepDataMode == KeepDataMode::CPU_AND_GPU || m_keepDataMode == KeepDataMode::ONLY_CPU)
 	{
-		Wolf::GPUDataTransfersManagerInterface::PushDataToGPUImageInfo pushDataToGpuImageInfo(mipLevels[mipLevel - 1], m_outputImage.createNonOwnerResource(), Wolf::Image::SampledInFragmentShader(mipLevel), mipLevel);
-		m_editorPushDataToGPU->pushDataToGPUImage(pushDataToGpuImageInfo);
-	}
-
-	if (m_keepDataOnCPU)
-	{
-		uint32_t copySize = extent.width * extent.height * extent.depth * m_outputImage->getBPP();
+		uint32_t copySize = extent.width * extent.height * extent.depth * Wolf::Image::computeBPPFromFormat(format);
 		m_pixels.resize(copySize);
 		memcpy(m_pixels.data(), pixels, copySize);
+
+		m_mipLevelPixels.resize(mipLevels.size());
+		for (uint32_t mipLevel = 1; mipLevel < mipLevels.size() + 1; ++mipLevel)
+		{
+			const Wolf::Extent3D mipExtent = { extent.width >> mipLevel, extent.height >> mipLevel, extent.depth };
+			copySize = mipExtent.width * mipExtent.height * mipExtent.depth * Wolf::Image::computeBPPFromFormat(format);
+			m_mipLevelPixels[mipLevel - 1].resize(copySize);
+			memcpy(m_mipLevelPixels[mipLevel - 1].data(), mipLevels[mipLevel - 1], copySize);
+		}
 	}
 }

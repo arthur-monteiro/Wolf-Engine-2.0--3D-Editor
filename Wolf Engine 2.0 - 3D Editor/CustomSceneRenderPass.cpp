@@ -146,7 +146,7 @@ void CustomSceneRenderPass::Request::recordCommands(const Wolf::CommandBuffer* c
         }
     }
 
-    context.renderMeshList->draw(context, *commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER, m_cameraIdx, descriptorSetBindInfos, shadersCodeToAdd);
+    context.m_renderMeshList->draw(context, *commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER, m_cameraIdx, descriptorSetBindInfos, shadersCodeToAdd);
 
     commandBuffer->endRenderPass();
 }

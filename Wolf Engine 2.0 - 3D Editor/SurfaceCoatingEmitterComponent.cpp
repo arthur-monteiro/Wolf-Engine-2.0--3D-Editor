@@ -103,7 +103,7 @@ SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::Resou
 			pipelineInfo.shaderInfos[4].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 
 			// Resources
-			pipelineInfo.bindlessDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_BINDLESS;
+			pipelineInfo.materialsDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MATERIAL_MANAGER;
 			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
 			pipelineInfo.customMask = AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO | AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 
@@ -115,7 +115,7 @@ SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::Resou
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
 
 			// Output Ids
-			pipelineInfo.bindlessDescriptorSlot = -1;
+			pipelineInfo.materialsDescriptorSlot = -1;
 			pipelineInfo.lightDescriptorSlot = -1;
             pipelineInfo.customMask = 0;
             pipelineInfo.shaderInfos[1].conditionBlocksToInclude.emplace_back("NO_LIGHTING");
@@ -321,12 +321,12 @@ bool SurfaceCoatingEmitterComponent::getMeshesToRender(std::vector<DrawManager::
     Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
     Wolf::DescriptorSetBindInfo descriptorSetBindInfoNoLighting(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
-    meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].push_back(descriptorSetBindInfoNoLighting);
-    meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].push_back(descriptorSetBindInfoNoLighting);
-    meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS].push_back(descriptorSetBindInfoNoLighting);
+    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].push_back(descriptorSetBindInfoNoLighting);
+    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].push_back(descriptorSetBindInfoNoLighting);
+    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS].push_back(descriptorSetBindInfoNoLighting);
 
     Wolf::DescriptorSetBindInfo descriptorSetBindInfoLighting(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
-    meshToRenderInfo.perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(descriptorSetBindInfoLighting);
+    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(descriptorSetBindInfoLighting);
 
     InstanceData instanceData{};
 

@@ -134,8 +134,6 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		Wolf::Debug::sendInfo("[Loading object file] Warning : " + warn + " for " + modelLoadingInfo.filename + " !");
 
 	std::unordered_map<Vertex3D, uint32_t> uniqueVertices = {};
-	std::vector<Vertex3D> vertices;
-	std::vector<uint32_t> indices;
 	std::vector<InternalShapeInfo> shapeInfos(shapes.size());
 
 	glm::vec3 minPos(1'000'000.f);
@@ -147,7 +145,7 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 	for(uint32_t shapeIdx = 0; shapeIdx < shapes.size(); ++shapeIdx)
 	{
 		auto& [name, mesh, lines, points] = shapes[shapeIdx];
-		shapeInfos[shapeIdx].indicesOffset = static_cast<uint32_t>(indices.size());
+		shapeInfos[shapeIdx].indicesOffset = static_cast<uint32_t>(m_outputModel->m_indices.size());
 
 		int numVertex = 0;
 		for (const auto& index : mesh.indices)
@@ -216,11 +214,11 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 
 			if (!uniqueVertices.contains(vertex))
 			{
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
+				uniqueVertices[vertex] = static_cast<uint32_t>(m_outputModel->m_staticVertices.size());
+				m_outputModel->m_staticVertices.push_back(vertex);
 			}
 			
-			indices.push_back(uniqueVertices[vertex]);
+			m_outputModel->m_indices.push_back(uniqueVertices[vertex]);
 			numVertex++;
 		}
 	}
@@ -235,7 +233,7 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		{
 			Wolf::Debug::sendInfo("Mesh is forced to be centered");
 
-			for (Vertex3D& vertex : vertices)
+			for (Vertex3D& vertex : m_outputModel->m_staticVertices)
 			{
 				vertex.pos -= center;
 			}
@@ -256,11 +254,11 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		m_outputModel->m_isMeshCentered = true;
 	}
 
-	Wolf::AABB aabb(minPos, maxPos);
-	Wolf::BoundingSphere boundingSphere(glm::vec3(0.0f), glm::max(glm::length(minPos), glm::length(maxPos)));
+	m_outputModel->m_aabb = Wolf::AABB(minPos, maxPos);
+	m_outputModel->m_boundingSphere = Wolf::BoundingSphere(glm::vec3(0.0f), glm::max(glm::length(minPos), glm::length(maxPos)));
 
 	std::array<Vertex3D, 3> tempTriangle{};
-	for (size_t i(0); i <= indices.size(); ++i)
+	for (size_t i(0); i <= m_outputModel->m_indices.size(); ++i)
 	{
 		if (i != 0 && i % 3 == 0)
 		{
@@ -278,34 +276,34 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 			tangent = normalize(tangent);
 
 			for (int32_t j(static_cast<int32_t>(i) - 1); j >= static_cast<int32_t>(i - 3); --j)
-				vertices[indices[j]].tangent = tangent;
+				m_outputModel->m_staticVertices[m_outputModel->m_indices[j]].tangent = tangent;
 		}
 
-		if (i == indices.size())
+		if (i == m_outputModel->m_indices.size())
 			break;
 
-		tempTriangle[i % 3] = vertices[indices[i]];
+		tempTriangle[i % 3] = m_outputModel->m_staticVertices[m_outputModel->m_indices[i]];
 	}
 
 #ifndef __ANDROID__
 	// Optimize mesh
-	std::vector<unsigned int> remap(indices.size()); // temporary remap table
-	size_t meshOptVertexCount = meshopt_generateVertexRemap(&remap[0], indices.data(), indices.size(),
-		vertices.data(), vertices.size(), sizeof(Vertex3D));
-	std::vector<uint32_t> newIndices(indices.size());
-	meshopt_remapIndexBuffer(newIndices.data(), indices.data(), indices.size(), &remap[0]);
+	std::vector<unsigned int> remap(m_outputModel->m_indices.size()); // temporary remap table
+	size_t meshOptVertexCount = meshopt_generateVertexRemap(&remap[0], m_outputModel->m_indices.data(), m_outputModel->m_indices.size(),
+		m_outputModel->m_staticVertices.data(), m_outputModel->m_staticVertices.size(), sizeof(Vertex3D));
+	std::vector<uint32_t> newIndices(m_outputModel->m_indices.size());
+	meshopt_remapIndexBuffer(newIndices.data(), m_outputModel->m_indices.data(), m_outputModel->m_indices.size(), &remap[0]);
 	std::vector<Vertex3D> newVertices(meshOptVertexCount);
-	meshopt_remapVertexBuffer(newVertices.data(), vertices.data(), vertices.size(), sizeof(Vertex3D), &remap[0]);
+	meshopt_remapVertexBuffer(newVertices.data(), m_outputModel->m_staticVertices.data(), m_outputModel->m_staticVertices.size(), sizeof(Vertex3D), &remap[0]);
 
-	vertices = std::move(newVertices);
-	indices = std::move(newIndices);
+	m_outputModel->m_staticVertices = std::move(newVertices);
+	m_outputModel->m_indices = std::move(newIndices);
 
-	meshopt_optimizeVertexCache(indices.data(), indices.data(), indices.size(), vertices.size());
+	meshopt_optimizeVertexCache(m_outputModel->m_indices.data(), m_outputModel->m_indices.data(), m_outputModel->m_indices.size(), m_outputModel->m_staticVertices.size());
 
 	std::vector<std::vector<uint32_t>> savedDefaultLODs(modelLoadingInfo.generateDefaultLODCount);
 	std::vector<std::vector<uint32_t>> savedSloppyLODs(modelLoadingInfo.generateSloppyLODCount);
 
-	size_t targetIndexCount = indices.size();
+	size_t targetIndexCount = m_outputModel->m_indices.size();
 	float targetError = 1.0;
 	for (uint32_t lodIdx = 0; lodIdx < modelLoadingInfo.generateDefaultLODCount; ++lodIdx)
 	{
@@ -318,11 +316,11 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		targetIndexCount *= 0.5f;
 
 		std::vector<uint32_t>& lod = savedDefaultLODs[lodIdx];
-		lod.resize(indices.size());
+		lod.resize(m_outputModel->m_indices.size());
 		float lodError = 0.0f;
 		static_assert(offsetof(Vertex3D, pos) == 0);
-		lod.resize(meshopt_simplify(&lod[0], indices.data(), indices.size(), reinterpret_cast<float*>(vertices.data() /* note that it makes the assumption that pos is the first data */),
-			vertices.size(), sizeof(Vertex3D), targetIndexCount, targetError, 0, &lodError));
+		lod.resize(meshopt_simplify(&lod[0], m_outputModel->m_indices.data(), m_outputModel->m_indices.size(), reinterpret_cast<float*>(m_outputModel->m_staticVertices.data() /* note that it makes the assumption that pos is the first data */),
+			m_outputModel->m_staticVertices.size(), sizeof(Vertex3D), targetIndexCount, targetError, 0, &lodError));
 
 		if (lod.size() > targetIndexCount * 1.5f) // target not reached
 		{
@@ -330,9 +328,7 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 			break;
 		}
 
-		m_outputModel->m_defaultSimplifiedIndexBuffers.push_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | modelLoadingInfo.additionalIndexBufferUsages,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-		m_outputModel->m_defaultSimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t));
+		m_outputModel->m_defaultSimplifiedIndices.emplace_back() = lod;
 
 		ModelData::LODInfo lodInfo;
 		lodInfo.m_error = lodError;
@@ -340,7 +336,7 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		m_outputModel->m_defaultLODsInfo.push_back(lodInfo);
 	}
 
-	targetIndexCount = indices.size();
+	targetIndexCount = m_outputModel->m_indices.size();
 	targetError = 1.0;
 	for (uint32_t lodIdx = 0; lodIdx < modelLoadingInfo.generateSloppyLODCount; ++lodIdx)
 	{
@@ -353,11 +349,11 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		targetIndexCount *= 0.5f;
 
 		std::vector<uint32_t>& lod = savedSloppyLODs[lodIdx];
-		lod.resize(indices.size());
+		lod.resize(m_outputModel->m_indices.size());
 		float lodError = 0.0f;
 		static_assert(offsetof(Vertex3D, pos) == 0);
-		lod.resize(meshopt_simplifySloppy(&lod[0], indices.data(), indices.size(), reinterpret_cast<float*>(vertices.data() /* note that it makes the assumption that pos is the first data */),
-			vertices.size(), sizeof(Vertex3D), targetIndexCount, targetError, &lodError));
+		lod.resize(meshopt_simplifySloppy(&lod[0], m_outputModel->m_indices.data(), m_outputModel->m_indices.size(), reinterpret_cast<float*>(m_outputModel->m_staticVertices.data() /* note that it makes the assumption that pos is the first data */),
+			m_outputModel->m_staticVertices.size(), sizeof(Vertex3D), targetIndexCount, targetError, &lodError));
 
 		if (lod.size() <= 16)
 		{
@@ -365,9 +361,7 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 			break;
 		}
 
-		m_outputModel->m_sloppySimplifiedIndexBuffers.push_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | modelLoadingInfo.additionalIndexBufferUsages,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-		m_outputModel->m_sloppySimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t));
+		m_outputModel->m_sloppySimplifiedIndices.emplace_back() = lod;
 
 		ModelData::LODInfo lodInfo;
 		lodInfo.m_error = lodError;
@@ -376,17 +370,15 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 	}
 #endif
 
-	m_outputModel->m_mesh.reset(new Wolf::Mesh(vertices, indices, aabb, boundingSphere, modelLoadingInfo.additionalVertexBufferUsages, modelLoadingInfo.additionalIndexBufferUsages));
+	// for (uint32_t shapeIdx = 0; shapeIdx < shapeInfos.size(); ++shapeIdx)
+	// {
+	// 	const InternalShapeInfo& shapeInfo = shapeInfos[shapeIdx];
+	// 	const InternalShapeInfo& nextShapeInfo = shapeIdx == shapeInfos.size() - 1 ? InternalShapeInfo{ static_cast<uint32_t>(indices.size()) } : shapeInfos[shapeIdx + 1];
+	//
+	// 	m_outputModel->m_mesh->addSubMesh(shapeInfo.indicesOffset, nextShapeInfo.indicesOffset - shapeInfo.indicesOffset);
+	// }
 
-	for (uint32_t shapeIdx = 0; shapeIdx < shapeInfos.size(); ++shapeIdx)
-	{
-		const InternalShapeInfo& shapeInfo = shapeInfos[shapeIdx];
-		const InternalShapeInfo& nextShapeInfo = shapeIdx == shapeInfos.size() - 1 ? InternalShapeInfo{ static_cast<uint32_t>(indices.size()) } : shapeInfos[shapeIdx + 1];
-
-		m_outputModel->m_mesh->addSubMesh(shapeInfo.indicesOffset, nextShapeInfo.indicesOffset - shapeInfo.indicesOffset);
-	}
-
-	Wolf::Debug::sendInfo("Model " + modelLoadingInfo.filename + " loaded with " + std::to_string(indices.size() / 3) + " triangles and " + std::to_string(shapeInfos.size()) + " shapes");
+	Wolf::Debug::sendInfo("Model " + modelLoadingInfo.filename + " loaded with " + std::to_string(m_outputModel->m_indices.size() / 3) + " triangles and " + std::to_string(shapeInfos.size()) + " shapes");
 
 	if (modelLoadingInfo.textureSetLayout != TextureSetLoader::InputTextureSetLayout::NO_MATERIAL)
 	{
@@ -453,13 +445,13 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		outCacheFile.write(reinterpret_cast<char*>(&hash), sizeof(hash));
 
 		/* Geometry */
-		uint32_t verticesCount = static_cast<uint32_t>(vertices.size());
+		uint32_t verticesCount = static_cast<uint32_t>(m_outputModel->m_staticVertices.size());
 		outCacheFile.write(reinterpret_cast<char*>(&verticesCount), sizeof(uint32_t));
-		outCacheFile.write(reinterpret_cast<char*>(vertices.data()), verticesCount * sizeof(vertices[0]));
-		uint32_t indicesCount = static_cast<uint32_t>(indices.size());
+		outCacheFile.write(reinterpret_cast<char*>(m_outputModel->m_staticVertices.data()), verticesCount * sizeof(m_outputModel->m_staticVertices[0]));
+		uint32_t indicesCount = static_cast<uint32_t>(m_outputModel->m_indices.size());
 		outCacheFile.write(reinterpret_cast<char*>(&indicesCount), sizeof(uint32_t));
-		outCacheFile.write(reinterpret_cast<char*>(indices.data()), indicesCount * sizeof(indices[0]));
-		outCacheFile.write(reinterpret_cast<char*>(&aabb), sizeof(Wolf::AABB));
+		outCacheFile.write(reinterpret_cast<char*>(m_outputModel->m_indices.data()), indicesCount * sizeof(m_outputModel->m_indices[0]));
+		outCacheFile.write(reinterpret_cast<char*>(&m_outputModel->m_aabb), sizeof(Wolf::AABB));
 
 		uint32_t shapeCount = static_cast<uint32_t>(shapeInfos.size());
 		outCacheFile.write(reinterpret_cast<char*>(&shapeCount), sizeof(uint32_t));
@@ -548,39 +540,32 @@ bool ModelLoader::loadCache(ModelLoadingInfo& modelLoadingInfo)
 
 		uint32_t verticesCount;
 		input.read(reinterpret_cast<char*>(&verticesCount), sizeof(verticesCount));
-		std::vector<Vertex3D> vertices(verticesCount);
-		input.read(reinterpret_cast<char*>(vertices.data()), verticesCount * sizeof(vertices[0]));
+		m_outputModel->m_staticVertices.resize(verticesCount);
+		input.read(reinterpret_cast<char*>(m_outputModel->m_staticVertices.data()), verticesCount * sizeof(m_outputModel->m_staticVertices[0]));
 
 		uint32_t indicesCount;
 		input.read(reinterpret_cast<char*>(&indicesCount), sizeof(indicesCount));
-		std::vector<uint32_t> indices(indicesCount);
-		input.read(reinterpret_cast<char*>(indices.data()), indicesCount * sizeof(indices[0]));
+		m_outputModel->m_indices.resize(indicesCount);
+		input.read(reinterpret_cast<char*>(m_outputModel->m_indices.data()), indicesCount * sizeof(m_outputModel->m_indices[0]));
 
-		Wolf::AABB aabb{};
-		input.read(reinterpret_cast<char*>(&aabb), sizeof(Wolf::AABB));
+		input.read(reinterpret_cast<char*>(&m_outputModel->m_aabb), sizeof(Wolf::AABB));
 
-		glm::vec3 minPos = aabb.getMin();
-		glm::vec3 maxPos = aabb.getMax();
-		Wolf::BoundingSphere boundingSphere((minPos + maxPos) * 0.5f, glm::distance(minPos, maxPos) * 0.5f);
-
-		if (modelLoadingInfo.vulkanQueueLock)
-			modelLoadingInfo.vulkanQueueLock->lock();
-		m_outputModel->m_mesh.reset(new Wolf::Mesh(vertices, indices, aabb, boundingSphere, modelLoadingInfo.additionalVertexBufferUsages, modelLoadingInfo.additionalIndexBufferUsages, Wolf::Format::R32G32B32_SFLOAT));
-		if (modelLoadingInfo.vulkanQueueLock)
-			modelLoadingInfo.vulkanQueueLock->unlock();
+		glm::vec3 minPos = m_outputModel->m_aabb.getMin();
+		glm::vec3 maxPos = m_outputModel->m_aabb.getMax();
+		m_outputModel->m_boundingSphere = Wolf::BoundingSphere((minPos + maxPos) * 0.5f, glm::distance(minPos, maxPos) * 0.5f);
 
 		uint32_t shapeCount;
 		input.read(reinterpret_cast<char*>(&shapeCount), sizeof(shapeCount));
 		std::vector<InternalShapeInfo> shapes(shapeCount);
 		input.read(reinterpret_cast<char*>(shapes.data()), shapeCount * sizeof(shapes[0]));
 
-		for (uint32_t shapeIdx = 0; shapeIdx < shapes.size(); ++shapeIdx)
-		{
-			const InternalShapeInfo& shapeInfo = shapes[shapeIdx];
-			const InternalShapeInfo& nextShapeInfo = shapeIdx == shapes.size() - 1 ? InternalShapeInfo{ static_cast<uint32_t>(indices.size()) } : shapes[shapeIdx + 1];
-
-			m_outputModel->m_mesh->addSubMesh(shapeInfo.indicesOffset, nextShapeInfo.indicesOffset - shapeInfo.indicesOffset);
-		}
+		// for (uint32_t shapeIdx = 0; shapeIdx < shapes.size(); ++shapeIdx)
+		// {
+		// 	const InternalShapeInfo& shapeInfo = shapes[shapeIdx];
+		// 	const InternalShapeInfo& nextShapeInfo = shapeIdx == shapes.size() - 1 ? InternalShapeInfo{ static_cast<uint32_t>(m_outputModel->m_indices.size()) } : shapes[shapeIdx + 1];
+		//
+		// 	m_outputModel->m_mesh->addSubMesh(shapeInfo.indicesOffset, nextShapeInfo.indicesOffset - shapeInfo.indicesOffset);
+		// }
 
 		uint32_t textureSetCount;
 		input.read(reinterpret_cast<char*>(&textureSetCount), sizeof(textureSetCount));
@@ -637,9 +622,7 @@ bool ModelLoader::loadCache(ModelLoadingInfo& modelLoadingInfo)
 			std::vector<uint32_t> lod(indicesCount);
 			input.read(reinterpret_cast<char*>(lod.data()), indicesCount * sizeof(lod[0]));
 
-			m_outputModel->m_defaultSimplifiedIndexBuffers.push_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | modelLoadingInfo.additionalIndexBufferUsages,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-			m_outputModel->m_defaultSimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t));
+			m_outputModel->m_defaultSimplifiedIndices.emplace_back() = lod;
 
 			input.read(reinterpret_cast<char*>(&m_outputModel->m_defaultLODsInfo[lodIdx]), sizeof(ModelData::LODInfo));
 		}
@@ -654,9 +637,7 @@ bool ModelLoader::loadCache(ModelLoadingInfo& modelLoadingInfo)
 			std::vector<uint32_t> lod(indicesCount);
 			input.read(reinterpret_cast<char*>(lod.data()), indicesCount * sizeof(lod[0]));
 
-			m_outputModel->m_sloppySimplifiedIndexBuffers.push_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | modelLoadingInfo.additionalIndexBufferUsages,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-			m_outputModel->m_sloppySimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t));
+			m_outputModel->m_sloppySimplifiedIndices.emplace_back() = lod;
 
 			input.read(reinterpret_cast<char*>(&m_outputModel->m_sloppyLODsInfo[lodIdx]), sizeof(ModelData::LODInfo));
 		}
@@ -702,7 +683,9 @@ void ModelLoader::loadTextureSet(const TextureSetLoader::TextureSetFileInfoGGX& 
 	{
 		if (AssetId assetId = textureSetLoader.getImageAssetId(i); assetId != NO_ASSET)
 		{
-			m_outputModel->m_textureSets[indexMaterial].images2[i] = m_assetManager->getImage(textureSetLoader.getImageAssetId(i));
+			m_outputModel->m_textureSets[indexMaterial].imageAssetIds[i] = assetId;
+
+			m_outputModel->m_textureSets[indexMaterial].images[i] = m_assetManager->getImage(textureSetLoader.getImageAssetId(i));
 			m_outputModel->m_textureSets[indexMaterial].slicesFolders[i] = m_assetManager->getImageSlicesFolder(textureSetLoader.getImageAssetId(i));
 		}
 	}
@@ -710,7 +693,9 @@ void ModelLoader::loadTextureSet(const TextureSetLoader::TextureSetFileInfoGGX& 
 	// Get combined image
 	if (AssetId assetId = textureSetLoader.getImageAssetId(2); assetId != NO_ASSET)
 	{
-		m_outputModel->m_textureSets[indexMaterial].images2[2] = m_assetManager->getCombinedImage(textureSetLoader.getImageAssetId(2));
+		m_outputModel->m_textureSets[indexMaterial].imageAssetIds[2] = assetId;
+
+		m_outputModel->m_textureSets[indexMaterial].images[2] = m_assetManager->getCombinedImage(textureSetLoader.getImageAssetId(2));
 		m_outputModel->m_textureSets[indexMaterial].slicesFolders[2] = m_assetManager->getCombinedImageSlicesFolder(textureSetLoader.getImageAssetId(2));
 	}
 }

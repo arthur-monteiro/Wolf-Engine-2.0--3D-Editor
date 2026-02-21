@@ -57,20 +57,20 @@ void RayTracedShadowsPass::resize(const Wolf::InitializationContext& context)
 
 void RayTracedShadowsPass::record(const Wolf::RecordContext& context)
 {
-    const GameContext* gameContext = static_cast<const GameContext*>(context.gameContext);
+    const GameContext* gameContext = static_cast<const GameContext*>(context.m_gameContext);
     if (!m_rayTracedWorldManager->hasInstance() || gameContext->displayType != GameContext::DisplayType::LIGHTING)
     {
         m_wasEnabledThisFrame = false;
         return;
     }
 
-    uint32_t sunLightCount = context.lightManager->getSunLightCount();
+    uint32_t sunLightCount = context.m_lightManager->getSunLightCount();
     if (sunLightCount == 0)
     {
         return;
     }
 
-    glm::vec3 sunDirection = context.lightManager->getSunLightInfo(0).direction;
+    glm::vec3 sunDirection = context.m_lightManager->getSunLightInfo(0).direction;
 
     UniformBufferData uniformBufferData{};
     uniformBufferData.sunDirectionAndNoiseIndex = glm::vec4(sunDirection, 0.0f);
@@ -78,7 +78,7 @@ void RayTracedShadowsPass::record(const Wolf::RecordContext& context)
     uniformBufferData.screenOffsetY = m_editorParams->getRenderOffsetTop();
     m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(uniformBufferData), 0);
 
-    const Wolf::CameraInterface* camera = context.cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
+    const Wolf::CameraInterface* camera = context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_MAIN);
 
     m_commandBuffer->beginCommandBuffer();
 

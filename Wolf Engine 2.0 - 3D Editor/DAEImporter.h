@@ -11,6 +11,7 @@
 #include <VertexInputs.h>
 
 struct ModelLoadingInfo;
+class ModelLoader;
 struct ModelData;
 
 struct SkeletonVertex
@@ -114,9 +115,6 @@ class DAEImporter
 public:
 	DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingInfo);
 
-	std::vector<SkeletonVertex>& getVertices() { return m_vertices; }
-	std::vector<uint32_t>& getIndices() { return m_indices; }
-
 private:
 	static void extractFloatValues(const std::string& input, std::vector<float>& outValues);
 
@@ -151,9 +149,6 @@ private:
 	void findNodesInHierarchy(Node* currentNode, std::vector<AnimationData::Bone>& currentBoneArray);
 
 	std::vector<std::unique_ptr<Node>> m_rootNodes;
-
-	std::vector<SkeletonVertex> m_vertices;
-	std::vector<uint32_t> m_indices;
 
 	ModelData* m_outputModel = nullptr;
 };

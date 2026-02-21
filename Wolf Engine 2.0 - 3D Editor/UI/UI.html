@@ -28,6 +28,7 @@
 			<button class="actionButton" onclick="openEntityAdd()">Add entity</button>
 			<button class="actionButton" onclick="selectFileAndLoadScene()">Load</button>
 			<button class="actionButton" onclick="openSaveSceneWindow()">Save</button>
+			<button class="actionButton" onclick="openExportSceneWindow()">Export</button>
 			<div id="sceneName" style="display: inline-block;">Unknown scene</div>
 			<div id="optionsIcon" style="float: right; padding: 5px 10px 0px 0px; cursor: pointer;" onclick="openOptions()"><div class="material-symbols-outlined">settings</div></div>
 		</div>
@@ -113,18 +114,43 @@
 	</div>
 
 	<div id="saveSceneWindow" class="modalWindow" style="display: none">
-		<table style="width: 100%;">
-			<tr>
-				<td>File</td>
-				<td id="saveSceneFile"><button onclick="pickFileAndSetValue('saveSceneFile', 'save', 'save')">Select file</button></td>
-			</tr>
-			<tr>
-				<td>Scene name</td>
-				<td id="saveSceneName"><input type="text" id="saveSceneNameInput"/></td>
-			</tr>
-		</table>
-		<button onclick="finishSaveScene()">Save scene</button>
-	</div>
+        <div class='closeButton' onclick="document.getElementById('saveSceneWindow').style.display='none'" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
+        <ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
+            <li class="table-row">
+                <div class="col col-1" data-label="infoType">File</div>
+                <div class="columnDivider"></div>
+                <div class="col col-2" data-label="infoValue">
+                    <button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('saveSceneFile', 'save', 'save')">Select file</button>
+                    <div id="saveSceneFile" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No file selected</div>
+                </div>
+            </li>
+            <li class="table-row">
+                <div class="col col-1" data-label="infoType">Scene name</div>
+                <div class="columnDivider"></div>
+                <div class="col col-2" data-label="infoValue">
+                    <input type="text" id="saveSceneNameInput" style="width: 100%; height: 25px;"/>
+                </div>
+            </li>
+        </ul>
+        <button class="validationButton" onclick="finishSaveScene()">Save scene</button>
+    </div>
+
+	<div id="exportSceneWindow" class="modalWindow" style="display: none">
+        <div class='closeButton' onclick="document.getElementById('exportSceneWindow').style.display='none'" style="cursor: pointer">
+            <div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div>
+        </div>
+        <ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
+            <li class="table-row">
+                <div class="col col-1" data-label="infoType">Executable</div>
+                <div class="columnDivider"></div>
+                <div class="col col-2" data-label="infoValue">
+                    <button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('exportSceneExecutable', 'open', 'exportExe')">Select file</button>
+                    <div id="exportSceneExecutable" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No file selected</div>
+                </div>
+            </li>
+        </ul>
+        <button class="validationButton" onclick="finishExportScene()">Export scene</button>
+    </div>
 
 	<div id="selectFileWindow" class="modalWindow" style="display: none;">
 		<div id="selectFile">Path: <button id="selectFileButton" onclick="pickFileAndSetValue('selectFile', 'open', 'undefined')">Select file</button></div>
@@ -343,7 +369,14 @@
 		document.getElementById('saveSceneWindow').style.display = "none";
 		saveScene(document.getElementById("saveSceneFile").innerHTML, document.getElementById("saveSceneNameInput").value);
 
-		document.getElementById("saveSceneFile").innerHTML = "<button onclick=\"pickFileAndSetValue('saveSceneFile', 'save', 'save')\">Select file</button>";
+		document.getElementById("saveSceneFile").innerHTML = "No file selected";
+	}
+
+	function finishExportScene() {
+		document.getElementById('exportSceneWindow').style.display = "none";
+		exportScene(document.getElementById("exportSceneExecutable").innerHTML);
+
+		document.getElementById("exportSceneExecutable").innerHTML = "No file selected";
 	}
 
 	function openOptions() {
@@ -576,6 +609,10 @@
 
 	function openSaveSceneWindow() {
 		document.getElementById('saveSceneWindow').style.display = "block";
+	}
+
+	function openExportSceneWindow() {
+		document.getElementById('exportSceneWindow').style.display = "block";
 	}
 
 	function setSceneName(name) {
