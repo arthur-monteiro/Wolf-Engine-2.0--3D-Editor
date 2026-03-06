@@ -19,7 +19,7 @@ public:
 	AssetManager(const std::function<void(const std::string&, const std::string&, AssetId)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
-		const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
+		const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
 	void updateBeforeFrame();
 	void save();
@@ -82,6 +82,7 @@ private:
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
 	Wolf::NullableResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
+	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
 	class AssetInterface : public Notifier
 	{
@@ -112,7 +113,8 @@ private:
 	class Mesh : public AssetInterface
 	{
 	public:
-		Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback);
+		Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+			const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 		Mesh(const Mesh&) = delete;
 		~Mesh() override = default;
 
@@ -140,6 +142,8 @@ private:
 		const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& getTextureSetInfo() const { return m_textureSetInfo; }
 
 	private:
+		Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
+
 		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
 		void generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& m_thumbnailsGenerationPass);
 		void buildBLAS(uint32_t lod, uint32_t lodType);

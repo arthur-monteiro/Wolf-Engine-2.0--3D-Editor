@@ -14,17 +14,18 @@
 #include "Entity.h"
 #include "ImageFormatter.h"
 #include "MeshAssetEditor.h"
-#include "RenderMeshList.h"
+#include "DefaultMeshRenderer.h"
 
 AssetManager* AssetManager::ms_assetManager;
 
 AssetManager::AssetManager(const std::function<void(const std::string&, const std::string&, AssetId)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, 
                                  const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
                                  const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string& loadingPath)>& isolateMeshCallback,
-                                 const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
+                                 const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU,
+                                 const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
 	: m_addResourceToUICallback(addAssetToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration),
       m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
-	  m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU)
+	  m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU), m_bufferPoolInterface(bufferPoolInterface)
 {
 	ms_assetManager = this;
 }
@@ -303,7 +304,7 @@ AssetId AssetManager::addModel(const std::string& loadingPath)
 
 	AssetId resourceId = static_cast<uint32_t>(m_meshes.size()) + MESH_ASSET_IDX_OFFSET;
 
-	Mesh* newMesh = new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback);
+	Mesh* newMesh = new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, m_bufferPoolInterface);
 	m_meshes.emplace_back(newMesh);
 	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath, resourceId);
 
@@ -780,8 +781,9 @@ void AssetManager::AssetInterface::onChanged()
 	notifySubscribers();
 }
 
-AssetManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback)
-	: AssetInterface(loadingPath, resourceId, updateResourceInUICallback)
+AssetManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+	: AssetInterface(loadingPath, resourceId, updateResourceInUICallback), m_bufferPoolInterface(bufferPoolInterface)
 {
 	m_modelLoadingRequested = true;
 	m_thumbnailGenerationRequested = !g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration;
@@ -941,11 +943,11 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 
 	if (!modelData.m_staticVertices.empty())
 	{
-		m_mesh.reset(new Wolf::Mesh(modelData.m_staticVertices, modelData.m_indices, modelData.m_aabb, modelData.m_boundingSphere, additionalFlags, additionalFlags));
+		m_mesh.reset(new Wolf::Mesh(modelData.m_staticVertices, modelData.m_indices, m_bufferPoolInterface, modelData.m_aabb, modelData.m_boundingSphere, additionalFlags, additionalFlags));
 	}
 	else if (!modelData.m_skeletonVertices.empty())
 	{
-		m_mesh.reset(new Wolf::Mesh(modelData.m_skeletonVertices, modelData.m_indices, modelData.m_aabb, modelData.m_boundingSphere, additionalFlags, additionalFlags));
+		m_mesh.reset(new Wolf::Mesh(modelData.m_skeletonVertices, modelData.m_indices, m_bufferPoolInterface, modelData.m_aabb, modelData.m_boundingSphere, additionalFlags, additionalFlags));
 	}
 	else
 	{
@@ -958,14 +960,14 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 	{
 		m_defaultSimplifiedIndexBuffers.emplace_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-		m_defaultSimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t));
+		m_defaultSimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t), 0, 0);
 	}
 
 	for (const std::vector<uint32_t>& lod : modelData.m_sloppySimplifiedIndices)
 	{
 		m_sloppySimplifiedIndexBuffers.emplace_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-		m_sloppySimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t));
+		m_sloppySimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t), 0, 0);
 	}
 
 	m_defaultLODsInfo = modelData.m_defaultLODsInfo;
@@ -1035,12 +1037,14 @@ void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
 {
 	Wolf::GeometryInfo geometryInfo;
 	geometryInfo.mesh.vertexBuffer = &*m_mesh->getVertexBuffer();
+	geometryInfo.mesh.vertexBufferOffset = m_mesh->getVertexBufferOffset();
 	geometryInfo.mesh.vertexCount = m_mesh->getVertexCount();
 	geometryInfo.mesh.vertexSize = m_mesh->getVertexSize();
 	geometryInfo.mesh.vertexFormat = Wolf::Format::R32G32B32_SFLOAT;
 	if (lod == 0)
 	{
 		geometryInfo.mesh.indexBuffer = &*m_mesh->getIndexBuffer();
+		geometryInfo.mesh.indexBufferOffset = m_mesh->getIndexBufferOffset();
 		geometryInfo.mesh.indexCount = m_mesh->getIndexCount();
 	}
 	else
@@ -1056,6 +1060,7 @@ void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
 		}
 
 		geometryInfo.mesh.indexBuffer = &**overrideIndexBuffer;
+		geometryInfo.mesh.indexBufferOffset = 0;
 		uint32_t indexCount = (*overrideIndexBuffer)->getSize() / sizeof(uint32_t);
 		geometryInfo.mesh.indexCount = indexCount;
 	}

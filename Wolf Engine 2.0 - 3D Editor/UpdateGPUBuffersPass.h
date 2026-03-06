@@ -41,12 +41,6 @@ public:
 			const glm::ivec2& copySize, const glm::ivec2& imageOffset) :
 			m_data(pixels), m_outputImage(outputImage), m_finalLayout(finalLayout), m_mipLevel(mipLevel), m_copySize(copySize), m_imageOffset(imageOffset)
 		{
-			Wolf::Extent3D imageExtent = m_outputImage->getExtent();
-			float imageDepth = static_cast<float>(imageExtent.depth);
-			if (imageExtent.depth != 1)
-			{
-				imageDepth = static_cast<float>(imageExtent.depth >> mipLevel);
-			}
 			m_size = static_cast<uint32_t>(static_cast<float>(copySize.x) * static_cast<float>(copySize.y) * m_outputImage->getBPP());
 		}
 

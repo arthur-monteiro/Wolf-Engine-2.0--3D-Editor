@@ -60,7 +60,9 @@ private:
     {
         uint32_t firstMaterialIdx;
         uint32_t vertexBufferBindlessOffset;
+        uint32_t vertexBufferOffset;
         uint32_t indexBufferBindlessOffset;
+        uint32_t indexBufferOffset;
     };
     static constexpr uint32_t MAX_INSTANCES = 16384;
     Wolf::ResourceUniqueOwner<Wolf::Buffer> m_instanceBuffer;

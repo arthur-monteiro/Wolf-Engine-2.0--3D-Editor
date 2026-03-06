@@ -15,9 +15,9 @@
 
 ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
                                            const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, 
-                                           const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager)
+                                           const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
 	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
-      m_physicsManager(physicsManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass())
+      m_physicsManager(physicsManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface)
 {
 	m_requestReloadCallback = requestReloadCallback;
 
@@ -261,7 +261,7 @@ void ContaminationEmitter::buildDebugMesh()
 		indices.push_back(i);
 	}
 
-	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices));
+	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
 
 	m_debugMeshRebuildRequested = false;
 }

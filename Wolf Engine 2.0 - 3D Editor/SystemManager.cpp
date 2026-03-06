@@ -20,6 +20,7 @@ SystemManager::SystemManager()
 	m_editorPushDataToGPU.reset(new EditorGPUDataTransfersManager);
 
 	createWolfInstance();
+	m_bufferPoolInterface = m_wolfInstance->getDefaultMeshBufferPool().duplicateAs<Wolf::BufferPoolInterface>();
 
 	if (m_configuration->getEnableRayTracing() && !m_wolfInstance->isRayTracingAvailable())
 	{
@@ -72,7 +73,7 @@ SystemManager::SystemManager()
 			outViewMatrix = m_camera->getViewMatrix();
 			removeCustomView();
 		},
-		m_editorPushDataToGPU.createNonOwnerResource()));
+		m_editorPushDataToGPU.createNonOwnerResource(), m_bufferPoolInterface));
 	m_renderer->setResourceManager(m_assetManager.createNonOwnerResource());
 	
 	m_entityContainer.reset(new EntityContainer);
@@ -91,15 +92,16 @@ SystemManager::SystemManager()
 		m_configuration.createNonOwnerResource(),
 		m_assetManager.createNonOwnerResource(),
 		m_wolfInstance->getPhysicsManager(),
-		m_entityContainer.createNonOwnerResource()));
+		m_entityContainer.createNonOwnerResource(),
+		m_bufferPoolInterface));
 	
 	if (!m_configuration->getDefaultScene().empty())
 	{
 		m_loadSceneRequest = m_configuration->getDefaultScene();
 	}
 
-	m_debugRenderingManager.reset(new DebugRenderingManager);
-	m_drawManager.reset(new DrawManager(m_wolfInstance->getRenderMeshList(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>()));
+	m_debugRenderingManager.reset(new DebugRenderingManager(m_bufferPoolInterface));
+	m_drawManager.reset(new DrawManager(m_wolfInstance->getInstanceMeshRenderer(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_bufferPoolInterface));
 	m_editorPhysicsManager.reset(new EditorPhysicsManager(m_wolfInstance->getPhysicsManager()));
 
 	addFakeEntities();
@@ -149,7 +151,8 @@ void SystemManager::run()
 
 	m_editorPushDataToGPU->clear();
 	m_renderer->clear();
-	m_wolfInstance->getRenderMeshList()->clear();
+	m_wolfInstance->getDefaultMeshRenderer()->clear();
+	m_wolfInstance->getInstanceMeshRenderer()->clear();
 	m_wolfInstance->getLightManager()->resetSkyCubeMap();
 	m_drawManager->clear();
 	m_debugRenderingManager->clearAll();
@@ -196,7 +199,7 @@ void SystemManager::createRenderer()
 	{
 		rayTracedWorldManager = m_rayTracedWorldManager.createNonOwnerResource();
 	}
-	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), rayTracedWorldManager));
+	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), rayTracedWorldManager, m_bufferPoolInterface));
 
 	m_renderer->getSkyBoxManager()->setOnCubeMapChangedCallback([this](Wolf::ResourceUniqueOwner<Wolf::Image>& image) { m_wolfInstance->getLightManager()->setSkyCubeMap(image.createNonOwnerResource()); });
 	m_wolfInstance->getLightManager()->setSkyCubeMap(m_renderer->getSkyBoxManager()->getCubeMapImage().createNonOwnerResource());
@@ -911,7 +914,7 @@ void SystemManager::updateBeforeFrame()
 
 	std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 
-	Wolf::ResourceNonOwner<Wolf::RenderMeshList> renderList = m_wolfInstance->getRenderMeshList();
+	Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer> renderList = m_wolfInstance->getDefaultMeshRenderer();
 	Wolf::ResourceNonOwner<Wolf::LightManager> lightManager = m_wolfInstance->getLightManager().createNonOwnerResource();
 	DebugRenderingManager& debugRenderingManager = *m_debugRenderingManager;
 
@@ -924,6 +927,8 @@ void SystemManager::updateBeforeFrame()
 	m_camera->setAspect(m_editorParams->getAspect());
 
 	m_renderer->update(m_wolfInstance.get());
+
+	m_drawManager->activateCameras(m_wolfInstance->getCameraList());
 
 	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
 	Wolf::ResourceNonOwner<EditorPhysicsManager> editorPhysicsManager= m_editorPhysicsManager.createNonOwnerResource();
@@ -1018,7 +1023,8 @@ void SystemManager::loadScene()
 	m_isLoading = true;
 	m_wolfInstance->waitIdle();
 
-	m_wolfInstance->getRenderMeshList()->clear();
+	m_wolfInstance->getDefaultMeshRenderer()->clear();
+	m_wolfInstance->getInstanceMeshRenderer()->clear();
 	m_debugRenderingManager->clearBeforeFrame();
 
 	m_selectedEntity.reset(nullptr);

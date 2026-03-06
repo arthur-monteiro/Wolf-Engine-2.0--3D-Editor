@@ -10,7 +10,8 @@
 #include "GameContext.h"
 #include "Vertex2DTextured.h"
 
-CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass) : m_editorParams(editorParams), m_forwardPass(forwardPass)
+CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+: m_editorParams(editorParams), m_forwardPass(forwardPass), m_bufferPoolInterface(bufferPoolInterface)
 {
 }
 
@@ -74,7 +75,7 @@ void CompositionPass::initializeResources(const Wolf::InitializationContext& con
         2, 3, 1
     };
 
-    m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices));
+    m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
 
     Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
     switch (context.swapChainColorSpace)

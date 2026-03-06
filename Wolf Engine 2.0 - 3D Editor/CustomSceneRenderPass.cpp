@@ -4,7 +4,8 @@
 #include <CameraList.h>
 #include <DebugMarker.h>
 #include <DescriptorSetGenerator.h>
-#include <RenderMeshList.h>
+#include <DefaultMeshRenderer.h>
+#include <InstanceMeshRenderer.h>
 
 #include "CommonLayouts.h"
 
@@ -103,7 +104,7 @@ void CustomSceneRenderPass::Request::recordCommands(const Wolf::CommandBuffer* c
 
     Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(),
         DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
-    std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
+    std::vector<Wolf::AdditionalDescriptorSet> descriptorSetBindInfos;
     descriptorSetBindInfos.emplace_back(descriptorSetBindInfo, 0);
 
     std::vector<Wolf::PipelineSet::ShaderCodeToAddForStage> shadersCodeToAdd(1);
@@ -146,7 +147,8 @@ void CustomSceneRenderPass::Request::recordCommands(const Wolf::CommandBuffer* c
         }
     }
 
-    context.m_renderMeshList->draw(context, *commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER, m_cameraIdx, descriptorSetBindInfos, shadersCodeToAdd);
+    context.m_defaultMeshRenderer->draw(context, *commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER, m_cameraIdx, descriptorSetBindInfos, shadersCodeToAdd);
+    context.m_instanceMeshRenderer->draw(context, *commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER, m_cameraIdx, descriptorSetBindInfos, shadersCodeToAdd);
 
     commandBuffer->endRenderPass();
 }

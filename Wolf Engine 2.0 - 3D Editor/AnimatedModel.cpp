@@ -32,11 +32,9 @@ AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUMana
 
 			// IA
 			SkeletonVertex::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
-			InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 1);
 
-			pipelineInfo.vertexInputBindingDescriptions.resize(2);
+			pipelineInfo.vertexInputBindingDescriptions.resize(1);
 			SkeletonVertex::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
-			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
 
 			// Resources
 			pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
@@ -207,7 +205,7 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 	if (m_hideModel == true)
 		return true;
 
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelMesh(m_meshResourceId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_resourceManager->getModelMesh(m_meshResourceId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
 	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
 	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
@@ -270,7 +268,7 @@ Wolf::AABB AnimatedModel::getAABB() const
 Wolf::BoundingSphere AnimatedModel::getBoundingSphere() const
 {
 	if (m_resourceManager->isModelLoaded(m_meshResourceId))
-		return m_resourceManager->getModelMesh(m_meshResourceId)->getBoundingSphere() * m_scaleParam + m_translationParam;
+		return m_resourceManager->getModelMesh(m_meshResourceId)->getBoundingSphere() * m_transform;
 
 	return Wolf::BoundingSphere();
 }

@@ -18,7 +18,7 @@ public:
     void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager);
     void setEnableDebug(bool value) { m_enableDebug = value; }
     void setDebugPostionFace(uint32_t faceId) { m_debugPositionFaceId = faceId;}
-    void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
+    void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;

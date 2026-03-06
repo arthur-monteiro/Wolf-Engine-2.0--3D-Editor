@@ -1,11 +1,12 @@
 #include "CascadedShadowMapsPass.h"
 
+#include <DebugMarker.h>
+#include <DefaultMeshRenderer.h>
+#include <InstanceMeshRenderer.h>
+#include <LightManager.h>
 #include <ProfilerCommon.h>
-#include <RenderMeshList.h>
 
 #include "CommonLayouts.h"
-#include "DebugMarker.h"
-#include "LightManager.h"
 
 CascadeDepthPass::CascadeDepthPass(const Wolf::InitializationContext& context, uint32_t width, uint32_t height,
                                    const Wolf::CommandBuffer* commandBuffer, uint32_t cameraIdx)
@@ -31,7 +32,8 @@ void CascadeDepthPass::setCameraInfos(const glm::vec3& center, float radius, con
 void CascadeDepthPass::recordDraws(const Wolf::RecordContext& context)
 {
 	const Wolf::CommandBuffer& commandBuffer = getCommandBuffer(context);
-	context.m_renderMeshList->draw(context, commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP, m_cameraIdx, {}, {});
+	context.m_defaultMeshRenderer->draw(context, commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP, m_cameraIdx, {}, {});
+	context.m_instanceMeshRenderer->draw(context, commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP, m_cameraIdx, {}, {});
 }
 
 const Wolf::CommandBuffer& CascadeDepthPass::getCommandBuffer(const Wolf::RecordContext& context)

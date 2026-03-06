@@ -1,5 +1,7 @@
 #include "EditorGPUDataTransfersManager.h"
 
+#include <ProfilerCommon.h>
+
 #include "GPUBufferToGPUBufferCopyPass.h"
 
 void EditorGPUDataTransfersManager::clear()
@@ -20,6 +22,8 @@ void EditorGPUDataTransfersManager::setGPUBufferToGPUBufferCopyPass(const Wolf::
 
 void EditorGPUDataTransfersManager::pushDataToGPUBuffer(const void* data, uint32_t size,const Wolf::ResourceNonOwner<Wolf::Buffer>& outputBuffer, uint32_t outputOffset)
 {
+    PROFILE_FUNCTION
+
     if (!m_updateGPUBufferPass)
     {
         Wolf::Debug::sendCriticalError("Rendering pipeline hasn't been set");

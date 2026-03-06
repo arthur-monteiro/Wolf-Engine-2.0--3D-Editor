@@ -14,7 +14,7 @@
 
 namespace Wolf
 {
-	class RenderMeshList;
+	class DefaultMeshRenderer;
 }
 
 class DebugRenderingManager
@@ -49,7 +49,7 @@ public:
 		}
 	};
 
-	DebugRenderingManager();
+	DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
 	void clearAll();
 	void clearBeforeFrame();
@@ -65,9 +65,11 @@ public:
 	void addRectangle(const glm::mat4& transform);
 	void addBox(const Wolf::AABB& aabb, const glm::vec3& rotation);
 
-	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList);
+	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList);
 
 private:
+	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
+
 	void clearForQueueIdx(uint32_t queueIndex);
 
 	Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_linesPipelineSet;
@@ -112,7 +114,7 @@ private:
 	public:
 		void init(Wolf::PolygonMode polygonMode);
 		void add(const glm::vec3& worldPos, float radius, const glm::vec3& color);
-		void registerMeshes(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList, Wolf::ResourceUniqueOwner<Wolf::Mesh>& cubeQuadMesh);
+		void registerMeshes(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList, Wolf::ResourceUniqueOwner<Wolf::Mesh>& cubeQuadMesh);
 		void clear();
 
 	private:
@@ -142,5 +144,5 @@ private:
 	uint32_t m_rectanglesCount = 0;
 	Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_rectanglesUniformBuffer;
 
-	std::vector<Wolf::ResourceUniqueOwner<Wolf::RenderMeshList::MeshToRender>> m_meshesToRender;
+	std::vector<Wolf::ResourceUniqueOwner<Wolf::DefaultMeshRenderer::MeshToRender>> m_meshesToRender;
 };

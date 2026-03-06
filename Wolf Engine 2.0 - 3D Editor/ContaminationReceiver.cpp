@@ -38,7 +38,7 @@ void ContaminationReceiver::alterMeshesToRender(std::vector<DrawManager::DrawMes
 		{
 			for (DrawManager::DrawMeshInfo& drawMeshInfo : renderMeshList)
 			{
-				Wolf::RenderMeshList::MeshToRender& meshToRender = drawMeshInfo.meshToRender;
+				Wolf::InstanceMeshRenderer::MeshToRender& meshToRender = drawMeshInfo.meshToRender;
 
 				Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& replacePipelineSet = m_pipelineSetMapping[meshToRender.m_pipelineSet->getPipelineHash(0)]; // TODO: use all pipelines hashes
 				if (!replacePipelineSet)

@@ -29,11 +29,9 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 
 			// IA
 			Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
-			InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 1);
 
-			pipelineInfo.vertexInputBindingDescriptions.resize(2);
+			pipelineInfo.vertexInputBindingDescriptions.resize(1);
 			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
-			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[1], 1);
 
 			// Resources
 			pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
@@ -154,21 +152,22 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	if (!m_resourceManager->isModelLoaded(m_modelAssetId))
 		return false;
 
-	Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_resourceManager->getModelMesh(m_modelAssetId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_resourceManager->getModelMesh(m_modelAssetId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 	if (m_drawLOD > 0)
 	{
-		if (m_drawLODType == 0) // Default
-		{
-			meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
-		}
-		else if (m_drawLODType == 1) // Sloppy
-		{
-			meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
-		}
-		else
-		{
-			Wolf::Debug::sendCriticalError("Unhandled LOD type");
-		}
+		// TODO: repair this
+		// if (m_drawLODType == 0) // Default
+		// {
+		// 	meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
+		// }
+		// else if (m_drawLODType == 1) // Sloppy
+		// {
+		// 	meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
+		// }
+		// else
+		// {
+		// 	Wolf::Debug::sendCriticalError("Unhandled LOD type");
+		// }
 	}
 
 	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
@@ -267,7 +266,7 @@ Wolf::AABB StaticModel::getAABB() const
 Wolf::BoundingSphere StaticModel::getBoundingSphere() const
 {
 	if (m_resourceManager->isModelLoaded(m_modelAssetId))
-		return m_resourceManager->getModelMesh(m_modelAssetId)->getBoundingSphere() * m_scaleParam + m_translationParam;
+		return m_resourceManager->getModelMesh(m_modelAssetId)->getBoundingSphere() * m_transform;
 
 	return Wolf::BoundingSphere();
 }

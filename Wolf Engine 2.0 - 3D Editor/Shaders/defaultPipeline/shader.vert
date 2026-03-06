@@ -7,10 +7,6 @@ layout(location = 3) in vec3 inTangent;
 layout(location = 4) in vec2 inTexCoord;
 layout(location = 5) in uint inSubMeshIdx;
 
-layout(location = 6) in mat4 inTransform;
-layout(location = 10) in uint inFirstMaterialIdx;
-layout(location = 11) in uint inEntityId;
-
 layout(location = 0) out vec3 outViewPos;
 layout(location = 1) out vec3 outColor;
 layout(location = 2) out vec2 outTexCoord;
@@ -33,11 +29,13 @@ const mat4 biasMat = mat4(
 
 void main() 
 {
-	vec4 viewPos = getViewMatrix() * inTransform * vec4(inPosition, 1.0);
+	mat4 transform = getInstanceTransform();
+
+	vec4 viewPos = getViewMatrix() * transform * vec4(inPosition, 1.0);
 
     gl_Position = getProjectionMatrix() * viewPos;
 
-	mat3 usedModelMatrix = transpose(inverse(mat3(inTransform)));
+	mat3 usedModelMatrix = transpose(inverse(mat3(transform)));
     vec3 n = normalize(usedModelMatrix * inNormal);
 	vec3 t = normalize(usedModelMatrix * inTangent);
 	t = normalize(t - dot(t, n) * n);
@@ -47,8 +45,8 @@ void main()
 	outViewPos = viewPos.xyz;
 	outColor = inColor;
     outTexCoord = inTexCoord;
-	outMaterialIdx = inFirstMaterialIdx + inSubMeshIdx;
+	outMaterialIdx = getMaterialIdx() + inSubMeshIdx;
 	outWorldSpaceNormal = normalize(inNormal);
-	outWorldSpacePos =  (inTransform * vec4(inPosition, 1.0)).xyz;
-	outEntityId = inEntityId;
+	outWorldSpacePos =  (transform * vec4(inPosition, 1.0)).xyz;
+	outEntityId = getCustomData();
 } 

@@ -7,10 +7,6 @@ layout(location = 3) in vec2 inTexCoord;
 layout(location = 4) in ivec4 inBoneIds;
 layout(location = 5) in vec4 inBoneWeights;
 
-layout(location = 6) in mat4 inTransform;
-layout(location = 10) in uint inFirstMaterialIdx;
-layout(location = 11) in uint inEntityId;
-
 layout(location = 0) out vec3 outViewPos;
 layout(location = 1) out vec2 outTexCoord;
 layout(location = 2) out uint outMaterialIdx;
@@ -50,6 +46,8 @@ const uint MAX_BONE_INFLUENCE = 4;
 
 void main() 
 {
+	mat4 transform = getInstanceTransform();
+
 	vec4 totalPosition = vec4(0.0f);
 	vec3 totalNormal = vec3(0.0f);
 	vec3 totalTangent = vec3(0.0f);
@@ -68,7 +66,7 @@ void main()
 		totalTangent += localTangent * inBoneWeights[i];
     }
 
-	vec4 viewPos = getViewMatrix() * inTransform * totalPosition;
+	vec4 viewPos = getViewMatrix() * transform * totalPosition;
 
     gl_Position = getProjectionMatrix() * viewPos;
 
@@ -80,7 +78,7 @@ void main()
 
 	outViewPos = viewPos.xyz;
     outTexCoord = inTexCoord;
-	outMaterialIdx = inFirstMaterialIdx;
+	outMaterialIdx = getMaterialIdx();
 	outWorldSpaceNormal = totalNormal;
-	outWorldSpacePos =  (inTransform * vec4(inPosition, 1.0)).xyz;
+	outWorldSpacePos =  (transform * vec4(inPosition, 1.0)).xyz;
 } 

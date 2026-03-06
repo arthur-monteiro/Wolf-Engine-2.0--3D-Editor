@@ -90,6 +90,7 @@ private:
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration; // Needs to be deleted after asset manager
 	Wolf::ResourceUniqueOwner<AssetManager> m_assetManager; // Needs to be deleted after renderer
 	Wolf::ResourceUniqueOwner<RenderingPipeline> m_renderer;
+	Wolf::NullableResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
 	/* FPS counter */
 	uint32_t m_currentFramesAccumulated = 0;

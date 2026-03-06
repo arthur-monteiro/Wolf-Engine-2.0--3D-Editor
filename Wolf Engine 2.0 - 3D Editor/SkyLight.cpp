@@ -8,8 +8,9 @@
 #include "EditorParamsHelper.h"
 #include "glm/gtx/quaternion.hpp"
 
-SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
-: m_requestReloadCallback(requestReloadCallback), m_resourceManager(resourceManager), m_renderingPipeline(renderingPipeline)
+SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
+	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+: m_requestReloadCallback(requestReloadCallback), m_resourceManager(resourceManager), m_renderingPipeline(renderingPipeline), m_bufferPoolInterface(bufferPoolInterface)
 {
 	m_color = glm::vec3(1.0f, 1.0f, 1.0f);
 }
@@ -263,7 +264,7 @@ void SkyLight::buildDebugMesh()
 		indices.push_back(i);
 	}
 
-	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices));
+	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
 
 	m_debugMeshRebuildRequested = false;
 }

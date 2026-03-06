@@ -2,10 +2,12 @@
 
 #include <DynamicResourceUniqueOwnerArray.h>
 
+#include "CameraList.h"
+#include "CommonLayouts.h"
 #include "UpdateGPUBuffersPass.h"
 
-DrawManager::DrawManager(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
-	: m_renderMeshList(renderMeshList), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass())
+DrawManager::DrawManager(const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+	: m_instanceMeshRenderer(instanceMeshRenderer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface)
 {
 
 }
@@ -14,55 +16,31 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 {
 	m_meshMutex.lock();
 
+	// If the entity already registered meshes, we remove them then re-add to update data
 	if (m_infoByEntities.contains(entity))
 	{
 		const std::vector<InfoByEntity>& infoForEntity = m_infoByEntities[entity];
-		bool hasSameMeshes = meshesToRender.size() == infoForEntity.size();
-		for (uint32_t i = 0; hasSameMeshes && i < meshesToRender.size(); ++i)
+		for (const InfoByEntity& info : infoForEntity)
 		{
-			if (!m_instancedMeshesRegistered[infoForEntity[i].instancedMeshRegisteredIdx]->isSame(meshesToRender[i].meshToRender))
-				hasSameMeshes = false;
+			m_instanceMeshRenderer->removeInstance(info.m_instanceIdx);
 		}
-
-		if (hasSameMeshes) // Only update instance data
-		{
-			for (uint32_t i = 0; i < meshesToRender.size(); ++i)
-			{
-				const DrawMeshInfo& meshToDraw = meshesToRender[i];
-				Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_instancedMeshesRegistered[infoForEntity[i].instancedMeshRegisteredIdx];
-
-				UpdateGPUBuffersPass::Request request(&meshToDraw.instanceData, sizeof(InstanceData), instancedMeshRegistered->getInstanceBuffer().createNonOwnerResource(), 
-					infoForEntity[i].instanceIdx * sizeof(InstanceData));
-				m_updateGPUBuffersPass->addRequestBeforeFrame(request);
-			}
-
-			m_meshMutex.unlock();
-			return;
-		}
-		else
-		{
-			for (const InfoByEntity& info : infoForEntity)
-			{
-				m_renderMeshList->removeInstance(m_instancedMeshesRegistered[info.instancedMeshRegisteredIdx]->getInstancedMeshIdx(), info.instanceIdx);
-			}
-			m_infoByEntities[entity].clear();
-		}
+		m_infoByEntities[entity].clear();
 	}
 
 	for (const DrawMeshInfo& meshToDraw : meshesToRender)
 	{
-		const Wolf::RenderMeshList::MeshToRender& meshToRender = meshToDraw.meshToRender;
+		const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender = meshToDraw.meshToRender;
 
-		bool instancedMeshFound = false;
-		for (uint32_t i = 0; i < m_instancedMeshesRegistered.size(); ++i)
+		bool meshFound = false;
+		for (uint32_t i = 0; i < m_meshesRegistered.size(); ++i)
 		{
-			Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_instancedMeshesRegistered[i];
+			Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered[i];
 
 			if (instancedMeshRegistered->isSame(meshToRender))
 			{
-				instancedMeshFound = true;
-				uint32_t instanceIdx = instancedMeshRegistered->addInstance();
-				addInstanceDataToBuffer(*instancedMeshRegistered, instanceIdx, meshToDraw.instanceData);
+				meshFound = true;
+				uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.firstMaterialIdx,
+					meshToDraw.instanceData.entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
 
 				m_infoByEntities[entity].push_back({ i, instanceIdx });
 
@@ -70,12 +48,14 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 			}
 		}
 
-		if (!instancedMeshFound)
+		if (!meshFound)
 		{
-			m_instancedMeshesRegistered.emplace_back(new InstancedMeshRegistered(meshToRender));
-			addInstanceDataToBuffer(*m_instancedMeshesRegistered.back(), 0, meshToDraw.instanceData);
+			Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered.emplace_back(new InstancedMeshRegistered(meshToRender, m_instanceMeshRenderer));
 
-			m_infoByEntities[entity].push_back({ static_cast<uint32_t>(m_instancedMeshesRegistered.size()) - 1, 0 });
+			uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.firstMaterialIdx,
+					meshToDraw.instanceData.entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
+
+			m_infoByEntities[entity].push_back({ static_cast<uint32_t>(m_meshesRegistered.size()) - 1, instanceIdx });
 		}
 	}
 
@@ -91,7 +71,7 @@ void DrawManager::removeMeshesForEntity(Entity* entity)
 		const std::vector<InfoByEntity>& infoForEntity = m_infoByEntities[entity];
 		for (const InfoByEntity& info : infoForEntity)
 		{
-			m_renderMeshList->removeInstance(m_instancedMeshesRegistered[info.instancedMeshRegisteredIdx]->getInstancedMeshIdx(), info.instanceIdx);
+			m_instanceMeshRenderer->removeInstance(info.m_instanceIdx);
 		}
 		m_infoByEntities[entity].clear();
 	}
@@ -103,7 +83,7 @@ void DrawManager::clear()
 {
 	m_meshMutex.lock();
 
-	m_instancedMeshesRegistered.clear();
+	m_meshesRegistered.clear();
 	m_infoByEntities.clear();
 
 	m_meshMutex.unlock();
@@ -129,51 +109,56 @@ void DrawManager::isolateEntity(Entity* entity)
 		Wolf::Debug::sendWarning("Isolated an entity doesn't have exactly 1 instance, this is not currently supported. Only the first instance will be isolated");
 	}
 
-	const InfoByEntity& info = infoForEntity[0];
-	m_renderMeshList->isolateInstanceMesh(info.instancedMeshRegisteredIdx, info.instanceIdx);
+	std::vector<Wolf::InstanceMeshRenderer::OverrideInstance> instancesForEntity;
+	for (const InfoByEntity& info : infoForEntity)
+	{
+		instancesForEntity.emplace_back(info.m_instanceIdx);
+	}
+	m_instanceMeshRenderer->overrideCullingInstances(instancesForEntity);
+
+	m_isolatedEntity = entity;
 }
 
 void DrawManager::removeIsolation()
 {
-	m_renderMeshList->removeIsolation();
+	m_instanceMeshRenderer->stopOverridingCullingInstances();
+
+	removeMeshesForEntity(m_isolatedEntity);
+	m_isolatedEntity = nullptr;
 }
 
-void DrawManager::addInstanceDataToBuffer(InstancedMeshRegistered& instancedMeshRegistered, uint32_t instanceIdx, const InstanceData& instanceData)
+void DrawManager::activateCameras(const Wolf::CameraList& cameraList) const
 {
-	Wolf::RenderMeshList::InstancedMesh instancedMesh = { instancedMeshRegistered.getMeshToRender(), instancedMeshRegistered.getInstanceBuffer().createNonOwnerResource(), sizeof(InstanceData) };
-	if (instanceIdx == 0)
+	m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH);
+	m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
+	m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS); // TODO: only enable if picking this frame
+
+	uint32_t cameraCount = cameraList.getCurrentCameras().size();
+
+	for (uint32_t cameraPipelineIdx = CommonCameraIndices::CAMERA_IDX_SHADOW_CASCADE_0; cameraPipelineIdx <= CommonCameraIndices::CAMERA_IDX_SHADOW_CASCADE_3; cameraPipelineIdx++)
 	{
-		instancedMeshRegistered.setInstancedMeshIdx(m_renderMeshList->registerInstancedMesh(instancedMesh, MAX_INSTANCE_PER_MESH, instanceIdx));
-	}
-	else
-	{
-		m_renderMeshList->addInstance(instancedMeshRegistered.getInstancedMeshIdx(), instanceIdx);
-	}
-
-	UpdateGPUBuffersPass::Request request(&instanceData, sizeof(InstanceData), instancedMeshRegistered.getInstanceBuffer().createNonOwnerResource(), instanceIdx * sizeof(InstanceData));
-	m_updateGPUBuffersPass->addRequestBeforeFrame(request);
-}
-
-DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(Wolf::RenderMeshList::MeshToRender meshToRender) : m_meshToRender(std::move(meshToRender))
-{
-	uint32_t bufferSize = MAX_INSTANCE_PER_MESH * sizeof(InstanceData);
-	m_instanceBuffer.reset(Wolf::Buffer::createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-}
-
-bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::RenderMeshList::MeshToRender& otherMeshToRender) const
-{
-	bool hasSameDescriptorSets = m_meshToRender.m_perPipelineDescriptorSets.size() == otherMeshToRender.m_perPipelineDescriptorSets.size();
-	for (uint32_t pipelineIdx = 0; hasSameDescriptorSets && pipelineIdx < m_meshToRender.m_perPipelineDescriptorSets.size(); ++pipelineIdx)
-	{
-		hasSameDescriptorSets = m_meshToRender.m_perPipelineDescriptorSets[pipelineIdx].size() == otherMeshToRender.m_perPipelineDescriptorSets[pipelineIdx].size();
-
-		for (uint32_t descriptorSetIdx = 0; hasSameDescriptorSets && descriptorSetIdx < m_meshToRender.m_perPipelineDescriptorSets[pipelineIdx].size(); ++descriptorSetIdx)
+		if (cameraPipelineIdx < cameraCount)
 		{
-			if (m_meshToRender.m_perPipelineDescriptorSets[pipelineIdx][descriptorSetIdx].getDescriptorSet() != otherMeshToRender.m_perPipelineDescriptorSets[pipelineIdx][descriptorSetIdx].getDescriptorSet())
-				hasSameDescriptorSets = false;
+			m_instanceMeshRenderer->activateCameraForThisFrame(cameraPipelineIdx, CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
 		}
 	}
 
-	return hasSameDescriptorSets && m_meshToRender.m_mesh == otherMeshToRender.m_mesh && m_meshToRender.m_pipelineSet == otherMeshToRender.m_pipelineSet
-		&& m_meshToRender.m_overrideIndexBuffer == otherMeshToRender.m_overrideIndexBuffer;
+	for (uint32_t cameraPipelineIdx = CommonCameraIndices::CAMERA_IDX_FIRST_CUSTOM_RENDER_PASS; cameraPipelineIdx <= CommonCameraIndices::CAMERA_IDX_LAST_CUSTOM_RENDER_PASS; cameraPipelineIdx++)
+	{
+		if (cameraPipelineIdx < cameraCount)
+		{
+			m_instanceMeshRenderer->activateCameraForThisFrame(cameraPipelineIdx, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER);
+		}
+	}
+}
+
+DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer)
+	: m_mesh(meshToRender.m_mesh)
+{
+	m_meshIdx = instanceMeshRenderer->registerMesh(meshToRender);
+}
+
+bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const
+{
+	return m_mesh == otherMeshToRender.m_mesh;
 }

@@ -308,5 +308,5 @@ void ParticleUpdatePass::createNoiseBuffer()
 	}
 
 	m_noiseBuffer.reset(Wolf::Buffer::createBuffer(NOISE_POINT_COUNT * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-	m_noiseBuffer->transferCPUMemoryWithStagingBuffer(randomData.data(), NOISE_POINT_COUNT * sizeof(float));
+	m_noiseBuffer->transferCPUMemoryWithStagingBuffer(randomData.data(), NOISE_POINT_COUNT * sizeof(float), 0, 0);
 }

@@ -1,9 +1,5 @@
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(location = 0) in mat4 inTransform;
-layout(location = 4) in uint inFirstMaterialIdx;
-layout(location = 5) in uint inEntityId;
-
 layout(location = 0) out uint outEntityId;
 layout(location = 1) out vec2 outGridUVs;
 
@@ -28,11 +24,11 @@ void main()
     // world position (XZ plane, centered)
     vec3 localPos = vec3(uv.x - 0.5, 0.0, uv.y - 0.5);
 
-    vec4 worldPos = inTransform * vec4(localPos, 1.0);
+    vec4 worldPos = getInstanceTransform() * vec4(localPos, 1.0);
     worldPos.y = 30.0;
 
     gl_Position = worldPos;
 
-	outEntityId = inEntityId;
+	outEntityId = getCustomData();
     outGridUVs = uv;
 } 

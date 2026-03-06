@@ -78,7 +78,7 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 			2, 3, 1
 		};
 
-		m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices));
+		m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
 	}
 
 	m_renderWidth = context.swapChainWidth;
@@ -133,7 +133,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 
 		Wolf::DescriptorSetBindInfo commonDescriptorSetBindInfo(m_commonDescriptorSet.createConstNonOwnerResource(), m_commonDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
 
-		std::vector<Wolf::RenderMeshList::AdditionalDescriptorSet> descriptorSetBindInfos;
+		std::vector<Wolf::AdditionalDescriptorSet> descriptorSetBindInfos;
 		descriptorSetBindInfos.emplace_back(commonDescriptorSetBindInfo, 0);
 		descriptorSetBindInfos.emplace_back(m_shadowMaskPass->getMaskDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO);
 		descriptorSetBindInfos.emplace_back(m_globalIrradiancePass->getDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO);
@@ -143,7 +143,8 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		m_globalIrradiancePass->addShaderCode(shadersCodeToAdd[0].shaderCodeToAdd, DescriptorSetSlots::DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO);
 		shadersCodeToAdd[0].requiredMask = AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 
-		context.m_renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
+		context.m_defaultMeshRenderer->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
+		context.m_instanceMeshRenderer->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_FORWARD, CommonCameraIndices::CAMERA_IDX_MAIN, descriptorSetBindInfos, shadersCodeToAdd);
 	}
 
 	/* Particles */
@@ -172,12 +173,12 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 	if (isRayTracedDebugEnabled && m_rayTracedWorldDebugPass && m_rayTracedWorldDebugPass->wasEnabledThisFrame())
 	{
 		m_rayTracedWorldDebugPass->bindInfoToDrawOutput(*m_commandBuffer, m_renderPass.get());
-		m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
+		m_fullscreenRect->draw(*m_commandBuffer, Wolf::DefaultMeshRenderer::NO_CAMERA_IDX);
 	}
 	else if (gameContext->displayType == GameContext::DisplayType::PATH_TRACING && m_pathTracingPass && m_pathTracingPass->wasEnabledThisFrame())
 	{
 		m_pathTracingPass->bindInfoToDrawOutput(*m_commandBuffer, m_renderPass.get());
-		m_fullscreenRect->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
+		m_fullscreenRect->draw(*m_commandBuffer, Wolf::DefaultMeshRenderer::NO_CAMERA_IDX);
 	}
 
 	m_commandBuffer->endRenderPass();

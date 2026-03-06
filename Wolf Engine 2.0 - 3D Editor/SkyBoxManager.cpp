@@ -7,7 +7,7 @@
 #include "CommonLayouts.h"
 #include "ComputeSkyCubeMapPass.h"
 
-SkyBoxManager::SkyBoxManager()
+SkyBoxManager::SkyBoxManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
 {
     const std::vector<VertexOnlyPosition> cubeVertices =
     {
@@ -51,7 +51,7 @@ SkyBoxManager::SkyBoxManager()
         5, 7, 6
     };
 
-    m_cubeMesh.reset(new Wolf::Mesh(cubeVertices, cubeIndices));
+    m_cubeMesh.reset(new Wolf::Mesh(cubeVertices, cubeIndices, bufferPoolInterface));
 
     m_vertexShaderParser.reset(new Wolf::ShaderParser("Shaders/drawSkyBox/shader.vert", {}, 1));
     m_fragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/drawSkyBox/shader.frag"));

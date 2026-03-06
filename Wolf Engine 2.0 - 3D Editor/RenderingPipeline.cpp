@@ -2,9 +2,10 @@
 
 #include <ProfilerCommon.h>
 
-RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
+RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager,
+	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
 {
-	m_skyBoxManager.reset(new SkyBoxManager);
+	m_skyBoxManager.reset(new SkyBoxManager(bufferPoolInterface));
 
 	if (rayTracedWorldManager)
 	{
@@ -89,10 +90,10 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	}
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
 		m_preDepthPass.createNonOwnerResource(), rayTracedWorldDebugPass, pathTracingPass,
-		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource(), globalIrradiancePassInterface));
+		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource(), globalIrradiancePassInterface, bufferPoolInterface));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource()));
+	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource(), bufferPoolInterface));
 	wolfInstance->initializePass(m_compositionPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
@@ -111,7 +112,7 @@ void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)
 	m_skyBoxManager->updateBeforeFrame(wolfInstance, m_computeSkyCubeMapPass.createNonOwnerResource());
 	if (m_voxelGIPass)
 	{
-		m_voxelGIPass->addMeshesToRenderList(wolfInstance->getRenderMeshList());
+		m_voxelGIPass->addMeshesToRenderList(wolfInstance->getDefaultMeshRenderer());
 	}
 	else
 	{

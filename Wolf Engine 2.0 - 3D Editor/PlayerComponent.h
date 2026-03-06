@@ -16,7 +16,8 @@ public:
 	static inline std::string ID = "playerComponent";
 	std::string getId() const override { return ID; }
 
-	PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
+	PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
+		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -38,6 +39,7 @@ private:
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
+	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
 	EditorParamFloat m_speed = EditorParamFloat("Speed", TAB, "Movement", 1.0f, 10.0f);
 

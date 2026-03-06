@@ -255,7 +255,8 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 	}
 
 	m_outputModel->m_aabb = Wolf::AABB(minPos, maxPos);
-	m_outputModel->m_boundingSphere = Wolf::BoundingSphere(glm::vec3(0.0f), glm::max(glm::length(minPos), glm::length(maxPos)));
+	float maxDistanceFromCenter = std::max(glm::distance(m_outputModel->m_aabb.getCenter(), m_outputModel->m_aabb.getMin()), glm::distance(m_outputModel->m_aabb.getCenter(), m_outputModel->m_aabb.getMax()));
+	m_outputModel->m_boundingSphere = Wolf::BoundingSphere(m_outputModel->m_aabb.getCenter(), maxDistanceFromCenter);
 
 	std::array<Vertex3D, 3> tempTriangle{};
 	for (size_t i(0); i <= m_outputModel->m_indices.size(); ++i)
@@ -550,9 +551,8 @@ bool ModelLoader::loadCache(ModelLoadingInfo& modelLoadingInfo)
 
 		input.read(reinterpret_cast<char*>(&m_outputModel->m_aabb), sizeof(Wolf::AABB));
 
-		glm::vec3 minPos = m_outputModel->m_aabb.getMin();
-		glm::vec3 maxPos = m_outputModel->m_aabb.getMax();
-		m_outputModel->m_boundingSphere = Wolf::BoundingSphere((minPos + maxPos) * 0.5f, glm::distance(minPos, maxPos) * 0.5f);
+		float maxDistanceFromCenter = std::max(glm::distance(m_outputModel->m_aabb.getCenter(), m_outputModel->m_aabb.getMin()), glm::distance(m_outputModel->m_aabb.getCenter(), m_outputModel->m_aabb.getMax()));
+		m_outputModel->m_boundingSphere = Wolf::BoundingSphere(m_outputModel->m_aabb.getCenter(), maxDistanceFromCenter);
 
 		uint32_t shapeCount;
 		input.read(reinterpret_cast<char*>(&shapeCount), sizeof(shapeCount));

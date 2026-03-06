@@ -2,7 +2,7 @@
 
 #include <DebugMarker.h>
 #include <ProfilerCommon.h>
-#include <RenderMeshList.h>
+#include <DefaultMeshRenderer.h>
 
 void DrawIdsPass::initializeResources(const Wolf::InitializationContext& context)
 {
@@ -69,7 +69,8 @@ void DrawIdsPass::record(const Wolf::RecordContext& context)
     const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
     m_commandBuffer->setViewport(renderViewport);
 
-    context.m_renderMeshList->draw(context, *m_commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS, CommonCameraIndices::CAMERA_IDX_MAIN, {}, {});
+    context.m_defaultMeshRenderer->draw(context, *m_commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS, CommonCameraIndices::CAMERA_IDX_MAIN, {}, {});
+    context.m_instanceMeshRenderer->draw(context, *m_commandBuffer, &*m_renderPass, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS, CommonCameraIndices::CAMERA_IDX_MAIN, {}, {});
 
     m_commandBuffer->endRenderPass();
     m_outputImage->setImageLayoutWithoutOperation(Wolf::ImageLayout::TRANSFER_SRC_OPTIMAL);

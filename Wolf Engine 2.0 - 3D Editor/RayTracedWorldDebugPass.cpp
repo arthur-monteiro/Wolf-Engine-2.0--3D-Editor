@@ -7,7 +7,7 @@
 #include <GraphicCameraInterface.h>
 #include <MaterialsGPUManager.h>
 #include <RayTracingShaderGroupGenerator.h>
-#include <RenderMeshList.h>
+#include <DefaultMeshRenderer.h>
 
 #include "CommonLayouts.h"
 #include "GameContext.h"

@@ -5,7 +5,9 @@ struct InstanceInfo
 {
     uint firstMaterialIdx;
     uint vertexBufferBindlessOffset;
+    uint vertexBufferOffset;
     uint indexBufferBindlessOffset;
+    uint indexBufferOffset;
 };
 const uint MAX_INSTANCES = 16384;
 layout (binding = 0, set = @RAY_TRACING_DESCRIPTOR_SLOT) restrict buffer InstanceBufferLayout
@@ -45,8 +47,8 @@ ivec3 getIndices(in uint instanceId, in uint primitiveId)
 {
     InstanceInfo instanceInfo = instancesInfo[instanceId];
 
-    return ivec3(buffers[instanceInfo.indexBufferBindlessOffset].data[3 * primitiveId], buffers[instanceInfo.indexBufferBindlessOffset].data[3 * primitiveId + 1],
-                 buffers[instanceInfo.indexBufferBindlessOffset].data[3 * primitiveId + 2]);
+    return ivec3(buffers[instanceInfo.indexBufferBindlessOffset].data[3 * primitiveId + instanceInfo.indexBufferOffset], buffers[instanceInfo.indexBufferBindlessOffset].data[3 * primitiveId + 1 + instanceInfo.indexBufferOffset],
+                 buffers[instanceInfo.indexBufferBindlessOffset].data[3 * primitiveId + 2 + instanceInfo.indexBufferOffset]);
 }
 
 Vertex unpackVertex(in uint instanceId, in uint index)
@@ -55,21 +57,21 @@ Vertex unpackVertex(in uint instanceId, in uint index)
 
     Vertex v;
 
-    uint d0 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 0];
-    uint d1 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 1];
-    uint d2 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 2];
-    uint d3 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 3];
-    uint d4 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 4];
-    uint d5 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 5];
-    uint d6 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 6];
-    uint d7 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 7];
-    uint d8 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 8];
-    uint d9 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 9];
-    uint d10 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 10];
-    uint d11 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 11];
-    uint d12 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 12];
-    uint d13 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 13];
-    uint d14 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 14];
+    uint d0 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 0 + instanceInfo.vertexBufferOffset];
+    uint d1 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 1 + instanceInfo.vertexBufferOffset];
+    uint d2 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 2 + instanceInfo.vertexBufferOffset];
+    uint d3 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 3 + instanceInfo.vertexBufferOffset];
+    uint d4 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 4 + instanceInfo.vertexBufferOffset];
+    uint d5 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 5 + instanceInfo.vertexBufferOffset];
+    uint d6 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 6 + instanceInfo.vertexBufferOffset];
+    uint d7 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 7 + instanceInfo.vertexBufferOffset];
+    uint d8 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 8 + instanceInfo.vertexBufferOffset];
+    uint d9 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 9 + instanceInfo.vertexBufferOffset];
+    uint d10 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 10 + instanceInfo.vertexBufferOffset];
+    uint d11 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 11 + instanceInfo.vertexBufferOffset];
+    uint d12 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 12 + instanceInfo.vertexBufferOffset];
+    uint d13 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 13 + instanceInfo.vertexBufferOffset];
+    uint d14 = buffers[instanceInfo.vertexBufferBindlessOffset].data[vertexSize * index + 14 + instanceInfo.vertexBufferOffset];
 
     v.pos = vec3(uintBitsToFloat(d0), uintBitsToFloat(d1), uintBitsToFloat(d2));
     v.vertexColor = vec3(uintBitsToFloat(d3), uintBitsToFloat(d4), uintBitsToFloat(d5));

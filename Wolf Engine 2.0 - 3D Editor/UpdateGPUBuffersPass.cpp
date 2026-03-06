@@ -115,8 +115,6 @@ void UpdateGPUBuffersPass::InternalRequest::recordFillBuffer(const Wolf::Command
 
 void UpdateGPUBuffersPass::InternalRequest::recordCopyToImage(const Wolf::CommandBuffer* commandBuffer) const
 {
-	const Wolf::Extent3D extent = { m_request.getOutputImage()->getExtent().width >> m_request.getMipLevel(), m_request.getOutputImage()->getExtent().height >> m_request.getMipLevel(), m_request.getOutputImage()->getExtent().depth };
-
 	Wolf::Image::BufferImageCopy bufferImageCopy;
 	bufferImageCopy.bufferOffset = 0;
 	bufferImageCopy.bufferRowLength = m_request.getCopySize().x;

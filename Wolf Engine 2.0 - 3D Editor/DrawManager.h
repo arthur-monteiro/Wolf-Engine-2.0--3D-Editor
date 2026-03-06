@@ -1,7 +1,8 @@
 #pragma once
 
 #include <DynamicResourceUniqueOwnerArray.h>
-#include <RenderMeshList.h>
+#include <DefaultMeshRenderer.h>
+#include <InstanceMeshRenderer.h>
 #include <ResourceUniqueOwner.h>
 
 #include "RenderingPipelineInterface.h"
@@ -13,59 +14,16 @@ struct InstanceData
 	glm::mat4 transform;
 	uint32_t firstMaterialIdx;
 	uint32_t entityIdx;
-
-	static void getBindingDescription(Wolf::VertexInputBindingDescription& bindingDescription, uint32_t binding)
-	{
-		bindingDescription.binding = binding;
-		bindingDescription.stride = sizeof(InstanceData);
-		bindingDescription.inputRate = Wolf::VertexInputRate::INSTANCE;
-	}
-
-	static void getAttributeDescriptions(std::vector<Wolf::VertexInputAttributeDescription>& attributeDescriptions, uint32_t binding)
-	{
-		const uint32_t attributeDescriptionCountBefore = static_cast<uint32_t>(attributeDescriptions.size());
-		attributeDescriptions.resize(attributeDescriptionCountBefore + 6);
-
-		attributeDescriptions[attributeDescriptionCountBefore + 0].binding = binding;
-		attributeDescriptions[attributeDescriptionCountBefore + 0].location = attributeDescriptionCountBefore + 0;
-		attributeDescriptions[attributeDescriptionCountBefore + 0].format = Wolf::Format::R32G32B32A32_SFLOAT;
-		attributeDescriptions[attributeDescriptionCountBefore + 0].offset = offsetof(InstanceData, transform);
-
-		attributeDescriptions[attributeDescriptionCountBefore + 1].binding = binding;
-		attributeDescriptions[attributeDescriptionCountBefore + 1].location = attributeDescriptionCountBefore + 1;
-		attributeDescriptions[attributeDescriptionCountBefore + 1].format = Wolf::Format::R32G32B32A32_SFLOAT;
-		attributeDescriptions[attributeDescriptionCountBefore + 1].offset = offsetof(InstanceData, transform) + sizeof(glm::vec4);
-
-		attributeDescriptions[attributeDescriptionCountBefore + 2].binding = binding;
-		attributeDescriptions[attributeDescriptionCountBefore + 2].location = attributeDescriptionCountBefore + 2;
-		attributeDescriptions[attributeDescriptionCountBefore + 2].format = Wolf::Format::R32G32B32A32_SFLOAT;
-		attributeDescriptions[attributeDescriptionCountBefore + 2].offset = offsetof(InstanceData, transform) + 2 * sizeof(glm::vec4);
-
-		attributeDescriptions[attributeDescriptionCountBefore + 3].binding = binding;
-		attributeDescriptions[attributeDescriptionCountBefore + 3].location = attributeDescriptionCountBefore + 3;
-		attributeDescriptions[attributeDescriptionCountBefore + 3].format = Wolf::Format::R32G32B32A32_SFLOAT;
-		attributeDescriptions[attributeDescriptionCountBefore + 3].offset = offsetof(InstanceData, transform) + 3 * sizeof(glm::vec4);
-
-		attributeDescriptions[attributeDescriptionCountBefore + 4].binding = binding;
-		attributeDescriptions[attributeDescriptionCountBefore + 4].location = attributeDescriptionCountBefore + 4;
-		attributeDescriptions[attributeDescriptionCountBefore + 4].format = Wolf::Format::R32_UINT;
-		attributeDescriptions[attributeDescriptionCountBefore + 4].offset = offsetof(InstanceData, firstMaterialIdx);
-
-		attributeDescriptions[attributeDescriptionCountBefore + 5].binding = binding;
-		attributeDescriptions[attributeDescriptionCountBefore + 5].location = attributeDescriptionCountBefore + 5;
-		attributeDescriptions[attributeDescriptionCountBefore + 5].format = Wolf::Format::R32_UINT;
-		attributeDescriptions[attributeDescriptionCountBefore + 5].offset = offsetof(InstanceData, entityIdx);
-	}
 };
 
 class DrawManager
 {
 public:
-	DrawManager(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
+	DrawManager(const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
 	struct DrawMeshInfo
 	{
-		Wolf::RenderMeshList::MeshToRender meshToRender;
+		Wolf::InstanceMeshRenderer::MeshToRender meshToRender;
 		InstanceData instanceData;
 	};
 	void addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRender, Entity* entity);
@@ -75,43 +33,38 @@ public:
 	void isolateEntity(Entity* entity);
 	void removeIsolation();
 
-private:
-	class InstancedMeshRegistered;
-	void addInstanceDataToBuffer(InstancedMeshRegistered& instancedMeshRegistered, uint32_t instanceIdx, const InstanceData& instanceData);
+	void activateCameras(const Wolf::CameraList& cameraList) const;
 
-	Wolf::ResourceNonOwner<Wolf::RenderMeshList> m_renderMeshList;
+private:
+	Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer> m_instanceMeshRenderer;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
+	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
 	static constexpr uint32_t MAX_INSTANCE_PER_MESH = 2048;
 	class InstancedMeshRegistered
 	{
 	public:
-		InstancedMeshRegistered(Wolf::RenderMeshList::MeshToRender meshToRender);
+		InstancedMeshRegistered(const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer);
 
-		uint32_t addInstance() { return m_instanceCount++; }
-		void setInstancedMeshIdx(uint32_t value) { m_instancedMeshIdx = value; }
-		uint32_t getInstancedMeshIdx() const { return m_instancedMeshIdx; }
+		uint32_t getMeshIdx() const { return m_meshIdx; }
 
-		bool isSame(const Wolf::RenderMeshList::MeshToRender& otherMeshToRender) const;
-		Wolf::ResourceUniqueOwner<Wolf::Buffer>& getInstanceBuffer() { return m_instanceBuffer; }
-		Wolf::RenderMeshList::MeshToRender& getMeshToRender() { return m_meshToRender; }
+		bool isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const;
 
 	private:
-		Wolf::RenderMeshList::MeshToRender m_meshToRender;
-
-		Wolf::ResourceUniqueOwner<Wolf::Buffer> m_instanceBuffer;
-		uint32_t m_instanceCount = 1;
-
-		uint32_t m_instancedMeshIdx = -1;
+		Wolf::ResourceNonOwner<Wolf::MeshInterface> m_mesh;
+		uint32_t m_meshIdx = -1;
 	};
-	Wolf::DynamicResourceUniqueOwnerArray<InstancedMeshRegistered, 64> m_instancedMeshesRegistered;
+	Wolf::DynamicResourceUniqueOwnerArray<InstancedMeshRegistered, 64> m_meshesRegistered;
 
 	struct InfoByEntity
 	{
-		uint32_t instancedMeshRegisteredIdx;
-		uint32_t instanceIdx;
+		uint32_t m_instancedMeshRegisteredIdx;
+		uint32_t m_instanceIdx;
 	};
 	std::map<Entity*, std::vector<InfoByEntity>> m_infoByEntities;
+
+	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_customInstanceCullingBuffer;
+	Entity* m_isolatedEntity = nullptr;
 
 	std::mutex m_meshMutex;
 };

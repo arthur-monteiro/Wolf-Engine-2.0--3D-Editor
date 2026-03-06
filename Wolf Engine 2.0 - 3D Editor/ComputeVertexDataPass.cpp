@@ -117,7 +117,7 @@ void ComputeVertexDataPass::initializeResources(const Wolf::InitializationContex
         randomSamples[i] = glm::vec2(distrib(generator), distrib(generator));
     }
 
-    m_randomSamplesBuffer->transferCPUMemoryWithStagingBuffer(randomSamples.data(), RANDOM_SAMPLE_COUNT * sizeof(glm::vec2));
+    m_randomSamplesBuffer->transferCPUMemoryWithStagingBuffer(randomSamples.data(), RANDOM_SAMPLE_COUNT * sizeof(glm::vec2), 0, 0);
 
     // Step 4: Average colors
     m_averageColorsShaderParser.reset(new Wolf::ShaderParser("Shaders/computeVertexData/averageColors.comp"));
@@ -219,7 +219,7 @@ void ComputeVertexDataPass::Request::recordCommands(const Wolf::CommandBuffer* c
     commandBuffer->dispatch(groupSizeX, 1, 1);
 
     m_mesh->getVertexBuffer()->recordBarrier(commandBuffer, { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE },
-        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE });
+        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE }, m_mesh->getVertexBufferOffset(), m_mesh->getVertexCount() * m_mesh->getVertexSize());
 
     // Step 1: Accumulate normals
     commandBuffer->bindPipeline(m_accumulateNormalsPipeline.createConstNonOwnerResource());
@@ -228,7 +228,7 @@ void ComputeVertexDataPass::Request::recordCommands(const Wolf::CommandBuffer* c
     commandBuffer->dispatch(groupSizeX, 1, 1);
 
     m_mesh->getVertexBuffer()->recordBarrier(commandBuffer, { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE },
-        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE });
+        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE }, m_mesh->getVertexBufferOffset(), m_mesh->getVertexCount() * m_mesh->getVertexSize());
 
     // Step 2: Average normals
     commandBuffer->bindPipeline(m_averageNormalsPipeline.createConstNonOwnerResource());
@@ -238,7 +238,7 @@ void ComputeVertexDataPass::Request::recordCommands(const Wolf::CommandBuffer* c
     commandBuffer->dispatch(allVerticesGroupSizeX, 1, 1);
 
     m_mesh->getVertexBuffer()->recordBarrier(commandBuffer, { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE },
-        { Wolf::PipelineStage::RAY_TRACING_SHADER, Wolf::AccessFlagBits::SHADER_WRITE });
+        { Wolf::PipelineStage::RAY_TRACING_SHADER, Wolf::AccessFlagBits::SHADER_WRITE }, m_mesh->getVertexBufferOffset(), m_mesh->getVertexCount() * m_mesh->getVertexSize());
 
     // Step 3: Accumulate colors
     m_rayTracedWorldManager->build(*commandBuffer);
@@ -252,9 +252,9 @@ void ComputeVertexDataPass::Request::recordCommands(const Wolf::CommandBuffer* c
     commandBuffer->traceRays(m_accumulateColorsShaderBindingTable.createConstNonOwnerResource(), { indexCount, 1, 1 });
 
     m_mesh->getVertexBuffer()->recordBarrier(commandBuffer, { Wolf::PipelineStage::RAY_TRACING_SHADER, Wolf::AccessFlagBits::SHADER_WRITE },
-        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE });
+        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_WRITE }, m_mesh->getVertexBufferOffset(), m_mesh->getVertexCount() * m_mesh->getVertexSize());
     m_colorWeightPerVertex->recordBarrier(commandBuffer, { Wolf::PipelineStage::RAY_TRACING_SHADER, Wolf::AccessFlagBits::SHADER_WRITE },
-        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_READ });
+        { Wolf::PipelineStage::COMPUTE_SHADER, Wolf::AccessFlagBits::SHADER_READ }, m_mesh->getVertexBufferOffset(), m_mesh->getVertexCount() * m_mesh->getVertexSize());
 
     // Step 4: Average colors
     commandBuffer->bindPipeline(m_averageColorsPipeline.createConstNonOwnerResource());

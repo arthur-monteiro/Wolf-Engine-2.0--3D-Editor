@@ -34,7 +34,8 @@ class AssetManager;
 class RenderingPipeline : public RenderingPipelineInterface
 {
 public:
-	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
+	RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager,
+		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 	~RenderingPipeline() override = default;
 
 	void update(Wolf::WolfEngine* wolfInstance);

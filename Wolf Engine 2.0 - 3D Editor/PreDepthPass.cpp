@@ -1,10 +1,13 @@
 #include "PreDepthPass.h"
 
+#include <DebugMarker.h>
+#include <DefaultMeshRenderer.h>
+#include <InstanceMeshRenderer.h>
 #include <ProfilerCommon.h>
-#include <RenderMeshList.h>
 #include <Timer.h>
 
 #include "CommonLayouts.h"
+
 
 void PreDepthPass::initializeResources(const Wolf::InitializationContext& context)
 {
@@ -33,14 +36,18 @@ void PreDepthPass::record(const Wolf::RecordContext& context)
 
 	m_commandBuffer->beginCommandBuffer();
 
+	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "PreDepth pass");
+
 	DepthPassBase::record(context);
+
+	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
 	m_commandBuffer->endCommandBuffer();
 }
 
 void PreDepthPass::submit(const Wolf::SubmitContext& context)
 {
-	std::vector<const Wolf::Semaphore*> waitSemaphores{ };
+	std::vector<const Wolf::Semaphore*> waitSemaphores{ context.instanceRendererBuffersAvailableSemaphore };
 	if (m_updateGPUBuffersPass->transferRecordedThisFrame())
 		waitSemaphores.push_back(m_updateGPUBuffersPass->getSemaphore(context.swapChainImageIndex));
 	if (m_computeVertexDataPass && m_computeVertexDataPass->hasCommandsRecordedThisFrame())
@@ -60,7 +67,10 @@ void PreDepthPass::recordDraws(const Wolf::RecordContext& context)
 	const Wolf::Viewport renderViewport = m_editorParams->getRenderViewport();
 	m_commandBuffer->setViewport(renderViewport);
 
-	context.m_renderMeshList->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH, CommonCameraIndices::CAMERA_IDX_MAIN,
+	context.m_defaultMeshRenderer->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH, CommonCameraIndices::CAMERA_IDX_MAIN,
+		{}, {});
+
+	context.m_instanceMeshRenderer->draw(context, *m_commandBuffer, m_renderPass.get(), CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH, CommonCameraIndices::CAMERA_IDX_MAIN,
 		{}, {});
 }
 

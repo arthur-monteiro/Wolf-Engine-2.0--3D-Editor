@@ -6,12 +6,12 @@
 #include <DescriptorSetGenerator.h>
 #include <DescriptorSetLayoutGenerator.h>
 #include <ProfilerCommon.h>
-#include <RenderMeshList.h>
+#include <DefaultMeshRenderer.h>
 
 #include "CommonLayouts.h"
 #include "EditorConfiguration.h"
 
-DebugRenderingManager::DebugRenderingManager()
+DebugRenderingManager::DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface) : m_bufferPoolInterface(bufferPoolInterface)
 {
 	// Lines
 	{
@@ -112,8 +112,8 @@ DebugRenderingManager::DebugRenderingManager()
 			2, 3, 6, 7
 		};
 
-		m_cubeLineMesh.reset(new Wolf::Mesh(cubeVertices, cubeLineIndices));
-		m_cubeQuadMesh.reset(new Wolf::Mesh(cubeVertices, cubeQuadIndices));
+		m_cubeLineMesh.reset(new Wolf::Mesh(cubeVertices, cubeLineIndices, m_bufferPoolInterface));
+		m_cubeQuadMesh.reset(new Wolf::Mesh(cubeVertices, cubeQuadIndices, m_bufferPoolInterface));
 	}
 
 	// Spheres
@@ -138,7 +138,7 @@ DebugRenderingManager::DebugRenderingManager()
 			0, 3, 2
 		};
 
-		m_rectangleMesh.reset(new Wolf::Mesh(rectangleVertices, rectangleIndices));
+		m_rectangleMesh.reset(new Wolf::Mesh(rectangleVertices, rectangleIndices, m_bufferPoolInterface));
 
 		m_rectanglesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
 		m_rectanglesDescriptorSetLayoutGenerator->addUniformBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0);
@@ -270,7 +270,7 @@ void DebugRenderingManager::addBox(const Wolf::AABB& aabb, const glm::vec3& rota
 	m_AABBInfoArrayCount++;
 }
 
-void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList)
+void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList)
 {
 	PROFILE_FUNCTION
 
@@ -285,7 +285,7 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 	{
 		PerGroupOfLines& AABBInfo = m_AABBInfoArray[i];
 
-		Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { AABBInfo.mesh.duplicateAs<Wolf::MeshInterface>(), m_linesPipelineSet.createConstNonOwnerResource() };
+		Wolf::DefaultMeshRenderer::MeshToRender meshToRenderInfo = { AABBInfo.mesh.duplicateAs<Wolf::MeshInterface>(), m_linesPipelineSet.createConstNonOwnerResource() };
 		meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(AABBInfo.linesDescriptorSet.createConstNonOwnerResource(), 
 			m_linesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
@@ -296,7 +296,7 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 	{
 		PerGroupOfLines& customInfo = m_customLinesInfoArray[requestQueueIdx][i];
 
-		Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { customInfo.mesh.duplicateAs<Wolf::MeshInterface>(), m_linesPipelineSet.createConstNonOwnerResource() };
+		Wolf::DefaultMeshRenderer::MeshToRender meshToRenderInfo = { customInfo.mesh.duplicateAs<Wolf::MeshInterface>(), m_linesPipelineSet.createConstNonOwnerResource() };
 		meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(customInfo.linesDescriptorSet.createConstNonOwnerResource(), 
 			m_linesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
@@ -310,8 +310,8 @@ void DebugRenderingManager::addMeshesToRenderList(const Wolf::ResourceNonOwner<W
 	{
 		m_rectanglesUniformBuffer->transferCPUMemory(&m_rectanglesData, sizeof(RectanglesUBData));
 
-		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {m_rectangleMesh.createNonOwnerResource<Wolf::MeshInterface>(), m_rectanglesPipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
-		meshToRenderInfo.mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_rectanglesDescriptorSet.createConstNonOwnerResource(),
+		Wolf::DefaultMeshRenderer::InstancedMesh meshToRenderInfo = { {m_rectangleMesh.createNonOwnerResource<Wolf::MeshInterface>(), m_rectanglesPipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
+		meshToRenderInfo.m_mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_rectanglesDescriptorSet.createConstNonOwnerResource(),
 			m_rectanglesDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
 		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_rectanglesCount);
@@ -408,14 +408,14 @@ void DebugRenderingManager::PerSpherePipeline::add(const glm::vec3& worldPos, fl
 	m_count++;
 }
 
-void DebugRenderingManager::PerSpherePipeline::registerMeshes(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList, Wolf::ResourceUniqueOwner<Wolf::Mesh>& cubeQuadMesh)
+void DebugRenderingManager::PerSpherePipeline::registerMeshes(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList, Wolf::ResourceUniqueOwner<Wolf::Mesh>& cubeQuadMesh)
 {
 	if (m_count > 0)
 	{
 		m_uniformBuffer->transferCPUMemory(&m_uniformData, sizeof(SpheresUBData));
 
-		Wolf::RenderMeshList::InstancedMesh meshToRenderInfo = { {cubeQuadMesh.createNonOwnerResource<Wolf::MeshInterface>(), m_pipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
-		meshToRenderInfo.mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(),
+		Wolf::DefaultMeshRenderer::InstancedMesh meshToRenderInfo = { {cubeQuadMesh.createNonOwnerResource<Wolf::MeshInterface>(), m_pipelineSet.createConstNonOwnerResource() }, Wolf::NullableResourceNonOwner<Wolf::Buffer>() };
+		meshToRenderInfo.m_mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(m_descriptorSet.createConstNonOwnerResource(),
 			m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG);
 
 		renderMeshList->addTransientInstancedMesh(meshToRenderInfo, m_count);

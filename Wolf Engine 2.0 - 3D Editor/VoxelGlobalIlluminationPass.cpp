@@ -24,7 +24,7 @@ void VoxelGlobalIlluminationPass::setResourceManager(const Wolf::ResourceNonOwne
     m_sphereMeshResourceId = m_resourceManager->addModel("Models/sphere.obj");
 }
 
-void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::RenderMeshList>& renderMeshList)
+void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList)
 {
     if (m_enableDebug)
     {
@@ -32,17 +32,17 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
         if (m_sphereMeshResourceId == NO_ASSET || !m_resourceManager->isModelLoaded(m_sphereMeshResourceId))
             return;
 
-        Wolf::RenderMeshList::InstancedMesh instancedMesh = { {m_resourceManager->getModelMesh(m_sphereMeshResourceId).duplicateAs<Wolf::MeshInterface>(), m_debugPipelineSet.createConstNonOwnerResource() } };
+        Wolf::DefaultMeshRenderer::InstancedMesh instancedMesh = { {m_resourceManager->getModelMesh(m_sphereMeshResourceId).duplicateAs<Wolf::MeshInterface>(), m_debugPipelineSet.createConstNonOwnerResource() } };
 
-        if (instancedMesh.mesh.m_perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+        if (instancedMesh.m_mesh.m_perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
         {
             Wolf::Debug::sendCriticalError("Pipeline can't be overridden for forward pass");
             return;
         }
 
-        instancedMesh.mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
+        instancedMesh.m_mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
             m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
-        instancedMesh.mesh.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_sphereMeshResourceId)[0];
+        instancedMesh.m_mesh.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_sphereMeshResourceId)[0];
 
         renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
     }

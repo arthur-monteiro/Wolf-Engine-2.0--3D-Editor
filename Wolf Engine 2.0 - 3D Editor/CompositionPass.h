@@ -17,7 +17,7 @@
 class CompositionPass : public Wolf::CommandRecordBase
 {
 public:
-    CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass);
+    CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
@@ -39,6 +39,7 @@ private:
 
     EditorParams* m_editorParams;
     Wolf::ResourceNonOwner<ForwardPass> m_forwardPass;
+    Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
     Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;

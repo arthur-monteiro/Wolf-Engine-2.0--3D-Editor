@@ -33,7 +33,7 @@ public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<AssetManager>& assetManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
-		const Wolf::ResourceNonOwner<EntityContainer>& entityContainer);
+		const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -48,6 +48,7 @@ private:
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
 	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
+	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
 	struct ComponentInfo
 	{
@@ -73,7 +74,8 @@ private:
 			ContaminationEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback, m_physicsManager));
+				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback,
+					m_physicsManager, m_bufferPoolInterface));
 			}
 		},
 		ComponentInfo
@@ -91,7 +93,7 @@ private:
 			PlayerComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback, m_entityContainer, m_renderingPipeline));
+				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback, m_entityContainer, m_renderingPipeline, m_bufferPoolInterface));
 			}
 		},
 		ComponentInfo
@@ -127,7 +129,7 @@ private:
 			SkyLight::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SkyLight(m_requestReloadCallback, m_assetManager, m_renderingPipeline));
+				return static_cast<ComponentInterface*>(new SkyLight(m_requestReloadCallback, m_assetManager, m_renderingPipeline, m_bufferPoolInterface));
 			}
 		},
 		ComponentInfo

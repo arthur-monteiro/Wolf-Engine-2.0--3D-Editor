@@ -2,7 +2,7 @@
 
 #include <Attachment.h>
 #include <DescriptorSetGenerator.h>
-#include <RenderMeshList.h>
+#include <DefaultMeshRenderer.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "SkyBoxManager.h"
@@ -92,7 +92,7 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
 
         m_commandBuffer->bindPipeline(m_computeFromSphericalMapPipeline.createConstNonOwnerResource());
         m_commandBuffer->bindDescriptorSet(m_computeFromSphericalMapDescriptorSets[captureViewIdx].createConstNonOwnerResource(), 0, *m_computeFromSphericalMapPipeline);
-        m_skyBoxManager->getCubeMesh()->draw(*m_commandBuffer, Wolf::RenderMeshList::NO_CAMERA_IDX);
+        m_skyBoxManager->getCubeMesh()->draw(*m_commandBuffer, Wolf::DefaultMeshRenderer::NO_CAMERA_IDX);
 
         m_commandBuffer->endRenderPass();
 

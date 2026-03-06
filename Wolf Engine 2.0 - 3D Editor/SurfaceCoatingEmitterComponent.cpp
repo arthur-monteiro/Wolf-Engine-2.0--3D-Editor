@@ -36,6 +36,18 @@ SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::Resou
     m_customRenderResolution = 2048;
     createCustomRenderImages();
 
+    // Triangle list
+    //m_mesh.reset(new Wolf::NoVertexMesh(5766)); // 32 * 32 points -> 31 * 31 quads = 961 -> 6 vertices per quad -> 961 * 6 = 5766
+
+    // Triangle strip
+    // constexpr uint32_t width = 32;
+    // constexpr uint32_t height = 32;
+    // constexpr uint32_t vertexCount = (height - 1) * (2 * width) + (height - 2) * 2;
+    // m_mesh.reset(new Wolf::NoVertexMesh(vertexCount));
+
+    // Tessellation (quads)
+    m_mesh.reset(new Wolf::NoVertexMesh(31 * 31 * 4));
+
     m_rangeAABBMin = glm::vec3(-10.0f);
     m_rangeAABBMax = glm::vec3(10.0f);
     createDepthCamera();
@@ -66,13 +78,7 @@ SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::Resou
             pipelineInfo.shaderInfos[3].conditionBlocksToInclude.emplace_back("NO_LIGHTING");
 
 			// IA
-			InstanceData::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
-
-			pipelineInfo.vertexInputBindingDescriptions.resize(1);
-			InstanceData::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
-
             pipelineInfo.topology = Wolf::PrimitiveTopology::PATCH_LIST;
-
             pipelineInfo.patchControlPoint = 4;
 
 			// Resources
@@ -134,18 +140,6 @@ SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::Resou
 			// pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_DEPTH);
             pipelineSet->addEmptyPipeline(CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER); // little hack to not add snow on top of the snow
     }));
-
-    // Triangle list
-    //m_mesh.reset(new Wolf::NoVertexMesh(5766)); // 32 * 32 points -> 31 * 31 quads = 961 -> 6 vertices per quad -> 961 * 6 = 5766
-
-    // Triangle strip
-    // constexpr uint32_t width = 32;
-    // constexpr uint32_t height = 32;
-    // constexpr uint32_t vertexCount = (height - 1) * (2 * width) + (height - 2) * 2;
-    // m_mesh.reset(new Wolf::NoVertexMesh(vertexCount));
-
-    // Tessellation (quads)
-    m_mesh.reset(new Wolf::NoVertexMesh(31 * 31 * 4));
 
     m_renderingPipeline->getSurfaceCoatingDataPreparationPass()->registerComponent(this);
 }
@@ -318,7 +312,7 @@ void SurfaceCoatingEmitterComponent::addDebugInfo(DebugRenderingManager& debugRe
 
 bool SurfaceCoatingEmitterComponent::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
 {
-    Wolf::RenderMeshList::MeshToRender meshToRenderInfo = { m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+    Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
     Wolf::DescriptorSetBindInfo descriptorSetBindInfoNoLighting(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
     meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].push_back(descriptorSetBindInfoNoLighting);
@@ -572,6 +566,11 @@ Wolf::AABB SurfaceCoatingEmitterComponent::computeRangeAABB() const
 void SurfaceCoatingEmitterComponent::onRangeChanged()
 {
     m_depthCameraCreationRequested = true;
+
+    Wolf::AABB rangeAABB = computeRangeAABB();
+    float maxDistanceFromCenter = std::max(glm::distance(rangeAABB.getCenter(), rangeAABB.getMin()), glm::distance(rangeAABB.getCenter(), rangeAABB.getMax()));
+    Wolf::BoundingSphere boundingSphere = Wolf::BoundingSphere(rangeAABB.getCenter(), maxDistanceFromCenter);
+    m_mesh->setBoundingSphere(boundingSphere);
 }
 
 void SurfaceCoatingEmitterComponent::onEnablePatchAABBDebug()

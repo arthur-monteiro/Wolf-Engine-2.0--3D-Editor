@@ -9,8 +9,10 @@
 #include "Entity.h"
 #include "UpdateGPUBuffersPass.h"
 
-PlayerComponent::PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
-	: m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)), m_entityContainer(entityContainer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass())
+PlayerComponent::PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
+	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+	: m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)), m_entityContainer(entityContainer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()),
+      m_bufferPoolInterface(bufferPoolInterface)
 {
 }
 
@@ -391,11 +393,11 @@ void PlayerComponent::buildShootDebugMesh()
 
 	if (!m_shootDebugMesh)
 	{
-		m_shootDebugMesh.reset(new Wolf::Mesh(vertices, indices));
+		m_shootDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
 	}
 	else
 	{
-		UpdateGPUBuffersPass::Request request(vertices.data(), static_cast<uint32_t>(vertices.size()) * sizeof(vertices[0]), m_shootDebugMesh->getVertexBuffer(), 0);
+		UpdateGPUBuffersPass::Request request(vertices.data(), static_cast<uint32_t>(vertices.size()) * sizeof(vertices[0]), m_shootDebugMesh->getVertexBuffer(), m_shootDebugMesh->getVertexBufferOffset());
 		m_updateGPUBuffersPass->addRequestBeforeFrame(request);
 	}
 
