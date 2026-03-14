@@ -1,6 +1,7 @@
 #version 460
 #define GLSL
 
+#define NO_LIGHTING
 
 
 layout(binding = 0, set = 0) uniform UniformBufferCamera

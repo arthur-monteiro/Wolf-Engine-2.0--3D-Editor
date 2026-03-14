@@ -135,12 +135,14 @@ Wolf::Attachment DrawIdsPass::setupColorAttachment(const Wolf::InitializationCon
     createRenderTargetInfo.format = OUTPUT_FORMAT;
     createRenderTargetInfo.mipLevelCount = 1;
     m_outputImage.reset(Wolf::Image::createImage(createRenderTargetInfo));
+    m_outputImage->setName("Draw IDs pass output (DrawIdsPass::m_outputImage)");
 
     Wolf::CreateImageInfo createCopyInfo = createRenderTargetInfo;
     createCopyInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST;
     createCopyInfo.imageTiling = VK_IMAGE_TILING_LINEAR;
-    createCopyInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    createCopyInfo.memoryProperty = Wolf::ImageMemoryProperty::HOST;
     m_copyImage.reset(Wolf::Image::createImage(createCopyInfo));
+    m_copyImage->setName("Draw IDs copy (DrawIdsPass::m_copyImage)");
     m_copyImage->setImageLayout({ Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, 0, 1, Wolf::ImageLayout::UNDEFINED });
 

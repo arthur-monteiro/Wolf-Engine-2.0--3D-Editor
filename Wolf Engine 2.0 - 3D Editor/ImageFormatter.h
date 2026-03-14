@@ -43,6 +43,8 @@ private:
 	bool m_loadMips;
 	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
+	std::string m_originFilename = "Unknown filename";
+
 	static Wolf::ImageCompression::Compression findCompressionFromFormat(Wolf::Format format);
 	static Wolf::Format findUncompressedFormat(Wolf::Format format);
 
@@ -359,6 +361,17 @@ void ImageFormatter::createSlicedCacheFromFile(const std::string& filename, cons
 	std::vector<std::vector<PixelType>> mipLevels;
 	Wolf::Extent3D extent{};
 	loadImageFile(filename, uncompressedFormat, m_loadMips, pixels, mipLevels, extent);
+
+	if (pixels.size() < 4)
+	{
+		Wolf::Debug::sendWarning("Image size must be at least 4x4");
+		pixels.resize(4 * 4);
+		for (uint32_t i = 1; i < 4 * 4; ++i)
+		{
+			pixels[i] = pixels[0];
+		}
+		extent.width = extent.height = 4;
+	}
 
 	createSlicedCacheFromData<PixelType, CompressionType>(m_slicesFolder, extent, pixels, mipLevels);
 

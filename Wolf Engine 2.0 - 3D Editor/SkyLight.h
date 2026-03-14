@@ -37,7 +37,7 @@ private:
 
 	inline static const std::string TAB = "Sky light";
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
+	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 

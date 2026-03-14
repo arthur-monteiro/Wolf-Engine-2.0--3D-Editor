@@ -216,10 +216,12 @@
 				<div class="col col-1" data-label="infoType">GPU</div>
 				<div class="columnDivider"></div>
 				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px; min-width: 300px;">
-					VRAM Requested: <span id="vramRequested">0 MB</span><br/>
-					VRAM Used: <span id="vramUsed">0 MB</span>
+					VRAM Allocated: <span id="vramAllocated">0 MB</span><br/>
+					VRAM Requested: <span id="vramRequested">0 MB</span>
 				</div>
 			</li>
+			<button class="actionButton" onclick="openVRAMTrackingPage()">Export VRAM tracking</button>
+			<button class="actionButton" onclick="openSystemRAMTrackingPage()">Export system RAM tracing</button>
 		</ul>
 	</div>
 
@@ -247,8 +249,8 @@
 
 	function updateStats() {
 		document.getElementById('frameRate').innerHTML = getFrameRate();
+		document.getElementById('vramAllocated').innerHTML = getVRAMAllocated();
 		document.getElementById('vramRequested').innerHTML = getVRAMRequested();
-		document.getElementById('vramUsed').innerHTML = getVRAMUsed();
 
 		setTimeout(()=> {
 			updateStats();

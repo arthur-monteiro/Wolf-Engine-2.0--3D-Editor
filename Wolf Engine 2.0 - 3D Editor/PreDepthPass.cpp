@@ -20,6 +20,7 @@ void PreDepthPass::initializeResources(const Wolf::InitializationContext& contex
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	DepthPassBase::initializeResources(context);
+	m_depthImage->setName("Pre depth pass output (PreDepthPass::m_depthImage)");
 }
 
 void PreDepthPass::resize(const Wolf::InitializationContext& context)

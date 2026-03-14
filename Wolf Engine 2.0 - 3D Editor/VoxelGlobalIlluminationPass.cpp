@@ -171,6 +171,7 @@ void VoxelGlobalIlluminationPass::createVoxelGrid()
     uint32_t voxelCount = GRID_SIZE * GRID_SIZE * GRID_SIZE;
     uint64_t bufferSize = voxelCount * sizeof(VoxelLayout);
     m_voxelGrid.reset(Wolf::Buffer::createBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+    m_voxelGrid->setName("Voxel grid (VoxelGlobalIlluminationPass::m_voxelGrid)");
 
     bufferSize = (6 /* value count per voxel */ * voxelCount) / 32 /* bit count per value (uint32) */ + 1 /* add one value */;
     m_requestsBuffer.reset(Wolf::Buffer::createBuffer(bufferSize * sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
@@ -295,6 +296,7 @@ void VoxelGlobalIlluminationPass::createNoiseImage()
     if (!m_noiseImage)
     {
         m_noiseImage.reset(Wolf::Image::createImage(noiseImageCreateInfo));
+        m_noiseImage->setName("Voxel GI noise image (VoxelGlobalIlluminationPass::m_noiseImage)");
     }
 
     std::vector<float> noiseData(NOISE_TEXTURE_SIZE_PER_SIDE * NOISE_TEXTURE_SIZE_PER_SIDE * NOISE_TEXTURE_VECTOR_COUNT * 4);

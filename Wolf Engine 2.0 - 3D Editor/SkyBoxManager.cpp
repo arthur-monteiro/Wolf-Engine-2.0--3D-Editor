@@ -114,6 +114,7 @@ void SkyBoxManager::createCubeMap()
     createImageInfo.mipLevelCount = 1;
     createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
     m_cubeMapImage.reset(Wolf::Image::createImage(createImageInfo));
+    m_cubeMapImage->setName("Sky box cube map (SkyBoxManager::m_cubeMapImage)");
 
     std::vector<glm::vec4> initData(m_cubeMapResolution * m_cubeMapResolution, glm::vec4(CLEAR_VALUE, CLEAR_VALUE, CLEAR_VALUE, 1.0f));
     for (uint32_t i = 0; i < 6; ++i)

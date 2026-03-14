@@ -12,6 +12,7 @@
 RayTracedWorldManager::RayTracedWorldManager(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU) : m_editorPushDataToGPU(editorPushDataToGPU)
 {
     m_instanceBuffer.reset(Wolf::Buffer::createBuffer(MAX_INSTANCES * sizeof(InstanceData), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+    m_instanceBuffer->setName("Ray tracing instances info (RayTracedWorldManager::m_instanceBuffer)");
 
     m_descriptorSetLayoutGenerator.reset();
     m_descriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::RAYGEN | Wolf::ShaderStageFlagBits::CLOSEST_HIT, 0); // instance buffer

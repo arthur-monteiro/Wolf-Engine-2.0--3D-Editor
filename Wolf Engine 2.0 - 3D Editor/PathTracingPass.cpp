@@ -230,10 +230,12 @@ void PathTracingPass::createImages(const Wolf::InitializationContext& context)
     createInfo.format = Wolf::Format::R32G32B32A32_SFLOAT;
     createInfo.mipLevelCount = 1;
     m_outputImage.reset(Wolf::Image::createImage(createInfo));
+    m_outputImage->setName("Path tracing output (PathTracingPass::m_outputImage)");
     m_outputImage->setImageLayout(Wolf::Image::SampledInFragmentShader(0));
 
     createInfo.usage = Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::STORAGE | Wolf::ImageUsageFlagBits::TRANSFER_DST;
     m_inputImage.reset(Wolf::Image::createImage(createInfo));
+    m_inputImage->setName("Path tracing output (PathTracingPass::m_inputImage)");
     m_inputImage->setImageLayout(Wolf::Image::SampledInFragmentShader(0));
 
     Wolf::CommandBuffer* commandBuffer = Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, true);
@@ -268,6 +270,7 @@ void PathTracingPass::createNoiseImage()
     if (!m_noiseImage)
     {
         m_noiseImage.reset(Wolf::Image::createImage(noiseImageCreateInfo));
+        m_noiseImage->setName("Path tracing noise image (PathTracingPass::m_noiseImage)");
     }
 
     std::vector<float> noiseData(NOISE_TEXTURE_SIZE_PER_SIDE * NOISE_TEXTURE_SIZE_PER_SIDE * NOISE_TEXTURE_VECTOR_COUNT * 4);

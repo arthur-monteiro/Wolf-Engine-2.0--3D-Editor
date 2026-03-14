@@ -54,15 +54,28 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
 
     if (m_updateComputeFromSphericalMapDescriptorSetRequested)
     {
+        // ReSharper disable once CppDFAUnreachableCode
         updateComputeFromSphericalMapDescriptorSets();
         m_updateComputeFromSphericalMapDescriptorSetRequested = false;
     }
     else
     {
+        // ReSharper disable once CppDFAUnreachableCode
         m_drawRecordedThisFrame = false;
+
+        if (m_framesCountToComputeFinished == 0)
+        {
+            m_onComputeFinishedCallback();
+            m_framesCountToComputeFinished = -1;
+        }
+        else if (m_framesCountToComputeFinished != -1)
+        {
+            m_framesCountToComputeFinished--;
+        }
         return;
     }
 
+    // ReSharper disable once CppDFAUnreachableCode
     std::vector<glm::mat4> captureViews =
     {
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
@@ -125,6 +138,7 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
     m_commandBuffer->endCommandBuffer();
 
     m_drawRecordedThisFrame = true;
+    m_framesCountToComputeFinished = Wolf::g_configuration->getMaxCachedFrames();
 }
 
 void ComputeSkyCubeMapPass::submit(const Wolf::SubmitContext& context)
@@ -142,9 +156,10 @@ void ComputeSkyCubeMapPass::clear()
     m_sphericalMapImage.release();
 }
 
-void ComputeSkyCubeMapPass::setInputSphericalMap(const Wolf::ResourceNonOwner<Wolf::Image>& sphericalMap)
+void ComputeSkyCubeMapPass::setInputSphericalMap(const Wolf::ResourceNonOwner<Wolf::Image>& sphericalMap, const std::function<void()>& onComputeFinishedCallback)
 {
     m_sphericalMapImage = sphericalMap;
+    m_onComputeFinishedCallback = onComputeFinishedCallback;
     m_updateComputeFromSphericalMapDescriptorSetRequested = true;
 }
 

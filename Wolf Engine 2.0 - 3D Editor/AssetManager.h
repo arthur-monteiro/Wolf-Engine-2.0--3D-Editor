@@ -56,6 +56,7 @@ public:
 	Wolf::ResourceNonOwner<Wolf::Image> getImage(AssetId imageAssetId) const;
 	const uint8_t* getImageData(AssetId imageAssetId) const;
 	void deleteImageData(AssetId imageAssetId) const;
+	void releaseImage(AssetId imageAssetId) const;
 	std::string getImageSlicesFolder(AssetId imageAssetId) const;
 
 	[[nodiscard]] AssetId addCombinedImage(const std::string& loadingPathR, const std::string& loadingPathG, const std::string& loadingPathB, const std::string& loadingPathA, bool loadMips, Wolf::Format format,
@@ -146,7 +147,8 @@ private:
 
 		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
 		void generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& m_thumbnailsGenerationPass);
-		void buildBLAS(uint32_t lod, uint32_t lodType);
+		void ensureBLASIsLoaded(uint32_t lod, uint32_t lodType);
+		void buildBLAS(uint32_t lod, uint32_t lodType, const std::string& filename);
 
 		bool m_modelLoadingRequested = false;
 		bool m_thumbnailGenerationRequested = false;
@@ -163,6 +165,7 @@ private:
 		std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>> m_physicsShapes;
 
 		std::vector<std::vector<Wolf::ResourceUniqueOwner<Wolf::BottomLevelAccelerationStructure>>> m_bottomLevelAccelerationStructures;
+		std::pair<uint32_t, uint32_t> m_loadedBLAS;
 
 		uint32_t m_firstTextureSetIdx = 0;
 		uint32_t m_firstMaterialIdx = 0;
@@ -182,6 +185,7 @@ private:
 		std::string getSlicesFolder() { return m_slicesFolder; }
 
 		void deleteImageData();
+		void releaseImage();
 
 	protected:
 		ImageInterface(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, bool needThumbnailsGeneration, bool loadMips, Wolf::Format format, bool canBeVirtualized)

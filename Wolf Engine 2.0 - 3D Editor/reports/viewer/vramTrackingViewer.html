@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Memory Profiler</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-mode="gpu">
+    <div class="scanline"></div>
+    <header>
+        <div class="logo">WOLF<span>ENGINE</span></div>
+        <div class="identity-badge" id="identityTitle">STANDBY</div>
+        <input type="file" id="jsonInput" accept=".json">
+    </header>
+
+    <main>
+        <div class="main-stats-line">
+            <div class="stat-item">
+                <label>Allocated:</label> <span id="totalAllocated">0.00 MB</span>
+            </div>
+            <div class="stat-item gpu-only">
+                <label>Requested:</label> <span id="totalRequested">0.00 MB</span>
+            </div>
+            <div class="stat-item gpu-only">
+                <label>Efficiency:</label> <span id="efficiency">0%</span>
+            </div>
+        </div>
+
+        <section id="visualizer-container">
+            <h3>Resource Map</h3>
+            <div id="memoryMap" class="memory-map"></div>
+        </section>
+
+        <section id="table-container">
+            <table id="resourceTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>System</th>
+                        <th class="gpu-only">Type</th>
+                        <th>Allocated (KB)</th>
+                        <th class="gpu-only">Requested (KB)</th>
+                        <th>Usage</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </main>
+
+    <div id="selectionBubble" class="selection-bubble hidden">
+        <div class="bubble-content">
+            <label>Selected:</label>
+            <span id="selectedTotal">0.00 MB</span>
+            <div id="selectedCount" class="bubble-sub">0 items</div>
+        </div>
+        <button id="clearSelection" class="clear-btn">✕</button>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay hidden">
+        <div class="modal">
+            <h3 id="modalTitle">Resource Actions</h3>
+            <p id="modalSubTitle">Choose an action for this resource:</p>
+            <div class="modal-buttons">
+                <button id="btnSelectOne">Select This Item</button>
+                <button id="btnSelectSystem">Select All in System</button>
+                <button id="btnCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

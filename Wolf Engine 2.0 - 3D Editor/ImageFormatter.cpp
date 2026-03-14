@@ -9,7 +9,7 @@
 #include "MipMapGenerator.h"
 
 ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& filename, const std::string& slicesFolder, Wolf::Format finalFormat, bool canBeVirtualized,
-	KeepDataMode keepDataMode, bool loadMips) : m_keepDataMode(keepDataMode), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU)
+	KeepDataMode keepDataMode, bool loadMips) : m_keepDataMode(keepDataMode), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU), m_originFilename(filename)
 {
     if (canBeVirtualized && Wolf::g_configuration->getUseVirtualTexture())
     {
@@ -75,15 +75,7 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
 
 	if (canBeVirtualized && Wolf::g_configuration->getUseVirtualTexture())
 	{
-		std::string binFolderForSlices;
-		for (const char character : binFolder)
-		{
-			if (character == '/')
-				binFolderForSlices += "\\";
-			else
-				binFolderForSlices += character;
-		}
-
+		std::string binFolderForSlices = binFolder;
 		if (!std::filesystem::is_directory(binFolderForSlices) || !std::filesystem::exists(binFolderForSlices))
 		{
 			std::filesystem::create_directory(binFolderForSlices);
@@ -371,6 +363,7 @@ void ImageFormatter::createImageFromData(Wolf::Extent3D extent, Wolf::Format for
 		createImageInfo.mipLevelCount = static_cast<uint32_t>(mipLevels.size()) + 1;
 		createImageInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
 		m_outputImage.reset(Wolf::Image::createImage(createImageInfo));
+		m_outputImage->setName("Image loaded from " + m_originFilename + " (ImageFormatter::m_outputImage)");
 
 		{
 			Wolf::GPUDataTransfersManagerInterface::PushDataToGPUImageInfo pushDataToGpuImageInfo(pixels, m_outputImage.createNonOwnerResource(), Wolf::Image::SampledInFragmentShader());

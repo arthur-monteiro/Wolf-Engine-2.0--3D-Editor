@@ -126,6 +126,7 @@ void RayTracedWorldDebugPass::createOutputImage(const Wolf::InitializationContex
     createInfo.format = Wolf::Format::R8G8B8A8_UNORM;
     createInfo.mipLevelCount = 1;
     m_outputImage.reset(Wolf::Image::createImage(createInfo));
+    m_outputImage->setName("Ray tracing world debug output (RayTracedWorldDebugPass::m_outputImage)");
     m_outputImage->setImageLayout(Wolf::Image::SampledInFragmentShader(0));
 }
 

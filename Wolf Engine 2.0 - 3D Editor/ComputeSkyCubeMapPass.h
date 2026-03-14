@@ -29,7 +29,7 @@ public:
     void clear();
 
     [[nodiscard]] bool wasEnabledThisFrame() const { return m_drawRecordedThisFrame; }
-    void setInputSphericalMap(const Wolf::ResourceNonOwner<Wolf::Image>& sphericalMap);
+    void setInputSphericalMap(const Wolf::ResourceNonOwner<Wolf::Image>& sphericalMap, const std::function<void()>& onComputeFinishedCallback);
 
     void onCubeMapChanged();
 
@@ -66,4 +66,6 @@ private:
     bool m_updateComputeFromSphericalMapDescriptorSetRequested = false;
 
     Wolf::NullableResourceNonOwner<Wolf::Image> m_sphericalMapImage;
+    uint32_t m_framesCountToComputeFinished = -1;
+    std::function<void()> m_onComputeFinishedCallback;
 };

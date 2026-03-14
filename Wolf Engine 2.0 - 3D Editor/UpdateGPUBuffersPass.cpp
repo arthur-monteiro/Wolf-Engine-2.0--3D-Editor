@@ -13,6 +13,7 @@ void UpdateGPUBuffersPass::initializeResources(const Wolf::InitializationContext
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	m_currentRequestsQueues.resize(Wolf::g_configuration->getMaxCachedFrames());
+	m_stagingBufferPool.reset(new StagingBufferPool(268'435'456));
 }
 
 void UpdateGPUBuffersPass::resize(const Wolf::InitializationContext& context)
@@ -26,8 +27,19 @@ void UpdateGPUBuffersPass::record(const Wolf::RecordContext& context)
 
 	uint32_t requestQueueIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
 
-	m_currentRequestsQueues[requestQueueIdx].swap(m_addRequestsQueue);
-	m_addRequestsQueue.clear();
+	m_addRequestQueueMutex.lock();
+	{
+		{
+			PROFILE_SCOPED("Swap requests")
+			m_currentRequestsQueues[requestQueueIdx].swap(m_addRequestsQueue);
+		}
+		{
+			PROFILE_SCOPED("Clear add queue")
+			m_addRequestsQueue.clear();
+		}
+
+	}
+	m_addRequestQueueMutex.unlock();
 
 	if (m_currentRequestsQueues[requestQueueIdx].empty())
 	{
@@ -70,6 +82,8 @@ void UpdateGPUBuffersPass::clear()
 
 void UpdateGPUBuffersPass::InternalRequest::recordCommands(const Wolf::CommandBuffer* commandBuffer) const
 {
+	PROFILE_FUNCTION
+
 	if (m_mode == Mode::FILL)
 	{
 		if (m_request.getResourceType() != Request::ResourceType::BUFFER)
@@ -96,11 +110,11 @@ void UpdateGPUBuffersPass::InternalRequest::recordCommands(const Wolf::CommandBu
 void UpdateGPUBuffersPass::InternalRequest::recordCopyToBuffer(const Wolf::CommandBuffer* commandBuffer) const
 {
 	Wolf::Buffer::BufferCopy bufferCopy{};
-	bufferCopy.srcOffset = 0;
+	bufferCopy.srcOffset = m_stagingBufferPoolInstance.m_bufferOffset;
 	bufferCopy.dstOffset = m_request.getOutputOffset();
 	bufferCopy.size = m_request.getSize();
 
-	m_request.getOutputBuffer()->recordTransferGPUMemory(commandBuffer, *m_stagingBuffer, bufferCopy);
+	m_request.getOutputBuffer()->recordTransferGPUMemory(commandBuffer, *m_stagingBufferPool->getBuffer(m_stagingBufferPoolInstance), bufferCopy);
 }
 
 void UpdateGPUBuffersPass::InternalRequest::recordFillBuffer(const Wolf::CommandBuffer* commandBuffer) const
@@ -116,7 +130,7 @@ void UpdateGPUBuffersPass::InternalRequest::recordFillBuffer(const Wolf::Command
 void UpdateGPUBuffersPass::InternalRequest::recordCopyToImage(const Wolf::CommandBuffer* commandBuffer) const
 {
 	Wolf::Image::BufferImageCopy bufferImageCopy;
-	bufferImageCopy.bufferOffset = 0;
+	bufferImageCopy.bufferOffset = m_stagingBufferPoolInstance.m_bufferOffset;
 	bufferImageCopy.bufferRowLength = m_request.getCopySize().x;
 	bufferImageCopy.bufferImageHeight = m_request.getCopySize().y;
 
@@ -128,13 +142,61 @@ void UpdateGPUBuffersPass::InternalRequest::recordCopyToImage(const Wolf::Comman
 	bufferImageCopy.imageOffset = { m_request.getImageOffset().x, m_request.getImageOffset().y, 0 };
 	bufferImageCopy.imageExtent = { static_cast<uint32_t>(m_request.getCopySize().x), static_cast<uint32_t>(m_request.getCopySize().y), 1};
 
-	m_request.getOutputImage()->recordCopyGPUBuffer(*commandBuffer, *m_stagingBuffer, bufferImageCopy, m_request.getImageFinalLayout());
+	m_request.getOutputImage()->recordCopyGPUBuffer(*commandBuffer, *m_stagingBufferPool->getBuffer(m_stagingBufferPoolInstance), bufferImageCopy, m_request.getImageFinalLayout());
 }
 
 void UpdateGPUBuffersPass::addRequestBeforeFrame(const Request& request)
 {
+	PROFILE_FUNCTION
+
+	InternalRequest* newInternalRequest = new InternalRequest(request, m_stagingBufferPool.createNonOwnerResource());
 	m_addRequestQueueMutex.lock();
-	InternalRequest* newInternalRequest = new InternalRequest(request);
 	m_addRequestsQueue.emplace_back(newInternalRequest);
 	m_addRequestQueueMutex.unlock();
+}
+
+UpdateGPUBuffersPass::StagingBufferPool::StagingBufferPool(uint32_t poolSize)
+{
+	m_buffer.reset(Wolf::Buffer::createBuffer(poolSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	m_buffer->setName("Staging buffer for data copy (UpdateGPUBuffersPass::StagingBufferPool::m_buffer)");
+}
+
+Wolf::BufferPoolInterface::BufferPoolInstance UpdateGPUBuffersPass::StagingBufferPool::allocate(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize)
+{
+	BufferPoolInstance r{};
+	r.m_bufferIdx = 0;
+
+	m_mutex.lock();
+	uint32_t allocationOffset = m_currentAllocatedOffset;
+	m_currentAllocatedOffset += requestedSize;
+	m_mutex.unlock();
+
+	if (m_currentAllocatedOffset > m_buffer->getSize())
+	{
+		if (m_currentDeletedOffset < requestedSize)
+		{
+			Wolf::Debug::sendCriticalError("Can't find a place in the buffer");
+		}
+
+		allocationOffset = m_currentAllocatedOffset = 0;
+		m_currentDeletedOffset = 0;
+	}
+	r.m_bufferOffset = allocationOffset;
+	r.m_bufferSize = requestedSize;
+
+	return r;
+}
+
+void UpdateGPUBuffersPass::StagingBufferPool::deallocate(const BufferPoolInstance& bufferPoolInstance)
+{
+	m_currentDeletedOffset = std::max(m_currentDeletedOffset, bufferPoolInstance.m_bufferOffset + bufferPoolInstance.m_bufferSize);
+	if (m_currentDeletedOffset > m_buffer->getSize())
+	{
+		Wolf::Debug::sendCriticalError("It shouldn't happen");
+	}
+}
+
+Wolf::ResourceNonOwner<Wolf::Buffer> UpdateGPUBuffersPass::StagingBufferPool::getBuffer(const BufferPoolInstance& bufferPoolInstance)
+{
+	return m_buffer.createNonOwnerResource();
 }

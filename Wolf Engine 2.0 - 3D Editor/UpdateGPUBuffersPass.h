@@ -3,12 +3,12 @@
 #include <glm/glm.hpp>
 
 #include <CommandRecordBase.h>
+#include <Image.h>
+#include <DynamicResourceUniqueOwnerArray.h>
+#include <DynamicStableArray.h>
 #include <ResourceUniqueOwner.h>
 
-#include <Image.h>
-
-#include "DynamicResourceUniqueOwnerArray.h"
-#include "DynamicStableArray.h"
+#include "BufferPoolInterface.h"
 
 class UpdateGPUBuffersPass : public Wolf::CommandRecordBase
 {
@@ -79,16 +79,34 @@ public:
 	void addRequestBeforeFrame(const Request& request);
 
 private:
+	class StagingBufferPool : public Wolf::BufferPoolInterface
+	{
+	public:
+		StagingBufferPool(uint32_t poolSize);
+
+		[[nodiscard]] BufferPoolInstance allocate(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize) override;
+		void deallocate(const BufferPoolInstance& bufferPoolInstance) override;
+
+		Wolf::ResourceNonOwner<Wolf::Buffer> getBuffer(const BufferPoolInstance& bufferPoolInstance) override;
+
+	private:
+		Wolf::ResourceUniqueOwner<Wolf::Buffer> m_buffer;
+		std::mutex m_mutex;
+		uint32_t m_currentAllocatedOffset = 0;
+		uint32_t m_currentDeletedOffset = 0;
+	};
+	Wolf::ResourceUniqueOwner<StagingBufferPool> m_stagingBufferPool;
+
 	class InternalRequest
 	{
 	public:
 		InternalRequest() = default;
-		explicit InternalRequest(const Request& request) : m_request(request)
+		explicit InternalRequest(const Request& request, const Wolf::ResourceNonOwner<StagingBufferPool>& stagingBufferPool) : m_request(request), m_stagingBufferPool(stagingBufferPool)
 		{
 			if (const void* data = m_request.getData())
 			{
-				m_stagingBuffer.reset(Wolf::Buffer::createBuffer(m_request.getSize(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-				m_stagingBuffer->transferCPUMemory(data, m_request.getSize());
+				m_stagingBufferPoolInstance = m_stagingBufferPool->allocate(m_request.getSize(), 0 /* unused */, 0 /* unused */);
+				m_stagingBufferPool->getBuffer(m_stagingBufferPoolInstance)->transferCPUMemory(data, m_request.getSize(), m_stagingBufferPoolInstance.m_bufferOffset);
 
 				m_mode = Mode::COPY;
 			}
@@ -103,6 +121,13 @@ private:
 			}
 		}
 		InternalRequest(const InternalRequest& other) = delete;
+		~InternalRequest()
+		{
+			if (m_stagingBufferPoolInstance.m_bufferSize > 0)
+			{
+				m_stagingBufferPool->deallocate(m_stagingBufferPoolInstance);
+			}
+		}
 
 		void recordCommands(const Wolf::CommandBuffer* commandBuffer) const;
 
@@ -115,7 +140,9 @@ private:
 		void recordCopyToImage(const Wolf::CommandBuffer* commandBuffer) const;
 
 		Request m_request;
-		Wolf::ResourceUniqueOwner<Wolf::Buffer> m_stagingBuffer;
+
+		Wolf::ResourceNonOwner<StagingBufferPool> m_stagingBufferPool;
+		Wolf::BufferPoolInterface::BufferPoolInstance m_stagingBufferPoolInstance = { 0, 0, 0};
 	};
 
 	Wolf::DynamicResourceUniqueOwnerArray<InternalRequest, 4> m_addRequestsQueue;

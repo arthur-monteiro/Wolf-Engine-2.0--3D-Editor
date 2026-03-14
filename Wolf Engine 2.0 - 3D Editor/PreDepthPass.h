@@ -29,6 +29,8 @@ public:
 private:
 	uint32_t getWidth() override { return m_swapChainWidth; }
 	uint32_t getHeight() override { return m_swapChainHeight; }
+	Wolf::Format getFormat() override { return Wolf::Format::D32_SFLOAT; }
+
 	Wolf::ImageUsageFlags getAdditionalUsages() override { return Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_SRC; }
 	Wolf::ImageLayout getFinalLayout() override { return Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL; }
 

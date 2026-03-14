@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <CPUMemoryDebug.h>
 #include <GPUMemoryDebug.h>
 #include <JSONReader.h>
 #include <ProfilerCommon.h>
@@ -12,6 +13,7 @@
 #include "GraphicSettingsFakeEntity.h"
 #include "MaterialListFakeEntity.h"
 #include "RuntimeContext.h"
+#include "Vertex2DTextured.h"
 
 SystemManager::SystemManager()
 {
@@ -178,6 +180,40 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
 	wolfInstanceCreateInfo.m_pushDataToGPU = m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>();
 
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes.resize(g_editorConfiguration->getEnableRayTracing() ? 6 : 5);
+
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_itemSize = sizeof(SkyBoxManager::VertexOnlyPosition); // Skybox only
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_minimumPoolSize = 512;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_itemSize = sizeof(uint32_t); // Skybox + full screen quads + debug + mesh indices if no ray tracing
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_minimumPoolSize = g_editorConfiguration->getEnableRayTracing() ? 1024 : 67'108'864 ;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[2].m_itemSize = sizeof(Vertex2DTextured); // Full screen quad
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[2].m_minimumPoolSize = 512;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[2].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[3].m_itemSize = sizeof(DebugRenderingManager::DebugVertex); // Debug only
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[3].m_minimumPoolSize = 4096;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[3].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+	VkBufferUsageFlags additionalMeshFlags = 0;
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		additionalMeshFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	}
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_itemSize = sizeof(Vertex3D); // Mesh vertices
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_minimumPoolSize = 268'435'456;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalMeshFlags;
+
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_itemSize = sizeof(uint32_t); // Mesh indices
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_minimumPoolSize = 67'108'864;
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalMeshFlags;
+	}
+
 	m_wolfInstance.reset(new Wolf::WolfEngine(wolfInstanceCreateInfo));
 
 	m_gameContexts.reserve(Wolf::g_configuration->getMaxCachedFrames());
@@ -262,8 +298,10 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 {
 	jsObject["getFrameRate"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getFrameRateJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getVRAMAllocated"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMAllocatedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getVRAMRequested"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMRequestedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
-	jsObject["getVRAMUsed"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMUsedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["openVRAMTrackingPage"] = std::bind(&SystemManager::openVRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["openSystemRAMTrackingPage"] = std::bind(&SystemManager::openSystemRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["addEntity"] = std::bind(&SystemManager::addEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["addComponent"] = std::bind(&SystemManager::addComponentJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["pickFile"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::pickFileJSCallback, this, std::placeholders::_1, std::placeholders::_2));
@@ -343,18 +381,59 @@ ultralight::JSValue SystemManager::getFrameRateJSCallback(const ultralight::JSOb
 	return { fpsStr.c_str() };
 }
 
-ultralight::JSValue SystemManager::getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+ultralight::JSValue SystemManager::getVRAMAllocatedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const std::string vramRequestedStr = std::to_string(Wolf::GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
+	const std::string vramRequestedStr = std::to_string(Wolf::GPUMemoryDebug::getTotalMemoryAllocated() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
 	return { vramRequestedStr.c_str() };
 }
 
-ultralight::JSValue SystemManager::getVRAMUsedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+ultralight::JSValue SystemManager::getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string vramUsedStr = std::to_string(Wolf::GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
 	return { vramUsedStr.c_str() };
 }
 
+void SystemManager::openVRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	auto now = std::chrono::system_clock::now();
+	std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+
+	std::tm bt {};
+#if defined(_MSC_VER)
+	localtime_s(&bt, &now_time); // Windows safe version
+#else
+	localtime_r(&now_time, &bt); // POSIX safe version
+#endif
+
+	std::ostringstream oss;
+	oss << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S");
+
+	std::string outFileName = "reports/GPU_" + m_currentSceneName + "_" + oss.str() + ".json";
+	Wolf::GPUMemoryDebug::dumpJSON(outFileName);
+
+	system("start reports/viewer/vramTrackingViewer.html");
+}
+
+void SystemManager::openSystemRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	auto now = std::chrono::system_clock::now();
+	std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+
+	std::tm bt {};
+#if defined(_MSC_VER)
+	localtime_s(&bt, &now_time); // Windows safe version
+#else
+	localtime_r(&now_time, &bt); // POSIX safe version
+#endif
+
+	std::ostringstream oss;
+	oss << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S");
+
+	std::string outFileName = "reports/CPU_" + m_currentSceneName + "_" + oss.str() + ".json";
+	Wolf::CPUMemoryDebug::dumpJSON(outFileName);
+
+	system("start reports/viewer/vramTrackingViewer.html");
+}
 
 #ifdef _WIN32
 #define POPEN _popen

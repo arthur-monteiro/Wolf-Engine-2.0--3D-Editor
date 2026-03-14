@@ -21,6 +21,7 @@ public:
 private:
 	uint32_t getWidth() override { return m_width; }
 	uint32_t getHeight() override { return m_height; }
+	Wolf::Format getFormat() override { return Wolf::Format::D16_UNORM; }
 
 	void recordDraws(const Wolf::RecordContext& context) override;
 	const Wolf::CommandBuffer& getCommandBuffer(const Wolf::RecordContext& context) override;

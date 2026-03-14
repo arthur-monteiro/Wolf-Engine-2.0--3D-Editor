@@ -20,7 +20,9 @@ void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& 
 	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/update.comp"));
 
 	m_particlesBuffer.reset(Wolf::Buffer::createBuffer(MAX_TOTAL_PARTICLES * sizeof(ParticleInfoGPU), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+	m_particlesBuffer->setName("Particles info (ParticleUpdatePass::m_particlesBuffer)");
 	m_emitterDrawInfoBuffer.reset(Wolf::Buffer::createBuffer(MAX_EMITTER_COUNT * sizeof(EmitterDrawInfo), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+	m_emitterDrawInfoBuffer->setName("Particle emitters draw info (ParticleUpdatePass::m_emitterDrawInfoBuffer)");
 
 	m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(UniformBufferData)));
 	createNoiseBuffer();
@@ -308,5 +310,6 @@ void ParticleUpdatePass::createNoiseBuffer()
 	}
 
 	m_noiseBuffer.reset(Wolf::Buffer::createBuffer(NOISE_POINT_COUNT * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+	m_noiseBuffer->setName("Particles noise buffer (ParticleUpdatePass::m_noiseBuffer)");
 	m_noiseBuffer->transferCPUMemoryWithStagingBuffer(randomData.data(), NOISE_POINT_COUNT * sizeof(float), 0, 0);
 }

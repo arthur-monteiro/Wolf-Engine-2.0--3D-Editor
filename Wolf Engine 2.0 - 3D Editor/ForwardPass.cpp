@@ -256,6 +256,7 @@ void ForwardPass::createOutputImage(const Wolf::InitializationContext& context)
 	createInfo.format = Wolf::Format::R16G16B16A16_SFLOAT;
 	createInfo.mipLevelCount = 1;
 	m_outputImage.reset(Wolf::Image::createImage(createInfo));
+	m_outputImage->setName("Forward pass output (ForwardPass::m_outputImage)");
 	m_outputImage->setImageLayout({ Wolf::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 1, 0, 1,
 		Wolf::ImageLayout::UNDEFINED });
 }

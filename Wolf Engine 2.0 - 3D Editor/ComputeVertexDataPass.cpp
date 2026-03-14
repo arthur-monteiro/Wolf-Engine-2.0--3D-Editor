@@ -107,6 +107,7 @@ void ComputeVertexDataPass::initializeResources(const Wolf::InitializationContex
 
     constexpr uint32_t RANDOM_SAMPLE_COUNT = 32;
     m_randomSamplesBuffer.reset(Wolf::Buffer::createBuffer(RANDOM_SAMPLE_COUNT * sizeof(glm::vec2), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+    m_randomSamplesBuffer->setName("Random samples (ComputeVertexDataPass::m_randomSamplesBuffer)");
 
     std::vector<glm::vec2> randomSamples(RANDOM_SAMPLE_COUNT);
 

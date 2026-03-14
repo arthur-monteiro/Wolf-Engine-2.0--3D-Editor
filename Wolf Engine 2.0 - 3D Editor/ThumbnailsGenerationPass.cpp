@@ -57,7 +57,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	createCopyInfo.format = OUTPUT_FORMAT;
 	createCopyInfo.mipLevelCount = 1;
 	createCopyInfo.imageTiling = VK_IMAGE_TILING_LINEAR;
-	createCopyInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	createCopyInfo.memoryProperty = Wolf::ImageMemoryProperty::HOST;
 	m_copyImage.reset(Wolf::Image::createImage(createCopyInfo));
 	m_copyImage->setImageLayout({ Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, 0, 1,
 		Wolf::ImageLayout::UNDEFINED });

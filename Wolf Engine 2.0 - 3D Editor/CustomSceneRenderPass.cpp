@@ -201,7 +201,7 @@ CustomSceneRenderPass::RequestId CustomSceneRenderPass::addRequestBeforeFrame(Re
 
 void CustomSceneRenderPass::updateRequestBeforeFrame(RequestId requestIdx, Request& request)
 {
-    m_currentRequestsQueue[requestIdx] = Wolf::ResourceUniqueOwner<Request>(new Request(request));
+    m_currentRequestsQueue[requestIdx].reset(new Request(request));
 }
 
 bool CustomSceneRenderPass::isRequestRunning(RequestId requestIdx) const

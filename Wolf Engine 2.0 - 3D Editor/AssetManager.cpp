@@ -557,6 +557,15 @@ void AssetManager::deleteImageData(AssetId imageAssetId) const
 	m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->deleteImageData();
 }
 
+void AssetManager::releaseImage(AssetId imageAssetId) const
+{
+	if (!isImage(imageAssetId))
+	{
+		Wolf::Debug::sendError("AssetId is not an image");
+	}
+	m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->releaseImage();
+}
+
 std::string AssetManager::getImageSlicesFolder(AssetId imageAssetId) const
 {
 	if (!isImage(imageAssetId))
@@ -913,10 +922,18 @@ std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::Mesh::getSloppyS
 
 Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::Mesh::getBLAS(uint32_t lod, uint32_t lodType)
 {
+	if (lod == 0)
+	{
+		lodType = 0; // LOD 0 is only generated for LOD type 0
+	}
+
 	if (lodType >= m_bottomLevelAccelerationStructures.size() || lod >= m_bottomLevelAccelerationStructures[lodType].size())
 	{
 		return Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>();
 	}
+
+	ensureBLASIsLoaded(lod, lodType);
+
 	return m_bottomLevelAccelerationStructures[lodType][lod].createNonOwnerResource();
 }
 
@@ -960,6 +977,7 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 	{
 		m_defaultSimplifiedIndexBuffers.emplace_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+		m_defaultSimplifiedIndexBuffers.back()->setName("Default simplified index buffer for " + modelLoadingInfo.filename + " (AssetManager::Mesh::m_defaultSimplifiedIndexBuffer[" + std::to_string(m_defaultSimplifiedIndexBuffers.size()) + "])");
 		m_defaultSimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t), 0, 0);
 	}
 
@@ -967,21 +985,33 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 	{
 		m_sloppySimplifiedIndexBuffers.emplace_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+		m_sloppySimplifiedIndexBuffers.back()->setName("Sloppy simplified index buffer for " + modelLoadingInfo.filename + " (AssetManager::Mesh::m_sloppySimplifiedIndexBuffers[" + std::to_string(m_sloppySimplifiedIndexBuffers.size()) + "])");
 		m_sloppySimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t), 0, 0);
 	}
+
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		m_bottomLevelAccelerationStructures.resize(2);
+		for (uint32_t lodType = 0; lodType < 2; lodType++)
+		{
+			uint32_t lodCount = lodType == 0 ? m_defaultSimplifiedIndexBuffers.size() : m_sloppySimplifiedIndexBuffers.size();
+			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
+		}
+	}
+	m_loadedBLAS = { -1, -1 };
 
 	m_defaultLODsInfo = modelData.m_defaultLODsInfo;
 	m_sloppyLODsInfo = modelData.m_sloppyLODsInfo;
 
 	if (modelData.m_animationData)
 	{
-		m_animationData = modelData.m_animationData.release();
+		m_animationData.reset(modelData.m_animationData.release());
 	}
 
 	m_physicsShapes.resize(modelData.m_physicsShapes.size());
 	for (uint32_t i = 0; i < modelData.m_physicsShapes.size(); ++i)
 	{
-		m_physicsShapes[i] = modelData.m_physicsShapes[i].release();
+		m_physicsShapes[i].reset(modelData.m_physicsShapes[i].release());
 	}
 
 	materialsGPUManager->lockMaterials();
@@ -1002,21 +1032,6 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 
 	m_textureSetInfo = modelData.m_textureSets;
 
-	if (g_editorConfiguration->getEnableRayTracing())
-	{
-		m_bottomLevelAccelerationStructures.resize(2);
-		for (uint32_t lodType = 0; lodType < 2; lodType++)
-		{
-			uint32_t lodCount = lodType == 0 ? m_defaultSimplifiedIndexBuffers.size() : m_sloppySimplifiedIndexBuffers.size();
-
-			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
-			for (uint32_t lod = 0; lod < m_bottomLevelAccelerationStructures[lodType].size(); lod++)
-			{
-				buildBLAS(lod, lodType);
-			}
-		}
-	}
-
 	Wolf::AABB entityAABB = modelData.m_aabb;
 	float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
 	glm::vec3 position = entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight);
@@ -1033,7 +1048,28 @@ void AssetManager::Mesh::generateThumbnail(const Wolf::ResourceNonOwner<Thumbnai
 			m_thumbnailGenerationViewMatrix });
 }
 
-void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
+void AssetManager::Mesh::ensureBLASIsLoaded(uint32_t lod, uint32_t lodType)
+{
+	if (m_bottomLevelAccelerationStructures[lodType][lod])
+		return;
+
+	if (m_loadedBLAS.first != -1)
+	{
+		m_bottomLevelAccelerationStructures[m_loadedBLAS.first][m_loadedBLAS.second].reset(nullptr);
+	}
+
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		buildBLAS(lod, lodType, m_loadingPath);
+		m_loadedBLAS = { lodType, lod };
+	}
+	else
+	{
+		Wolf::Debug::sendCriticalError("Can't build BLAS is ray tracing isn't enabled");
+	}
+}
+
+void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType, const std::string& filename)
 {
 	Wolf::GeometryInfo geometryInfo;
 	geometryInfo.mesh.vertexBuffer = &*m_mesh->getVertexBuffer();
@@ -1068,6 +1104,7 @@ void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType)
 	Wolf::BottomLevelAccelerationStructureCreateInfo createInfo{};
 	createInfo.geometryInfos = { &geometryInfo, 1 };
 	createInfo.buildFlags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+	createInfo.name = "filename " + filename + ", lod type " + std::to_string(lodType) + ", lod " + std::to_string(lod);
 
 	m_bottomLevelAccelerationStructures[lodType][lod].reset(Wolf::BottomLevelAccelerationStructure::createBottomLevelAccelerationStructure(createInfo));
 }
@@ -1076,6 +1113,11 @@ void AssetManager::ImageInterface::deleteImageData()
 {
 	m_firstMipData.clear();
 	m_dataOnCPUStatus = DataOnCPUStatus::DELETED;
+}
+
+void AssetManager::ImageInterface::releaseImage()
+{
+	m_image.reset(nullptr);
 }
 
 bool AssetManager::ImageInterface::generateThumbnail(const std::string& fullFilePath, const std::string& iconPath)
@@ -1365,12 +1407,12 @@ void AssetManager::CombinedImage::loadImage()
 {
 	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath);
 
-	std::string filenameNoExtensionR = m_loadingPaths[0].substr(m_loadingPaths[0].find_last_of("\\") + 1, m_loadingPaths[0].find_last_of("."));
-	std::string filenameNoExtensionG = m_loadingPaths[1].substr(m_loadingPaths[1].find_last_of("\\") + 1, m_loadingPaths[1].find_last_of("."));
-	std::string filenameNoExtensionB = m_loadingPaths[2].substr(m_loadingPaths[2].find_last_of("\\") + 1, m_loadingPaths[2].find_last_of("."));
-	std::string filenameNoExtensionA = m_loadingPaths[3].substr(m_loadingPaths[3].find_last_of("\\") + 1, m_loadingPaths[3].find_last_of("."));
-	std::string folder = m_loadingPaths[0].substr(0, m_loadingPaths[0].find_last_of("\\"));
-	std::string slicesFolder = g_editorConfiguration->computeFullPathFromLocalPath(folder + '\\' + filenameNoExtensionR + "_" + filenameNoExtensionG + "_" + filenameNoExtensionB + "_" + filenameNoExtensionA + "_bin" + "\\");
+	std::string filenameNoExtensionR = m_loadingPaths[0].substr(m_loadingPaths[0].find_last_of("/") + 1, m_loadingPaths[0].find_last_of("."));
+	std::string filenameNoExtensionG = m_loadingPaths[1].substr(m_loadingPaths[1].find_last_of("/") + 1, m_loadingPaths[1].find_last_of("."));
+	std::string filenameNoExtensionB = m_loadingPaths[2].substr(m_loadingPaths[2].find_last_of("/") + 1, m_loadingPaths[2].find_last_of("."));
+	std::string filenameNoExtensionA = m_loadingPaths[3].substr(m_loadingPaths[3].find_last_of("/") + 1, m_loadingPaths[3].find_last_of("."));
+	std::string folder = m_loadingPaths[0].substr(0, m_loadingPaths[0].find_last_of("/"));
+	std::string slicesFolder = g_editorConfiguration->computeFullPathFromLocalPath(folder + '/' + filenameNoExtensionR + "_" + filenameNoExtensionG + "_" + filenameNoExtensionB + "_" + filenameNoExtensionA + "_bin" + "/");
 
 	bool keepDataOnCPU = m_thumbnailGenerationRequested || m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET;
 

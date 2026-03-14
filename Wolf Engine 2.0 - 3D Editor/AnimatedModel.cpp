@@ -106,6 +106,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 
 			m_boneCount = animationData->boneCount;
 			m_bonesBuffer.reset(Wolf::Buffer::createBuffer(m_boneCount * sizeof(glm::mat4), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+			m_bonesBuffer->setName("Animation bones (AnimatedModel::m_bonesBuffer)");
 
 			m_bonesInfoGPU.resize(m_boneCount);
 			m_bonesInfoCPU.resize(m_boneCount);
