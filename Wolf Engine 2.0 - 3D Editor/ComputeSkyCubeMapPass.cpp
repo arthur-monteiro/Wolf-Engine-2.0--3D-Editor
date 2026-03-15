@@ -65,6 +65,7 @@ void ComputeSkyCubeMapPass::record(const Wolf::RecordContext& context)
 
         if (m_framesCountToComputeFinished == 0)
         {
+            m_sphericalMapImage.release();
             m_onComputeFinishedCallback();
             m_framesCountToComputeFinished = -1;
         }

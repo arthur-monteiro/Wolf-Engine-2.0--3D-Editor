@@ -87,13 +87,25 @@ private:
 		[[nodiscard]] BufferPoolInstance allocate(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize) override;
 		void deallocate(const BufferPoolInstance& bufferPoolInstance) override;
 
+		void garbageCollect();
+
 		Wolf::ResourceNonOwner<Wolf::Buffer> getBuffer(const BufferPoolInstance& bufferPoolInstance) override;
 
 	private:
-		Wolf::ResourceUniqueOwner<Wolf::Buffer> m_buffer;
+		void allocateNewBuffer();
+
+		uint32_t m_poolSize;
+
+		struct OwningBuffer
+		{
+			Wolf::ResourceUniqueOwner<Wolf::Buffer> m_buffer;
+			uint32_t m_currentAllocatedOffset = 0;
+			uint32_t m_currentDeletedOffset = 0;
+
+			uint32_t m_activeAllocations = 0;
+		};
+		std::vector<OwningBuffer> m_buffers;
 		std::mutex m_mutex;
-		uint32_t m_currentAllocatedOffset = 0;
-		uint32_t m_currentDeletedOffset = 0;
 	};
 	Wolf::ResourceUniqueOwner<StagingBufferPool> m_stagingBufferPool;
 
