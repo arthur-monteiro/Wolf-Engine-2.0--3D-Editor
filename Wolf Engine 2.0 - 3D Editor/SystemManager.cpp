@@ -180,7 +180,7 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
 	wolfInstanceCreateInfo.m_pushDataToGPU = m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>();
 
-	wolfInstanceCreateInfo.m_meshBufferPoolSizes.resize(g_editorConfiguration->getEnableRayTracing() ? 6 : 5);
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes.resize(g_editorConfiguration->getEnableRayTracing() ? 7 : 6);
 
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_itemSize = sizeof(SkyBoxManager::VertexOnlyPosition); // Skybox only
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_minimumPoolSize = 512;
@@ -207,11 +207,15 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_minimumPoolSize = 268'435'456;
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalMeshFlags;
 
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_itemSize = sizeof(SkeletonVertex); // Animated mesh vertices
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_minimumPoolSize = 268'435'456;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalMeshFlags;
+
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
-		wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_itemSize = sizeof(uint32_t); // Mesh indices
-		wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_minimumPoolSize = 67'108'864;
-		wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalMeshFlags;
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_itemSize = sizeof(uint32_t); // Mesh indices
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_minimumPoolSize = 67'108'864;
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalMeshFlags;
 	}
 
 	m_wolfInstance.reset(new Wolf::WolfEngine(wolfInstanceCreateInfo));
