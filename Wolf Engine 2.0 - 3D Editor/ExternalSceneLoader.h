@@ -80,5 +80,5 @@ public:
         std::vector<InstanceData> m_instancesData;
     };
 
-    static void loadScene(OutputData& outputData, SceneLoadingInfo& sceneLoadingInfo, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
+    static void loadScene(OutputData& outputData, SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager);
 };

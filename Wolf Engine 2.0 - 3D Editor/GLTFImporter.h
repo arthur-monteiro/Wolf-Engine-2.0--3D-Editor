@@ -15,7 +15,7 @@ class AssetManager;
 class GLTFImporter
 {
 public:
-    GLTFImporter(ExternalSceneLoader::OutputData& outputData, const ExternalSceneLoader::SceneLoadingInfo& sceneLoadingInfo, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
+    GLTFImporter(ExternalSceneLoader::OutputData& outputData, const ExternalSceneLoader::SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager);
 
 private:
     struct LoadedRange

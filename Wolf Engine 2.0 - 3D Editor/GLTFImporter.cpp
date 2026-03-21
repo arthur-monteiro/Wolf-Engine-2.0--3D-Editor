@@ -20,7 +20,7 @@ bool nullLoadImageData(tinygltf::Image* image, const int image_idx, std::string*
     return true;
 }
 
-GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const ExternalSceneLoader::SceneLoadingInfo& sceneLoadingInfo, const Wolf::ResourceNonOwner<AssetManager>& assetManager)
+GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const ExternalSceneLoader::SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager)
 {
     Wolf::Timer loadingTimer("GLTFImporter loading");
 
