@@ -15,6 +15,7 @@
 #include "ImageFormatter.h"
 #include "MeshAssetEditor.h"
 #include "DefaultMeshRenderer.h"
+#include "ExternalSceneLoader.h"
 
 AssetManager* AssetManager::ms_assetManager;
 
@@ -44,6 +45,12 @@ void AssetManager::updateBeforeFrame()
 	{
 		Wolf::ResourceUniqueOwner<Image>& image = m_images[i];
 		image->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
+	}
+
+	for (uint32_t i = 0; i < m_externalScenes.size(); ++i)
+	{
+		Wolf::ResourceUniqueOwner<ExternalScene>& externalScene = m_externalScenes[i];
+		externalScene->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
 	}
 
 	if (m_currentAssetNeedRebuildFlags != 0)
@@ -265,208 +272,144 @@ bool AssetManager::isCombinedImage(AssetId assetId)
 	return assetId == NO_ASSET || (assetId >= COMBINED_IMAGE_ASSET_IDX_OFFSET && assetId < COMBINED_IMAGE_ASSET_IDX_OFFSET + MAX_COMBINED_IMAGE_ASSET_COUNT);
 }
 
+bool AssetManager::isScene(AssetId assetId)
+{
+	return assetId == NO_ASSET || (assetId >= EXTERNAL_SCENE_ASSET_IDX_OFFSET && assetId < EXTERNAL_SCENE_ASSET_IDX_OFFSET + MAX_EXTERNAL_SCENE_ASSET_COUNT);
+}
+
 AssetId AssetManager::addModel(const std::string& loadingPath)
 {
-	if (m_meshes.size() >= MAX_ASSET_RESOURCE_COUNT)
-	{
-		Wolf::Debug::sendError("Maximum mesh resources reached");
-		return NO_ASSET;
-	}
-
-	for (uint32_t i = 0; i < m_meshes.size(); ++i)
-	{
-		if (m_meshes[i]->getLoadingPath() == loadingPath)
-		{
-			return i + MESH_ASSET_IDX_OFFSET;
-		}
-	}
-
-	std::string iconFullPath = computeIconPath(loadingPath, 0);
-	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
-	uint32_t thumbnailsCount = 0;
-	while (iconFileExists)
-	{
-		thumbnailsCount++;
-
-		std::string nextIconFullPath = computeIconPath(loadingPath, thumbnailsCount);
-		iconFileExists = formatIconPath(loadingPath, nextIconFullPath);
-	}
-
-	iconFileExists = thumbnailsCount > 0;
-	if (thumbnailsCount > 1) // We need to replace the original with the latest one
-	{
-		std::string originalPath = computeIconPath(loadingPath, 0);
-		std::string latestPath = computeIconPath(loadingPath, thumbnailsCount - 1);
-
-		std::filesystem::remove(originalPath);
-		std::filesystem::rename(latestPath, originalPath);
-	}
-
-	AssetId resourceId = static_cast<uint32_t>(m_meshes.size()) + MESH_ASSET_IDX_OFFSET;
-
-	Mesh* newMesh = new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, m_bufferPoolInterface);
-	m_meshes.emplace_back(newMesh);
-	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath, resourceId);
-
-	std::string infoFilePath = g_editorConfiguration->computeFullPathFromLocalPath(loadingPath + ".info.json");
-	bool infoFileExists = false;
-	{
-		std::ifstream infoFile(infoFilePath);
-		if (infoFile.good())
-		{
-			infoFileExists = true;
-		}
-	}
-
-	if (infoFileExists)
-	{
-		Wolf::JSONReader::FileReadInfo fileReadInfo(infoFilePath);
-		Wolf::JSONReader infoJSON(fileReadInfo);
-
-		Wolf::JSONReader::JSONObjectInterface* thumbnailGenerationInfo = infoJSON.getRoot()->getPropertyObject("thumbnailGenerationInfo");
-		glm::mat4 viewMatrix;
-		for (glm::length_t i = 0; i < 4; ++i)
-		{
-			for (glm::length_t j = 0; j < 4; ++j)
-			{
-				viewMatrix[i][j] = thumbnailGenerationInfo->getPropertyFloat("viewMatrix" + std::to_string(i) + std::to_string(j));
-			}
-		}
-
-		newMesh->setThumbnailGenerationViewMatrix(viewMatrix);
-	}
-
-	return resourceId;
+	return addModelInternal(loadingPath);
 }
 
-bool AssetManager::isModelLoaded(AssetId modelResourceId) const
+bool AssetManager::isModelLoaded(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return modelResourceId != NO_ASSET && m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->isLoaded();
+	return modelAssetId != NO_ASSET && m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->isLoaded();
 }
 
-Wolf::ResourceNonOwner<Wolf::Mesh> AssetManager::getModelMesh(AssetId modelResourceId) const
+Wolf::ResourceNonOwner<Wolf::Mesh> AssetManager::getModelMesh(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getMesh();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getMesh();
 }
 
-bool AssetManager::isModelCentered(AssetId modelResourceId) const
+bool AssetManager::isModelCentered(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->isCentered();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->isCentered();
 }
 
-const std::vector<ModelData::LODInfo>& AssetManager::getModelDefaultLODInfo(AssetId modelResourceId) const
+const std::vector<ModelData::LODInfo>& AssetManager::getModelDefaultLODInfo(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getDefaultLODInfo();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getDefaultLODInfo();
 }
 
-const std::vector<ModelData::LODInfo>& AssetManager::getModelSloppyLODInfo(AssetId modelResourceId) const
+const std::vector<ModelData::LODInfo>& AssetManager::getModelSloppyLODInfo(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getSloppyLODInfo();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getSloppyLODInfo();
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::getModelDefaultSimplifiedIndexBuffers(AssetId modelResourceId) const
+std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::getModelDefaultSimplifiedIndexBuffers(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getDefaultSimplifiedIndexBuffers();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getDefaultSimplifiedIndexBuffers();
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::getModelSloppySimplifiedIndexBuffers(AssetId modelResourceId) const
+std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::getModelSloppySimplifiedIndexBuffers(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getSloppySimplifiedIndexBuffers();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getSloppySimplifiedIndexBuffers();
 }
 
-Wolf::ResourceNonOwner<AnimationData> AssetManager::getAnimationData(AssetId modelResourceId) const
+Wolf::ResourceNonOwner<AnimationData> AssetManager::getAnimationData(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getAnimationData();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getAnimationData();
 }
 
-Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::getBLAS(AssetId modelResourceId, uint32_t lod, uint32_t lodType)
+Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetManager::getBLAS(AssetId modelAssetId, uint32_t lod, uint32_t lodType)
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getBLAS(lod, lodType);
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getBLAS(lod, lodType);
 }
 
-std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& AssetManager::getPhysicsShapes(AssetId modelResourceId) const
+std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& AssetManager::getPhysicsShapes(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getPhysicsShapes();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getPhysicsShapes();
 }
 
-uint32_t AssetManager::getFirstMaterialIdx(AssetId modelResourceId) const
+uint32_t AssetManager::getFirstMaterialIdx(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getFirstMaterialIdx();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getFirstMaterialIdx();
 }
 
-uint32_t AssetManager::getFirstTextureSetIdx(AssetId modelResourceId) const
+uint32_t AssetManager::getFirstTextureSetIdx(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getFirstTextureSetIdx();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getFirstTextureSetIdx();
 }
 
-const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& AssetManager::getModelTextureSetInfo(AssetId modelResourceId) const
+const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& AssetManager::getModelTextureSetInfo(AssetId modelAssetId) const
 {
-	if (!isMesh(modelResourceId))
+	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelResourceId - MESH_ASSET_IDX_OFFSET]->getTextureSetInfo();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getTextureSetInfo();
 }
 
 void AssetManager::subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const
@@ -642,6 +585,234 @@ std::string AssetManager::getCombinedImageSlicesFolder(AssetId combinedImageAsse
 	return m_combinedImages[combinedImageAssetId - COMBINED_IMAGE_ASSET_IDX_OFFSET]->getSlicesFolder();
 }
 
+AssetId AssetManager::addExternalScene(const std::string& loadingPath)
+{
+	if (m_externalScenes.size() >= MAX_EXTERNAL_SCENE_ASSET_COUNT)
+	{
+		Wolf::Debug::sendError("Maximum external scene assets reached");
+		return NO_ASSET;
+	}
+
+	for (uint32_t i = 0; i < m_externalScenes.size(); ++i)
+	{
+		if (m_externalScenes[i]->getLoadingPath() == loadingPath)
+		{
+			return i + EXTERNAL_SCENE_ASSET_IDX_OFFSET;
+		}
+	}
+
+	std::string iconFullPath = computeIconPath(loadingPath, 0);
+	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+	uint32_t thumbnailsCount = 0;
+	while (iconFileExists)
+	{
+		thumbnailsCount++;
+
+		std::string nextIconFullPath = computeIconPath(loadingPath, thumbnailsCount);
+		iconFileExists = formatIconPath(loadingPath, nextIconFullPath);
+	}
+
+	iconFileExists = thumbnailsCount > 0;
+	if (thumbnailsCount > 1) // We need to replace the original with the latest one
+	{
+		std::string originalPath = computeIconPath(loadingPath, 0);
+		std::string latestPath = computeIconPath(loadingPath, thumbnailsCount - 1);
+
+		std::filesystem::remove(originalPath);
+		std::filesystem::rename(latestPath, originalPath);
+	}
+
+	AssetId resourceId = static_cast<uint32_t>(m_externalScenes.size()) + EXTERNAL_SCENE_ASSET_IDX_OFFSET;
+
+	ExternalScene* newExternalScene = new ExternalScene(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, m_bufferPoolInterface);
+	m_externalScenes.emplace_back(newExternalScene);
+	m_addResourceToUICallback(m_externalScenes.back()->computeName(), iconFullPath, resourceId);
+
+	std::string infoFilePath = g_editorConfiguration->computeFullPathFromLocalPath(loadingPath + ".info.json");
+	bool infoFileExists = false;
+	{
+		std::ifstream infoFile(infoFilePath);
+		if (infoFile.good())
+		{
+			infoFileExists = true;
+		}
+	}
+
+	if (infoFileExists)
+	{
+		Wolf::JSONReader::FileReadInfo fileReadInfo(infoFilePath);
+		Wolf::JSONReader infoJSON(fileReadInfo);
+
+		Wolf::JSONReader::JSONObjectInterface* thumbnailGenerationInfo = infoJSON.getRoot()->getPropertyObject("thumbnailGenerationInfo");
+		glm::mat4 viewMatrix;
+		for (glm::length_t i = 0; i < 4; ++i)
+		{
+			for (glm::length_t j = 0; j < 4; ++j)
+			{
+				viewMatrix[i][j] = thumbnailGenerationInfo->getPropertyFloat("viewMatrix" + std::to_string(i) + std::to_string(j));
+			}
+		}
+
+		newExternalScene->setThumbnailGenerationViewMatrix(viewMatrix);
+	}
+
+	return resourceId;
+}
+
+bool AssetManager::isSceneLoaded(AssetId sceneAssetId) const
+{
+	if (!isScene(sceneAssetId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a scene");
+	}
+
+	return sceneAssetId != NO_ASSET && m_externalScenes[sceneAssetId - EXTERNAL_SCENE_ASSET_IDX_OFFSET]->isLoaded();
+}
+
+Wolf::AABB AssetManager::getSceneAABB(AssetId sceneAssetId) const
+{
+	if (!isScene(sceneAssetId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a scene");
+		return Wolf::AABB();
+	}
+
+	if (sceneAssetId == NO_ASSET)
+	{
+		Wolf::Debug::sendError("Invalid asset ID");
+		return Wolf::AABB();
+	}
+
+	return m_externalScenes[sceneAssetId - EXTERNAL_SCENE_ASSET_IDX_OFFSET]->getAABB();
+}
+
+uint32_t AssetManager::getSceneFirstMaterialIdx(AssetId sceneAssetId) const
+{
+	if (!isScene(sceneAssetId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a scene");
+	}
+
+	if (sceneAssetId == NO_ASSET)
+	{
+		Wolf::Debug::sendError("Invalid asset ID");
+	}
+
+	return m_externalScenes[sceneAssetId - EXTERNAL_SCENE_ASSET_IDX_OFFSET]->getFirstMaterialIdx();
+}
+
+const std::vector<AssetId>& AssetManager::getSceneModelAssetIds(AssetId sceneAssetId) const
+{
+	if (!isScene(sceneAssetId))
+	{
+		Wolf::Debug::sendCriticalError("ResourceId is not a scene");
+	}
+
+	if (sceneAssetId == NO_ASSET)
+	{
+		Wolf::Debug::sendCriticalError("Invalid asset ID");
+	}
+
+	return m_externalScenes[sceneAssetId - EXTERNAL_SCENE_ASSET_IDX_OFFSET]->getModelAssetIds();
+}
+
+const std::vector<ExternalSceneLoader::InstanceData>& AssetManager::getSceneInstances(AssetId sceneAssetId) const
+{
+	if (!isScene(sceneAssetId))
+	{
+		Wolf::Debug::sendCriticalError("ResourceId is not a scene");
+	}
+
+	if (sceneAssetId == NO_ASSET)
+	{
+		Wolf::Debug::sendCriticalError("Invalid asset ID");
+	}
+
+	return m_externalScenes[sceneAssetId - EXTERNAL_SCENE_ASSET_IDX_OFFSET]->getInstances();
+}
+
+AssetId AssetManager::addModel(const Wolf::BufferPoolInterface::BufferPoolInstance& vertexBufferPoolInstance, const std::vector<uint32_t>& indices, const std::string& name, const Wolf::AABB& aabb,
+	const Wolf::BoundingSphere& boundingSphere, uint32_t materialIdx)
+{
+	return addModelInternal(name, vertexBufferPoolInstance, indices, aabb, boundingSphere, materialIdx);
+}
+
+AssetId AssetManager::addModelInternal(const std::string& loadingPath, const Wolf::BufferPoolInterface::BufferPoolInstance& overrideVertexBufferPoolInstance, const std::vector<uint32_t>& overrideIndices,
+	const Wolf::AABB& overrideAABB, const Wolf::BoundingSphere& overrideBoundingSphere, uint32_t overrideMaterialIdx)
+{
+	if (m_meshes.size() >= MAX_ASSET_RESOURCE_COUNT)
+	{
+		Wolf::Debug::sendError("Maximum mesh resources reached");
+		return NO_ASSET;
+	}
+
+	for (uint32_t i = 0; i < m_meshes.size(); ++i)
+	{
+		if (m_meshes[i]->getLoadingPath() == loadingPath)
+		{
+			return i + MESH_ASSET_IDX_OFFSET;
+		}
+	}
+
+	std::string iconFullPath = computeIconPath(loadingPath, 0);
+	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+	uint32_t thumbnailsCount = 0;
+	while (iconFileExists)
+	{
+		thumbnailsCount++;
+
+		std::string nextIconFullPath = computeIconPath(loadingPath, thumbnailsCount);
+		iconFileExists = formatIconPath(loadingPath, nextIconFullPath);
+	}
+
+	iconFileExists = thumbnailsCount > 0;
+	if (thumbnailsCount > 1) // We need to replace the original with the latest one
+	{
+		std::string originalPath = computeIconPath(loadingPath, 0);
+		std::string latestPath = computeIconPath(loadingPath, thumbnailsCount - 1);
+
+		std::filesystem::remove(originalPath);
+		std::filesystem::rename(latestPath, originalPath);
+	}
+
+	AssetId resourceId = static_cast<uint32_t>(m_meshes.size()) + MESH_ASSET_IDX_OFFSET;
+
+	Mesh* newMesh = new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, m_bufferPoolInterface, overrideVertexBufferPoolInstance, overrideIndices, overrideAABB,
+		overrideBoundingSphere, overrideMaterialIdx);
+	m_meshes.emplace_back(newMesh);
+	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath, resourceId);
+
+	std::string infoFilePath = g_editorConfiguration->computeFullPathFromLocalPath(loadingPath + ".info.json");
+	bool infoFileExists = false;
+	{
+		std::ifstream infoFile(infoFilePath);
+		if (infoFile.good())
+		{
+			infoFileExists = true;
+		}
+	}
+
+	if (infoFileExists)
+	{
+		Wolf::JSONReader::FileReadInfo fileReadInfo(infoFilePath);
+		Wolf::JSONReader infoJSON(fileReadInfo);
+
+		Wolf::JSONReader::JSONObjectInterface* thumbnailGenerationInfo = infoJSON.getRoot()->getPropertyObject("thumbnailGenerationInfo");
+		glm::mat4 viewMatrix;
+		for (glm::length_t i = 0; i < 4; ++i)
+		{
+			for (glm::length_t j = 0; j < 4; ++j)
+			{
+				viewMatrix[i][j] = thumbnailGenerationInfo->getPropertyFloat("viewMatrix" + std::to_string(i) + std::to_string(j));
+			}
+		}
+
+		newMesh->setThumbnailGenerationViewMatrix(viewMatrix);
+	}
+
+	return resourceId;
+}
+
 std::string AssetManager::computeModelFullIdentifier(const std::string& loadingPath)
 {
 	std::string modelFullIdentifier;
@@ -790,9 +961,11 @@ void AssetManager::AssetInterface::onChanged()
 	notifySubscribers();
 }
 
-AssetManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId resourceId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-	: AssetInterface(loadingPath, resourceId, updateResourceInUICallback), m_bufferPoolInterface(bufferPoolInterface)
+AssetManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::BufferPoolInterface::BufferPoolInstance& overrideVertexBufferPoolInstance,
+	const std::vector<uint32_t>& overrideIndices, const Wolf::AABB& overrideAABB, const Wolf::BoundingSphere& overrideBoundingSphere, uint32_t overrideMaterialIdx)
+: AssetInterface(loadingPath, assetId, updateResourceInUICallback), m_bufferPoolInterface(bufferPoolInterface), m_overrideVertexBufferPoolInstance(overrideVertexBufferPoolInstance),
+  m_overrideIndices(overrideIndices), m_overrideAABB(overrideAABB), m_overrideBoundingSphere(overrideBoundingSphere), m_overrideMaterialIdx(overrideMaterialIdx)
 {
 	m_modelLoadingRequested = true;
 	m_thumbnailGenerationRequested = !g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration;
@@ -851,7 +1024,6 @@ void AssetManager::Mesh::dump(std::ofstream& outputJSON, uint32_t tabCount, cons
 	ModelLoadingInfo modelLoadingInfo;
 	modelLoadingInfo.filename = m_loadingPath;
 	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('/'));
-	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.textureSetLayout = TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
 	modelLoadingInfo.generateDefaultLODCount = 8;
 	modelLoadingInfo.generateSloppyLODCount= 16;
@@ -941,10 +1113,21 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 {
 	Wolf::Timer timer(std::string(m_loadingPath) + " loading");
 
+	if (m_overrideVertexBufferPoolInstance.m_bufferSize == 0)
+	{
+		loadModelFromFile(materialsGPUManager);
+	}
+	else
+	{
+		loadModelFromData(materialsGPUManager);
+	}
+}
+
+void AssetManager::Mesh::loadModelFromFile(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
+{
 	ModelLoadingInfo modelLoadingInfo;
 	modelLoadingInfo.filename = m_loadingPath;
 	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('/'));
-	modelLoadingInfo.vulkanQueueLock = nullptr;
 	modelLoadingInfo.textureSetLayout = TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
 	modelLoadingInfo.generateDefaultLODCount = 8;
 	modelLoadingInfo.generateSloppyLODCount= 16;
@@ -1032,10 +1215,30 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 
 	m_textureSetInfo = modelData.m_textureSets;
 
-	Wolf::AABB entityAABB = modelData.m_aabb;
-	float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
-	glm::vec3 position = entityAABB.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight);
-	glm::vec3 target = entityAABB.getCenter();
+	computeThumbnailGenerationViewMatrix(modelData.m_aabb);
+}
+
+void AssetManager::Mesh::loadModelFromData(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
+{
+	VkBufferUsageFlags additionalFlags = 0;
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	}
+
+	m_mesh.reset(new Wolf::Mesh(m_bufferPoolInterface, m_overrideVertexBufferPoolInstance, m_overrideVertexBufferPoolInstance.m_bufferSize / sizeof(Vertex3D), sizeof(Vertex3D),
+		m_overrideIndices, m_overrideAABB, m_overrideBoundingSphere, additionalFlags));
+
+	m_firstMaterialIdx = m_overrideMaterialIdx;
+
+	computeThumbnailGenerationViewMatrix(m_overrideAABB);
+}
+
+void AssetManager::Mesh::computeThumbnailGenerationViewMatrix(const Wolf::AABB& aabb)
+{
+	float entityHeight = aabb.getMax().y - aabb.getMin().y;
+	glm::vec3 position = aabb.getCenter() + glm::vec3(-entityHeight, entityHeight, -entityHeight);
+	glm::vec3 target = aabb.getCenter();
 	m_thumbnailGenerationViewMatrix = glm::lookAt(position, target, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
@@ -1501,4 +1704,120 @@ void AssetManager::CombinedImage::loadImage()
 			deleteImageData();
 		}
 	}
+}
+
+AssetManager::ExternalScene::ExternalScene(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId,
+	const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+: AssetInterface(loadingPath, assetId, updateResourceInUICallback), m_bufferPoolInterface(bufferPoolInterface)
+{
+	m_loadingRequested = true;
+}
+
+void AssetManager::ExternalScene::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+{
+	if (m_loadingRequested)
+	{
+		loadScene(materialsGPUManager);
+		m_loadingRequested = false;
+	}
+	if (m_thumbnailGenerationRequested)
+	{
+		generateThumbnail(thumbnailsGenerationPass);
+		m_thumbnailGenerationRequested = false;
+	}
+}
+
+void AssetManager::ExternalScene::dump(std::ofstream& outputJSON, uint32_t tabCount, const std::string& folderPath)
+{
+	AssetInterface::dump(outputJSON, tabCount, folderPath);
+
+	// TODO
+}
+
+bool AssetManager::ExternalScene::isLoaded() const
+{
+	// TODO
+	return true;
+}
+
+const Wolf::AABB& AssetManager::ExternalScene::getAABB()
+{
+	return m_aabb;
+}
+
+void AssetManager::ExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
+{
+	ExternalSceneLoader::SceneLoadingInfo sceneLoadingInfo;
+	sceneLoadingInfo.filename = m_loadingPath;
+
+	ExternalSceneLoader::OutputData outputData{};
+	ExternalSceneLoader::loadScene(outputData, sceneLoadingInfo, ms_assetManager);
+
+	/* Add materials */
+	materialsGPUManager->lockMaterials();
+	materialsGPUManager->lockTextureSets();
+
+	uint32_t firstTextureSetIdx = materialsGPUManager->getCurrentTextureSetCount();
+	m_firstMaterialIdx = materialsGPUManager->getCurrentMaterialCount();
+	for (const ExternalSceneLoader::MaterialData& materialData : outputData.m_materialsData)
+	{
+		materialsGPUManager->addNewTextureSet(materialData.m_textureSet);
+
+		Wolf::MaterialsGPUManager::MaterialInfo materialInfo;
+		materialInfo.textureSetInfos[0].textureSetIdx = materialsGPUManager->getTextureSetsCacheInfo().back().textureSetIdx;
+		materialsGPUManager->addNewMaterial(materialInfo);
+	}
+	materialsGPUManager->unlockTextureSets();
+	materialsGPUManager->unlockMaterials();
+
+	/* Add meshes */
+	VkBufferUsageFlags additionalFlags = 0;
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	}
+	m_vertexBufferPoolInstance = m_bufferPoolInterface->allocate(outputData.m_vertexData.m_staticVertices.size() * sizeof(outputData.m_vertexData.m_staticVertices[0]),
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalFlags, sizeof(outputData.m_vertexData.m_staticVertices[0]));
+	m_bufferPoolInterface->getBuffer(m_vertexBufferPoolInstance)->transferCPUMemoryWithStagingBuffer(outputData.m_vertexData.m_staticVertices.data(),
+		sizeof(outputData.m_vertexData.m_staticVertices[0]) * outputData.m_vertexData.m_staticVertices.size(), 0, m_vertexBufferPoolInstance.m_bufferOffset);
+
+	m_modelAssetIds.reserve(outputData.m_meshesData.size());
+	glm::vec3 sceneAABBMin(1000.0), sceneAABBMax(-1000.0f);
+	for (uint32_t meshIdx = 0; meshIdx < outputData.m_meshesData.size(); meshIdx++)
+	{
+		ExternalSceneLoader::MeshData& meshData = outputData.m_meshesData[meshIdx];
+
+		sceneAABBMin = glm::min(meshData.m_aabb.getMin(), sceneAABBMin);
+		sceneAABBMax = glm::max(meshData.m_aabb.getMax(), sceneAABBMax);
+
+		uint32_t materialIdx = -1;
+		for (uint32_t instanceIdx = 0; instanceIdx < outputData.m_instancesData.size(); ++instanceIdx)
+		{
+			ExternalSceneLoader::InstanceData& instanceData = outputData.m_instancesData[instanceIdx];
+			if (instanceData.m_meshIdx == meshIdx)
+			{
+				materialIdx = m_firstMaterialIdx + instanceData.m_materialIdx;
+				break;
+			}
+		}
+
+		if (materialIdx == -1)
+		{
+			Wolf::Debug::sendCriticalError("No instance has been found for this mesh");
+		}
+
+		Wolf::BufferPoolInterface::BufferPoolInstance vertexBufferPoolInstance = m_vertexBufferPoolInstance;
+		vertexBufferPoolInstance.m_bufferOffset += (meshData.m_vertexOffset * sizeof(Vertex3D));
+		vertexBufferPoolInstance.m_bufferSize -= (meshData.m_vertexOffset * sizeof(Vertex3D));
+		m_modelAssetIds.push_back(ms_assetManager->addModel(vertexBufferPoolInstance, meshData.m_indices, m_loadingPath + "_mesh_" + meshData.m_name + "_" + std::to_string(meshIdx),
+			meshData.m_aabb, meshData.m_boundingSphere, materialIdx));
+	}
+
+	m_aabb = Wolf::AABB(sceneAABBMin, sceneAABBMax);
+	m_instances = outputData.m_instancesData;
+}
+
+void AssetManager::ExternalScene::generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+{
+	// TODO
 }

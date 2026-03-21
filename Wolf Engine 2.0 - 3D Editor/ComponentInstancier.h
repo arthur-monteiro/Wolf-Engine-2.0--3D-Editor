@@ -14,6 +14,7 @@
 #include "ContaminationReceiver.h"
 #include "EditorConfiguration.h"
 #include "EntityContainer.h"
+#include "ExternalSceneComponent.h"
 #include "GasCylinderComponent.h"
 #include "MaterialComponent.h"
 #include "TextureSetComponent.h"
@@ -57,7 +58,7 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 16> m_componentsInfo =
+	std::array<ComponentInfo, 17> m_componentsInfo =
 	{
 		ComponentInfo
 		{
@@ -202,6 +203,15 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new SurfaceCoatingEmitterComponent(m_renderingPipeline, m_assetManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+			}
+		},
+		ComponentInfo
+		{
+			"External scene",
+			ExternalSceneComponent::ID,
+			[this]()
+			{
+				return static_cast<ComponentInterface*>(new ExternalSceneComponent(m_assetManager));
 			}
 		}
 	};

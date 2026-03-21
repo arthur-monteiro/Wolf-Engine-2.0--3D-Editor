@@ -37,8 +37,6 @@ public:
 	glm::mat3 computeRotationMatrix() const;
 	void setPosition(const glm::vec3& newPosition) { m_translationParam = newPosition; }
 	void setRotation(const glm::vec3& newRotation) { m_rotationParam = newRotation; }
-	
-	virtual std::string getTypeString() = 0;
 
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;

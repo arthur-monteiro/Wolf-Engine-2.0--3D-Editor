@@ -3,10 +3,8 @@
 #include <string>
 
 #include "AssetId.h"
-#include "Image.h"
 #include "ImageCompression.h"
 #include "MaterialsGPUManager.h"
-#include "ResourceNonOwner.h"
 #include "ResourceReference.h"
 
 class AssetManager;

@@ -347,6 +347,9 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 		case ParamStringType::FILE_IMG: 
 			out += "img";
 			break;
+		case ParamStringType::FILE_EXTERNAL_SCENE:
+			out += "externalScene";
+			break;
 		case ParamStringType::ENTITY: break;
 	}
 	out += "\",\n";
@@ -363,6 +366,7 @@ EditorParamInterface::Type EditorParamString::stringTypeToParamType(ParamStringT
 		case ParamStringType::FILE_OBJ:
 		case ParamStringType::FILE_IMG:
 		case ParamStringType::FILE_DAE:
+		case ParamStringType::FILE_EXTERNAL_SCENE:
 			return Type::FILE;
 		case ParamStringType::ENTITY:
 			return Type::ENTITY;

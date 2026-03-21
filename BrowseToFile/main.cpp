@@ -2,7 +2,7 @@
 #include <string>
 
 enum class BrowseToFileOption { FILE_OPEN, FILE_SAVE };
-enum class BrowseToFileFilter { SAVE, OBJ, DAE, IMG, EXPORT_EXE };
+enum class BrowseToFileFilter { SAVE, OBJ, DAE, EXTERNAL_SCENE, IMG, EXPORT_EXE };
 
 #if defined(WIN32)
 #include <shtypes.h>
@@ -28,6 +28,9 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
 		break;
 	case BrowseToFileFilter::DAE:
 		ofn.lpstrFilter = "Animated model (DAE)\0*.dae\0";
+		break;
+	case BrowseToFileFilter::EXTERNAL_SCENE:
+		ofn.lpstrFilter = "External scene\0*.gltf\0";
 		break;
 	case BrowseToFileFilter::IMG:
 		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga;*.dds;*.hdr;*.cube\0";
@@ -86,6 +89,10 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
         gtk_file_filter_set_name(gtk_filter, "Animated model (DAE)");
         gtk_file_filter_add_pattern(gtk_filter, "*.dae");
         break;
+    case BrowseToFileFilter::EXTERNAL_SCENE:
+    	gtk_file_filter_set_name(gtk_filter, "External scene");
+    	gtk_file_filter_add_pattern(gtk_filter, "*.gltf");
+    	break;
     case BrowseToFileFilter::IMG:
         gtk_file_filter_set_name(gtk_filter, "Image");
         gtk_file_filter_add_pattern(gtk_filter, "*.jpg");
@@ -145,6 +152,8 @@ int main(int argc, char** argv)
 		browseToFileFilter = BrowseToFileFilter::DAE;
 	else if (inputFilter == "img")
 		browseToFileFilter = BrowseToFileFilter::IMG;
+	else if (inputFilter == "externalScene")
+		browseToFileFilter = BrowseToFileFilter::EXTERNAL_SCENE;
 	else if (inputFilter == "exportExe")
 	{
 		browseToFileFilter = BrowseToFileFilter::EXPORT_EXE;

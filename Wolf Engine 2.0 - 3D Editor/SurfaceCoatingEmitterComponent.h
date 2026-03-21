@@ -35,7 +35,6 @@ public:
 
     Wolf::AABB getAABB() const override;
     Wolf::BoundingSphere getBoundingSphere() const override;
-    std::string getTypeString() override { return "surfaceCoating"; }
 
     [[nodiscard]] Wolf::ResourceNonOwner<Wolf::Image> getDepthImage();
     [[nodiscard]] Wolf::ResourceNonOwner<Wolf::Image> getPatchBoundsImage();

@@ -199,7 +199,7 @@ private:
 class EditorParamString : public EditorParamInterface
 {
 public:
-	enum class ParamStringType { STRING, FILE_OBJ, FILE_IMG, ENTITY, FILE_DAE };
+	enum class ParamStringType { STRING, FILE_OBJ, FILE_IMG, FILE_EXTERNAL_SCENE, ENTITY, FILE_DAE };
 	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false, bool isReadOnly = false)
 		: EditorParamInterface(stringTypeToParamType(stringType), name, tab, category, isActivable, isReadOnly), m_stringType(stringType), m_drivesCategoryName(drivesCategoryName) {}
 	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false)

@@ -102,6 +102,8 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 	// Color Blend
 	pipelineCreateInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::TRANS_ALPHA };
 
+	pipelineCreateInfo.cullModeFlags = Wolf::CullModeFlagBits::NONE;
+
 	m_staticPipeline.reset(Wolf::Pipeline::createRenderingPipeline(pipelineCreateInfo));
 
 	/* Animated pipeline */

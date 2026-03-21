@@ -18,6 +18,7 @@
 #include "JSONReader.h"
 #include "TextureSetLoader.h"
 #include "MaterialsGPUManager.h"
+#include "GLTFImporter.h"
 
 inline void writeStringToCache(const std::string& str, std::fstream& outCacheFile)
 {
@@ -255,8 +256,7 @@ ModelLoader::ModelLoader(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 	}
 
 	m_outputModel->m_aabb = Wolf::AABB(minPos, maxPos);
-	float maxDistanceFromCenter = std::max(glm::distance(m_outputModel->m_aabb.getCenter(), m_outputModel->m_aabb.getMin()), glm::distance(m_outputModel->m_aabb.getCenter(), m_outputModel->m_aabb.getMax()));
-	m_outputModel->m_boundingSphere = Wolf::BoundingSphere(m_outputModel->m_aabb.getCenter(), maxDistanceFromCenter);
+	m_outputModel->m_boundingSphere = Wolf::BoundingSphere(m_outputModel->m_aabb);
 
 	std::array<Vertex3D, 3> tempTriangle{};
 	for (size_t i(0); i <= m_outputModel->m_indices.size(); ++i)
@@ -571,9 +571,6 @@ bool ModelLoader::loadCache(ModelLoadingInfo& modelLoadingInfo)
 		input.read(reinterpret_cast<char*>(&textureSetCount), sizeof(textureSetCount));
 		m_outputModel->m_textureSets.resize(textureSetCount);
 
-		if (modelLoadingInfo.vulkanQueueLock)
-			modelLoadingInfo.vulkanQueueLock->lock();
-
 		for (uint32_t textureSetIdx(0); textureSetIdx < textureSetCount; ++textureSetIdx)
 		{
 			TextureSetLoader::TextureSetFileInfoGGX textureSetFileInfoGGX;
@@ -641,9 +638,6 @@ bool ModelLoader::loadCache(ModelLoadingInfo& modelLoadingInfo)
 
 			input.read(reinterpret_cast<char*>(&m_outputModel->m_sloppyLODsInfo[lodIdx]), sizeof(ModelData::LODInfo));
 		}
-
-		if (modelLoadingInfo.vulkanQueueLock)
-			modelLoadingInfo.vulkanQueueLock->unlock();
 
 		return true;
 	}

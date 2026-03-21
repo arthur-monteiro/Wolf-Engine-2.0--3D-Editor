@@ -29,7 +29,6 @@ public:
 
 	Wolf::AABB getAABB() const override;
 	Wolf::BoundingSphere getBoundingSphere() const override;
-	std::string getTypeString() override { return ID; }
 
 	void saveCustom() const override {}
 

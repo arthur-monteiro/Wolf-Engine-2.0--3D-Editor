@@ -32,14 +32,13 @@ public:
 
 	Wolf::AABB getAABB() const override;
 	Wolf::BoundingSphere getBoundingSphere() const override;
-	std::string getTypeString() override { return "staticMesh"; }
 
 	void saveCustom() const override {}
 
 private:
 	inline static const std::string TAB = "Model";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
+	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	AssetId m_modelAssetId = NO_ASSET;
