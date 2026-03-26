@@ -51,6 +51,7 @@ public:
 	uint32_t getFirstMaterialIdx(AssetId modelAssetId) const;
 	uint32_t getFirstTextureSetIdx(AssetId modelAssetId) const;
 	const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& getModelTextureSetInfo(AssetId modelAssetId) const;
+	std::string computeModelName(AssetId modelAssetId) const;
 	void subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
 	[[nodiscard]] AssetId addImage(const std::string& loadingPath, bool loadMips, Wolf::Format format, bool keepDataOnCPU, bool canBeVirtualized, bool forceImmediateLoading = false);

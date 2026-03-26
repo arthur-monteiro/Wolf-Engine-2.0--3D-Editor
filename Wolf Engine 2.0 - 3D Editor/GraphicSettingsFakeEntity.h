@@ -17,7 +17,7 @@ public:
     void save() const override;
 
     const std::string& getName() const override { return m_name; }
-    std::string computeEscapedLoadingPath() const override { return "materialsListId"; }
+    std::string computeEscapedLoadingPath() const override { return "graphicSettingsId"; }
     bool isFake() const override { return true; }
 
 private:

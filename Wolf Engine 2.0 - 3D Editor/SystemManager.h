@@ -29,7 +29,7 @@ private:
 	void updateBeforeFrame();
 
 	void loadScene();
-	Entity* addEntity(const std::string& filePath);
+	Entity* addEntity(const std::string& filePath, const std::string& parentFilePath = "");
 	void duplicateEntity(const Wolf::ResourceNonOwner<Entity>& entityToDuplicate, const std::string& filePath);
 	void addComponent(const std::string& componentId);
 
@@ -116,6 +116,7 @@ private:
 	std::unique_ptr<EditorParams> m_editorParams;
 
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_selectedEntity;
 	std::mutex m_entityChangedMutex;
 	bool m_entityChanged = false;

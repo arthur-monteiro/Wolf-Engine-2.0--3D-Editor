@@ -13,7 +13,7 @@ public:
 	static inline std::string ID = "contaminationMaterial";
 	std::string getId() const override { return ID; }
 
-	ContaminationMaterial(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+	ContaminationMaterial(const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 	ContaminationMaterial(const ContaminationMaterial&) = delete;
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -34,7 +34,7 @@ public:
 
 private:
 	inline static const std::string TAB = "Contamination material";
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_materialEntity;
 	void onMaterialEntityChanged();

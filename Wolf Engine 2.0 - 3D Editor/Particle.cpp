@@ -5,7 +5,7 @@
 #include "MaterialComponent.h"
 
 Particle::Particle(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
-                   const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback) :
+                   const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback) :
 	m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_flipBookSizeX = 1;

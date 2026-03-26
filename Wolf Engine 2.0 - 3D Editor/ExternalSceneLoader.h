@@ -62,6 +62,8 @@ public:
     struct MaterialData
     {
         Wolf::MaterialsGPUManager::TextureSetInfo m_textureSet;
+
+        TextureSetLoader::TextureSetFileInfoGGX m_textureSetFileInfo;
     };
 
     struct InstanceData
@@ -81,4 +83,74 @@ public:
     };
 
     static void loadScene(OutputData& outputData, SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager);
+
+    template<typename T>
+    static void writeVector(std::ofstream& file, const std::vector<T>& vec)
+    {
+        uint32_t size = static_cast<uint32_t>(vec.size());
+        file.write(reinterpret_cast<const char*>(&size), sizeof(uint32_t));
+        if (size > 0)
+        {
+            file.write(reinterpret_cast<const char*>(vec.data()), size * sizeof(T));
+        }
+    }
+
+    static void writeString(std::ofstream& file, const std::string& str)
+    {
+        uint32_t size = static_cast<uint32_t>(str.size());
+        file.write(reinterpret_cast<const char*>(&size), sizeof(uint32_t));
+        file.write(str.data(), size);
+    }
+
+    static void writeLODData(std::ofstream& file, const std::vector<std::vector<uint32_t>>& allIndices, const std::vector<MeshData::LODInfo>& info)
+    {
+        writeVector(file, info);
+
+        uint32_t lodCount = static_cast<uint32_t>(allIndices.size());
+        file.write(reinterpret_cast<const char*>(&lodCount), sizeof(uint32_t));
+        for (const std::vector<uint32_t>& indices : allIndices)
+        {
+            writeVector(file, indices);
+        }
+    }
+    static void writeCache(const std::string& filename, const OutputData& data);
+
+private:
+    template<typename T>
+    static void readVector(std::ifstream& file, std::vector<T>& vec)
+    {
+        uint32_t size = 0;
+        file.read(reinterpret_cast<char*>(&size), sizeof(uint32_t));
+        vec.resize(size);
+        if (size > 0)
+        {
+            file.read(reinterpret_cast<char*>(vec.data()), size * sizeof(T));
+        }
+    }
+
+    static void readString(std::ifstream& file, std::string& str)
+    {
+        uint32_t size = 0;
+        file.read(reinterpret_cast<char*>(&size), sizeof(uint32_t));
+        str.resize(size);
+        if (size > 0)
+        {
+            file.read(&str[0], size);
+        }
+    }
+
+    static void readLODData(std::ifstream& file, std::vector<std::vector<uint32_t>>& allIndices, std::vector<MeshData::LODInfo>& info)
+    {
+        readVector(file, info);
+
+        uint32_t lodCount = 0;
+        file.read(reinterpret_cast<char*>(&lodCount), sizeof(uint32_t));
+        allIndices.resize(lodCount);
+        for (std::vector<uint32_t>& indices : allIndices)
+        {
+            readVector(file, indices);
+        }
+    }
+
+    static void loadCache(const std::string& filename, OutputData& outData, AssetManager* assetManager);
 };

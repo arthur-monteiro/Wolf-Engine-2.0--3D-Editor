@@ -46,6 +46,7 @@ public:
 	virtual void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) = 0;
 	
 	virtual std::string getId() const = 0;
+	Entity* getEntity() const { return m_entity; }
 
 	virtual void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) = 0;
 	virtual void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) = 0;

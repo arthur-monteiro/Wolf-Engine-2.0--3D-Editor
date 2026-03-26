@@ -10,7 +10,9 @@ public:
     static inline std::string ID = "externalSceneComponent";
     std::string getId() const override { return ID; }
 
-    ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager);
+    ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityCallback,
+        const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+        const std::function<void(ComponentInterface*)>& requestReloadCallback);
 
     void loadParams(Wolf::JSONReader& jsonReader) override;
     void activateParams() override;
@@ -22,9 +24,9 @@ public:
 
     void saveCustom() const override {}
 
-    bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override;
-    bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) override;
-    bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos) override;
+    bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override { return true; }
+    bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) override { return true; }
+    bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos) override { return true; }
 
     Wolf::AABB getAABB() const override;
     Wolf::BoundingSphere getBoundingSphere() const override;
@@ -35,6 +37,10 @@ private:
     inline static const std::string TAB = "Scene";
 
     Wolf::ResourceNonOwner<AssetManager> m_assetManager;
+    std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityCallback;
+    std::function<Entity*(ComponentInterface*, const std::string&)> m_createEntityCallback;
+    Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
+    std::function<void(ComponentInterface*)> m_requestReloadCallback;
 
     bool m_isWaitingForSceneLoading = false;
     void requestSceneLoading();
@@ -46,7 +52,4 @@ private:
     };
 
     AssetId m_sceneAssetId = NO_ASSET;
-
-    // TEMP
-    std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, ExternalSceneComponent>> m_defaultPipelineSet;
 };

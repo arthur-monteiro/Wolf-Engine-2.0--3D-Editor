@@ -4,7 +4,7 @@
 #include "Entity.h"
 #include "ParticleUpdatePass.h"
 
-ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback) :
+ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback) :
 	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_customDepthPass(renderingPipeline->getCustomRenderPass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_requestReloadCallback = requestReloadCallback;

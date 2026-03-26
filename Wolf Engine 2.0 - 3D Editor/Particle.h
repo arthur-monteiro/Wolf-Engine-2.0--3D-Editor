@@ -12,7 +12,7 @@ public:
 	std::string getId() const override { return ID; }
 
 	Particle(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, 
-		const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -32,7 +32,7 @@ private:
 	inline static const std::string TAB = "Particle";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_materialEntity;
 	void onMaterialEntityChanged();

@@ -463,24 +463,58 @@
 			selectEntityByName(entityName);
 	}
 
-	function addEntityToList(name, path, isFake = false) {
-		let entityTypeStr = "";
-		if (isFake)
-			entityTypeStr = "Fake";
-		else 
-			entityTypeStr = "Entity";
+	function resetEntityList() 
+	{
+		const list = document.getElementById('entityList');
+		if (list) 
+		{
+			list.innerHTML = "";
+		}
 
-		let entityTypeDiv = "<div class='entityType'>" + entityTypeStr + "</div>"
-		let entityInfoDiv = "<div class='entityListItem' onmousedown=\"onMouseDownEntity(event, '" + name + "');\" id='" + path + "'";
-		if (isFake)
-			entityInfoDiv += "style='font-style: italic;'";
-		entityInfoDiv += ">" + name + entityTypeDiv +"</div><br/>";
-
-		document.getElementById('entityList').innerHTML += entityInfoDiv;
 	}
 
-	function resetEntityList() {
-		document.getElementById('entityList').innerHTML = "";
+	function addEntityToList(name, path, isFake = false, parentPath = null) 
+	{
+		const cleanPath = path.trim().replace(/\\/g, '/');
+		const safeParentPath = parentPath ? parentPath.trim().replace(/\\/g, '/').replace(/[^a-zA-Z0-9]/g, '_') : null;
+		const safeId = cleanPath.replace(/[^a-zA-Z0-9]/g, '_');
+
+		const wrapper = document.createElement('div');
+		wrapper.className = 'entityWrapper';
+		wrapper.id = "wrapper_" + safeId;
+
+		const item = document.createElement('div');
+		item.className = 'entityListItem';
+		item.id = safeId;
+		
+		item.onmousedown = function(event) {
+			onMouseDownEntity(event, name); 
+		};
+
+		item.innerHTML = `
+			<span class="entityToggle">▼</span>
+			<span class="entityName">${name}</span>
+			<div class="entityType">${isFake ? "Fake" : "Entity"}</div>
+		`;
+
+		const toggle = item.querySelector('.entityToggle');
+		toggle.onclick = function(e) 
+		{
+			e.stopPropagation(); // Prevent triggering onMouseDownEntity
+			wrapper.classList.toggle('collapsed');
+		};
+
+		const childContainer = document.createElement('div');
+		childContainer.className = 'entityChildContainer';
+		childContainer.id = "children_" + safeId;
+
+		wrapper.appendChild(item);
+		wrapper.appendChild(childContainer);
+
+		let target = parentPath ? document.getElementById("children_" + safeParentPath) : document.getElementById('entityList');
+		if (!target) target = document.getElementById('entityList');
+		
+		target.appendChild(wrapper);
 	}
 
 	function closeAssetContextMenu() {

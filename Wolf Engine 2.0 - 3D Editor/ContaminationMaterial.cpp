@@ -3,7 +3,7 @@
 #include "EditorParamsHelper.h"
 #include "MaterialComponent.h"
 
-ContaminationMaterial::ContaminationMaterial(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+ContaminationMaterial::ContaminationMaterial(const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
 	: m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_contaminationEmitterIdx = 255;

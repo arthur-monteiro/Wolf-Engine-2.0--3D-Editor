@@ -11,7 +11,7 @@ public:
 	static inline std::string ID = "gasCylinderComponent";
 	std::string getId() const override { return ID; }
 
-	GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
+	GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
 		const std::function<void(ComponentInterface*)>& requestReloadCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -35,7 +35,7 @@ public:
 private:
 	inline static const std::string TAB = "Gas cylinder";
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 
 	EditorParamUInt m_maxStorage = EditorParamUInt("Max storage", TAB, "Gameplay", 1, 1000);

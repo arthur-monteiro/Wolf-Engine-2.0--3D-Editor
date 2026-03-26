@@ -9,7 +9,7 @@
 #include "ModelLoader.h"
 #include "StaticModel.h"
 
-GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
+GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
 	const std::function<void(ComponentInterface*)>& requestReloadCallback)
 	: m_physicsManager(physicsManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback), m_requestReloadCallback(requestReloadCallback)
 {

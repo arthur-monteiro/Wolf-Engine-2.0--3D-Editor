@@ -12,9 +12,9 @@
 #include "Entity.h"
 #include "TextureSetComponent.h"
 
-StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
-	const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
-: m_materialsGPUManager(materialsGPUManager), m_assetManager(resourceManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
+	const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+: m_materialsGPUManager(materialsGPUManager), m_assetManager(assetManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_defaultPipelineSet.reset(new Wolf::LazyInitSharedResource<Wolf::PipelineSet, StaticModel>([this](Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& pipelineSet)
 		{
@@ -88,8 +88,9 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 
 void StaticModel::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_modelParams);
-	::loadParams<SubMesh>(jsonReader, ID, m_editorParams, false);
+	EditorModelInterface::loadParams(jsonReader, ID);
+	::loadParams(jsonReader, ID, m_dataSourceFileEditorParams);
+	::loadParams<SubMesh>(jsonReader, ID, m_alwaysVisibleEditorParams, false);
 	for (uint32_t i = 0; i < m_subMeshes.size(); ++i)
 	{
 		m_subMeshes[i].setReloadEntityCallback([this]() { reloadEntity(); });
@@ -139,9 +140,12 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 		}
 	}
 
-	for (uint32_t subMeshIdx = 0; subMeshIdx < m_subMeshes.size(); ++subMeshIdx)
+	if (m_assetManager->isModelLoaded(m_modelAssetId))
 	{
-		m_subMeshes[subMeshIdx].update(m_materialsGPUManager, m_assetManager->getFirstTextureSetIdx(m_modelAssetId) + subMeshIdx);
+		for (uint32_t subMeshIdx = 0; subMeshIdx < m_subMeshes.size(); ++subMeshIdx)
+		{
+			m_subMeshes[subMeshIdx].update(m_materialsGPUManager, m_assetManager->getFirstTextureSetIdx(m_modelAssetId) + subMeshIdx);
+		}
 	}
 }
 
@@ -170,13 +174,9 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 		// }
 	}
 
-	uint32_t firstMaterialIdx = m_subMeshes[0].getMaterialIdx();
-	if (firstMaterialIdx == SubMesh::DEFAULT_MATERIAL_IDX)
-		firstMaterialIdx = m_assetManager->getFirstMaterialIdx(m_modelAssetId);
-
 	InstanceData instanceData{};
 	instanceData.transform = m_transform;
-	instanceData.firstMaterialIdx = firstMaterialIdx;
+	instanceData.firstMaterialIdx = m_assetManager->getFirstMaterialIdx(m_modelAssetId);
 	instanceData.entityIdx = m_entity->getIdx();
 	outList.push_back({ meshToRenderInfo, instanceData});
 
@@ -239,9 +239,17 @@ void StaticModel::activateParams()
 {
 	EditorModelInterface::activateParams();
 
-	for (EditorParamInterface* editorParam : m_editorParams)
+	for (EditorParamInterface* editorParam : m_alwaysVisibleEditorParams)
 	{
 		editorParam->activate();
+	}
+
+	if (m_dataSource == DataSource::FILE)
+	{
+		for (EditorParamInterface* editorParam : m_dataSourceFileEditorParams)
+		{
+			editorParam->activate();
+		}
 	}
 }
 
@@ -249,10 +257,28 @@ void StaticModel::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
 	EditorModelInterface::addParamsToJSON(outJSON, tabCount);
 
-	for (const EditorParamInterface* editorParam : m_editorParams)
+	for (const EditorParamInterface* editorParam : m_alwaysVisibleEditorParams)
 	{
 		editorParam->addToJSON(outJSON, tabCount, false);
 	}
+
+	if (m_dataSource == DataSource::FILE)
+	{
+		for (const EditorParamInterface* editorParam : m_dataSourceFileEditorParams)
+		{
+			editorParam->addToJSON(outJSON, tabCount, false);
+		}
+	}
+}
+
+void StaticModel::setInfoFromParent(AssetId modelAssetId)
+{
+	m_dataSource = DataSource::PARENT;
+	m_modelAssetId = modelAssetId;
+
+	m_assetManager->subscribeToMesh(m_modelAssetId, this, [this](Flags) { notifySubscribers(); });
+	m_isWaitingForMeshLoading = true;
+	notifySubscribers();
 }
 
 Wolf::AABB StaticModel::getAABB() const

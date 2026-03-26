@@ -3,7 +3,6 @@
 #include <array>
 
 #include <AABB.h>
-#include <DynamicStableArray.h>
 #include <DynamicResourceUniqueOwnerArray.h>
 
 #include "BoundingSphere.h"
@@ -23,7 +22,8 @@ class ComponentInstancier;
 class Entity : public Notifier
 {
 public:
-	Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<void(Entity*)>&& rebuildRayTracedWorldCallback);
+	Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<void(Entity*)>&& rebuildRayTracedWorldCallback,
+		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 	virtual ~Entity() = default;
 	void loadParams(const std::function<ComponentInterface* (const std::string&)>& instanciateComponent);
 
@@ -50,6 +50,9 @@ public:
 	void setIncludeEntityParams(bool value) { m_includeEntityParams = value; }
 
 	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface>& getAllComponents() { return m_components; }
+
+	const Wolf::NullableResourceNonOwner<Entity>& getParentEntity() const { return m_parentEntity; }
+	void setParent(const Wolf::NullableResourceNonOwner<Entity>& parentEntity) { m_parentEntityParam = parentEntity->getLoadingPath(); }
 
 	Wolf::AABB getAABB() const;
 	Wolf::BoundingSphere getBoundingSphere() const;
@@ -93,6 +96,7 @@ private:
 	std::string m_filepath;
 	std::function<void(Entity*)> m_onChangeCallback;
 	std::function<void(Entity*)> m_rebuildRayTracedWorldCallback;
+	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	static constexpr uint32_t MAX_COMPONENT_COUNT = 8;
 	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface> m_components;
@@ -106,9 +110,16 @@ private:
 	std::vector<Wolf::ResourceNonOwner<EditorLightInterface>> m_lightComponents;
 
 	EditorParamString m_nameParam = EditorParamString("Name", "Entity", "General", [this]() { m_onChangeCallback(this); });
-	std::array<EditorParamInterface*, 1> m_entityParams =
+
+	Wolf::NullableResourceNonOwner<Entity> m_parentEntity;
+	void onParentChanged();
+	EditorParamString m_parentEntityParam = EditorParamString("Parent", "Entity", "General", [this]() { onParentChanged(); },
+		EditorParamString::ParamStringType::ENTITY);
+
+	std::array<EditorParamInterface*, 2> m_entityParams =
 	{
-		&m_nameParam
+		&m_nameParam,
+		&m_parentEntityParam
 	};
 
 	bool m_includeEntityParams = true;

@@ -77,25 +77,27 @@ SystemManager::SystemManager()
 		},
 		m_editorPushDataToGPU.createNonOwnerResource(), m_bufferPoolInterface));
 	m_renderer->setResourceManager(m_assetManager.createNonOwnerResource());
+
+	m_getEntityFromLoadingPathCallback = [this](const std::string& entityLoadingPath)
+	{
+		std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+		for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
+		{
+			if (!entity->isFake() && EditorConfiguration::sanitizeFilePath(entity->getLoadingPath()) == EditorConfiguration::sanitizeFilePath(entityLoadingPath))
+				return Wolf::NullableResourceNonOwner<Entity>(entity.createNonOwnerResource());
+		}
+		return Wolf::NullableResourceNonOwner<Entity>();
+	};
 	
 	m_entityContainer.reset(new EntityContainer);
 	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback,
-		[this](const std::string& entityLoadingPath)
-		{
-			std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
-			for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
-			{
-				if (!entity->isFake() && entity->getLoadingPath() == entityLoadingPath)
-					return entity.createNonOwnerResource();
-			}
-			Wolf::Debug::sendCriticalError("Entity not found");
-			return allEntities[0].createNonOwnerResource();
-		},
+		m_getEntityFromLoadingPathCallback,
 		m_configuration.createNonOwnerResource(),
 		m_assetManager.createNonOwnerResource(),
 		m_wolfInstance->getPhysicsManager(),
 		m_entityContainer.createNonOwnerResource(),
-		m_bufferPoolInterface));
+		m_bufferPoolInterface,
+		[this](ComponentInterface* componentInterface, const std::string& filepath) { return addEntity(filepath, componentInterface->getEntity()->getLoadingPath()); }));
 	
 	if (!m_configuration->getDefaultScene().empty())
 	{
@@ -290,10 +292,10 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logWarning"))");
 				break;
 			case Wolf::Debug::Severity::INFO:
-				m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logInfo"))");
+				//m_wolfInstance->evaluateUserInterfaceScript("addLog(\"" + escapedMessage + R"(", "logInfo"))");
 				break;
 			case Wolf::Debug::Severity::VERBOSE:
-				return;
+				break;
 			}
 		}
 	}
@@ -345,7 +347,7 @@ void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
 
 void SystemManager::forceCustomViewForMesh(const std::string& loadingPath)
 {
-	m_temporaryEntityForThumbnailSetup.reset(new Entity("", [this](Entity*){}, [](Entity*){}));
+	m_temporaryEntityForThumbnailSetup.reset(new Entity("", [this](Entity*){}, [](Entity*){}, [](const std::string&) { return Wolf::NullableResourceNonOwner<Entity>(); }));
 	m_temporaryEntityForThumbnailSetup->setName("Temporary entity for thumbnail setup");
 
 	StaticModel* staticModel = new StaticModel(m_wolfInstance->getMaterialsManager(), m_assetManager.createNonOwnerResource(), [this](ComponentInterface*){},
@@ -966,7 +968,10 @@ void SystemManager::updateBeforeFrame()
 		const std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 		for (const Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\"," + std::to_string(entity->isFake()) + ")");
+			std::string scriptToAddModelToList = "addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\", false, ";
+			scriptToAddModelToList += (entity->getParentEntity() ? "\"" + entity->getParentEntity()->computeEscapedLoadingPath() + "\"" : "null") + ")";
+
+			m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
 		}
 		m_entityChanged = false;
 	}
@@ -1177,7 +1182,7 @@ void SystemManager::loadScene()
 	m_loadSceneRequest.clear();
 }
 
-Entity* SystemManager::addEntity(const std::string& filePath)
+Entity* SystemManager::addEntity(const std::string& filePath, const std::string& parentFilePath)
 {
 	Entity* newEntity = new Entity(filePath, [this](Entity*)
 		{
@@ -1191,10 +1196,31 @@ Entity* SystemManager::addEntity(const std::string& filePath)
 			{
 				m_rayTracedWorldBuildNeeded = true;
 			}
-		});
+		},
+		m_getEntityFromLoadingPathCallback);
 	m_entityContainer->addEntity(newEntity);
 
-	const std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\", \"" + newEntity->computeEscapedLoadingPath() + "\")";
+	Wolf::NullableResourceNonOwner<Entity> parentEntity;
+	if (!parentFilePath.empty())
+	{
+		std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
+		for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
+		{
+			if(entity->getLoadingPath() == parentFilePath)
+			{
+				parentEntity = entity.createNonOwnerResource();
+				break;
+			}
+		}
+
+		if (parentEntity)
+		{
+			newEntity->setParent(parentEntity);
+		}
+	}
+
+	std::string scriptToAddModelToList = "addEntityToList(\"" + newEntity->getName() + "\", \"" + newEntity->computeEscapedLoadingPath() + "\", false, ";
+	scriptToAddModelToList += (parentEntity ? "\"" + parentEntity->computeEscapedLoadingPath() + "\"" : "null") + ")";
 	m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
 
 	if (g_editorConfiguration->getEnableRayTracing())

@@ -9,7 +9,7 @@
 #include "Entity.h"
 #include "UpdateGPUBuffersPass.h"
 
-PlayerComponent::PlayerComponent(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
+PlayerComponent::PlayerComponent(std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
 	: m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)), m_entityContainer(entityContainer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()),
       m_bufferPoolInterface(bufferPoolInterface)

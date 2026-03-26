@@ -9,7 +9,7 @@
 #include "Entity.h"
 #include "PipelineSet.h"
 
-ContaminationReceiver::ContaminationReceiver(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback) : m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback))
+ContaminationReceiver::ContaminationReceiver(std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback) : m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback))
 {
 }
 

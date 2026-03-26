@@ -13,7 +13,7 @@ public:
 	std::string getId() const override { return ID; }
 
 	MaterialComponent(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const std::function<void(ComponentInterface*)>& requestReloadCallback,
-		const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -36,7 +36,7 @@ private:
 	inline static const std::string TAB = "Material";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	bool m_shadingModeChanged = false;
 	void onShadingModeChanged();

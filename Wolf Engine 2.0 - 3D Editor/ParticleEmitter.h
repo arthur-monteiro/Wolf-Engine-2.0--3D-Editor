@@ -17,7 +17,7 @@ public:
 	static inline std::string ID = "particleEmitter";
 	std::string getId() const override { return ID; }
 
-	ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, 
+	ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
 		const std::function<void(ComponentInterface*)>& requestReloadCallback);
 	~ParticleEmitter() override;
 
@@ -266,7 +266,7 @@ private:
 
 	Wolf::ResourceNonOwner<ParticleUpdatePass> m_particleUpdatePass;
 	Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customDepthPass;
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	// Info for current execution
 	uint64_t m_nextSpawnMsTimer = 0;

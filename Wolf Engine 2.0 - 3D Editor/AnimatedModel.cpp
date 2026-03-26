@@ -14,7 +14,7 @@
 #include "UpdateGPUBuffersPass.h"
 
 AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, 
-                             const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
+                             const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 							 const std::function<void(ComponentInterface*)>& requestReloadCallback)
 : m_materialsGPUManager(materialsGPUManager), m_resourceManager(resourceManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()),
   m_requestReloadCallback(requestReloadCallback)
@@ -86,7 +86,7 @@ AnimatedModel::AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUMana
 
 void AnimatedModel::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_modelParams);
+	EditorModelInterface::loadParams(jsonReader, ID);
 	::loadParams<Animation>(jsonReader, ID, m_editorParams);
 }
 

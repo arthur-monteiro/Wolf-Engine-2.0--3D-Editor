@@ -576,16 +576,78 @@ li {
     margin-bottom: -15px;
 }
 
+.entityWrapper {
+    width: 100%;
+    padding: 0;
+}
+
 .entityListItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    background-color: rgba(255, 255, 255, 0.001);
+
+    cursor: pointer; 
+    width: 100%;
+    box-sizing: border-box;
+    
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.entityToggle {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    font-size: 10px;
+    margin-right: 5px;
+    user-select: none;
+    color: #ccc;
+    visibility: hidden;
+}
+
+.entityListItem:has(+ .entityChildContainer:not(:empty)) .entityToggle {
+    visibility: visible;
+}
+
+.entityWrapper.collapsed .entityToggle {
+    transform: rotate(-90deg);
+}
+
+.entityWrapper.collapsed > .entityChildContainer {
+    display: none;
+}
+
+
+.entityListItem:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-bottom-color: transparent;
+}
+
+.entityChildContainer {
+    margin-left: 15px;
+    border-left: 1px solid #444;
+}
+
+.entityName {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    direction: ltr; 
+    text-align: left;
+
     cursor: pointer;
-    line-height: 20px;
+    
+    margin-right: 10px;
+    padding-left: 5px;
 }
 
 .entityType {
-    float: right;
+    flex-shrink: 0;
     color: #807f7e;
-    font-style: normal;
-    font-size: small;
+    font-size: 10px;
+    pointer-events: none;
 }
 
 #entityContextMenu {

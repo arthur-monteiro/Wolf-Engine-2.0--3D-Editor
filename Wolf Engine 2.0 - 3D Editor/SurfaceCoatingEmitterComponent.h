@@ -15,8 +15,8 @@ public:
     static inline std::string ID = "surfaceCoatingEmitter";
     std::string getId() const override { return ID; }
 
-    SurfaceCoatingEmitterComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
-        const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+    SurfaceCoatingEmitterComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
+        const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
     ~SurfaceCoatingEmitterComponent() override;
 
     void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -45,9 +45,9 @@ public:
 private:
     Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
     Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customRenderPass;
-    Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
+    Wolf::ResourceNonOwner<AssetManager> m_assetManager;
     std::function<void(ComponentInterface*)> m_requestReloadCallback;
-    std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+    std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
     inline static const std::string TAB = "Surface coating";
 

@@ -13,7 +13,7 @@ public:
 	static inline std::string ID = "staticModel";
 	std::string getId() const override { return ID; }
 
-	StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, 
+	StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
 		const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -29,6 +29,7 @@ public:
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount = 2) override;
 
 	void setLoadingPath(const std::string& loadingPath) { m_loadingPathParam = loadingPath; }
+	void setInfoFromParent(AssetId modelAssetId);
 
 	Wolf::AABB getAABB() const override;
 	Wolf::BoundingSphere getBoundingSphere() const override;
@@ -40,7 +41,7 @@ private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	AssetId m_modelAssetId = NO_ASSET;
 
 	bool m_isWaitingForMeshLoading = false;
@@ -48,6 +49,9 @@ private:
 	void reloadEntity();
 	void onSubMeshChanged();
 	void subscribeToAllSubMeshes();
+
+	enum class DataSource { FILE, PARENT };
+	DataSource m_dataSource = DataSource::FILE;
 
 	EditorParamString m_loadingPathParam = EditorParamString("Mesh", TAB, "Loading", [this] { requestModelLoading(); }, EditorParamString::ParamStringType::FILE_OBJ);
 
@@ -139,9 +143,13 @@ private:
 	EditorParamEnum m_rayTracedWorldLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for ray traced world", TAB, "Quality", [this]() { onRayTracedWorldLODTypeChanged(); });
 	EditorParamUInt m_rayTracedWorldLOD = EditorParamUInt("LOD for ray traced world", TAB, "Quality", 0, 0, [this]() { notifySubscribers(); });
 
-	std::array<EditorParamInterface*, 6> m_editorParams =
+	std::array<EditorParamInterface*, 1> m_dataSourceFileEditorParams =
 	{
-		&m_loadingPathParam,
+		&m_loadingPathParam
+	};
+
+	std::array<EditorParamInterface*, 5> m_alwaysVisibleEditorParams =
+	{
 		&m_subMeshes,
 		&m_drawLODType,
 		&m_drawLOD,

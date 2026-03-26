@@ -21,7 +21,7 @@ public:
 
 	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
-		const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
+		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
 		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 	ContaminationEmitter(const ContaminationEmitter&) = delete;
 	~ContaminationEmitter() override;
@@ -53,7 +53,7 @@ private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> m_contaminationUpdatePass;
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;

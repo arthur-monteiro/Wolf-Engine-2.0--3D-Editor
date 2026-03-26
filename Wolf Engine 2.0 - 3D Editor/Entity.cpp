@@ -8,8 +8,10 @@
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 
-Entity::Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<void(Entity*)>&& rebuildRayTracedWorldCallback)
-	: m_filepath(std::move(filePath)), m_onChangeCallback(onChangeCallback), m_rebuildRayTracedWorldCallback(rebuildRayTracedWorldCallback)
+Entity::Entity(std::string filePath, const std::function<void(Entity*)>&& onChangeCallback, const std::function<void(Entity*)>&& rebuildRayTracedWorldCallback,
+	const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+	: m_filepath(std::move(filePath)), m_onChangeCallback(onChangeCallback), m_rebuildRayTracedWorldCallback(rebuildRayTracedWorldCallback),
+	  m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_nameParam = "Undefined";
 }
@@ -22,7 +24,10 @@ void Entity::loadParams(const std::function<ComponentInterface* (const std::stri
 		Wolf::JSONReader jsonReader(Wolf::JSONReader::FileReadInfo { g_editorConfiguration->computeFullPathFromLocalPath(m_filepath) });
 
 		if (static_cast<const std::string&>(m_nameParam) == "Undefined")
+		{
 			::loadParams(jsonReader, "entity", m_entityParams);
+		}
+
 
 		const uint32_t componentCount = jsonReader.getRoot()->getPropertyCount();
 		for (uint32_t i = 0; i < componentCount; ++i)
@@ -297,4 +302,20 @@ void Entity::setRotation(const glm::vec3& newRotation) const
 	}
 
 	Wolf::Debug::sendWarning("Trying to set rotation of entity which doesn't contain a model component");
+}
+
+void Entity::onParentChanged()
+{
+	std::string parentPathStr = std::string(m_parentEntityParam);
+	if (!parentPathStr.empty())
+	{
+		if (std::string sanitizedParentPath = EditorConfiguration::sanitizeFilePath(parentPathStr); sanitizedParentPath != parentPathStr)
+		{
+			m_parentEntityParam = sanitizedParentPath;
+			return;
+		}
+
+		m_parentEntity = m_getEntityFromLoadingPathCallback(m_parentEntityParam);
+		m_onChangeCallback(this);
+	}
 }

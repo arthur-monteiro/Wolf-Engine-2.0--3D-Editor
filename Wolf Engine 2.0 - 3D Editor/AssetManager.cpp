@@ -207,7 +207,8 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 	if (m_currentAssetInEdition == assetId)
 		return m_transientEditionEntity.createNonOwnerResource();
 
-	m_transientEditionEntity.reset(new Entity("", [](Entity*) {}, [](Entity*) {}));
+	m_transientEditionEntity.reset(new Entity("", [](Entity*) {}, [](Entity*) {},
+		[](const std::string&) { return Wolf::NullableResourceNonOwner<Entity>(); }));
 	m_transientEditionEntity->setIncludeEntityParams(false);
 
 	if (isMesh(assetId))
@@ -410,6 +411,16 @@ const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& AssetManager::getM
 	}
 
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getTextureSetInfo();
+}
+
+std::string AssetManager::computeModelName(AssetId modelAssetId) const
+{
+	if (!isMesh(modelAssetId))
+	{
+		Wolf::Debug::sendError("ResourceId is not a mesh");
+	}
+
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->computeName();
 }
 
 void AssetManager::subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const
@@ -945,15 +956,10 @@ void AssetManager::AssetInterface::dump(std::ofstream& outputJSON, uint32_t tabC
 
 std::string AssetManager::AssetInterface::computeName()
 {
-    std::string::size_type pos = m_loadingPath.find_last_of('\\');
-    if (pos != std::string::npos)
-    {
-        return m_loadingPath.substr(pos);
-    }
-    else
-    {
-        return m_loadingPath;
-    }
+	std::filesystem::path loadingPath(g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPath));
+	std::filesystem::path filename = loadingPath.filename();
+
+	return filename.string();
 }
 
 void AssetManager::AssetInterface::onChanged()
@@ -1228,6 +1234,16 @@ void AssetManager::Mesh::loadModelFromData(const Wolf::ResourceNonOwner<Wolf::Ma
 
 	m_mesh.reset(new Wolf::Mesh(m_bufferPoolInterface, m_overrideVertexBufferPoolInstance, m_overrideVertexBufferPoolInstance.m_bufferSize / sizeof(Vertex3D), sizeof(Vertex3D),
 		m_overrideIndices, m_overrideAABB, m_overrideBoundingSphere, additionalFlags));
+
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		m_bottomLevelAccelerationStructures.resize(2);
+		for (uint32_t lodType = 0; lodType < 2; lodType++)
+		{
+			uint32_t lodCount = lodType == 0 ? m_defaultSimplifiedIndexBuffers.size() : m_sloppySimplifiedIndexBuffers.size();
+			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
+		}
+	}
 
 	m_firstMaterialIdx = m_overrideMaterialIdx;
 

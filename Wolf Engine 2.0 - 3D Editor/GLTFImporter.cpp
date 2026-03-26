@@ -369,7 +369,7 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                 tinygltf::Material& material = model.materials[primitive.material];
                 outputMaterialData.m_textureSet.name = material.name;
 
-                TextureSetLoader::TextureSetFileInfoGGX materialFileInfoGGX{};
+                TextureSetLoader::TextureSetFileInfoGGX& materialFileInfoGGX = outputMaterialData.m_textureSetFileInfo;
                 materialFileInfoGGX.name = material.name;
 
                 std::string albedoFilename = EditorConfiguration::sanitizeFilePath(getTextureURI(model, getAlbedoTextureIndex(material)));
@@ -493,6 +493,9 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
     {
         traverseNodes(outputData, model, nodeIdx, glm::mat4(1.0f), nodesVisited);
     }
+
+    std::string cacheFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename + ".bin");
+    ExternalSceneLoader::writeCache(cacheFilename, outputData);
 }
 
 void GLTFImporter::traverseNodes(ExternalSceneLoader::OutputData& outputData, const tinygltf::Model& model, uint32_t nodeIdx, const glm::mat4& parentTransform, std::vector<bool>& nodesVisited)

@@ -8,7 +8,7 @@ class TextureSetComponent;
 
 MaterialComponent::MaterialComponent(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
 	const std::function<void(ComponentInterface*)>& requestReloadCallback,
-	const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+	const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
 	: m_materialsGPUManager(materialsGPUManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 }

@@ -45,8 +45,10 @@ std::string EditorParamInterface::getTypeAsString() const
 			return "Float";
 		case Type::VECTOR2:
 			return "Vector2";
-		case Type::VECTOR3: 
+		case Type::VECTOR3:
 			return "Vector3";
+		case Type::VECTOR4:
+			return "Vector4";
 		case Type::STRING:
 			return "String";
 		case Type::UINT:
@@ -129,6 +131,7 @@ void EditorParamInterface::enabledParamJSCallback(const ultralight::JSObject& th
 
 template void EditorParamsVector<glm::vec2>::activate();
 template void EditorParamsVector<glm::vec3>::activate();
+template void EditorParamsVector<glm::vec4>::activate();
 
 template <typename T>
 void EditorParamsVector<T>::activate()
@@ -155,6 +158,7 @@ void EditorParamsVector<T>::activate()
 
 template void EditorParamsVector<glm::vec2>::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const;
 template void EditorParamsVector<glm::vec3>::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const;
+template void EditorParamsVector<glm::vec4>::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const;
 
 template <typename T>
 void EditorParamsVector<T>::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
@@ -168,13 +172,16 @@ void EditorParamsVector<T>::addToJSON(std::string& out, uint32_t tabCount, bool 
 	out += tabs + '\t' + R"("valueY" : )" + std::to_string(m_value.y) + ",\n";
 	if (sizeof(T) > sizeof(glm::vec2))
 		out += tabs + '\t' + R"("valueZ" : )" + std::to_string(m_value[2]) + ",\n";
+	if (sizeof(T) > sizeof(glm::vec3))
+		out += tabs + '\t' + R"("valueW" : )" + std::to_string(m_value[3]) + ",\n";
 	out += tabs + '\t' + R"("min" : )" + std::to_string(m_min) + ",\n";
 	out += tabs + '\t' + R"("max" : )" + std::to_string(m_max) + "\n";
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
-}
+} 
 
 template void EditorParamsVector<glm::vec2>::setValue(const glm::vec2& value);
 template void EditorParamsVector<glm::vec3>::setValue(const glm::vec3& value);
+template void EditorParamsVector<glm::vec4>::setValue(const glm::vec4& value);
 
 template <typename T>
 void EditorParamsVector<T>::setValue(const T& value)

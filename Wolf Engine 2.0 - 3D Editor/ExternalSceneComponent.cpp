@@ -1,86 +1,25 @@
 #include "ExternalSceneComponent.h"
 
+#include <glm/gtx/matrix_decompose.hpp>
+
 #include <ProfilerCommon.h>
 
 #include "CommonLayouts.h"
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 #include "ExternalSceneLoader.h"
+#include "StaticModel.h"
 
-ExternalSceneComponent::ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager) : m_assetManager(assetManager)
+ExternalSceneComponent::ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityCallback,
+                                               const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+                                               const std::function<void(ComponentInterface*)>& requestReloadCallback)
+: m_assetManager(assetManager), m_getEntityCallback(getEntityCallback), m_createEntityCallback(createEntityCallback), m_materialsGPUManager(materialsGPUManager), m_requestReloadCallback(requestReloadCallback)
 {
-    m_defaultPipelineSet.reset(new Wolf::LazyInitSharedResource<Wolf::PipelineSet, ExternalSceneComponent>([this](Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& pipelineSet)
-		{
-			pipelineSet.reset(new Wolf::PipelineSet);
-
-			Wolf::PipelineSet::PipelineInfo pipelineInfo;
-
-			/* Pre Depth */
-			pipelineInfo.shaderInfos.resize(1);
-			pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/defaultPipeline/shader.vert";
-			pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::VERTEX;
-
-			// IA
-			Vertex3D::getAttributeDescriptions(pipelineInfo.vertexInputAttributeDescriptions, 0);
-
-			pipelineInfo.vertexInputBindingDescriptions.resize(1);
-			Vertex3D::getBindingDescription(pipelineInfo.vertexInputBindingDescriptions[0], 0);
-
-			// Resources
-			pipelineInfo.cameraDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_CAMERA;
-
-			// Color Blend
-			pipelineInfo.blendModes = { Wolf::RenderingPipelineCreateInfo::BLEND_MODE::OPAQUE };
-
-			// Dynamic states
-			pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
-
-			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH);
-
-			/* Shadow maps */
-			pipelineInfo.dynamicStates.clear();
-			pipelineInfo.depthBiasConstantFactor = 4.0f;
-			pipelineInfo.depthBiasSlopeFactor = 2.5f;
-			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
-			pipelineInfo.depthBiasConstantFactor = 0.0f;
-			pipelineInfo.depthBiasSlopeFactor = 0.0f;
-
-			/* Forward */
-			pipelineInfo.shaderInfos.resize(2);
-			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
-			pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
-
-			// Resources
-			pipelineInfo.materialsDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MATERIAL_MANAGER;
-			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
-			pipelineInfo.customMask = AdditionalDescriptorSetsMaskBits::SHADOW_MASK_INFO | AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
-
-			// Dynamic states
-			pipelineInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
-			pipelineInfo.enableDepthWrite = false;
-			pipelineInfo.depthCompareOp = Wolf::CompareOp::EQUAL;
-
-			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
-
-			// Output Ids
-			pipelineInfo.materialsDescriptorSlot = -1;
-			pipelineInfo.lightDescriptorSlot = -1;
-			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/outputIds.frag";
-			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
-
-			// Custom depth
-			pipelineInfo.materialsDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MATERIAL_MANAGER;
-			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
-			pipelineInfo.dynamicStates.clear();
-			pipelineInfo.enableDepthWrite = true;
-			pipelineInfo.depthCompareOp = Wolf::CompareOp::LESS_OR_EQUAL;
-			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/customRender.frag";
-			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER);
-		}));
 }
 
 void ExternalSceneComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
+	EditorModelInterface::loadParams(jsonReader, ID);
     ::loadParams(jsonReader, ID, m_editorParams);
 }
 
@@ -106,69 +45,71 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
     {
         if (m_assetManager->isSceneLoaded(m_sceneAssetId))
         {
+        	const std::vector<ExternalSceneLoader::InstanceData>& instances = m_assetManager->getSceneInstances(m_sceneAssetId);
+        	const std::vector<AssetId> modelAssetsId = m_assetManager->getSceneModelAssetIds(m_sceneAssetId);
+
+        	std::filesystem::path currentEntityPath(g_editorConfiguration->computeFullPathFromLocalPath(m_entity->getLoadingPath()));
+        	std::filesystem::path currentEntityDirectory = currentEntityPath.parent_path();
+
+        	std::filesystem::path scenePath(g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPathParam));
+        	std::filesystem::path sceneFilename = currentEntityPath.filename();
+
+        	std::string newEntitiesFolder = EditorConfiguration::sanitizeFilePath(currentEntityDirectory.string() + "/" + sceneFilename.string() + "_children");
+
+        	if (!std::filesystem::is_directory(newEntitiesFolder) || !std::filesystem::exists(newEntitiesFolder))
+        	{
+        		std::filesystem::create_directory(newEntitiesFolder);
+        	}
+
+        	for (uint32_t i = 0; i < instances.size(); i++)
+        	{
+        		const ExternalSceneLoader::InstanceData& instance = instances[i];
+
+        		AssetId modelAssetId = modelAssetsId[instance.m_meshIdx];
+
+        		std::string modelName = m_assetManager->computeModelName(modelAssetId);
+
+        		std::string newEntityPath = newEntitiesFolder + "/" + modelName + "_" + std::to_string(i) + ".json";
+        		std::string newEntityLocalPath = g_editorConfiguration->computeLocalPathFromFullPath(newEntityPath);
+
+        		if (Wolf::NullableResourceNonOwner<Entity> entity = m_getEntityCallback(newEntityLocalPath); static_cast<bool>(entity))
+        		{
+        			Wolf::NullableResourceNonOwner<StaticModel> staticModel = entity->getComponent<StaticModel>();
+        			if (!staticModel)
+        				Wolf::Debug::sendCriticalError("Entity should have static model component");
+        			staticModel->setInfoFromParent(modelAssetId);
+
+        			continue;
+        		}
+
+        		Entity* newEntity = m_createEntityCallback(this, newEntityLocalPath);
+        		newEntity->setName(modelName + "_" + std::to_string(i));
+
+        		StaticModel* staticModelComponent = new StaticModel(m_materialsGPUManager, m_assetManager, m_requestReloadCallback, m_getEntityCallback);
+        		newEntity->addComponent(staticModelComponent);
+
+        		staticModelComponent->setInfoFromParent(modelAssetId);
+
+        		glm::vec3 scale;
+        		glm::quat rotation;
+        		glm::vec3 translation;
+        		glm::vec3 skew;
+        		glm::vec4 perspective;
+        		if (glm::decompose(instance.m_transform, scale, rotation, translation, skew, perspective))
+        		{
+        			staticModelComponent->setPosition(translation);
+        			staticModelComponent->setScale(scale);
+        			staticModelComponent->setRotation(glm::conjugate(rotation));
+        		}
+        		else
+        		{
+        			Wolf::Debug::sendCriticalError("Can't decompose matrix");
+        		}
+        	}
+
             m_isWaitingForSceneLoading = false;
         }
     }
-}
-
-bool ExternalSceneComponent::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
-{
-    PROFILE_FUNCTION
-
-    if (!areAllMeshLoaded())
-    	return false;
-
-	const std::vector<ExternalSceneLoader::InstanceData>& instances = m_assetManager->getSceneInstances(m_sceneAssetId);
-	const std::vector<AssetId> modelAssetsId = m_assetManager->getSceneModelAssetIds(m_sceneAssetId);
-	// TODO: for each model: m_assetManager->subscribeToMesh(modelAssetId, this, [this](Flags) { notifySubscribers(); });
-
-	uint32_t firstMaterialIdx = m_assetManager->getSceneFirstMaterialIdx(m_sceneAssetId);
-
-    for (const ExternalSceneLoader::InstanceData& instance : instances)
-    {
-        AssetId modelAssetId = modelAssetsId[instance.m_meshIdx];
-
-        Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_assetManager->getModelMesh(modelAssetId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
-
-        InstanceData instanceData{};
-        instanceData.transform = m_transform * instance.m_transform;
-        instanceData.firstMaterialIdx = firstMaterialIdx + instance.m_materialIdx;
-        instanceData.entityIdx = m_entity->getIdx();
-        outList.push_back({ meshToRenderInfo, instanceData});
-    }
-
-    return true;
-}
-
-bool ExternalSceneComponent::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)
-{
-    return true;
-}
-
-bool ExternalSceneComponent::getInstancesForRayTracedWorld(
-	std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos)
-{
-	// TODO
-	// if (!areAllMeshLoaded())
-	// 	return false;
-	//
-	// const std::vector<ExternalSceneLoader::InstanceData>& instances = m_assetManager->getSceneInstances(m_sceneAssetId);
-	// const std::vector<AssetId> modelAssetsId = m_assetManager->getSceneModelAssetIds(m_sceneAssetId);
-	// // TODO: for each model: m_assetManager->subscribeToMesh(modelAssetId, this, [this](Flags) { notifySubscribers(); });
-	//
-	// uint32_t firstMaterialIdx = m_assetManager->getSceneFirstMaterialIdx(m_sceneAssetId);
-	//
-	// for (const ExternalSceneLoader::InstanceData& instance : instances)
-	// {
-	// 	AssetId modelAssetId = modelAssetsId[instance.m_meshIdx];
-	//
-	// 	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_assetManager->getBLAS(modelAssetId, 0, 0), m_transform, firstMaterialIdx,
-	// 		m_assetManager->getModelMesh(modelAssetId) };
-	//
-	// 	instanceInfos.push_back(instanceInfo);
-	// }
-
-	return true;
 }
 
 Wolf::AABB ExternalSceneComponent::getAABB() const

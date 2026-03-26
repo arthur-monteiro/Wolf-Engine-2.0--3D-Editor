@@ -11,7 +11,7 @@ public:
 	static inline std::string ID = "contaminationReceiver";
 	std::string getId() const override { return ID; }
 
-	ContaminationReceiver(std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback);
+	ContaminationReceiver(std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
@@ -25,7 +25,7 @@ public:
 	void saveCustom() const override {}
 
 private:
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	inline static const std::string TAB = "Contamination receiver";
 

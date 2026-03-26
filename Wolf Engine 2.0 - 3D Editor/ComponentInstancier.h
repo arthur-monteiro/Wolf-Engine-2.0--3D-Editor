@@ -32,9 +32,10 @@ class ComponentInstancier
 {
 public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
-		std::function<void(ComponentInterface*)> requestReloadCallback, std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, 
+		std::function<void(ComponentInterface*)> requestReloadCallback, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<AssetManager>& assetManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
-		const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+		const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
+		const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -44,12 +45,13 @@ private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
 	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
+	std::function<Entity*(ComponentInterface*, const std::string&)> m_createEntityCallback;
 
 	struct ComponentInfo
 	{
@@ -211,7 +213,8 @@ private:
 			ExternalSceneComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ExternalSceneComponent(m_assetManager));
+				return static_cast<ComponentInterface*>(new ExternalSceneComponent(m_assetManager, m_getEntityFromLoadingPathCallback, m_createEntityCallback, m_materialsGPUManager,
+					m_requestReloadCallback));
 			}
 		}
 	};
