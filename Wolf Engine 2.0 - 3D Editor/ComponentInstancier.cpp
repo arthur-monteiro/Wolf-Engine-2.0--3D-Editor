@@ -3,14 +3,14 @@
 #include "Entity.h"
 
 ComponentInstancier::ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
-	std::function<void(ComponentInterface*)> requestReloadCallback, const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
+	std::function<void(ComponentInterface*)> requestReloadCallback, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
 	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<AssetManager>& assetManager,const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
 	const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
 	const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback)
 	: m_materialsGPUManager(materialsGPUManager),
       m_renderingPipeline(renderingPipeline),
       m_requestReloadCallback(std::move(requestReloadCallback)),
-	  m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)),
+	  m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
 	  m_editorConfiguration(editorConfiguration),
 	  m_assetManager(assetManager),
       m_physicsManager(physicsManager),
