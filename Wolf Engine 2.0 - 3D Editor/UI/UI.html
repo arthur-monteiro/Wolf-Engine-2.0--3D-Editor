@@ -541,7 +541,7 @@
 
 		item.innerHTML = `
 			<span class="entityToggle">▼</span>
-			<span class="entityName">${name}</span>
+			<span class="entityName" ${isFake ? "style='font-style: italic;'" : ""}>${name}</span>
 			<div class="entityType">${isFake ? "Fake" : "Entity"}</div>
 		`;
 

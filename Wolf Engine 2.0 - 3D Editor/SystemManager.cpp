@@ -971,7 +971,7 @@ void SystemManager::updateBeforeFrame()
 		const std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 		for (const Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 		{
-			std::string scriptToAddModelToList = "addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\", false, ";
+			std::string scriptToAddModelToList = "addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\", " + (entity->isFake() ? "true" : "false") + ", ";
 			scriptToAddModelToList += (entity->getParentEntity() ? "\"" + entity->getParentEntity()->computeEscapedLoadingPath() + "\"" : "null") + ")";
 
 			m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
