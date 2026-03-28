@@ -45,6 +45,8 @@ private:
 	void exportScene();
 
 	// JS callbacks
+	void closeWindowJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void minifyWindowJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getVRAMAllocatedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
@@ -98,6 +100,10 @@ private:
 	uint32_t m_currentFramesAccumulated = 0;
 	uint32_t m_stableFPS = 0;
 	std::chrono::steady_clock::time_point m_startTimeFPSCounter = std::chrono::steady_clock::now();
+
+	/* Window dragging */
+	float m_lastWindowDraggingX, m_lastWindowDraggingY;
+	bool m_isDraggingWindow = false;
 
 	std::string m_currentSceneName = "Unknown scene";
 	std::string m_currentSceneJSON = "";

@@ -21,15 +21,10 @@ function formatStringForFunctionName(input) {
 }
 
 function setNewParams(inputJSON) {
-    // Hide all tab links
-    let tabLinks = document.getElementsByClassName("tabLink");
-    for (var i = 0; i < tabLinks.length; ++i) {
-        var tabLink = tabLinks[i];  
-        tabLink.classList.remove("tabSelected");
-        tabLink.style.display = "none";
-    }
-    document.getElementById("tabLinkEntity").classList.add("tabSelected");
-    document.getElementById("entityInfos").style.display = "block";
+    let infoTabs = document.getElementById("infoTabs");
+    
+    let dynamicTabs = infoTabs.querySelectorAll(".tabLink");
+    dynamicTabs.forEach(tab => tab.remove());
 
     const jsonObject = JSON.parse(inputJSON);
 
@@ -105,26 +100,35 @@ function setNewParams(inputJSON) {
         }
 
         let tabId = tab[0].charAt(0).toLowerCase() + tab[0].slice(1) + "Infos";
-        if (!document.getElementById(tabId)) {
-            var newTabDiv = document.createElement('div');
-            newTabDiv.id = tabId;
-            newTabDiv.className = 'info';
-            newTabDiv.style = "display: none; overflow-x: scroll;";
-            document.getElementById("staticElements").appendChild(newTabDiv);
+        let tabButtonId = "tabLink" + tab[0];
 
-            var newTabLinkButton = document.createElement('button');
-            newTabLinkButton.className = 'tabLink';
-            newTabLinkButton.id = "tabLink" + tab[0];
-            newTabLinkButton.addEventListener('click', function(){
-                eval("selectTabInfo('" + newTabLinkButton.id + "', '" + tabId + "')")
-            });
-            
-            newTabLinkButton.innerHTML = tab[0];
-            document.getElementById("infoTabs").appendChild(newTabLinkButton);
+        let tabContentDiv = document.getElementById(tabId);
+        if (!tabContentDiv) {
+            tabContentDiv = document.createElement('div');
+            tabContentDiv.id = tabId;
+            tabContentDiv.className = 'info';
+            tabContentDiv.style.display = "none";
+            tabContentDiv.style.overflowX = "scroll";
+            document.getElementById("staticElements").appendChild(tabContentDiv);
         }
 
-        document.getElementById("tabLink" + tab[0]).style.display = "block";
-        document.getElementById(tabId).innerHTML = htmlToAdd;
+        let tabButton = document.getElementById(tabButtonId);
+            if (!tabButton) {
+                tabButton = document.createElement('button');
+            tabButton.className = 'tabLink';
+            tabButton.id = tabButtonId;
+            tabButton.innerHTML = tab[0];
+            tabButton.addEventListener('click', function() {
+                selectTabInfo(tabButtonId, tabId);
+            });
+            
+            let infoTabs = document.getElementById("infoTabs");
+            let addBtn = document.getElementById("addComponentButton");
+            infoTabs.insertBefore(tabButton, addBtn);
+        }
+
+        tabButton.style.display = "block";
+        tabContentDiv.innerHTML = htmlToAdd;
 
         Array.from(document.getElementById(tabId).querySelectorAll("script"))
             .forEach( oldScriptEl => {
@@ -144,9 +148,8 @@ function setNewParams(inputJSON) {
 }
 
 function computeInput(param, isLast) {
-    let addBottomBorder = !(isLast || (param.type != "Vector2" && param.type != "Vector3"));
     let nameForCallback = formatStringForFunctionName(param.tab) + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category);
-    let htmlToAdd = "<div style='width: 100%; overflow: auto; " + (!addBottomBorder && !isLast ? "padding-bottom: 5px; " : "") + (param.type == "Button" ? "text-align: -webkit-center;" : "") + "'>";
+    let htmlToAdd = "<div class='inputParam' style='" + (param.type == "Button" ? "text-align: -webkit-center;" : "") + "'>";
 
     let classForElements = "inputClass" + nameForCallback;
 
@@ -163,7 +166,7 @@ function computeInput(param, isLast) {
     }
 
     if (param.type == "String") {
-        htmlToAdd += param.name + ": <input type=\"text\" id=\"nameInput" + nameForCallback + "\" name=\"name\" value=\"" + param.value + "\" oninput=\"(function() { "
+        htmlToAdd += "<span>" + param.name + " :</span> <input type=\"text\" id=\"nameInput" + nameForCallback + "\" name=\"name\" value=\"" + param.value + "\" oninput=\"(function() { "
             + "let value = document.getElementById('nameInput" + nameForCallback + "').value;"
             + "change" + nameForCallback + "(value); " 
             + (param.drivesCategoryName ? "document.getElementById('" + formatStringForFunctionName(param.category) + "').innerHTML = value;" : "")
@@ -173,8 +176,7 @@ function computeInput(param, isLast) {
         htmlToAdd += "/>";
     }
     else if (param.type == "Vector2" || param.type == "Vector3" || param.type == "UInt" || param.type == "Float") {
-        htmlToAdd += addBottomBorder ? "<div style='padding-bottom: 5px; margin-bottom: 5px; border-bottom:1px solid white;'>" : "" ;
-        htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
+        htmlToAdd += "<span>" + param.name + " :</span>";
         if (param.isActivable)
             htmlToAdd += "<div style='display: inline-block; width: 65%; float: right'>";
         else
@@ -191,7 +193,6 @@ function computeInput(param, isLast) {
                 htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "Z\" value=\"" + param.valueZ + "\"></wolf-slider>";
         }
         htmlToAdd += "</div>";
-        if (addBottomBorder) htmlToAdd += "</div>";
     }
     else if (param.type == "File") {       
         htmlToAdd += "<div style='display: inline-block; float: left; padding: 5px; width: 25%'>" + param.name + " :</div>";
@@ -213,7 +214,7 @@ function computeInput(param, isLast) {
         htmlToAdd += "</table>";
     }
     else if (param.type == "Array") {
-        htmlToAdd += "<span style='display: inline-block; float: left; padding-top: 2px;'>" + param.name + ": " + param.count + "</span>";
+        htmlToAdd += "<span>" + param.name + ": " + param.count + "</span>";
         if (!param.isReadOnly) 
             htmlToAdd += "<div class='addButton' onclick='addTo" + nameForCallback + "()'></div>";
     }
@@ -240,7 +241,7 @@ function computeInput(param, isLast) {
             + "change" + nameForCallback + "(document.getElementById(\"checkBox" + nameForCallback + "\").checked) })()' " + (param.value ? "checked" : "") + "/></div>";
     }
     else if (param.type == "Enum") {
-        htmlToAdd += param.name + ": <select name='enum' id='enumSelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'>";
+        htmlToAdd += "<span>" + param.name + ":</span> <select name='enum' id='enumSelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'>";
         for (let i = 0; i < param.options.length; ++i) {
             htmlToAdd += "<option value='" + param.options[i] + "'" + (param.value == i ? "selected" : "") + ">" + param.options[i] + "</option>";
         }

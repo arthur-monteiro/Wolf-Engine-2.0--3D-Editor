@@ -35,7 +35,7 @@ uint32_t EditorParams::getRenderWidth() const
 
 uint32_t EditorParams::getRenderOffsetTop() const
 {
-	return 60;
+	return 40;
 }
 
 uint32_t EditorParams::getRenderOffsetBot() const

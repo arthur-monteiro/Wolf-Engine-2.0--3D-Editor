@@ -178,6 +178,7 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_htmlURL = "UI/UI.html";
 	wolfInstanceCreateInfo.m_uiFinalLayout = Wolf::ImageLayout::GENERAL;
 	wolfInstanceCreateInfo.m_bindUltralightCallbacks = [this](ultralight::JSObject& jsObject) { bindUltralightCallbacks(jsObject); };
+	wolfInstanceCreateInfo.m_borderless = true;
 	wolfInstanceCreateInfo.m_useMaterialGPUManager = true;
 	wolfInstanceCreateInfo.m_threadCountBeforeFrameAndRecord = THREAD_COUNT_BEFORE_FRAME;
 	wolfInstanceCreateInfo.m_pushDataToGPU = m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>();
@@ -303,6 +304,8 @@ void SystemManager::debugCallback(Wolf::Debug::Severity severity, Wolf::Debug::T
 
 void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 {
+	jsObject["closeWindow"] = std::bind(&SystemManager::closeWindowJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["minWindow"] = std::bind(&SystemManager::minifyWindowJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["getFrameRate"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getFrameRateJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getVRAMAllocated"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMAllocatedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getVRAMRequested"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMRequestedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
@@ -383,7 +386,7 @@ void SystemManager::removeCustomView()
 
 ultralight::JSValue SystemManager::getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const std::string fpsStr = "FPS: " + std::to_string(m_stableFPS);
+	const std::string fpsStr = std::to_string(m_stableFPS);
 	return { fpsStr.c_str() };
 }
 
@@ -1023,6 +1026,31 @@ void SystemManager::updateBeforeFrame()
 	Wolf::ResourceNonOwner<Wolf::InputHandler> inputHandler = m_wolfInstance->getInputHandler();
 	const Wolf::Timer& globalTimer = m_wolfInstance->getGlobalTimer();
 
+	// Window drag
+	float cursoXPos, cursorYPos;
+	inputHandler->getMousePosition(cursoXPos, cursorYPos);
+
+	if (inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	{
+		if (cursorYPos < m_editorParams->getRenderOffsetTop())
+		{
+			m_isDraggingWindow = true;
+			inputHandler->getMousePosition(m_lastWindowDraggingX, m_lastWindowDraggingY);
+		}
+	}
+
+	if (inputHandler->mouseButtonReleasedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	{
+		m_isDraggingWindow = false;
+	}
+
+	if (m_isDraggingWindow)
+	{
+		uint32_t winX, winY;
+		m_wolfInstance->getWindowPos(winX, winY);
+		m_wolfInstance->setWindowPos(static_cast<float>(winX) + (cursoXPos - m_lastWindowDraggingX), static_cast<float>(winY) + (cursorYPos - m_lastWindowDraggingY));
+	}
+
 	uint32_t startRange = 0;
 	uint32_t elementCountPerThread = static_cast<uint32_t>(allEntities.size()) / THREAD_COUNT_BEFORE_FRAME;
 	for (uint32_t i = 0; i < THREAD_COUNT_BEFORE_FRAME; ++i)
@@ -1097,7 +1125,7 @@ void SystemManager::updateBeforeFrame()
 	}
 
 	const glm::vec3 cameraPosition = m_camera->getPosition();
-	m_wolfInstance->evaluateUserInterfaceScript("setCameraPosition(\"" + std::to_string(cameraPosition.x) + ", " + std::to_string(cameraPosition.y) + ", " + std::to_string(cameraPosition.z) + "\")");
+	m_wolfInstance->evaluateUserInterfaceScript("setCameraPosition(" + std::to_string(cameraPosition.x) + ", " + std::to_string(cameraPosition.y) + ", " + std::to_string(cameraPosition.z) + ")");
 
 	// Don't reset earlier to avoid displaying all resources warnings to the UI
 	if (m_isLoading)
@@ -1330,4 +1358,14 @@ void SystemManager::exportScene()
 	m_assetManager->dump(dumpLocalPath);
 
 	m_exportSceneRequest = "";
+}
+
+void SystemManager::closeWindowJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	m_wolfInstance->closeWindow();
+}
+
+void SystemManager::minifyWindowJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	m_wolfInstance->minifyWindow();
 }

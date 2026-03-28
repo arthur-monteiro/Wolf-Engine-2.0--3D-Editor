@@ -24,28 +24,61 @@
 	</div>
 
 	<div id="staticElements">
-		<div id="actionButtons">
-			<button class="actionButton" onclick="openEntityAdd()">Add entity</button>
-			<button class="actionButton" onclick="selectFileAndLoadScene()">Load</button>
-			<button class="actionButton" onclick="openSaveSceneWindow()">Save</button>
-			<button class="actionButton" onclick="openExportSceneWindow()">Export</button>
-			<div id="sceneName" style="display: inline-block;">Unknown scene</div>
-			<div id="optionsIcon" style="float: right; padding: 5px 10px 0px 0px; cursor: pointer;" onclick="openOptions()"><div class="material-symbols-outlined">settings</div></div>
+		<div id="toolbarButtons">
+			<button class="toolbarButton" onclick="openEntityAdd()">
+				<span class="material-symbols-outlined" style="font-size: 16px;">add_box</span>
+				Add entity
+			</button>
+			<button class="toolbarButton" onclick="selectFileAndLoadScene()">
+				<span class="material-symbols-outlined" style="font-size: 16px;">folder_open</span>
+				Load
+			</button>
+			<button class="toolbarButton" onclick="openSaveSceneWindow()">
+				<span class="material-symbols-outlined" style="font-size: 16px;">save</span>
+				Save
+			</button>
+			<button class="toolbarButton" onclick="openExportSceneWindow()">
+				<span class="material-symbols-outlined" style="font-size: 16px;">ios_share</span>
+				Export
+			</button>
+
+			<div id="sceneName">Unknown scene</div>
+
+			<div id="optionsIcon" onclick="openOptions()" title="Editor Settings">
+				<div class="material-symbols-outlined">settings</div>
+			</div>
+			<div class="window-controls">
+				<div class="control-btn" onclick="minWindow()"><span class="material-symbols-outlined" style="font-size: 16px;">remove</span></div>
+				<div class="control-btn close" onclick="closeWindow()"><span class="material-symbols-outlined" style="font-size: 16px;">close</span></div>
+			</div>
 		</div>
+		
 		<div class="frameRate" role="button"><span class="text" id="frameRate">FPS: XX</span></div>
-		<div class="cameraPosition" id="cameraPosition">Camera position:</div>
+		<div id="cameraPosition">
+			<span class="coord-label">X</span><span id="camX" class="coord-val">0.00</span>
+			<span class="coord-label">Y</span><span id="camY" class="coord-val">0.00</span>
+			<span class="coord-label">Z</span><span id="camZ" class="coord-val">0.00</span>
+		</div>
 		<div class="logs" id="logs"></div>
 
 		<div id="infoTabs">
-			<button class="tabLink tabSelected" id="tabLinkEntity" onclick="selectTabInfo('tabLinkEntity', 'entityInfos')" >Entity</button>
-			<button id="addComponentButton" onclick="openComponentAdd()" ><p style="position: relative; margin: -5px -3px;">+</p></button>
+			<button class="tabLink tabSelected" id="tabLinkEntity" onclick="selectTabInfo('tabLinkEntity', 'entityInfos')">Entity</button>
+			<button id="addComponentButton" class="addButton" onclick="openComponentAdd()">+</button>
 		</div>
 	
 		<div id="entityInfos" class="info">
 			<span>No entity selected</span>
 		</div>
 		<div id="entityList"></div>
-		<div id="assetBrowser"></div>
+		<div id="assetBrowser">
+			<div id="assetBrowserHeader">
+				<span class="material-symbols-outlined" style="font-size: 18px; color: #888;">search</span>
+				<input type="text" id="assetSearch" placeholder="Search assets..." style="background: #111; border: 1px solid #333; color: #eee; font-size: 12px; padding: 2px 5px; outline: none;">
+			</div>
+
+			<div id="assetGrid">
+			</div>
+		</div>
 
 		<div id="sliderInfo" onmousedown="resizeInfo()"></div>
 		<div id="sliderList" onmousedown="resizeList()"></div>
@@ -276,6 +309,22 @@
 			}
 		});
 
+		const searchInput = document.getElementById('assetSearch');
+		searchInput.addEventListener('input', (e) => {
+			const searchTerm = e.target.value.toLowerCase();
+			const assets = document.querySelectorAll('.assetItem');
+			
+			assets.forEach(asset => {
+				const assetName = asset.querySelector('.assetName').textContent.toLowerCase();
+				
+				if (assetName.includes(searchTerm)) {
+					asset.classList.remove('hidden');
+				} else {
+					asset.classList.add('hidden');
+				}
+			});
+		});
+
 		document.getElementsByTagName('body')[0].addEventListener("click", (event) => { closeEntityContextMenu() });
 	});
 
@@ -285,7 +334,7 @@
 
 	function refreshWindowSize() {
 		let renderHeight = parseInt(getRenderHeight());
-		let infosHeight = renderHeight - 30;
+		let infosHeight = renderHeight - 34;
 
 		for(let i = 0; i < document.getElementsByClassName('info').length; ++i) {
 			document.getElementsByClassName('info')[i].style.height = String(infosHeight) + "px";
@@ -470,7 +519,6 @@
 		{
 			list.innerHTML = "";
 		}
-
 	}
 
 	function addEntityToList(name, path, isFake = false, parentPath = null) 
@@ -571,12 +619,12 @@
 	}
 
 	function addAssetToList(name, iconPath, id) {
-		let assetInfoDiv = "<div id='asset_" + id + "' class='assetMesh' onmousedown=\"onMouseDownAsset(event, '" + id + "');\">";
+		let assetInfoDiv = "<div class='assetItem' id='asset_" + id + "' class='assetMesh' onmousedown=\"onMouseDownAsset(event, '" + id + "');\">";
 		assetInfoDiv += "<div class='assetIcon'><img src='" + iconPath + "'/></div>";
 		assetInfoDiv += "<div class='assetName'>" + name + "</div>";
 		assetInfoDiv += "</div>";
 
-		document.getElementById('assetBrowser').innerHTML += assetInfoDiv;
+		document.getElementById('assetGrid').innerHTML += assetInfoDiv;
 	}
 
 	function updateAsset(name, iconPath, id)
@@ -671,8 +719,28 @@
 		document.getElementById(infoID).style.display = "block";
 	}
 
-	function setCameraPosition(cameraPositionStr) {
-		document.getElementById("cameraPosition").innerHTML = "Camera position: " + cameraPositionStr;
+	let lastCamState = { x: null, y: null, z: null };
+	function setCameraPosition(cameraPositionX, cameraPositionY, cameraPositionZ) {
+		const x = cameraPositionX.toFixed(2);
+		const y = cameraPositionY.toFixed(2);
+		const z = cameraPositionZ.toFixed(2);
+
+		if (x === lastCamState.x && y === lastCamState.y && z === lastCamState.z) {
+			return; 
+		}
+
+		if (x !== lastCamState.x) {
+			document.getElementById('camX').innerText = x;
+			lastCamState.x = x;
+		}
+		if (y !== lastCamState.y) {
+			document.getElementById('camY').innerText = y;
+			lastCamState.y = y;
+		}
+		if (z !== lastCamState.z) {
+			document.getElementById('camZ').innerText = z;
+			lastCamState.z = z;
+		}
 	}
 
 	function resizeInfo() {

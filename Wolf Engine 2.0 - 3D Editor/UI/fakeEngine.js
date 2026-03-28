@@ -4,7 +4,7 @@ function addBuilding() {
 }
 
 function getFrameRate() {
-    return "FPS: 144";
+    return "144";
 }
 
 function getVRAMRequested() {
