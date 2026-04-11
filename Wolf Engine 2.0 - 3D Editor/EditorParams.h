@@ -24,6 +24,7 @@ public:
 
 	void setRenderOffsetLeft(uint32_t value) { m_renderOffsetLeft = value; }
 	void setRenderOffsetRight(uint32_t value) { m_renderOffsetRight = value; }
+	void setRenderOffsetBot(uint32_t value) { m_renderOffsetBot = value; }
 
 private:
 	uint32_t m_width;
@@ -31,5 +32,6 @@ private:
 
 	uint32_t m_renderOffsetLeft = 500;
 	uint32_t m_renderOffsetRight = 300;
+	uint32_t m_renderOffsetBot = 250;
 };
 

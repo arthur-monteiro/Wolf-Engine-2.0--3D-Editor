@@ -203,7 +203,7 @@ void ComputeVertexDataPass::submit(const Wolf::SubmitContext& context)
 
 void ComputeVertexDataPass::Request::recordCommands(const Wolf::CommandBuffer* commandBuffer, const Wolf::RecordContext& context)
 {
-    uint32_t indexCount = static_cast<uint32_t>(m_indexBuffer->getSize() / sizeof(uint32_t));
+    uint32_t indexCount = m_mesh->getIndexCount();
     uint32_t vertexCount = m_mesh->getVertexCount();
 
     UniformBufferData uniformBufferData{};
@@ -294,7 +294,7 @@ void ComputeVertexDataPass::Request::createResetBuffersDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_resetBuffersDescriptorSetLayoutGenerator.getDescriptorLayouts());
     descriptorSetGenerator.setBuffer(0, *m_mesh->getVertexBuffer());
-    descriptorSetGenerator.setBuffer(1, *m_indexBuffer);
+    descriptorSetGenerator.setBuffer(1, *m_mesh->getIndexBuffer());
     descriptorSetGenerator.setUniformBuffer(2, *m_uniformBuffer);
     descriptorSetGenerator.setBuffer(3, *m_colorWeightPerVertex);
 
@@ -307,7 +307,7 @@ void ComputeVertexDataPass::Request::createAccumulateNormalsDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_accumulateNormalsDescriptorSetLayoutGenerator.getDescriptorLayouts());
     descriptorSetGenerator.setBuffer(0, *m_mesh->getVertexBuffer());
-    descriptorSetGenerator.setBuffer(1, *m_indexBuffer);
+    descriptorSetGenerator.setBuffer(1, *m_mesh->getIndexBuffer());
     descriptorSetGenerator.setUniformBuffer(2, *m_uniformBuffer);
 
     if (!m_accumulatedNormalsDescriptorSet)
@@ -319,7 +319,7 @@ void ComputeVertexDataPass::Request::createAccumulateColorsDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_accumulateColorsDescriptorSetLayoutGenerator.getDescriptorLayouts());
     descriptorSetGenerator.setBuffer(0, *m_mesh->getVertexBuffer());
-    descriptorSetGenerator.setBuffer(1, *m_indexBuffer);
+    descriptorSetGenerator.setBuffer(1, *m_mesh->getIndexBuffer());
     descriptorSetGenerator.setUniformBuffer(2, *m_uniformBuffer);
     descriptorSetGenerator.setBuffer(3, *m_randomSamplesBuffer);
     descriptorSetGenerator.setBuffer(4, *m_colorWeightPerVertex);
@@ -333,7 +333,7 @@ void ComputeVertexDataPass::Request::createAverageColorsDescriptorSet()
 {
     Wolf::DescriptorSetGenerator descriptorSetGenerator(m_averageColorsDescriptorSetLayoutGenerator.getDescriptorLayouts());
     descriptorSetGenerator.setBuffer(0, *m_mesh->getVertexBuffer());
-    descriptorSetGenerator.setBuffer(1, *m_indexBuffer);
+    descriptorSetGenerator.setBuffer(1, *m_mesh->getIndexBuffer());
     descriptorSetGenerator.setUniformBuffer(2, *m_uniformBuffer);
     descriptorSetGenerator.setBuffer(3, *m_colorWeightPerVertex);
 

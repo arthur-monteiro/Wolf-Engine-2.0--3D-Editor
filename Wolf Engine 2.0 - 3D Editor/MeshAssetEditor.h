@@ -3,6 +3,7 @@
 #include "EditorTypes.h"
 #include "EditorTypesTemplated.h"
 #include "Entity.h"
+#include "MeshFormatter.h"
 #include "ModelLoader.h"
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
@@ -24,8 +25,8 @@ public:
 
 	std::string getId() const override { return "meshResourceEditor"; }
 	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, Wolf::ResourceNonOwner<Wolf::Mesh> mesh,
-		const std::vector<ModelData::LODInfo>& defaultLODInfo, const std::vector<ModelData::LODInfo>& sloppyLODInfo, std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> defaultSimplifiedIndexBuffers,
-		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> sloppySimplifiedIndexBuffers, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
+		const std::vector<MeshFormatter::LODInfo>& defaultLODInfo, const std::vector<MeshFormatter::LODInfo>& sloppyLODInfo, std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultSimplifiedMeshes,
+		std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> sloppySimplifiedMeshes, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
 		const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
 		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
 
@@ -165,8 +166,6 @@ private:
 		void setRenderingPipeline(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline) { m_renderingPipeline = renderingPipeline; }
 		void setEditorPushDataToGPU(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU) { m_editorPushDataToGPU = editorPushDataToGPU; }
 		void setMesh(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh) { m_mesh = mesh; }
-		void setDefaultSimplifiedIndexBuffers(const std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>>& indexBuffers) { m_defaultSimplifiedIndexBuffers = indexBuffers; }
-		void setSloppySimplifiedIndexBuffers(const std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>>& indexBuffers) { m_sloppySimplifiedIndexBuffers = indexBuffers; }
 		void setFirstMaterialIdx(uint32_t firstMaterialIdx) { m_firstMaterialIdx = firstMaterialIdx; }
 		void setBottomLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& accelerationStructure) { m_bottomLevelAccelerationStructure = accelerationStructure; }
 		void setLODIndexAndType(uint32_t lodIdx, uint32_t lodType);
@@ -180,8 +179,6 @@ private:
 		Wolf::NullableResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
 		Wolf::NullableResourceNonOwner<Wolf::Mesh> m_mesh;
-		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> m_defaultSimplifiedIndexBuffers;
-		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> m_sloppySimplifiedIndexBuffers;
 		uint32_t m_firstMaterialIdx;
 		uint32_t m_lodIdx = 0;
 		uint32_t m_lodType = 0;

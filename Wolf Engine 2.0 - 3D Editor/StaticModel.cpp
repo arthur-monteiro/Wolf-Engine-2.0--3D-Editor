@@ -201,11 +201,11 @@ bool StaticModel::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManage
 	{
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			instanceInfo.m_overrideIndexBuffer = m_assetManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId)[m_rayTracedWorldLOD - 1];
+			instanceInfo.m_mesh = m_assetManager->getModelDefaultSimplifiedMeshes(m_modelAssetId)[m_rayTracedWorldLOD - 1];
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			instanceInfo.m_overrideIndexBuffer = m_assetManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId)[m_rayTracedWorldLOD - 1];
+			instanceInfo.m_mesh = m_assetManager->getModelSloppySimplifiedMeshes(m_modelAssetId)[m_rayTracedWorldLOD - 1];
 		}
 		else
 		{
@@ -518,11 +518,11 @@ void StaticModel::onDrawLODTypeChanged()
 		uint32_t maxLOD;
 		if (m_drawLODType == 0) // Default
 		{
-			maxLOD = m_assetManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId).size();
+			maxLOD = m_assetManager->getModelDefaultSimplifiedMeshes(m_modelAssetId).size();
 		}
 		else if (m_drawLODType == 1) // Sloppy
 		{
-			maxLOD = m_assetManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId).size();
+			maxLOD = m_assetManager->getModelSloppySimplifiedMeshes(m_modelAssetId).size();
 		}
 		else
 		{
@@ -542,11 +542,11 @@ void StaticModel::onRayTracedWorldLODTypeChanged()
 		uint32_t maxLOD;
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			maxLOD = m_assetManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId).size();
+			maxLOD = m_assetManager->getModelDefaultSimplifiedMeshes(m_modelAssetId).size();
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			maxLOD = m_assetManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId).size();
+			maxLOD = m_assetManager->getModelSloppySimplifiedMeshes(m_modelAssetId).size();
 		}
 		else
 		{

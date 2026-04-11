@@ -90,24 +90,24 @@ struct AnimationData
 {
 	struct Bone
 	{
-		uint32_t idx;
-		std::string name;
-		glm::mat4 offsetMatrix;
+		uint32_t m_idx;
+		std::string m_name;
+		glm::mat4 m_offsetMatrix;
 
 		struct Pose
 		{
-			float time;
-			glm::vec3 translation;
-			glm::quat orientation;
-			glm::vec3 scale;
+			float m_time;
+			glm::vec3 m_translation;
+			glm::quat m_orientation;
+			glm::vec3 m_scale;
 		};
-		std::vector<Pose> poses;
+		std::vector<Pose> m_poses;
 
-		std::vector<Bone> children;
+		std::vector<Bone> m_children;
 	};
-	std::vector<Bone> rootBones;
+	std::vector<Bone> m_rootBones;
 
-	uint32_t boneCount;
+	uint32_t m_boneCount;
 };
 
 class DAEImporter

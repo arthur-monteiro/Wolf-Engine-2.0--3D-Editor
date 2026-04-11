@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include "AssetManager.h"
+#include "CacheHelper.h"
 #include "EditorConfiguration.h"
 #include "GLTFImporter.h"
 
@@ -35,22 +36,16 @@ void ExternalSceneLoader::writeCache(const std::string& filename, const OutputDa
         return;
     }
 
-    writeVector(file, data.m_vertexData.m_staticVertices);
+
 
     uint32_t meshCount = static_cast<uint32_t>(data.m_meshesData.size());
     file.write(reinterpret_cast<const char*>(&meshCount), sizeof(uint32_t));
 
     for (const MeshData& mesh : data.m_meshesData)
     {
-        writeString(file, mesh.m_name);
-        file.write(reinterpret_cast<const char*>(&mesh.m_vertexOffset), sizeof(uint32_t));
-        writeVector(file, mesh.m_indices);
-
-        file.write(reinterpret_cast<const char*>(&mesh.m_aabb), sizeof(Wolf::AABB));
-        file.write(reinterpret_cast<const char*>(&mesh.m_boundingSphere), sizeof(Wolf::BoundingSphere));
-
-        writeLODData(file, mesh.m_defaultSimplifiedIndices, mesh.m_defaultLODsInfo);
-        writeLODData(file, mesh.m_sloppySimplifiedIndices, mesh.m_sloppyLODsInfo);
+        CacheHelper::writeString(file, mesh.m_name);
+        CacheHelper::writeVector(file, mesh.m_staticVertices);
+        CacheHelper::writeVector(file, mesh.m_indices);
     }
 
     uint32_t matCount = static_cast<uint32_t>(data.m_materialsData.size());
@@ -59,16 +54,16 @@ void ExternalSceneLoader::writeCache(const std::string& filename, const OutputDa
     for (const MaterialData& mat : data.m_materialsData)
     {
         const auto& [name, albedo, normal, roughness, metalness, ao, anisoStrength] = mat.m_textureSetFileInfo;
-        writeString(file, name);
-        writeString(file, albedo);
-        writeString(file, normal);
-        writeString(file, roughness);
-        writeString(file, metalness);
-        writeString(file, ao);
-        writeString(file, anisoStrength);
+        CacheHelper::writeString(file, name);
+        CacheHelper::writeString(file, albedo);
+        CacheHelper::writeString(file, normal);
+        CacheHelper::writeString(file, roughness);
+        CacheHelper::writeString(file, metalness);
+        CacheHelper::writeString(file, ao);
+        CacheHelper::writeString(file, anisoStrength);
     }
 
-    writeVector(file, data.m_instancesData);
+    CacheHelper::writeVector(file, data.m_instancesData);
 
     file.close();
 }
@@ -82,23 +77,15 @@ void ExternalSceneLoader::loadCache(const std::string& filename, OutputData& out
         return;
     }
 
-    readVector(file, outData.m_vertexData.m_staticVertices);
-
     uint32_t meshCount = 0;
     file.read(reinterpret_cast<char*>(&meshCount), sizeof(uint32_t));
     outData.m_meshesData.resize(meshCount);
 
     for (MeshData& mesh : outData.m_meshesData)
     {
-        readString(file, mesh.m_name);
-        file.read(reinterpret_cast<char*>(&mesh.m_vertexOffset), sizeof(uint32_t));
-        readVector(file, mesh.m_indices);
-
-        file.read(reinterpret_cast<char*>(&mesh.m_aabb), sizeof(Wolf::AABB));
-        file.read(reinterpret_cast<char*>(&mesh.m_boundingSphere), sizeof(Wolf::BoundingSphere));
-
-        readLODData(file, mesh.m_defaultSimplifiedIndices, mesh.m_defaultLODsInfo);
-        readLODData(file, mesh.m_sloppySimplifiedIndices, mesh.m_sloppyLODsInfo);
+        CacheHelper::readString(file, mesh.m_name);
+        CacheHelper::readVector(file, mesh.m_staticVertices);
+        CacheHelper::readVector(file, mesh.m_indices);
     }
 
     uint32_t matCount = 0;
@@ -108,13 +95,13 @@ void ExternalSceneLoader::loadCache(const std::string& filename, OutputData& out
     for (MaterialData& outputMaterialData : outData.m_materialsData)
     {
         auto& [name, albedo, normal, roughness, metalness, ao, anisoStrength] = outputMaterialData.m_textureSetFileInfo;
-        readString(file, name);
-        readString(file, albedo);
-        readString(file, normal);
-        readString(file, roughness);
-        readString(file, metalness);
-        readString(file, ao);
-        readString(file, anisoStrength);
+        CacheHelper::readString(file, name);
+        CacheHelper::readString(file, albedo);
+        CacheHelper::readString(file, normal);
+        CacheHelper::readString(file, roughness);
+        CacheHelper::readString(file, metalness);
+        CacheHelper::readString(file, ao);
+        CacheHelper::readString(file, anisoStrength);
 
         TextureSetLoader::OutputLayout outputLayout;
         outputLayout.albedoCompression = Wolf::ImageCompression::Compression::BC1;
@@ -143,7 +130,7 @@ void ExternalSceneLoader::loadCache(const std::string& filename, OutputData& out
         }
     }
 
-    readVector(file, outData.m_instancesData);
+    CacheHelper::readVector(file, outData.m_instancesData);
 
     file.close();
 }

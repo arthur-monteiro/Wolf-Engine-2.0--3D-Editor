@@ -42,17 +42,6 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
         return;
     }
 
-    std::vector<std::vector<bool>> m_visitedBytesPerBuffer(model.buffers.size());
-    for (uint32_t bufferIdx = 0; bufferIdx < model.buffers.size(); bufferIdx++)
-    {
-        m_visitedBytesPerBuffer[bufferIdx].resize(model.buffers[bufferIdx].data.size(), false);
-    }
-
-    std::vector<LoadedRange> loadedRanges;
-    std::vector<RangesInfoForMesh> rangesPerMesh;
-    std::array<uint32_t, 4> bufferIdxForEachInfo; // buffer idx for pos, norm, texCoords and tangent to check if it always the same
-    bufferIdxForEachInfo.fill(-1);
-
     std::unordered_map<uint32_t /* gltf material idx */, uint32_t /* output material idx */> materialsMap;
 
     for (uint32_t meshIdx = 0; meshIdx < model.meshes.size(); meshIdx++)
@@ -80,243 +69,67 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                 m_meshesMap[indexAccessorIdx].m_outputMeshIdx = outputMeshIdx;
 
                 ExternalSceneLoader::MeshData& meshData = outputData.m_meshesData.emplace_back();
-                RangesInfoForMesh& rangeInfoForMesh = rangesPerMesh.emplace_back();
                 meshData.m_name = (mesh.name.empty() ? "Mesh_" + std::to_string(meshIdx) : mesh.name) + "_prim_" + std::to_string(primitiveIdx);
 
                 const tinygltf::Accessor& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
                 const tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
-                if (bufferIdxForEachInfo[0] == -1)
-                {
-                    bufferIdxForEachInfo[0] = posBufferView.buffer;
-                }
-                if (bufferIdxForEachInfo[0] != posBufferView.buffer)
-                {
-                    Wolf::Debug::sendCriticalError("All positions must be written in the same buffer");
-                }
                 const tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
                 const uint32_t posByteStride = posBufferView.byteStride == 0 ? sizeof(float) * 3 : posBufferView.byteStride;
                 if (posByteStride != sizeof(float) * 3)
                 {
-                    Wolf::Debug::sendCriticalError("We later assume that pos stride is 3 floats");
+                    Wolf::Debug::sendCriticalError("We assume that pos stride is 3 floats");
                 }
-                uint32_t firstUnvisitedPos = -1;
-                uint32_t firstVisitedPos = -1;
-                for (uint32_t posIdx = posAccessor.byteOffset + posBufferView.byteOffset; posIdx < posAccessor.byteOffset + posBufferView.byteOffset + posAccessor.count * posByteStride; posIdx++)
-                {
-                    if (firstUnvisitedPos == -1 && !m_visitedBytesPerBuffer[posBufferView.buffer][posIdx])
-                    {
-                        firstUnvisitedPos = posIdx;
-                    }
-                    else if (firstUnvisitedPos != -1 && firstVisitedPos == -1 && m_visitedBytesPerBuffer[posBufferView.buffer][posIdx])
-                    {
-                        firstVisitedPos = posIdx;
-                    }
-                    else if (firstVisitedPos != -1 && !m_visitedBytesPerBuffer[posBufferView.buffer][posIdx])
-                    {
-                        Wolf::Debug::sendCriticalError("We found a unvisited vertices, then visited vertices but again an unvisited vertex");
-                    }
-                }
-                uint32_t posRangeMin = firstUnvisitedPos;
-                uint32_t posRangeMax = firstVisitedPos != -1 ? firstVisitedPos : posAccessor.byteOffset + posBufferView.byteOffset + posAccessor.count * posByteStride;
 
                 const tinygltf::Accessor& normAccessor = model.accessors[primitive.attributes.at("NORMAL")];
                 const tinygltf::BufferView& normBufferView = model.bufferViews[normAccessor.bufferView];
-                if (bufferIdxForEachInfo[1] == -1)
-                {
-                    bufferIdxForEachInfo[1] = normBufferView.buffer;
-                }
-                if (bufferIdxForEachInfo[1] != normBufferView.buffer)
-                {
-                    Wolf::Debug::sendCriticalError("All normals must be written in the same buffer");
-                }
                 const tinygltf::Buffer& normBuffer = model.buffers[normBufferView.buffer];
                 const uint32_t normByteStride = normBufferView.byteStride == 0 ? sizeof(float) * 3 : normBufferView.byteStride;
-                uint32_t firstUnvisitedNorm = -1;
-                uint32_t firstVisitedNorm = -1;
-                for (uint32_t normIdx = normAccessor.byteOffset + normBufferView.byteOffset; normIdx < normAccessor.byteOffset + normBufferView.byteOffset + normAccessor.count * normByteStride; normIdx++)
+                if (normByteStride != sizeof(float) * 3)
                 {
-                    if (firstUnvisitedNorm == -1 && !m_visitedBytesPerBuffer[normBufferView.buffer][normIdx])
-                    {
-                        firstUnvisitedNorm = normIdx;
-                    }
-                    else if (firstUnvisitedNorm != -1 && firstVisitedNorm == -1 && m_visitedBytesPerBuffer[normBufferView.buffer][normIdx])
-                    {
-                        firstVisitedNorm = normIdx;
-                    }
-                    else if (firstVisitedNorm != -1 && !m_visitedBytesPerBuffer[normBufferView.buffer][normIdx])
-                    {
-                        Wolf::Debug::sendCriticalError("We found a unvisited vertices, then visited vertices but again an unvisited vertex");
-                    }
+                    Wolf::Debug::sendCriticalError("We assume that normal stride is 3 floats");
                 }
-                uint32_t normRangeMin = firstUnvisitedNorm;
-                uint32_t normRangeMax = firstVisitedNorm != -1 ? firstVisitedNorm : normAccessor.byteOffset + normBufferView.byteOffset + normAccessor.count * normByteStride;
 
                 const tinygltf::Accessor& texCoordsAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
                 const tinygltf::BufferView& texCoordsBufferView = model.bufferViews[texCoordsAccessor.bufferView];
                 const tinygltf::Buffer& texCoordsBuffer = model.buffers[texCoordsBufferView.buffer];
                 const uint32_t texCoordsByteStride = texCoordsBufferView.byteStride == 0 ? sizeof(float) * 2 : texCoordsBufferView.byteStride;
-                uint32_t firstUnvisitedTexCoords = -1;
-                uint32_t firstVisitedTexCoords = -1;
-                for (uint32_t texCoordsIdx = texCoordsAccessor.byteOffset + texCoordsBufferView.byteOffset; texCoordsIdx < texCoordsAccessor.byteOffset + texCoordsBufferView.byteOffset + texCoordsAccessor.count * texCoordsByteStride; texCoordsIdx++)
+                if (texCoordsByteStride != sizeof(float) * 2)
                 {
-                    if (firstUnvisitedTexCoords == -1 && !m_visitedBytesPerBuffer[texCoordsBufferView.buffer][texCoordsIdx])
-                    {
-                        firstUnvisitedTexCoords = texCoordsIdx;
-                    }
-                    else if (firstUnvisitedTexCoords != -1 && firstVisitedTexCoords == -1 && m_visitedBytesPerBuffer[texCoordsBufferView.buffer][texCoordsIdx])
-                    {
-                        firstVisitedTexCoords = texCoordsIdx;
-                    }
-                    else if (firstVisitedTexCoords != -1 && !m_visitedBytesPerBuffer[texCoordsBufferView.buffer][texCoordsIdx])
-                    {
-                        Wolf::Debug::sendCriticalError("We found a unvisited vertices, then visited vertices but again an unvisited vertex");
-                    }
+                    Wolf::Debug::sendCriticalError("We assume that texture coords stride is 2 floats");
                 }
-                uint32_t texCoordsRangeMin = firstUnvisitedTexCoords;
-                uint32_t texCoordsRangeMax = firstVisitedTexCoords != -1 ? firstVisitedTexCoords : texCoordsAccessor.byteOffset + texCoordsBufferView.byteOffset + texCoordsAccessor.count * texCoordsByteStride;
 
                 const tinygltf::Accessor& tangentAccessor = model.accessors[primitive.attributes.at("TANGENT")];
                 const tinygltf::BufferView& tangentBufferView = model.bufferViews[tangentAccessor.bufferView];
                 const tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
                 const uint32_t tangentByteStride = tangentBufferView.byteStride == 0 ? sizeof(float) * 4 : tangentBufferView.byteStride;
-                uint32_t firstUnvisitedTangent = -1;
-                uint32_t firstVisitedTangent = -1;
-                for (uint32_t tangentIdx = tangentAccessor.byteOffset + tangentBufferView.byteOffset; tangentIdx < tangentAccessor.byteOffset + tangentBufferView.byteOffset + tangentAccessor.count * tangentByteStride; tangentIdx++)
+                if (tangentByteStride != sizeof(float) * 4)
                 {
-                    if (firstUnvisitedTangent == -1 && !m_visitedBytesPerBuffer[tangentBufferView.buffer][tangentIdx])
-                    {
-                        firstUnvisitedTangent = tangentIdx;
-                    }
-                    else if (firstUnvisitedTangent != -1 && firstVisitedTangent == -1 && m_visitedBytesPerBuffer[tangentBufferView.buffer][tangentIdx])
-                    {
-                        firstVisitedTangent = tangentIdx;
-                    }
-                    else if (firstVisitedTangent != -1 && !m_visitedBytesPerBuffer[tangentBufferView.buffer][tangentIdx])
-                    {
-                        Wolf::Debug::sendCriticalError("We found a unvisited vertices, then visited vertices but again an unvisited vertex");
-                    }
+                    Wolf::Debug::sendCriticalError("We assume that tangent stride is 4 floats");
                 }
-                uint32_t tangentRangeMin = firstUnvisitedTangent;
-                uint32_t tangentRangeMax = firstVisitedTangent != -1 ? firstVisitedTangent : tangentAccessor.byteOffset + tangentBufferView.byteOffset + tangentAccessor.count * tangentByteStride;
-
 
                 if (normAccessor.count != posAccessor.count || normAccessor.count != texCoordsAccessor.count || normAccessor.count != tangentAccessor.count)
                 {
                     Wolf::Debug::sendCriticalError("Error when reading GLTF file");
                 }
 
-                if (posRangeMin == -1)
+                meshData.m_staticVertices.reserve(posAccessor.count);
+                for (size_t idx = 0; idx < posAccessor.count; idx++)
                 {
-                    // Find ranges
-                    uint32_t currentIndexToLookFor = posAccessor.byteOffset + posBufferView.byteOffset;
-                    while (currentIndexToLookFor < posAccessor.byteOffset + posBufferView.byteOffset + posAccessor.count * posByteStride)
-                    {
-                        bool rangeFound = false;
-                        for (uint32_t loadedRangeIdx = 0; loadedRangeIdx < loadedRanges.size(); loadedRangeIdx++)
-                        {
-                            const LoadedRange& loadedRange = loadedRanges[loadedRangeIdx];
-                            if (loadedRange.m_bufferRanges[0].m_min <= currentIndexToLookFor && loadedRange.m_bufferRanges[0].m_max >= currentIndexToLookFor)
-                            {
-                                rangeInfoForMesh.m_ranges.push_back({ loadedRangeIdx, currentIndexToLookFor - loadedRange.m_bufferRanges[0].m_min });
-                                currentIndexToLookFor = loadedRange.m_bufferRanges[0].m_max;
+                    Vertex3D vertex{};
 
-                                rangeFound = true;
-                                break;
-                            }
-                        }
+                    const unsigned char* posData = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
+                    vertex.pos = reinterpret_cast<const glm::vec3*>(posData)[idx];
 
-                        if (!rangeFound)
-                        {
-                            Wolf::Debug::sendCriticalError("No range found, it will infinitely loop");
-                        }
-                    }
+                    const unsigned char* normData = normBuffer.data.data() + normAccessor.byteOffset + normBufferView.byteOffset;
+                    vertex.normal = reinterpret_cast<const glm::vec3*>(normData)[idx];
 
-                    continue; // we saw all vertices
-                }
+                    const unsigned char* tangentData = tangentBuffer.data.data() + tangentAccessor.byteOffset + tangentBufferView.byteOffset;
+                    vertex.tangent = reinterpret_cast<const glm::vec4*>(tangentData)[idx];
 
-                if (normRangeMin == -1)
-                {
-                    Wolf::Debug::sendCriticalError("Range min shouldn't be -1 if pos isn't");
-                }
+                    const unsigned char* texCoordsData = texCoordsBuffer.data.data() + texCoordsAccessor.byteOffset + texCoordsBufferView.byteOffset;
+                    vertex.texCoord = reinterpret_cast<const glm::vec2*>(texCoordsData)[idx];
 
-                uint32_t posRangeCount = posRangeMax - posRangeMin;
-                uint32_t normRangeCount = normRangeMax - normRangeMin;
-                if (posRangeCount != normRangeCount)
-                {
-                    Wolf::Debug::sendCriticalError("Ranges should be the same for position and normal");
-                }
-
-                LoadedRange& addedLoadedRange = loadedRanges.emplace_back();
-                addedLoadedRange.m_indexBeforeSort = loadedRanges.size() - 1;
-                addedLoadedRange.m_bufferRanges[0].m_min = posRangeMin;
-                addedLoadedRange.m_bufferRanges[0].m_max = posRangeMax;
-                addedLoadedRange.m_bufferRanges[1].m_min = normRangeMin;
-                addedLoadedRange.m_bufferRanges[1].m_max = normRangeMax;
-
-                addedLoadedRange.m_vertices.resize(posRangeCount / posByteStride);
-
-                for (uint32_t posIdx = posRangeMin; posIdx < posRangeMax; posIdx++)
-                {
-                    if ((posIdx - posRangeMin) % posByteStride == 0)
-                    {
-                        const float* posPtr = reinterpret_cast<const float*>(&(posBuffer.data[posIdx]));
-                        addedLoadedRange.m_vertices[(posIdx - posRangeMin) / posByteStride].pos = glm::make_vec3(posPtr);
-                    }
-                    m_visitedBytesPerBuffer[posBufferView.buffer][posIdx] = true;
-                }
-
-                for (uint32_t normIdx = normRangeMin; normIdx < normRangeMax; normIdx++)
-                {
-                    if ((normIdx - normRangeMin) % normByteStride == 0)
-                    {
-                        const float* normPtr = reinterpret_cast<const float*>(&(normBuffer.data[normIdx]));
-                        addedLoadedRange.m_vertices[(normIdx - normRangeMin) / normByteStride].normal = glm::make_vec3(normPtr);
-                    }
-                    m_visitedBytesPerBuffer[normBufferView.buffer][normIdx] = true;
-                }
-
-                for (uint32_t texCoordsIdx = texCoordsRangeMin; texCoordsIdx < texCoordsRangeMax; texCoordsIdx++)
-                {
-                    if ((texCoordsIdx - texCoordsRangeMin) % texCoordsByteStride == 0)
-                    {
-                        const float* texCoordsPtr = reinterpret_cast<const float*>(&(texCoordsBuffer.data[texCoordsIdx]));
-                        addedLoadedRange.m_vertices[(texCoordsIdx - texCoordsRangeMin) / texCoordsByteStride].texCoord = glm::make_vec2(texCoordsPtr);
-                    }
-                    m_visitedBytesPerBuffer[texCoordsBufferView.buffer][texCoordsIdx] = true;
-                }
-
-                for (uint32_t tangentIdx = tangentRangeMin; tangentIdx < tangentRangeMax; tangentIdx++)
-                {
-                    if ((tangentIdx - tangentRangeMin) % tangentByteStride == 0)
-                    {
-                        const float* tangentsPtr = reinterpret_cast<const float*>(&(tangentBuffer.data[tangentIdx]));
-                        addedLoadedRange.m_vertices[(tangentIdx - tangentRangeMin) / tangentByteStride].tangent = glm::make_vec3(tangentsPtr);
-                    }
-                    m_visitedBytesPerBuffer[texCoordsBufferView.buffer][tangentIdx] = true;
-                }
-
-                // Find ranges
-                uint32_t currentIndexToLookFor = posAccessor.byteOffset + posBufferView.byteOffset;
-                while (currentIndexToLookFor < posAccessor.byteOffset + posBufferView.byteOffset + posAccessor.count * posByteStride)
-                {
-                    bool rangeFound = false;
-                    for (uint32_t loadedRangeIdx = 0; loadedRangeIdx < loadedRanges.size(); loadedRangeIdx++)
-                    {
-                        const LoadedRange& loadedRange = loadedRanges[loadedRangeIdx];
-                        if (loadedRange.m_bufferRanges[0].m_min <= currentIndexToLookFor && loadedRange.m_bufferRanges[0].m_max >= currentIndexToLookFor)
-                        {
-                            rangeInfoForMesh.m_ranges.push_back({ loadedRangeIdx, currentIndexToLookFor - loadedRange.m_bufferRanges[0].m_min });
-                            currentIndexToLookFor = loadedRange.m_bufferRanges[0].m_max;
-
-                            rangeFound = true;
-                            break;
-                        }
-                    }
-
-                    if (!rangeFound)
-                    {
-                        Wolf::Debug::sendCriticalError("No range found, it will infinitely loop");
-                    }
+                    meshData.m_staticVertices.push_back(vertex);
                 }
 
                 const tinygltf::Accessor& indexAccessor = model.accessors[indexAccessorIdx];
@@ -336,16 +149,6 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                     {
                         meshData.m_indices.push_back(reinterpret_cast<const uint16_t*>(rawIndices)[idx]);
                     }
-                }
-
-                if (posAccessor.minValues.size() == 3 && posAccessor.maxValues.size() == 3)
-                {
-                    glm::vec3 aabbMin, aabbMax;
-                    aabbMin = glm::vec3(posAccessor.minValues[0], posAccessor.minValues[1], posAccessor.minValues[2]);
-                    aabbMax = glm::vec3(posAccessor.maxValues[0], posAccessor.maxValues[1], posAccessor.maxValues[2]);
-
-                    meshData.m_aabb = Wolf::AABB(aabbMin, aabbMax);
-                    meshData.m_boundingSphere = Wolf::BoundingSphere(meshData.m_aabb);
                 }
             }
 
@@ -442,48 +245,6 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                     outputMaterialData.m_textureSet.slicesFolders[2] = assetManager->getCombinedImageSlicesFolder(textureSetLoader.getImageAssetId(2));
                 }
             }
-        }
-    }
-
-    Wolf::Debug::sendInfo("Sorting ranges");
-    std::sort(loadedRanges.begin(), loadedRanges.end(),  [](const LoadedRange& a, const LoadedRange& b) { return a.m_bufferRanges[0].m_min < b.m_bufferRanges[0].m_min; });
-
-    for (uint32_t loadedRangeIdx = 0; loadedRangeIdx < loadedRanges.size(); loadedRangeIdx++)
-    {
-        Wolf::Debug::sendInfo("Push range " + std::to_string(loadedRangeIdx) + " / " + std::to_string(loadedRanges.size()));
-
-        LoadedRange& loadedRange = loadedRanges[loadedRangeIdx];
-
-        uint32_t outOffset = outputData.m_vertexData.m_staticVertices.size();
-        outputData.m_vertexData.m_staticVertices.resize(outputData.m_vertexData.m_staticVertices.size() + loadedRange.m_vertices.size());
-        memcpy(&outputData.m_vertexData.m_staticVertices[outOffset], loadedRange.m_vertices.data(), loadedRange.m_vertices.size() * sizeof(loadedRange.m_vertices[0]));
-
-        loadedRange.m_outOffset = outOffset;
-    }
-
-    for (uint32_t meshIdx = 0; meshIdx < outputData.m_meshesData.size(); ++meshIdx)
-    {
-        Wolf::Debug::sendInfo("Finding vertex offset for mesh " + std::to_string(meshIdx) + " / " + std::to_string(outputData.m_meshesData.size()));
-
-        ExternalSceneLoader::MeshData& outputMeshData = outputData.m_meshesData[meshIdx];
-        RangesInfoForMesh rangesInfoForMesh = rangesPerMesh[meshIdx];
-        uint32_t firstRangeIdx = rangesInfoForMesh.m_ranges[0].m_rangeIdx;
-        uint32_t firstRangeOffset = rangesInfoForMesh.m_ranges[0].m_offsetInPosRange / (3 * sizeof(float));
-
-        bool rangeFound = false;
-        for (const LoadedRange& loadedRange : loadedRanges)
-        {
-            if (loadedRange.m_indexBeforeSort == firstRangeIdx)
-            {
-                outputMeshData.m_vertexOffset = loadedRange.m_outOffset + firstRangeOffset;
-                rangeFound = true;
-                break;
-            }
-        }
-
-        if (!rangeFound)
-        {
-            Wolf::Debug::sendCriticalError("Range not found");
         }
     }
 

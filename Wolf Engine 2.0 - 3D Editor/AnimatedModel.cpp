@@ -104,7 +104,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 		{
 			Wolf::ResourceNonOwner<AnimationData> animationData = m_resourceManager->getAnimationData(m_meshResourceId);
 
-			m_boneCount = animationData->boneCount;
+			m_boneCount = animationData->m_boneCount;
 			m_bonesBuffer.reset(Wolf::Buffer::createBuffer(m_boneCount * sizeof(glm::mat4), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 			m_bonesBuffer->setName("Animation bones (AnimatedModel::m_bonesBuffer)");
 
@@ -119,7 +119,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 
 			// Bone names
 			m_boneNamesAndIndices.clear();
-			addBoneNamesAndIndices(animationData->rootBones.data());
+			addBoneNamesAndIndices(animationData->m_rootBones.data());
 
 			std::vector<std::string> boneNames(m_boneNamesAndIndices.size());
 			for (uint32_t i = 0; i < boneNames.size(); ++i)
@@ -149,7 +149,7 @@ void AnimatedModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf
 				{
 					timer = m_forceTimer;
 				}
-				computeBonesInfo(animationData->rootBones.data(), glm::mat4(1.0f), timer, m_transform, m_bonesInfoGPU, m_bonesInfoCPU);
+				computeBonesInfo(animationData->m_rootBones.data(), glm::mat4(1.0f), timer, m_transform, m_bonesInfoGPU, m_bonesInfoCPU);
 			}
 			else
 			{
@@ -233,7 +233,7 @@ void AnimatedModel::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 		if (m_resourceManager->isModelLoaded(m_meshResourceId))
 		{
 			Wolf::ResourceNonOwner<AnimationData> animationData = m_resourceManager->getAnimationData(m_meshResourceId);
-			addBonesToDebug(animationData->rootBones.data(), debugRenderingManager);
+			addBonesToDebug(animationData->m_rootBones.data(), debugRenderingManager);
 		}
 	}
 }
@@ -300,13 +300,13 @@ void AnimatedModel::addBonesToDebug(const AnimationData::Bone* bone, DebugRender
 
 	static constexpr float DEBUG_SPHERE_RADIUS = 0.05f;
 
-	glm::vec3 offset = glm::inverse(bone->offsetMatrix) * glm::vec4(1.0f);
-	glm::vec4 translation = m_transform * (m_bonesInfoGPU[bone->idx].transform * glm::vec4(offset, 1.0f));
+	glm::vec3 offset = glm::inverse(bone->m_offsetMatrix) * glm::vec4(1.0f);
+	glm::vec4 translation = m_transform * (m_bonesInfoGPU[bone->m_idx].transform * glm::vec4(offset, 1.0f));
 
-	bool isHighlighted = m_boneNamesAndIndices[m_highlightBone].second == bone->idx;
-	debugRenderingManager.addSphere(m_bonesInfoCPU[bone->idx].position, isHighlighted ? DEBUG_SPHERE_RADIUS * 1.5f : DEBUG_SPHERE_RADIUS, isHighlighted ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(1.0f));
+	bool isHighlighted = m_boneNamesAndIndices[m_highlightBone].second == bone->m_idx;
+	debugRenderingManager.addSphere(m_bonesInfoCPU[bone->m_idx].position, isHighlighted ? DEBUG_SPHERE_RADIUS * 1.5f : DEBUG_SPHERE_RADIUS, isHighlighted ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(1.0f));
 
-	for (const AnimationData::Bone& childBone : bone->children)
+	for (const AnimationData::Bone& childBone : bone->m_children)
 	{
 		addBonesToDebug(&childBone, debugRenderingManager);
 	}
@@ -314,9 +314,9 @@ void AnimatedModel::addBonesToDebug(const AnimationData::Bone* bone, DebugRender
 
 void AnimatedModel::addBoneNamesAndIndices(const AnimationData::Bone* bone)
 {
-	m_boneNamesAndIndices.emplace_back(bone->name, bone->idx);
+	m_boneNamesAndIndices.emplace_back(bone->m_name, bone->m_idx);
 
-	for (const AnimationData::Bone& childBone : bone->children)
+	for (const AnimationData::Bone& childBone : bone->m_children)
 	{
 		addBoneNamesAndIndices(&childBone);
 	}
@@ -358,7 +358,7 @@ void AnimatedModel::updateMaxTimer()
 	bool success;
 	Wolf::ResourceNonOwner<AnimationData> animationData = findAnimationData(success);
 
-	findMaxTimer(animationData->rootBones.data(), m_maxTimer);
+	findMaxTimer(animationData->m_rootBones.data(), m_maxTimer);
 	m_forceTimer.setMax(m_maxTimer);
 
 	m_requestReloadCallback(this);

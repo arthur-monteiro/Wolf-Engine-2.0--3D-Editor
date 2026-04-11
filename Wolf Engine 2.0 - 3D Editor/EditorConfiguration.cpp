@@ -24,6 +24,8 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 
 			if (token == "dataFolder")
 				m_dataFolderPath = line;
+			else if (token == "cacheFolder")
+				m_cacheFolderPath = line;
 			else if (token == "defaultScene")
 				m_defaultScene = line;
 			else if (token == "enableDebugDraw")

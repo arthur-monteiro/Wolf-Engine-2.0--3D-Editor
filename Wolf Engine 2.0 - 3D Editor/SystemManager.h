@@ -60,6 +60,7 @@ private:
 	ultralight::JSValue getRenderOffsetLeftJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 	void setRenderOffsetLeftJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void setRenderOffsetRightJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void setRenderOffsetBotJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void addEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void addComponentJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void selectEntityByNameJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);

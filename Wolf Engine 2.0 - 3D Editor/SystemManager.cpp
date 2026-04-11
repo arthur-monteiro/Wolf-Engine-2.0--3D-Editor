@@ -190,7 +190,7 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_itemSize = sizeof(uint32_t); // Skybox + full screen quads + debug + mesh indices if no ray tracing
-	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_minimumPoolSize = g_editorConfiguration->getEnableRayTracing() ? 1024 : 134'217'728 ;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_minimumPoolSize = g_editorConfiguration->getEnableRayTracing() ? 1024 : 268'435'456;
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[2].m_itemSize = sizeof(Vertex2DTextured); // Full screen quad
@@ -207,7 +207,7 @@ void SystemManager::createWolfInstance()
 		additionalMeshFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_itemSize = sizeof(Vertex3D); // Mesh vertices
-	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_minimumPoolSize = 536'870'912;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_minimumPoolSize = 1'073'741'824;
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalMeshFlags;
 
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_itemSize = sizeof(SkeletonVertex); // Animated mesh vertices
@@ -217,7 +217,7 @@ void SystemManager::createWolfInstance()
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
 		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_itemSize = sizeof(uint32_t); // Mesh indices
-		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_minimumPoolSize = 134'217'728;
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_minimumPoolSize = 268'435'456;
 		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalMeshFlags;
 	}
 
@@ -320,6 +320,7 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["setRenderOffsetLeft"] = std::bind(&SystemManager::setRenderOffsetLeftJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["getRenderOffsetRight"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getRenderOffsetRightJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["setRenderOffsetRight"] = std::bind(&SystemManager::setRenderOffsetRightJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["setRenderOffsetBot"] = std::bind(&SystemManager::setRenderOffsetBotJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["selectEntityByName"] = std::bind(&SystemManager::selectEntityByNameJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["saveScene"] = std::bind(&SystemManager::saveSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -540,6 +541,14 @@ void SystemManager::setRenderOffsetRightJSCallback(const ultralight::JSObject& t
 {
 	const uint32_t value = static_cast<uint32_t>(args[0].ToNumber());
 	m_editorParams->setRenderOffsetRight(value);
+}
+
+void SystemManager::setRenderOffsetBotJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const uint32_t value = static_cast<uint32_t>(args[0].ToNumber());
+	m_editorParams->setRenderOffsetBot(value);
+
+	m_wolfInstance->evaluateUserInterfaceScript("refreshWindowSize()");
 }
 
 void SystemManager::addEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)

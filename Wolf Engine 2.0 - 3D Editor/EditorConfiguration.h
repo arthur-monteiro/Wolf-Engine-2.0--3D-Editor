@@ -9,6 +9,7 @@ public:
 	EditorConfiguration(const std::string& filePath);
 
 	[[nodiscard]] const std::string& getDataFolderPath() const { return m_dataFolderPath; }
+	[[nodiscard]] const std::string& getCacheFolderPath() const { return m_cacheFolderPath; }
 	[[nodiscard]] const std::string& getDefaultScene() const { return m_defaultScene; }
 	[[nodiscard]] bool getEnableDebugDraw() const { return m_enableDebugDraw; }
 	[[nodiscard]] bool getEnableRayTracing() const { return m_enableRayTracing; }
@@ -28,6 +29,7 @@ public:
 
 private:
 	std::string m_dataFolderPath;
+	std::string m_cacheFolderPath;
 	std::string m_defaultScene;
 	bool m_enableDebugDraw = false;
 	bool m_enableRayTracing = false;

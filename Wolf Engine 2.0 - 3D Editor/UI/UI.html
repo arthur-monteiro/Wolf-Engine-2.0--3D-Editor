@@ -82,7 +82,7 @@
 
 		<div id="sliderInfo" onmousedown="resizeInfo()"></div>
 		<div id="sliderList" onmousedown="resizeList()"></div>
-		<div id="sliderAssetBrowser" onmousedown="resizeList()"></div>
+		<div id="sliderAssetBrowser" onmousedown="resizeAssetBrowser()"></div>
 
 		<div id="viewBotRightElements">
 			<img id="selectEntityIcon"
@@ -112,150 +112,214 @@
 	</div>
 
 	<div id="addEntityWindow" class="modalWindow" style="display: none;">
-		<div class='closeButton' id="closeButton" onclick="closeEntityAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
-		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-			<li class="table-row" id="addEntityPathTR">
-				<div class="col col-1" data-label="infoType">Path</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue">
-					<button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('addEntityPath', 'save', 'save')">Select file</button>
-					<div id="addEntityPath" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No file selected</div>
+		<div class='closeButton' id="closeButton" onclick="closeEntityAdd()">
+			<span>&times;</span>
+		</div>
+		<div class="blockParametersTitle">ADD ENTITY</div>
+		<div style="padding: 5px 0;">
+			<div class="inputParam" id="addEntityPathTR">
+				<span>Path :</span>
+				<div class="path-input-container">
+					<div id="addEntityPath" class="path-display">No file selected</div>
+					
+					<button class="browseButton" onclick="pickFileAndSetValue('addEntityPath', 'save', 'save')">
+						Browse
+					</button>
 				</div>
-			</li>
-		</ul>
-		<button class="validationButton" onclick="finishAddEntity()">Add entity</button>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button class="primary" onclick="finishAddEntity()">
+				Add Entity
+			</button>
+		</div>
 	</div>
 
 	<div id="addComponentWindow" class="modalWindow" style="display: none;">
-		<div class='closeButton' id="closeButton" onclick="closeComponentAdd()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
-		<div id="addComponentWindowContent">
-			<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-				<li class="table-row">
-					<div class="col col-1" data-label="infoType">Type</div>
-					<div class="columnDivider"></div>
-					<div class="col col-2" data-label="infoValue" style="display: block;">
-						<select id="componentTypeSelect">
-						</select>
-					</div>
-				</li>
-			</ul>
-			<button class="validationButton" onclick="finishAddComponent()">Add component</button>
+		<div class='closeButton' id="closeButton" onclick="closeComponentAdd()">
+			<span>&times;</span>
 		</div>
-		<div id="addComponentWindowContentNoComponent" style="display: none">
-			<p>No component available for the selected entity</p>
+		<div class="blockParametersTitle">ADD COMPONENT</div>
+		<div id="addComponentWindowContent">
+			<div style="padding: 5px 0;">
+				<div class="inputParam">
+					<span>Type :</span>
+					<div>
+						<select id="componentTypeSelect"></select>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="primary" onclick="finishAddComponent()">
+					Add Component
+				</button>
+			</div>
+		</div>
+
+		<div id="addComponentWindowContentNoComponent" style="display: none; padding: 20px; text-align: center;">
+			<p style="color: #888; font-size: 11px;">No component available for the selected entity</p>
 		</div>
 	</div>
 
 	<div id="saveSceneWindow" class="modalWindow" style="display: none">
-        <div class='closeButton' onclick="document.getElementById('saveSceneWindow').style.display='none'" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
-        <ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-            <li class="table-row">
-                <div class="col col-1" data-label="infoType">File</div>
-                <div class="columnDivider"></div>
-                <div class="col col-2" data-label="infoValue">
-                    <button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('saveSceneFile', 'save', 'save')">Select file</button>
-                    <div id="saveSceneFile" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No file selected</div>
-                </div>
-            </li>
-            <li class="table-row">
-                <div class="col col-1" data-label="infoType">Scene name</div>
-                <div class="columnDivider"></div>
-                <div class="col col-2" data-label="infoValue">
-                    <input type="text" id="saveSceneNameInput" style="width: 100%; height: 25px;"/>
-                </div>
-            </li>
-        </ul>
-        <button class="validationButton" onclick="finishSaveScene()">Save scene</button>
-    </div>
+		<div class='closeButton' onclick="document.getElementById('saveSceneWindow').style.display='none'">
+			<span>&times;</span>
+		</div>
+		<div class="blockParametersTitle">SAVE SCENE</div>
+		<div style="padding: 5px 0;">
+			<div class="inputParam">
+				<span>File :</span>
+				<div class="path-input-container">
+					<div id="saveSceneFile" class="path-display">No file selected</div>
+					<button class="browseButton" onclick="pickFileAndSetValue('saveSceneFile', 'save', 'save')">
+						Browse
+					</button>
+				</div>
+			</div>
+
+			<div class="inputParam">
+				<span>Scene name :</span>
+				<div>
+					<input type="text" id="saveSceneNameInput" placeholder="Enter scene name..." />
+				</div>
+			</div>
+		</div>
+
+		<div class="modal-footer">
+			<button class="primary" onclick="finishSaveScene()">
+				Save Scene
+			</button>
+		</div>
+	</div>
 
 	<div id="exportSceneWindow" class="modalWindow" style="display: none">
-        <div class='closeButton' onclick="document.getElementById('exportSceneWindow').style.display='none'" style="cursor: pointer">
-            <div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div>
-        </div>
-        <ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-            <li class="table-row">
-                <div class="col col-1" data-label="infoType">Executable</div>
-                <div class="columnDivider"></div>
-                <div class="col col-2" data-label="infoValue">
-                    <button style="width: 30%;" class="actionButton" onclick="pickFileAndSetValue('exportSceneExecutable', 'open', 'exportExe')">Select file</button>
-                    <div id="exportSceneExecutable" style="width: 70%; white-space: nowrap; overflow: auto; transform: translate(10px, 0px); height: 35px; font-size: 12px;">No file selected</div>
-                </div>
-            </li>
-        </ul>
-        <button class="validationButton" onclick="finishExportScene()">Export scene</button>
-    </div>
+		<div class='closeButton' onclick="document.getElementById('exportSceneWindow').style.display='none'">
+			<span>&times;</span>
+		</div>
+		<div class="blockParametersTitle">EXPORT SCENE</div>
+		<div style="padding: 5px 0;">
+			<div class="inputParam">
+				<span>Executable :</span>
+				<div class="path-input-container">
+					<div id="exportSceneExecutable" class="path-display">No file selected</div>
+					<button class="browseButton"  onclick="pickFileAndSetValue('exportSceneExecutable', 'open', 'exportExe')">
+						Browse
+					</button>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button class="primary" onclick="finishExportScene()">
+				Export Scene
+			</button>
+		</div>
+	</div>
 
-	<div id="selectFileWindow" class="modalWindow" style="display: none;">
-		<div id="selectFile">Path: <button id="selectFileButton" onclick="pickFileAndSetValue('selectFile', 'open', 'undefined')">Select file</button></div>
-		<button id="selectFileFinishButton" onclick="finishFileSelection()">Button placeholder</button>
+	<div id="loadSceneWindow" class="modalWindow" style="display: none;">
+		<div class='closeButton' onclick="document.getElementById('loadSceneWindow').style.display='none'">
+			<span>&times;</span>
+		</div>
+		<div class="blockParametersTitle">LOAD SCENE</div>
+		<div class="inputParam">
+			<span>Path :</span>
+			<div class="path-input-container">
+				<div id="selectSceneFile" class="path-display">No file selected</div>
+				<button id="selectSceneFileButton" class="browseButton" onclick="pickFileAndSetValue('selectSceneFile', 'open', 'save')">
+					Browse
+				</button>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button id="selectSceneFileFinishButton" class="primary" onclick="finishSceneFileSelection()">
+				Load Scene
+			</button>
+		</div>
 	</div>
 
 	<div id="options" class="modalWindow" style="display: none;">
-		<div class='closeButton' id="closeButton" onclick="closeOptions()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
-		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-			<li class="table-row" style="height: 50px;">
-				<div class="col col-1" data-label="infoType" style="transform: translateY(35%);">Display</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue" style="display: grid; place-items: center; margin-right: 8px">
-					<div >
-						<select id="displayTypeSelect" onchange="displayTypeSelectChanged(this.options[this.selectedIndex].value)">
-							<option value="albedo">Albedo</option>
-							<option value="vertexColor">Vertex color</option>
-							<option value="normal">Normal</option>
-							<option value="vertexNormal">Vertex normal</option>
-							<option value="roughness">Roughness</option>
-							<option value="metalness">Metalness</option>
-							<option value="matAO">Material AO</option>
-							<option value="anisoStrength">Anisotropy strength</option>
-							<option value="lighting">Lighting</option>
-							<option value="entityIdx">Entity index</option>
-							<option value="rayTracedWorldDebugAlbedo">Ray traced world debug: albedo</option>
-							<option value="rayTracedWorldDebugInstanceId">Ray traced world debug: instance id</option>
-							<option value="rayTracedWorldDebugPrimitiveId">Ray traced world debug: primitive id</option>
-							<option value="pathTracing">Path tracing</option>
-							<option value="globalIrradiance">Global irradiance</option>
-						</select>
-					</div>
-					<div style="padding-top: 12px;">
-						<input type="checkbox" id="debugPhysics" name="debugPhysics" onclick="debugPhysicsCheckboxChanged(this.checked)"/>
-						<label for="debugPhysics">Debug physics</label>
+		<div class='closeButton' id="closeButton" onclick="closeOptions()">
+			<span>&times;</span>
+		</div>
+
+		<div class="blockParametersTitle">OPTIONS</div>
+
+		<div style="padding: 5px 0;">
+			<div class="inputParam">
+				<span>Display :</span>
+				<div>
+					<select id="displayTypeSelect" onchange="displayTypeSelectChanged(this.value)">
+						<option value="albedo">Albedo</option>
+						<option value="vertexColor">Vertex color</option>
+						<option value="normal">Normal</option>
+						<option value="vertexNormal">Vertex normal</option>
+						<option value="roughness">Roughness</option>
+						<option value="metalness">Metalness</option>
+						<option value="matAO">Material AO</option>
+						<option value="anisoStrength">Anisotropy strength</option>
+						<option value="lighting">Lighting</option>
+						<option value="entityIdx">Entity index</option>
+						<option value="rayTracedWorldDebugAlbedo">Ray traced world debug: albedo</option>
+						<option value="rayTracedWorldDebugInstanceId">Ray traced world debug: instance id</option>
+						<option value="rayTracedWorldDebugPrimitiveId">Ray traced world debug: primitive id</option>
+						<option value="pathTracing">Path tracing</option>
+						<option value="globalIrradiance">Global irradiance</option>
+					</select>
+
+					<div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+						<input type="checkbox" id="debugPhysics" onclick="debugPhysicsCheckboxChanged(this.checked)"/>
+						<label for="debugPhysics" style="color: #888; font-size: 11px;">Debug physics</label>
 					</div>
 				</div>
-			</li>
-			<li class="table-row">
-				<div class="col col-1" data-label="infoType">Camera</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px">
-					<select id="cameraTypeSelect" onchange="cameraTypeSelectChanged(this.options[this.selectedIndex].value)">
+			</div>
+
+			<div class="inputParam">
+				<span>Camera :</span>
+				<div>
+					<select id="cameraTypeSelect" onchange="cameraTypeSelectChanged(this.value)">
 						<option value="fps">FPS</option>
 					</select>
 				</div>
-			</li>
-			<li class="table-row">
-				<div class="col col-1" data-label="infoType">Debug</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px">
-					<button class="actionButton" onclick="openUIInBrowser()">Open UI in browser</button>
-					<button class="actionButton" onclick="closeOptions(); takeScreenshot();">Take a screenshot</button>
+			</div>
+
+			<div class="inputParam">
+				<span>Debug :</span>
+				<div style="gap: 5px;">
+					<button class="actionButton" onclick="openUIInBrowser()" style="width: 100%; margin-bottom: 4px;">Open UI in browser</button>
+					<button class="actionButton" onclick="closeOptions(); takeScreenshot();" style="width: 100%;">Take screenshot</button>
 				</div>
-			</li>
-		</ul>
+			</div>
+		</div>
 	</div>
 
 	<div id="performances" class="modalWindow" style="display: none;">
-		<div class='closeButton' id="closeButton" onclick="closePerformances()" style="cursor: pointer"><div style="display: block; transform: translate(-1px, -5px); font: message-box;">X</div></div>
-		<ul style="padding: 0px 10px 0px 10px; margin-bottom: -5px;">
-			<li class="table-row">
-				<div class="col col-1" data-label="infoType">GPU</div>
-				<div class="columnDivider"></div>
-				<div class="col col-2" data-label="infoValue" style="display: block; margin-right: 8px; min-width: 300px;">
-					VRAM Allocated: <span id="vramAllocated">0 MB</span><br/>
-					VRAM Requested: <span id="vramRequested">0 MB</span>
+		<div class='closeButton' id="closeButton" onclick="closePerformances()">
+			<span>&times;</span>
+		</div>
+		<div class="blockParametersTitle">PERFORMANCES</div>
+		<div style="padding: 5px 0;">
+			<div class="inputParam">
+				<span>GPU :</span>
+				<div style="gap: 4px;">
+					<div class="performance-stat">
+						Allocated: <span id="vramAllocated" class="stat-value">0 MB</span>
+					</div>
+					<div class="performance-stat">
+						Requested: <span id="vramRequested" class="stat-value">0 MB</span>
+					</div>
 				</div>
-			</li>
-			<button class="actionButton" onclick="openVRAMTrackingPage()">Export VRAM tracking</button>
-			<button class="actionButton" onclick="openSystemRAMTrackingPage()">Export system RAM tracing</button>
-		</ul>
+			</div>
+			<div class="inputParam">
+			<span>Tracing :</span>
+			<div> 
+				<button class="actionButton" onclick="openVRAMTrackingPage()">
+					Export VRAM tracking
+				</button>
+				<button class="actionButton" onclick="openSystemRAMTrackingPage()">
+					Export system RAM tracing
+				</button>
+			</div>
+		</div>
+		</div>
 	</div>
 
     <script src="./slider.js"></script>
@@ -446,7 +510,12 @@
 			filter = defaultFilter;
 
 		let filepath = pickFile(option, filter);
-		document.getElementById(id).innerHTML = filepath;
+
+		let displayElement = document.getElementById(id);
+		if (displayElement) {
+			displayElement.innerHTML = filepath;
+			displayElement.classList.add('path-selected');
+		}
 
 		if (callback != undefined)
 			callback(filepath);
@@ -542,6 +611,7 @@
 		item.innerHTML = `
 			<span class="entityToggle">▼</span>
 			<span class="entityName" ${isFake ? "style='font-style: italic;'" : ""}>${name}</span>
+			<span class="childCount"></span>
 			<div class="entityType">${isFake ? "Fake" : "Entity"}</div>
 		`;
 
@@ -563,6 +633,23 @@
 		if (!target) target = document.getElementById('entityList');
 		
 		target.appendChild(wrapper);
+
+		if (parentPath) {
+        	updateParentChildCount(safeParentPath);
+    	}
+	}
+
+	function updateParentChildCount(safeParentId) {
+		const container = document.getElementById("children_" + safeParentId);
+		const parentItem = document.getElementById(safeParentId);
+		
+		if (container && parentItem) {
+			const count = container.children.length;
+			const countElement = parentItem.querySelector('.childCount');
+			if (countElement) {
+				countElement.textContent = count > 0 ? `(${count})` : "";
+			}
+		}
 	}
 
 	function closeAssetContextMenu() {
@@ -668,15 +755,17 @@
 	let fileSelectionActionType = FileSelectionActionType.Unknown;
 
 	function selectFileAndLoadScene() {
-		document.getElementById('selectFileWindow').style.display = "block";
-		document.getElementById('selectFileFinishButton').innerHTML = "Load";
+		const windowEl = document.getElementById('loadSceneWindow');
+		const finishBtn = document.getElementById('selectSceneFileFinishButton');
+		
+		windowEl.style.display = "block";
+		
 		defaultFilter = "save";
-
 		fileSelectionActionType = FileSelectionActionType.LoadScene;
 	}
 
-	function finishFileSelection() {
-		let path = document.getElementById("selectFile").innerHTML;
+	function finishSceneFileSelection() {
+		let path = document.getElementById("selectSceneFile").innerHTML;
 
 		switch (fileSelectionActionType){
 			case FileSelectionActionType.Unknown:
@@ -687,8 +776,7 @@
 				break;
 		}
 
-		document.getElementById('selectFileWindow').style.display = "none";
-		document.getElementById('selectFile').innerHTML = "Path: <button id=\"selectFileButton\" onclick=\"pickFileAndSetValue('selectFile', 'open', 'undefined')\">Select file</button>";
+		document.getElementById('loadSceneWindow').style.display = "none";
 	}
 
 	function openSaveSceneWindow() {
@@ -775,7 +863,7 @@
 		document.onmouseup = () => document.onmousemove = document.onmouseup = null;
 	}
 
-	function resizeList(e) {
+	function resizeList() {
 		let dragX = undefined;
 		let entityListLeft = parseInt(document.getElementById("entityList").style.left);
 		let entityListWidth = parseInt(document.getElementById("entityList").offsetWidth);
@@ -802,6 +890,25 @@
 			dragX = e.clientX;
 		}
 		document.onmouseup = () => document.onmousemove = document.onmouseup = null;
+	}
+
+	function resizeAssetBrowser() {
+		let dragY = undefined;
+		const assetBrowserHeight = document.getElementById("assetBrowser").getBoundingClientRect().height;
+		document.onmousemove = function(e) {
+			if (dragY == undefined)
+				dragY = e.clientY;
+			let newHeight = assetBrowserHeight + dragY - e.clientY;
+
+			document.getElementById("assetBrowser").style.height = newHeight + "px";
+
+			let sliderBottom = newHeight + 25;
+			document.getElementById("sliderAssetBrowser").style.bottom = sliderBottom + "px";
+
+			setRenderOffsetBot(sliderBottom);
+		};
+
+		document.onmouseup = () => document.onmousemove = document.onmouseup = null;;
 	}
     </script>
   </body>

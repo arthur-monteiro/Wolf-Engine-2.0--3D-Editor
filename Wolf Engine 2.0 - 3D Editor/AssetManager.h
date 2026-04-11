@@ -41,10 +41,10 @@ public:
 	bool isModelLoaded(AssetId modelAssetId) const;
 	Wolf::ResourceNonOwner<Wolf::Mesh> getModelMesh(AssetId modelAssetId) const;
 	bool isModelCentered(AssetId modelAssetId) const;
-	const std::vector<ModelData::LODInfo>& getModelDefaultLODInfo(AssetId modelAssetId) const;
-	const std::vector<ModelData::LODInfo>& getModelSloppyLODInfo(AssetId modelAssetId) const;
-	std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getModelDefaultSimplifiedIndexBuffers(AssetId modelAssetId) const;
-	std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getModelSloppySimplifiedIndexBuffers(AssetId modelAssetId) const;
+	const std::vector<MeshFormatter::LODInfo>& getModelDefaultLODInfo(AssetId modelAssetId) const;
+	const std::vector<MeshFormatter::LODInfo>& getModelSloppyLODInfo(AssetId modelAssetId) const;
+	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> getModelDefaultSimplifiedMeshes(AssetId modelAssetId) const;
+	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> getModelSloppySimplifiedMeshes(AssetId modelAssetId) const;
 	Wolf::ResourceNonOwner<AnimationData> getAnimationData(AssetId modelAssetId) const;
 	Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(AssetId modelAssetId, uint32_t lod, uint32_t lodType);
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& getPhysicsShapes(AssetId modelAssetId) const;
@@ -75,10 +75,9 @@ public:
 	const std::vector<ExternalSceneLoader::InstanceData>& getSceneInstances(AssetId sceneAssetId) const;
 
 private:
-	[[nodiscard]] AssetId addModel(const Wolf::BufferPoolInterface::BufferPoolInstance& vertexBufferPoolInstance, const std::vector<uint32_t>& indices, const std::string& name, const Wolf::AABB& aabb,
-		const Wolf::BoundingSphere& boundingSphere, uint32_t materialIdx);
-	[[nodiscard]] AssetId addModelInternal(const std::string& loadingPath, const Wolf::BufferPoolInterface::BufferPoolInstance& overrideVertexBufferPoolInstance = {},
-		const std::vector<uint32_t>& overrideIndices = {}, const Wolf::AABB& overrideAABB = {}, const Wolf::BoundingSphere& overrideBoundingSphere = {}, uint32_t overrideMaterialIdx = -1);
+	[[nodiscard]] AssetId addModel(const std::vector<Vertex3D>& staticVertices, const std::vector<uint32_t>& indices, const std::string& name, uint32_t materialIdx);
+	[[nodiscard]] AssetId addModelInternal(const std::string& loadingPath, const std::vector<Vertex3D>& overrideStaticVertices = {}, const std::vector<uint32_t>& overrideIndices = {},
+		uint32_t overrideMaterialIdx = -1);
 
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
 	static std::string computeIconPath(const std::string& loadingPath, uint32_t thumbnailsLockedCount);
@@ -130,8 +129,8 @@ private:
 	{
 	public:
 		Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-			const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::BufferPoolInterface::BufferPoolInstance& overrideVertexBufferPoolInstance,
-			const std::vector<uint32_t>& overrideIndices, const Wolf::AABB& overrideAABB, const Wolf::BoundingSphere& overrideBoundingSphere, uint32_t overrideMaterialIdx);
+			const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const std::vector<Vertex3D>& overrideStaticVertices,
+			const std::vector<uint32_t>& overrideIndices, uint32_t overrideMaterialIdx);
 		Mesh(const Mesh&) = delete;
 		~Mesh() override = default;
 
@@ -146,10 +145,10 @@ private:
 		bool isLoaded() const override;
 		Wolf::ResourceNonOwner<Wolf::Mesh> getMesh() { return m_mesh.createNonOwnerResource(); }
 		bool isCentered() const { return m_isCentered; }
-		const std::vector<ModelData::LODInfo>& getDefaultLODInfo() const { return m_defaultLODsInfo; }
-		const std::vector<ModelData::LODInfo>& getSloppyLODInfo() const { return m_sloppyLODsInfo; }
-		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getDefaultSimplifiedIndexBuffers();
-		std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> getSloppySimplifiedIndexBuffers();
+		const std::vector<MeshFormatter::LODInfo>& getDefaultLODInfo() const { return m_defaultLODsInfo; }
+		const std::vector<MeshFormatter::LODInfo>& getSloppyLODInfo() const { return m_sloppyLODsInfo; }
+		std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> getDefaultSimplifiedMeshes() const;
+		std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> getSloppySimplifiedMeshes() const;
 		bool isAnimated() const { return static_cast<bool>(m_animationData);}
 		Wolf::ResourceNonOwner<AnimationData> getAnimationData() { return m_animationData.createNonOwnerResource(); }
 		std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& getPhysicsShapes() { return m_physicsShapes; }
@@ -160,15 +159,23 @@ private:
 
 	private:
 		Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
-		Wolf::BufferPoolInterface::BufferPoolInstance m_overrideVertexBufferPoolInstance;
+		std::vector<Vertex3D> m_overrideStaticVertices;
 		std::vector<uint32_t> m_overrideIndices;
-		Wolf::AABB m_overrideAABB;
-		Wolf::BoundingSphere m_overrideBoundingSphere;
 		uint32_t m_overrideMaterialIdx;
 
 		void loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
-		void loadModelFromFile(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
-		void loadModelFromData(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
+		struct LoadedMeshData
+		{
+			std::vector<Vertex3D> m_staticVertices;
+			std::vector<SkeletonVertex> m_skeletonVertices;
+			std::vector<uint32_t> m_indices;
+
+			std::vector<TextureSetLoader::TextureSetFileInfoGGX> m_textureSetsInfo;
+			Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
+		};
+		void loadModelFromFile(LoadedMeshData& outLoadedMeshData);
+		void loadModelFromData(LoadedMeshData& outLoadedMeshData);
+
 		void computeThumbnailGenerationViewMatrix(const Wolf::AABB& aabb);
 		void generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass);
 		void ensureBLASIsLoaded(uint32_t lod, uint32_t lodType);
@@ -180,17 +187,23 @@ private:
 
 		bool m_isCentered = false;
 
-		std::vector<ModelData::LODInfo> m_defaultLODsInfo;
-		std::vector<ModelData::LODInfo> m_sloppyLODsInfo;
-		std::vector<Wolf::ResourceUniqueOwner<Wolf::Buffer>> m_defaultSimplifiedIndexBuffers;
-		std::vector<Wolf::ResourceUniqueOwner<Wolf::Buffer>> m_sloppySimplifiedIndexBuffers;
+		std::vector<MeshFormatter::LODInfo> m_defaultLODsInfo;
+		std::vector<MeshFormatter::LODInfo> m_sloppyLODsInfo;
+		std::vector<Wolf::ResourceUniqueOwner<Wolf::Mesh>> m_defaultSimplifiedMeshes;
+		std::vector<Wolf::ResourceUniqueOwner<Wolf::Mesh>> m_sloppySimplifiedMeshes;
 
 		Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
 
 		std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>> m_physicsShapes;
 
 		std::vector<std::vector<Wolf::ResourceUniqueOwner<Wolf::BottomLevelAccelerationStructure>>> m_bottomLevelAccelerationStructures;
-		std::pair<uint32_t, uint32_t> m_loadedBLAS;
+		struct BlasId
+		{
+			uint32_t m_lodType;
+			uint32_t m_lod;
+		};
+		BlasId m_loadedBLAS;
+		std::vector<std::pair<BlasId, uint32_t /* frame index */>> m_BLASesToDestroy;
 
 		uint32_t m_firstTextureSetIdx = 0;
 		uint32_t m_firstMaterialIdx = 0;
@@ -275,8 +288,7 @@ private:
 	class ExternalScene : public AssetInterface
 	{
 	public:
-		ExternalScene(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-			const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+		ExternalScene(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback);
 		ExternalScene(const ExternalScene&) = delete;
 		~ExternalScene() override = default;
 
@@ -292,8 +304,6 @@ private:
 		void setThumbnailGenerationViewMatrix(const glm::mat4& viewMatrix) { m_thumbnailGenerationViewMatrix = viewMatrix; }
 
 	private:
-		Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
-
 		void loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
 		void generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass);
 
@@ -302,7 +312,6 @@ private:
 
 		glm::mat4 m_thumbnailGenerationViewMatrix;
 
-		Wolf::BufferPoolInterface::BufferPoolInstance m_vertexBufferPoolInstance;
 		std::vector<AssetId> m_modelAssetIds;
 		Wolf::AABB m_aabb;
 		uint32_t m_firstMaterialIdx;

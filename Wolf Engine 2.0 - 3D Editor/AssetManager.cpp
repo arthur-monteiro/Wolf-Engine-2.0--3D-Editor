@@ -230,7 +230,7 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeResourceEditor(AssetId asset
 			uint32_t firstMaterialIdx = getFirstMaterialIdx(assetId);
 			Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> bottomLevelAccelerationStructure = getBLAS(assetId, 0, 0);
 			meshResourceEditor = new MeshAssetEditor(m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getLoadingPath(), m_requestReloadCallback, isModelCentered(assetId), getModelMesh(assetId), getModelDefaultLODInfo(assetId),
-				getModelSloppyLODInfo(assetId), getModelDefaultSimplifiedIndexBuffers(assetId), getModelSloppySimplifiedIndexBuffers(assetId), firstMaterialIdx,
+				getModelSloppyLODInfo(assetId), getModelDefaultSimplifiedMeshes(assetId), getModelSloppySimplifiedMeshes(assetId), firstMaterialIdx,
 				bottomLevelAccelerationStructure, m_isolateMeshCallback, m_removeIsolationAndGetViewMatrixCallback,
 				[this, assetId](const glm::mat4& viewMatrix) { requestThumbnailReload(assetId, viewMatrix); }, m_renderingPipeline, m_editorPushDataToGPU);
 
@@ -313,7 +313,7 @@ bool AssetManager::isModelCentered(AssetId modelAssetId) const
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->isCentered();
 }
 
-const std::vector<ModelData::LODInfo>& AssetManager::getModelDefaultLODInfo(AssetId modelAssetId) const
+const std::vector<MeshFormatter::LODInfo>& AssetManager::getModelDefaultLODInfo(AssetId modelAssetId) const
 {
 	if (!isMesh(modelAssetId))
 	{
@@ -323,7 +323,7 @@ const std::vector<ModelData::LODInfo>& AssetManager::getModelDefaultLODInfo(Asse
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getDefaultLODInfo();
 }
 
-const std::vector<ModelData::LODInfo>& AssetManager::getModelSloppyLODInfo(AssetId modelAssetId) const
+const std::vector<MeshFormatter::LODInfo>& AssetManager::getModelSloppyLODInfo(AssetId modelAssetId) const
 {
 	if (!isMesh(modelAssetId))
 	{
@@ -333,31 +333,31 @@ const std::vector<ModelData::LODInfo>& AssetManager::getModelSloppyLODInfo(Asset
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getSloppyLODInfo();
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::getModelDefaultSimplifiedIndexBuffers(AssetId modelAssetId) const
+std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::getModelDefaultSimplifiedMeshes(AssetId modelAssetId) const
 {
 	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getDefaultSimplifiedIndexBuffers();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getDefaultSimplifiedMeshes();
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::getModelSloppySimplifiedIndexBuffers(AssetId modelAssetId) const
+std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::getModelSloppySimplifiedMeshes(AssetId modelAssetId) const
 {
 	if (!isMesh(modelAssetId))
 	{
 		Wolf::Debug::sendError("ResourceId is not a mesh");
 	}
 
-	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getSloppySimplifiedIndexBuffers();
+	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getSloppySimplifiedMeshes();
 }
 
 Wolf::ResourceNonOwner<AnimationData> AssetManager::getAnimationData(AssetId modelAssetId) const
 {
 	if (!isMesh(modelAssetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not a mesh");
+		Wolf::Debug::sendError("AssetId is not a mesh");
 	}
 
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getAnimationData();
@@ -367,7 +367,7 @@ Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetMana
 {
 	if (!isMesh(modelAssetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not a mesh");
+		Wolf::Debug::sendError("AssetId is not a mesh");
 	}
 
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getBLAS(lod, lodType);
@@ -377,7 +377,7 @@ std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& AssetManager::getP
 {
 	if (!isMesh(modelAssetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not a mesh");
+		Wolf::Debug::sendError("AssetId is not a mesh");
 	}
 
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getPhysicsShapes();
@@ -387,7 +387,7 @@ uint32_t AssetManager::getFirstMaterialIdx(AssetId modelAssetId) const
 {
 	if (!isMesh(modelAssetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not a mesh");
+		Wolf::Debug::sendError("AssetId is not a mesh");
 	}
 
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getFirstMaterialIdx();
@@ -635,7 +635,7 @@ AssetId AssetManager::addExternalScene(const std::string& loadingPath)
 
 	AssetId resourceId = static_cast<uint32_t>(m_externalScenes.size()) + EXTERNAL_SCENE_ASSET_IDX_OFFSET;
 
-	ExternalScene* newExternalScene = new ExternalScene(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, m_bufferPoolInterface);
+	ExternalScene* newExternalScene = new ExternalScene(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback);
 	m_externalScenes.emplace_back(newExternalScene);
 	m_addResourceToUICallback(m_externalScenes.back()->computeName(), iconFullPath, resourceId);
 
@@ -742,14 +742,12 @@ const std::vector<ExternalSceneLoader::InstanceData>& AssetManager::getSceneInst
 	return m_externalScenes[sceneAssetId - EXTERNAL_SCENE_ASSET_IDX_OFFSET]->getInstances();
 }
 
-AssetId AssetManager::addModel(const Wolf::BufferPoolInterface::BufferPoolInstance& vertexBufferPoolInstance, const std::vector<uint32_t>& indices, const std::string& name, const Wolf::AABB& aabb,
-	const Wolf::BoundingSphere& boundingSphere, uint32_t materialIdx)
+AssetId AssetManager::addModel(const std::vector<Vertex3D>& staticVertices, const std::vector<uint32_t>& indices, const std::string& name, uint32_t materialIdx)
 {
-	return addModelInternal(name, vertexBufferPoolInstance, indices, aabb, boundingSphere, materialIdx);
+	return addModelInternal(name, staticVertices, indices, materialIdx);
 }
 
-AssetId AssetManager::addModelInternal(const std::string& loadingPath, const Wolf::BufferPoolInterface::BufferPoolInstance& overrideVertexBufferPoolInstance, const std::vector<uint32_t>& overrideIndices,
-	const Wolf::AABB& overrideAABB, const Wolf::BoundingSphere& overrideBoundingSphere, uint32_t overrideMaterialIdx)
+AssetId AssetManager::addModelInternal(const std::string& loadingPath, const std::vector<Vertex3D>& overrideStaticVertices, const std::vector<uint32_t>& overrideIndices, uint32_t overrideMaterialIdx)
 {
 	if (m_meshes.size() >= MAX_ASSET_RESOURCE_COUNT)
 	{
@@ -788,8 +786,7 @@ AssetId AssetManager::addModelInternal(const std::string& loadingPath, const Wol
 
 	AssetId resourceId = static_cast<uint32_t>(m_meshes.size()) + MESH_ASSET_IDX_OFFSET;
 
-	Mesh* newMesh = new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, m_bufferPoolInterface, overrideVertexBufferPoolInstance, overrideIndices, overrideAABB,
-		overrideBoundingSphere, overrideMaterialIdx);
+	Mesh* newMesh = new Mesh(loadingPath, !iconFileExists, resourceId, m_updateResourceInUICallback, m_bufferPoolInterface, overrideStaticVertices, overrideIndices, overrideMaterialIdx);
 	m_meshes.emplace_back(newMesh);
 	m_addResourceToUICallback(m_meshes.back()->computeName(), iconFullPath, resourceId);
 
@@ -968,10 +965,10 @@ void AssetManager::AssetInterface::onChanged()
 }
 
 AssetManager::Mesh::Mesh(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::BufferPoolInterface::BufferPoolInstance& overrideVertexBufferPoolInstance,
-	const std::vector<uint32_t>& overrideIndices, const Wolf::AABB& overrideAABB, const Wolf::BoundingSphere& overrideBoundingSphere, uint32_t overrideMaterialIdx)
-: AssetInterface(loadingPath, assetId, updateResourceInUICallback), m_bufferPoolInterface(bufferPoolInterface), m_overrideVertexBufferPoolInstance(overrideVertexBufferPoolInstance),
-  m_overrideIndices(overrideIndices), m_overrideAABB(overrideAABB), m_overrideBoundingSphere(overrideBoundingSphere), m_overrideMaterialIdx(overrideMaterialIdx)
+	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const std::vector<Vertex3D>& overrideStaticVertices,
+	const std::vector<uint32_t>& overrideIndices, uint32_t overrideMaterialIdx)
+: AssetInterface(loadingPath, assetId, updateResourceInUICallback), m_bufferPoolInterface(bufferPoolInterface), m_overrideStaticVertices(overrideStaticVertices),
+  m_overrideIndices(overrideIndices), m_overrideMaterialIdx(overrideMaterialIdx)
 {
 	m_modelLoadingRequested = true;
 	m_thumbnailGenerationRequested = !g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration;
@@ -993,6 +990,16 @@ void AssetManager::Mesh::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Ma
 	if (m_meshToKeepInMemory)
 	{
 		m_meshToKeepInMemory.reset(nullptr);
+	}
+
+	uint32_t currentFrameIdx = Wolf::g_runtimeContext->getCurrentCPUFrameNumber();
+	for (int32_t blasToDestroyIdx = static_cast<int32_t>(m_BLASesToDestroy.size()) - 1; blasToDestroyIdx >= 0; blasToDestroyIdx--)
+	{
+		if (m_BLASesToDestroy[blasToDestroyIdx].second <= currentFrameIdx)
+		{
+			m_bottomLevelAccelerationStructures[m_BLASesToDestroy[blasToDestroyIdx].first.m_lodType][m_BLASesToDestroy[blasToDestroyIdx].first.m_lod].reset(nullptr);
+			m_BLASesToDestroy.erase(m_BLASesToDestroy.begin() + blasToDestroyIdx);
+		}
 	}
 }
 
@@ -1031,8 +1038,6 @@ void AssetManager::Mesh::dump(std::ofstream& outputJSON, uint32_t tabCount, cons
 	modelLoadingInfo.filename = m_loadingPath;
 	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('/'));
 	modelLoadingInfo.textureSetLayout = TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
-	modelLoadingInfo.generateDefaultLODCount = 8;
-	modelLoadingInfo.generateSloppyLODCount= 16;
 
 	ModelData modelData;
 	ModelLoader::loadObject(modelData, modelLoadingInfo, Wolf::ResourceReference<AssetManager>(ms_assetManager));
@@ -1078,22 +1083,22 @@ bool AssetManager::Mesh::isLoaded() const
 	return static_cast<bool>(m_mesh);
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::Mesh::getDefaultSimplifiedIndexBuffers()
+std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::Mesh::getDefaultSimplifiedMeshes() const
 {
-	std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> r;
-	for (uint32_t i = 0; i < m_defaultSimplifiedIndexBuffers.size(); i++)
+	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> r;
+	for (uint32_t i = 0; i < m_defaultSimplifiedMeshes.size(); i++)
 	{
-		r.emplace_back(m_defaultSimplifiedIndexBuffers[i].createNonOwnerResource());
+		r.emplace_back(m_defaultSimplifiedMeshes[i].createNonOwnerResource());
 	}
 	return r;
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> AssetManager::Mesh::getSloppySimplifiedIndexBuffers()
+std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::Mesh::getSloppySimplifiedMeshes() const
 {
-	std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> r;
-	for (uint32_t i = 0; i < m_sloppySimplifiedIndexBuffers.size(); i++)
+	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> r;
+	for (uint32_t i = 0; i < m_sloppySimplifiedMeshes.size(); i++)
 	{
-		r.emplace_back(m_sloppySimplifiedIndexBuffers[i].createNonOwnerResource());
+		r.emplace_back(m_sloppySimplifiedMeshes[i].createNonOwnerResource());
 	}
 	return r;
 }
@@ -1119,63 +1124,84 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 {
 	Wolf::Timer timer(std::string(m_loadingPath) + " loading");
 
-	if (m_overrideVertexBufferPoolInstance.m_bufferSize == 0)
+	MeshFormatter meshFormatter(m_loadingPath, ms_assetManager);
+	if (!meshFormatter.isMeshesLoaded())
 	{
-		loadModelFromFile(materialsGPUManager);
+		LoadedMeshData loadedMeshData{};
+		if (m_overrideStaticVertices.empty())
+		{
+			loadModelFromFile(loadedMeshData);
+		}
+		else
+		{
+			loadModelFromData(loadedMeshData);
+		}
+
+		MeshFormatter::DataInput meshFormatterDataInput{};
+		meshFormatterDataInput.m_fileName = m_loadingPath;
+		meshFormatterDataInput.m_staticVertices = std::move(loadedMeshData.m_staticVertices);
+		meshFormatterDataInput.m_skeletonVertices = std::move(loadedMeshData.m_skeletonVertices);
+		meshFormatterDataInput.m_indices = std::move(loadedMeshData.m_indices);
+		meshFormatterDataInput.m_generateDefaultLODCount = 8;
+		meshFormatterDataInput.m_generateSloppyLODCount= 16;
+		meshFormatterDataInput.m_textureSetsInfo = std::move(loadedMeshData.m_textureSetsInfo);
+		meshFormatterDataInput.m_animationData = std::move(loadedMeshData.m_animationData);
+		meshFormatter.computeData(meshFormatterDataInput);
 	}
-	else
+
+	if (!m_overrideStaticVertices.empty())
 	{
-		loadModelFromData(materialsGPUManager);
+		m_firstMaterialIdx = m_overrideMaterialIdx;
 	}
-}
-
-void AssetManager::Mesh::loadModelFromFile(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
-{
-	ModelLoadingInfo modelLoadingInfo;
-	modelLoadingInfo.filename = m_loadingPath;
-	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('/'));
-	modelLoadingInfo.textureSetLayout = TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
-	modelLoadingInfo.generateDefaultLODCount = 8;
-	modelLoadingInfo.generateSloppyLODCount= 16;
-
-	ModelData modelData;
-	ModelLoader::loadObject(modelData, modelLoadingInfo, Wolf::ResourceReference<AssetManager>(ms_assetManager));
 
 	VkBufferUsageFlags additionalFlags = 0;
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
 		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
-
-	if (!modelData.m_staticVertices.empty())
+	if (!meshFormatter.getStaticVertices().empty())
 	{
-		m_mesh.reset(new Wolf::Mesh(modelData.m_staticVertices, modelData.m_indices, m_bufferPoolInterface, modelData.m_aabb, modelData.m_boundingSphere, additionalFlags, additionalFlags));
+		m_mesh.reset(new Wolf::Mesh(meshFormatter.getStaticVertices(), meshFormatter.getIndices(), m_bufferPoolInterface, meshFormatter.getAABB(), meshFormatter.getBoundingSphere(), additionalFlags, additionalFlags));
 	}
-	else if (!modelData.m_skeletonVertices.empty())
+	else if (!meshFormatter.getSkeletonVertices().empty())
 	{
-		m_mesh.reset(new Wolf::Mesh(modelData.m_skeletonVertices, modelData.m_indices, m_bufferPoolInterface, modelData.m_aabb, modelData.m_boundingSphere, additionalFlags, additionalFlags));
+		m_mesh.reset(new Wolf::Mesh(meshFormatter.getSkeletonVertices(), meshFormatter.getIndices(), m_bufferPoolInterface, meshFormatter.getAABB(), meshFormatter.getBoundingSphere(), additionalFlags, additionalFlags));
 	}
 	else
 	{
 		Wolf::Debug::sendCriticalError("No vertex found");
 	}
 
-	m_isCentered = modelData.m_isMeshCentered;
+	// LODs
+	const std::vector<MeshFormatter::LODInfo>& defaultLODs = meshFormatter.getDefaultLODInfo();
+	const std::vector<MeshFormatter::LODInfo>& sloppyLODs = meshFormatter.getSloppyLODInfo();
 
-	for (const std::vector<uint32_t>& lod : modelData.m_defaultSimplifiedIndices)
+	for (const MeshFormatter::LODInfo& lod : defaultLODs)
 	{
-		m_defaultSimplifiedIndexBuffers.emplace_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-		m_defaultSimplifiedIndexBuffers.back()->setName("Default simplified index buffer for " + modelLoadingInfo.filename + " (AssetManager::Mesh::m_defaultSimplifiedIndexBuffer[" + std::to_string(m_defaultSimplifiedIndexBuffers.size()) + "])");
-		m_defaultSimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t), 0, 0);
+		if (!meshFormatter.getStaticVertices().empty())
+		{
+			m_defaultSimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter.getAABB(),
+				meshFormatter.getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else
+		{
+			m_defaultSimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter.getAABB(),
+				meshFormatter.getBoundingSphere(), additionalFlags, additionalFlags));
+		}
 	}
 
-	for (const std::vector<uint32_t>& lod : modelData.m_sloppySimplifiedIndices)
+	for (const MeshFormatter::LODInfo& lod : sloppyLODs)
 	{
-		m_sloppySimplifiedIndexBuffers.emplace_back(Wolf::Buffer::createBuffer(lod.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-		m_sloppySimplifiedIndexBuffers.back()->setName("Sloppy simplified index buffer for " + modelLoadingInfo.filename + " (AssetManager::Mesh::m_sloppySimplifiedIndexBuffers[" + std::to_string(m_sloppySimplifiedIndexBuffers.size()) + "])");
-		m_sloppySimplifiedIndexBuffers.back()->transferCPUMemoryWithStagingBuffer(lod.data(), lod.size() * sizeof(uint32_t), 0, 0);
+		if (!meshFormatter.getStaticVertices().empty())
+		{
+			m_sloppySimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter.getAABB(),
+				meshFormatter.getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else
+		{
+			m_sloppySimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter.getAABB(),
+				meshFormatter.getBoundingSphere(), additionalFlags, additionalFlags));
+		}
 	}
 
 	if (g_editorConfiguration->getEnableRayTracing())
@@ -1183,71 +1209,86 @@ void AssetManager::Mesh::loadModelFromFile(const Wolf::ResourceNonOwner<Wolf::Ma
 		m_bottomLevelAccelerationStructures.resize(2);
 		for (uint32_t lodType = 0; lodType < 2; lodType++)
 		{
-			uint32_t lodCount = lodType == 0 ? m_defaultSimplifiedIndexBuffers.size() : m_sloppySimplifiedIndexBuffers.size();
+			uint32_t lodCount = lodType == 0 ? m_defaultSimplifiedMeshes.size() : m_sloppySimplifiedMeshes.size();
 			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
 		}
 	}
-	m_loadedBLAS = { -1, -1 };
 
-	m_defaultLODsInfo = modelData.m_defaultLODsInfo;
-	m_sloppyLODsInfo = modelData.m_sloppyLODsInfo;
+	m_defaultLODsInfo = defaultLODs;
+	for (MeshFormatter::LODInfo& lod : m_defaultLODsInfo)
+	{
+		lod.m_indices.clear();
+	}
+	m_sloppyLODsInfo = defaultLODs;
+	for (MeshFormatter::LODInfo& lod : m_sloppyLODsInfo)
+	{
+		lod.m_indices.clear();
+	}
+
+	m_loadedBLAS = { static_cast<uint32_t>(-1), static_cast<uint32_t>(-1) };
+
+	m_textureSetInfo = meshFormatter.getTextureSetsInfo();
+	if (!m_textureSetInfo.empty())
+	{
+		materialsGPUManager->lockMaterials();
+		materialsGPUManager->lockTextureSets();
+
+		m_firstTextureSetIdx = m_textureSetInfo.empty() ? 0 : materialsGPUManager->getCurrentTextureSetCount();
+		m_firstMaterialIdx = m_textureSetInfo.empty() ? 0 : materialsGPUManager->getCurrentMaterialCount();
+		for (const Wolf::MaterialsGPUManager::TextureSetInfo& textureSetInfo : m_textureSetInfo)
+		{
+			materialsGPUManager->addNewTextureSet(textureSetInfo);
+
+			Wolf::MaterialsGPUManager::MaterialInfo materialInfo;
+			materialInfo.textureSetInfos[0].textureSetIdx = materialsGPUManager->getTextureSetsCacheInfo().back().textureSetIdx;
+			materialsGPUManager->addNewMaterial(materialInfo);
+		}
+		materialsGPUManager->unlockTextureSets();
+		materialsGPUManager->unlockMaterials();
+	}
+
+	if (meshFormatter.getAnimationData())
+	{
+		m_animationData.reset(new AnimationData());
+		*m_animationData = *meshFormatter.getAnimationData();
+	}
+
+	m_isCentered = meshFormatter.isMeshCentered();
+	computeThumbnailGenerationViewMatrix(meshFormatter.getAABB());
+}
+
+void AssetManager::Mesh::loadModelFromFile(LoadedMeshData& outLoadedMeshData)
+{
+	ModelLoadingInfo modelLoadingInfo;
+	modelLoadingInfo.filename = m_loadingPath;
+	modelLoadingInfo.mtlFolder = m_loadingPath.substr(0, m_loadingPath.find_last_of('/'));
+	modelLoadingInfo.textureSetLayout = TextureSetLoader::InputTextureSetLayout::EACH_TEXTURE_A_FILE;
+
+	ModelData modelData;
+	ModelLoader::loadObject(modelData, modelLoadingInfo, Wolf::ResourceReference<AssetManager>(ms_assetManager));
+
+	outLoadedMeshData.m_staticVertices = std::move(modelData.m_staticVertices);
+	outLoadedMeshData.m_skeletonVertices = std::move(modelData.m_skeletonVertices);
+	outLoadedMeshData.m_indices = std::move(modelData.m_indices);
+	outLoadedMeshData.m_textureSetsInfo = modelData.m_textureSets;
 
 	if (modelData.m_animationData)
 	{
-		m_animationData.reset(modelData.m_animationData.release());
+		outLoadedMeshData.m_animationData.reset(modelData.m_animationData.release());
 	}
 
+	// TODO: this info will not be read if reading from the cache
 	m_physicsShapes.resize(modelData.m_physicsShapes.size());
 	for (uint32_t i = 0; i < modelData.m_physicsShapes.size(); ++i)
 	{
 		m_physicsShapes[i].reset(modelData.m_physicsShapes[i].release());
 	}
-
-	materialsGPUManager->lockMaterials();
-	materialsGPUManager->lockTextureSets();
-
-	m_firstTextureSetIdx = modelData.m_textureSets.empty() ? 0 : materialsGPUManager->getCurrentTextureSetCount();
-	m_firstMaterialIdx = modelData.m_textureSets.empty() ? 0 : materialsGPUManager->getCurrentMaterialCount();
-	for (const Wolf::MaterialsGPUManager::TextureSetInfo& textureSetInfo : modelData.m_textureSets)
-	{
-		materialsGPUManager->addNewTextureSet(textureSetInfo);
-
-		Wolf::MaterialsGPUManager::MaterialInfo materialInfo;
-		materialInfo.textureSetInfos[0].textureSetIdx = materialsGPUManager->getTextureSetsCacheInfo().back().textureSetIdx;
-		materialsGPUManager->addNewMaterial(materialInfo);
-	}
-	materialsGPUManager->unlockTextureSets();
-	materialsGPUManager->unlockMaterials();
-
-	m_textureSetInfo = modelData.m_textureSets;
-
-	computeThumbnailGenerationViewMatrix(modelData.m_aabb);
 }
 
-void AssetManager::Mesh::loadModelFromData(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
+void AssetManager::Mesh::loadModelFromData(LoadedMeshData& outLoadedMeshData)
 {
-	VkBufferUsageFlags additionalFlags = 0;
-	if (g_editorConfiguration->getEnableRayTracing())
-	{
-		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	}
-
-	m_mesh.reset(new Wolf::Mesh(m_bufferPoolInterface, m_overrideVertexBufferPoolInstance, m_overrideVertexBufferPoolInstance.m_bufferSize / sizeof(Vertex3D), sizeof(Vertex3D),
-		m_overrideIndices, m_overrideAABB, m_overrideBoundingSphere, additionalFlags));
-
-	if (g_editorConfiguration->getEnableRayTracing())
-	{
-		m_bottomLevelAccelerationStructures.resize(2);
-		for (uint32_t lodType = 0; lodType < 2; lodType++)
-		{
-			uint32_t lodCount = lodType == 0 ? m_defaultSimplifiedIndexBuffers.size() : m_sloppySimplifiedIndexBuffers.size();
-			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
-		}
-	}
-
-	m_firstMaterialIdx = m_overrideMaterialIdx;
-
-	computeThumbnailGenerationViewMatrix(m_overrideAABB);
+	outLoadedMeshData.m_staticVertices = std::move(m_overrideStaticVertices);
+	outLoadedMeshData.m_indices = std::move(m_overrideIndices);
 }
 
 void AssetManager::Mesh::computeThumbnailGenerationViewMatrix(const Wolf::AABB& aabb)
@@ -1272,9 +1313,9 @@ void AssetManager::Mesh::ensureBLASIsLoaded(uint32_t lod, uint32_t lodType)
 	if (m_bottomLevelAccelerationStructures[lodType][lod])
 		return;
 
-	if (m_loadedBLAS.first != -1)
+	if (m_loadedBLAS.m_lodType != -1)
 	{
-		m_bottomLevelAccelerationStructures[m_loadedBLAS.first][m_loadedBLAS.second].reset(nullptr);
+		m_BLASesToDestroy.emplace_back(m_loadedBLAS, Wolf::g_runtimeContext->getCurrentCPUFrameNumber() + Wolf::g_configuration->getMaxCachedFrames());
 	}
 
 	if (g_editorConfiguration->getEnableRayTracing())
@@ -1290,35 +1331,28 @@ void AssetManager::Mesh::ensureBLASIsLoaded(uint32_t lod, uint32_t lodType)
 
 void AssetManager::Mesh::buildBLAS(uint32_t lod, uint32_t lodType, const std::string& filename)
 {
-	Wolf::GeometryInfo geometryInfo;
-	geometryInfo.mesh.vertexBuffer = &*m_mesh->getVertexBuffer();
-	geometryInfo.mesh.vertexBufferOffset = m_mesh->getVertexBufferOffset();
-	geometryInfo.mesh.vertexCount = m_mesh->getVertexCount();
-	geometryInfo.mesh.vertexSize = m_mesh->getVertexSize();
-	geometryInfo.mesh.vertexFormat = Wolf::Format::R32G32B32_SFLOAT;
-	if (lod == 0)
+	const Wolf::ResourceUniqueOwner<Wolf::Mesh>* mesh = &m_mesh;
+	if (lod > 0)
 	{
-		geometryInfo.mesh.indexBuffer = &*m_mesh->getIndexBuffer();
-		geometryInfo.mesh.indexBufferOffset = m_mesh->getIndexBufferOffset();
-		geometryInfo.mesh.indexCount = m_mesh->getIndexCount();
-	}
-	else
-	{
-		Wolf::ResourceUniqueOwner<Wolf::Buffer>* overrideIndexBuffer = nullptr;
 		if (lodType == 0)
 		{
-			overrideIndexBuffer = &m_defaultSimplifiedIndexBuffers[lod - 1];
+			mesh = &m_defaultSimplifiedMeshes[lod - 1];
 		}
 		else
 		{
-			overrideIndexBuffer = &m_sloppySimplifiedIndexBuffers[lod - 1];
+			mesh = &m_sloppySimplifiedMeshes[lod - 1];
 		}
-
-		geometryInfo.mesh.indexBuffer = &**overrideIndexBuffer;
-		geometryInfo.mesh.indexBufferOffset = 0;
-		uint32_t indexCount = (*overrideIndexBuffer)->getSize() / sizeof(uint32_t);
-		geometryInfo.mesh.indexCount = indexCount;
 	}
+
+	Wolf::GeometryInfo geometryInfo;
+	geometryInfo.mesh.vertexBuffer = &*(*mesh)->getVertexBuffer();
+	geometryInfo.mesh.vertexBufferOffset = (*mesh)->getVertexBufferOffset();
+	geometryInfo.mesh.vertexCount = (*mesh)->getVertexCount();
+	geometryInfo.mesh.vertexSize = (*mesh)->getVertexSize();
+	geometryInfo.mesh.vertexFormat = Wolf::Format::R32G32B32_SFLOAT;
+	geometryInfo.mesh.indexBuffer = &*(*mesh)->getIndexBuffer();
+	geometryInfo.mesh.indexBufferOffset = (*mesh)->getIndexBufferOffset();
+	geometryInfo.mesh.indexCount = (*mesh)->getIndexCount();
 
 	Wolf::BottomLevelAccelerationStructureCreateInfo createInfo{};
 	createInfo.geometryInfos = { &geometryInfo, 1 };
@@ -1723,8 +1757,8 @@ void AssetManager::CombinedImage::loadImage()
 }
 
 AssetManager::ExternalScene::ExternalScene(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId,
-	const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-: AssetInterface(loadingPath, assetId, updateResourceInUICallback), m_bufferPoolInterface(bufferPoolInterface)
+	const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback)
+: AssetInterface(loadingPath, assetId, updateResourceInUICallback)
 {
 	m_loadingRequested = true;
 }
@@ -1752,8 +1786,7 @@ void AssetManager::ExternalScene::dump(std::ofstream& outputJSON, uint32_t tabCo
 
 bool AssetManager::ExternalScene::isLoaded() const
 {
-	// TODO
-	return true;
+	return !m_modelAssetIds.empty();
 }
 
 const Wolf::AABB& AssetManager::ExternalScene::getAABB()
@@ -1773,7 +1806,6 @@ void AssetManager::ExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::M
 	materialsGPUManager->lockMaterials();
 	materialsGPUManager->lockTextureSets();
 
-	uint32_t firstTextureSetIdx = materialsGPUManager->getCurrentTextureSetCount();
 	m_firstMaterialIdx = materialsGPUManager->getCurrentMaterialCount();
 	for (const ExternalSceneLoader::MaterialData& materialData : outputData.m_materialsData)
 	{
@@ -1787,25 +1819,10 @@ void AssetManager::ExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::M
 	materialsGPUManager->unlockMaterials();
 
 	/* Add meshes */
-	VkBufferUsageFlags additionalFlags = 0;
-	if (g_editorConfiguration->getEnableRayTracing())
-	{
-		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	}
-	m_vertexBufferPoolInstance = m_bufferPoolInterface->allocate(outputData.m_vertexData.m_staticVertices.size() * sizeof(outputData.m_vertexData.m_staticVertices[0]),
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalFlags, sizeof(outputData.m_vertexData.m_staticVertices[0]));
-	m_bufferPoolInterface->getBuffer(m_vertexBufferPoolInstance)->transferCPUMemoryWithStagingBuffer(outputData.m_vertexData.m_staticVertices.data(),
-		sizeof(outputData.m_vertexData.m_staticVertices[0]) * outputData.m_vertexData.m_staticVertices.size(), 0, m_vertexBufferPoolInstance.m_bufferOffset);
-
 	m_modelAssetIds.reserve(outputData.m_meshesData.size());
-	glm::vec3 sceneAABBMin(1000.0), sceneAABBMax(-1000.0f);
 	for (uint32_t meshIdx = 0; meshIdx < outputData.m_meshesData.size(); meshIdx++)
 	{
 		ExternalSceneLoader::MeshData& meshData = outputData.m_meshesData[meshIdx];
-
-		sceneAABBMin = glm::min(meshData.m_aabb.getMin(), sceneAABBMin);
-		sceneAABBMax = glm::max(meshData.m_aabb.getMax(), sceneAABBMax);
-
 		uint32_t materialIdx = -1;
 		for (uint32_t instanceIdx = 0; instanceIdx < outputData.m_instancesData.size(); ++instanceIdx)
 		{
@@ -1822,14 +1839,10 @@ void AssetManager::ExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::M
 			Wolf::Debug::sendCriticalError("No instance has been found for this mesh");
 		}
 
-		Wolf::BufferPoolInterface::BufferPoolInstance vertexBufferPoolInstance = m_vertexBufferPoolInstance;
-		vertexBufferPoolInstance.m_bufferOffset += (meshData.m_vertexOffset * sizeof(Vertex3D));
-		vertexBufferPoolInstance.m_bufferSize -= (meshData.m_vertexOffset * sizeof(Vertex3D));
-		m_modelAssetIds.push_back(ms_assetManager->addModel(vertexBufferPoolInstance, meshData.m_indices, m_loadingPath + "_mesh_" + meshData.m_name + "_" + std::to_string(meshIdx),
-			meshData.m_aabb, meshData.m_boundingSphere, materialIdx));
+		m_modelAssetIds.push_back(ms_assetManager->addModel(meshData.m_staticVertices, meshData.m_indices, m_loadingPath + "_mesh_" + meshData.m_name + "_" + std::to_string(meshIdx), materialIdx));
 	}
 
-	m_aabb = Wolf::AABB(sceneAABBMin, sceneAABBMax);
+	//m_aabb = Wolf::AABB(sceneAABBMin, sceneAABBMax);
 	m_instances = outputData.m_instancesData;
 }
 

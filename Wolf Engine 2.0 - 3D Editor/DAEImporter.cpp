@@ -414,25 +414,10 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 	}
 
 	std::unordered_map<SkeletonVertex, uint32_t> uniqueVertices = {};
-	glm::vec3 minPos(1'000.0f), maxPos(-1000.0f);
 	for (glm::uvec3 index : indices)
 	{
 		SkeletonVertex vertex;
 		vertex.pos = positions[index.x];
-
-		if (vertex.pos.x < minPos.x)
-			minPos.x = vertex.pos.x;
-		if (vertex.pos.y < minPos.y)
-			minPos.y = vertex.pos.y;
-		if (vertex.pos.z < minPos.z)
-			minPos.z = vertex.pos.z;
-
-		if (vertex.pos.x > maxPos.x)
-			maxPos.x = vertex.pos.x;
-		if (vertex.pos.y > maxPos.y)
-			maxPos.y = vertex.pos.y;
-		if (vertex.pos.z > maxPos.z)
-			maxPos.z = vertex.pos.z;
 
 		vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f); // TODO: read normals
 		vertex.tangent = glm::vec3(1.0f, 0.0f, 0.0f);
@@ -467,15 +452,6 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 
 		m_outputModel->m_indices.push_back(uniqueVertices[vertex]);
 	}
-
-	glm::vec3 center = (maxPos + minPos) * 0.5f;
-	if (glm::length(center) > glm::length(maxPos) * 0.1f)
-	{
-		Wolf::Debug::sendWarning("Model " + modelLoadingInfo.filename + " is not centered");
-	}
-
-	m_outputModel->m_aabb = Wolf::AABB(minPos, maxPos);
-	m_outputModel->m_boundingSphere = Wolf::BoundingSphere(glm::vec3(0.0f), glm::max(glm::length(minPos), glm::length(maxPos)));
 
 	// Animation
 	Node* animationNode = m_rootNodes[0]->getFirstChildByName("library_animations");
@@ -547,11 +523,11 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		}
 	}
 
-	m_outputModel->m_animationData->boneCount = jointsCount;
+	m_outputModel->m_animationData->m_boneCount = jointsCount;
 
 	// Hierarchy
 	Node* visualSceneNode = m_rootNodes[0]->getFirstChildByName("library_visual_scenes")->getFirstChildByName("visual_scene");
-	findNodesInHierarchy(visualSceneNode, m_outputModel->m_animationData->rootBones);
+	findNodesInHierarchy(visualSceneNode, m_outputModel->m_animationData->m_rootBones);
 }
 
 void DAEImporter::extractFloatValues(const std::string& input, std::vector<float>& outValues)
@@ -609,29 +585,29 @@ void DAEImporter::findNodesInHierarchy(Node* currentNode, std::vector<AnimationD
 		idx++;
 
 		AnimationData::Bone bone;
-		bone.name = node->getProperty("name");
-		std::erase(bone.name, '"');
+		bone.m_name = node->getProperty("name");
+		std::erase(bone.m_name, '"');
 
-		const InternalInfoPerBone* boneInfo = findBoneInfoByName(bone.name, bone.idx);
+		const InternalInfoPerBone* boneInfo = findBoneInfoByName(bone.m_name, bone.m_idx);
 		if (!boneInfo)
 			continue;
 
-		bone.offsetMatrix = boneInfo->offsetMatrix;
-		bone.poses.resize(boneInfo->poses.size());
+		bone.m_offsetMatrix = boneInfo->offsetMatrix;
+		bone.m_poses.resize(boneInfo->poses.size());
 		for (uint32_t i = 0; i < boneInfo->poses.size(); ++i)
 		{
 			const InternalInfoPerBone::Pose& pose = boneInfo->poses[i];
-			bone.poses[i].time = pose.time;
+			bone.m_poses[i].m_time = pose.time;
 
 			glm::vec3 skew;
 			glm::vec4 perspective;
 			glm::quat orientation;
-			glm::decompose(pose.transform, bone.poses[i].scale, orientation, bone.poses[i].translation, skew, perspective);
-			bone.poses[i].orientation = glm::quat_cast(pose.transform);
+			glm::decompose(pose.transform, bone.m_poses[i].m_scale, orientation, bone.m_poses[i].m_translation, skew, perspective);
+			bone.m_poses[i].m_orientation = glm::quat_cast(pose.transform);
 		}
 
 		currentBoneArray.push_back(bone);
-		findNodesInHierarchy(node, currentBoneArray.back().children);
+		findNodesInHierarchy(node, currentBoneArray.back().m_children);
 	}
 }
 

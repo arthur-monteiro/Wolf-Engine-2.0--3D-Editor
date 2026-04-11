@@ -30,8 +30,6 @@ public:
 
             uint32_t m_firstMaterialIdx;
             Wolf::ResourceNonOwner<Wolf::Mesh> m_mesh;
-
-            Wolf::NullableResourceNonOwner<Wolf::Buffer> m_overrideIndexBuffer;
         };
         std::vector<InstanceInfo> m_instances;
     };

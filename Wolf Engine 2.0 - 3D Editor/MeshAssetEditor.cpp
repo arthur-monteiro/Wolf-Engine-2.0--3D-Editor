@@ -10,8 +10,8 @@
 #include "ModelLoader.h"
 
 MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, Wolf::ResourceNonOwner<Wolf::Mesh> mesh,
-const std::vector<ModelData::LODInfo>& defaultLODInfo, const std::vector<ModelData::LODInfo>& sloppyLODInfo, std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> defaultSimplifiedIndexBuffers,
-	std::vector<Wolf::ResourceNonOwner<Wolf::Buffer>> sloppySimplifiedIndexBuffers, uint32_t firstMaterialIdx,	const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
+const std::vector<MeshFormatter::LODInfo>& defaultLODInfo, const std::vector<MeshFormatter::LODInfo>& sloppyLODInfo, std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultSimplifiedMeshes,
+	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> sloppySimplifiedMeshes, uint32_t firstMaterialIdx,	const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
 	const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
 : m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback), m_requestThumbnailReload(requestThumbnailReload),
@@ -32,8 +32,6 @@ const std::vector<ModelData::LODInfo>& defaultLODInfo, const std::vector<ModelDa
 	lodInfo.setRenderingPipeline(m_renderingPipeline);
 	lodInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
 	lodInfo.setMesh(mesh);
-	lodInfo.setDefaultSimplifiedIndexBuffers(defaultSimplifiedIndexBuffers);
-	lodInfo.setSloppySimplifiedIndexBuffers(sloppySimplifiedIndexBuffers);
 	lodInfo.setFirstMaterialIdx(firstMaterialIdx);
 	lodInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
 	lodInfo.setLODIndexAndType(0, 0);
@@ -42,14 +40,12 @@ const std::vector<ModelData::LODInfo>& defaultLODInfo, const std::vector<ModelDa
 	lodInfo.setName("LOD 0");
 
 	uint32_t lodIdx = 1;
-	for (const ModelData::LODInfo& modelLODInfo : defaultLODInfo)
+	for (const MeshFormatter::LODInfo& modelLODInfo : defaultLODInfo)
 	{
 		LODInfo& editorLODInfo = m_defaultLODsInfo.emplace_back();
 		editorLODInfo.setRenderingPipeline(m_renderingPipeline);
 		editorLODInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
-		editorLODInfo.setMesh(mesh);
-		editorLODInfo.setDefaultSimplifiedIndexBuffers(defaultSimplifiedIndexBuffers);
-		editorLODInfo.setSloppySimplifiedIndexBuffers(sloppySimplifiedIndexBuffers);
+		editorLODInfo.setMesh(defaultSimplifiedMeshes[lodIdx - 1]);
 		editorLODInfo.setFirstMaterialIdx(firstMaterialIdx);
 		editorLODInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
 		editorLODInfo.setLODIndexAndType(lodIdx, 0);
@@ -63,14 +59,12 @@ const std::vector<ModelData::LODInfo>& defaultLODInfo, const std::vector<ModelDa
 	if (!sloppyLODInfo.empty())
 	{
 		uint32_t sloppyIdx = 1;
-		for (const ModelData::LODInfo& modelSloppyLODInfo : sloppyLODInfo)
+		for (const MeshFormatter::LODInfo& modelSloppyLODInfo : sloppyLODInfo)
 		{
 			LODInfo& editorSloppyInfo = m_sloppyLODsInfo.emplace_back();
 			editorSloppyInfo.setRenderingPipeline(m_renderingPipeline);
 			editorSloppyInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
-			editorSloppyInfo.setMesh(mesh);
-			editorSloppyInfo.setDefaultSimplifiedIndexBuffers(defaultSimplifiedIndexBuffers);
-			editorSloppyInfo.setSloppySimplifiedIndexBuffers(sloppySimplifiedIndexBuffers);
+			editorSloppyInfo.setMesh(sloppySimplifiedMeshes[lodIdx - 1]);
 			editorSloppyInfo.setFirstMaterialIdx(firstMaterialIdx);
 			editorSloppyInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
 			editorSloppyInfo.setLODIndexAndType(sloppyIdx, 1);
@@ -371,23 +365,6 @@ void MeshAssetEditor::LODInfo::onComputeVertexColorsAndNormals()
 		return;
 	}
 
-	Wolf::NullableResourceNonOwner<Wolf::Buffer> overrideIndexBuffer;
-	if (m_lodIdx > 0)
-	{
-		if (m_lodType == 0)
-		{
-			overrideIndexBuffer = m_defaultSimplifiedIndexBuffers[m_lodIdx - 1];
-		}
-		else if (m_lodType == 1)
-		{
-			overrideIndexBuffer = m_sloppySimplifiedIndexBuffers[m_lodIdx - 1];
-		}
-		else
-		{
-			Wolf::Debug::sendError("Unhandled LOD type");
-		}
-	}
-
-	ComputeVertexDataPass::Request request(m_editorPushDataToGPU, m_mesh, overrideIndexBuffer, m_firstMaterialIdx, m_bottomLevelAccelerationStructure);
+	ComputeVertexDataPass::Request request(m_editorPushDataToGPU, m_mesh, m_firstMaterialIdx, m_bottomLevelAccelerationStructure);
 	computeVertexDataPass->addRequestBeforeFrame(request);
 }

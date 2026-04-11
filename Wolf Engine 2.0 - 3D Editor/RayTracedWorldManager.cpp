@@ -113,16 +113,8 @@ void RayTracedWorldManager::populateInstanceBuffer(const RayTracedWorldInfo& inf
         data.firstMaterialIdx = instanceInfo.m_firstMaterialIdx;
         data.vertexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_mesh->getVertexBuffer());
         data.vertexBufferOffset = instanceInfo.m_mesh->getVertexBufferOffset() / sizeof(uint32_t); // data is read as number of uint32_t in shader but offset is number of bytes
-        if (!instanceInfo.m_overrideIndexBuffer)
-        {
-            data.indexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_mesh->getIndexBuffer());
-            data.indexBufferOffset = instanceInfo.m_mesh->getIndexBufferOffset() / sizeof(uint32_t);
-        }
-        else
-        {
-            data.indexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_overrideIndexBuffer);
-            data.indexBufferOffset = 0;
-        }
+        data.indexBufferBindlessOffset = addStorageBuffer(instanceInfo.m_mesh->getIndexBuffer());
+        data.indexBufferOffset = instanceInfo.m_mesh->getIndexBufferOffset() / sizeof(uint32_t);
     }
 
     m_editorPushDataToGPU->pushDataToGPUBuffer(m_instanceData.data(), m_instanceData.size() * sizeof(InstanceData), m_instanceBuffer.createNonOwnerResource(), 0);

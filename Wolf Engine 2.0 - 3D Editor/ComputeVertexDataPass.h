@@ -32,23 +32,18 @@ public:
     {
     public:
         Request() = default;
-        Request(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh, const Wolf::NullableResourceNonOwner<Wolf::Buffer>& overrideIndexBuffer,
+        Request(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh,
             uint32_t firstMaterialIdx, const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& blas)
-             : m_editorPushDataToGPU(editorPushDataToGPU), m_mesh(mesh), m_indexBuffer(mesh->getIndexBuffer()), m_firstMaterialIdx(firstMaterialIdx), m_bottomLevelAccelerationStructure(blas)
+             : m_editorPushDataToGPU(editorPushDataToGPU), m_mesh(mesh), m_firstMaterialIdx(firstMaterialIdx), m_bottomLevelAccelerationStructure(blas)
         {
             if (mesh->getVertexSize() != sizeof(Vertex3D))
             {
                 Wolf::Debug::sendCriticalError("Vertex must be Wolf::Vertex3D");
             }
 
-            if (overrideIndexBuffer)
-            {
-                m_indexBuffer = overrideIndexBuffer;
-            }
-
             initResources();
         }
-        Request(Request& other) : m_editorPushDataToGPU(other.m_editorPushDataToGPU), m_mesh(other.m_mesh), m_indexBuffer(other.m_indexBuffer), m_bottomLevelAccelerationStructure(other.m_bottomLevelAccelerationStructure)
+        Request(Request& other) : m_editorPushDataToGPU(other.m_editorPushDataToGPU), m_mesh(other.m_mesh), m_bottomLevelAccelerationStructure(other.m_bottomLevelAccelerationStructure)
         {
             m_firstMaterialIdx = other.m_firstMaterialIdx;
 
@@ -76,7 +71,6 @@ public:
 
         Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
         Wolf::ResourceNonOwner<Wolf::Mesh> m_mesh;
-        Wolf::ResourceNonOwner<Wolf::Buffer> m_indexBuffer;
         uint32_t m_firstMaterialIdx;
         Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
 
