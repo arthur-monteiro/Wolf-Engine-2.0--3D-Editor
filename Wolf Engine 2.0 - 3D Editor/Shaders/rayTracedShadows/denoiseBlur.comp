@@ -1,0 +1,49 @@
+#extension GL_EXT_samplerless_texture_functions : require
+
+layout(binding = 0, set = 0, r16f) uniform image2D outputImage;
+layout(binding = 1, set = 0, r16f) uniform image2D inputImage;
+layout(binding = 2, set = 0, r8) uniform image2D penumbraScale;
+layout(binding = 3, set = 0) uniform texture2D depthTexture;
+
+const uint LOCAL_SIZE = 16;
+layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
+void main()
+{
+    const ivec2 centerCoord = ivec2(gl_GlobalInvocationID.xy);
+    const float centerVal = imageLoad(inputImage, centerCoord).r;
+
+    float centerDepth = linearizeDepth(texelFetch(depthTexture, centerCoord, 0).r);
+
+    float sumShadow = centerVal;
+    float count = 1.0;
+
+    float penumbraScale = imageLoad(penumbraScale, centerCoord).r;
+    float targetRadius = penumbraScale * 8.0;
+    int radius = clamp(int(targetRadius), 1, 8);
+
+#ifdef HORIZONTAL
+    int y = 0;
+    for (int x = -radius; x <= radius; x++)
+    {
+#else
+    int x = 0;
+    for (int y = -radius; y <= radius; y++)
+    {
+#endif
+        ivec2 sampleCoord = centerCoord + ivec2(x, y);
+        float sampleVal = imageLoad(inputImage, sampleCoord).r;
+
+        if (abs(linearizeDepth(texelFetch(depthTexture, sampleCoord, 0).r) - centerDepth) < 0.1)
+        {
+            float dist = float(abs(x + y));
+            float edge0 = targetRadius - 1.0;
+            float edge1 = targetRadius;
+            float weight = 1.0 - smoothstep(edge0, edge1, dist);
+            
+            sumShadow += sampleVal * weight;
+            count += weight;
+        }
+    }
+
+    imageStore(outputImage, centerCoord, vec4(sumShadow / count));
+}

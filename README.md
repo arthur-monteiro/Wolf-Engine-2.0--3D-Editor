@@ -42,7 +42,21 @@ enableRayTracing=1
 
 ## Features
 
-### [Real-time Voxel-Based Global Illumination (VXGI)](voxelGI_README.md) 
+### Ray traced soft shadows 
+Shadows computed using ray tracing (1 ray per pixel). Left: cascaded shadow mapping (CSM); right: ray tracing
+
+<p align="center">
+  <img src="./Screenshots/shadows/csm0.png" width="350" alt="Cascaded shadow mapping" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/shadows/rt0.png" width="350" alt="Ray tracing" />
+</p>
+<p align="center">
+  <img src="./Screenshots/shadows/csm1.png" width="350" alt="Cascaded shadow mapping" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/shadows/rt1.png" width="350" alt="Ray tracing" />
+</p>
+
+### [Real-time voxel-based global illumination](voxelGI_README.md) 
 Realtime capture of indirect lighting and sky lighting.
 
 <p align="center">

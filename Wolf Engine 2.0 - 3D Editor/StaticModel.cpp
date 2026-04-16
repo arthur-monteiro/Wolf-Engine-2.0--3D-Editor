@@ -46,8 +46,8 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 
 			/* Shadow maps */
 			pipelineInfo.dynamicStates.clear();
-			pipelineInfo.depthBiasConstantFactor = 4.0f;
-			pipelineInfo.depthBiasSlopeFactor = 2.5f;
+			pipelineInfo.depthBiasConstantFactor = -4.0f;
+			pipelineInfo.depthBiasSlopeFactor = -2.5f;
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP);
 			pipelineInfo.depthBiasConstantFactor = 0.0f;
 			pipelineInfo.depthBiasSlopeFactor = 0.0f;

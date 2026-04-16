@@ -6,6 +6,7 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
 {
 	m_skyBoxManager.reset(new SkyBoxManager(bufferPoolInterface));
+	m_noiseManager.reset(new GPUNoiseManager());
 
 	if (rayTracedWorldManager)
 	{
@@ -35,7 +36,8 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	m_cascadedShadowMapsPass.reset(new CascadedShadowMapsPass);
 	wolfInstance->initializePass(m_cascadedShadowMapsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_shadowMaskPassCascadedShadowMapping.reset(new ShadowMaskPassCascadedShadowMapping(editorParams, m_preDepthPass.createNonOwnerResource(), m_cascadedShadowMapsPass.createNonOwnerResource()));
+	m_shadowMaskPassCascadedShadowMapping.reset(new ShadowMaskPassCascadedShadowMapping(editorParams, m_preDepthPass.createNonOwnerResource(),
+		m_cascadedShadowMapsPass.createNonOwnerResource(), m_noiseManager.createNonOwnerResource()));
 	wolfInstance->initializePass(m_shadowMaskPassCascadedShadowMapping.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_contaminationUpdatePass.reset(new ContaminationUpdatePass);
@@ -52,7 +54,8 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 
 	if (rayTracedWorldManager)
 	{
-		m_rayTracedShadowsPass.reset(new RayTracedShadowsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_updateRayTracedWorldPass.createNonOwnerResource(), rayTracedWorldManager));
+		m_rayTracedShadowsPass.reset(new RayTracedShadowsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_updateRayTracedWorldPass.createNonOwnerResource(), rayTracedWorldManager,
+			m_noiseManager.createNonOwnerResource()));
 		wolfInstance->initializePass(m_rayTracedShadowsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 		m_rayTracedWorldDebugPass.reset(new RayTracedWorldDebugPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_updateRayTracedWorldPass.createNonOwnerResource(), rayTracedWorldManager));

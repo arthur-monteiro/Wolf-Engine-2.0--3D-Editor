@@ -12,8 +12,10 @@ layout(binding = 2, set = 0) uniform UniformBuffer
     uint screenOffsetY;
     float padding;
 } ub;
-//layout(binding = 3, set = 0) uniform sampler3D noiseTexture;
-layout(location = 0) rayPayloadEXT bool isShadowed;
+layout(binding = 3, set = 0) uniform sampler3D noiseTexture;
+layout(binding = 4, set = 0, r16f) uniform image2D occluderDistanceImage;
+
+layout(location = 0) rayPayloadEXT float hitDistance;
 
 const uint NOISE_TEXTURE_SIZE_PER_SIDE = 128;
 const uint NOISE_TEXTURE_VECTOR_COUNT = 16;
@@ -32,7 +34,7 @@ void main()
 
     vec4 viewRay = getInvProjectionMatrix() * vec4(d.x, d.y, 1.0, 1.0);
     float depth = texelFetch(depthImage, ivec2(renderXY), 0).r;
-    float linearDepth = getProjectionParams().y / (depth - getProjectionParams().x);
+    float linearDepth = linearizeDepth(depth);
     vec3 viewPos = viewRay.xyz * linearDepth;
 	vec4 worldPos = getInvViewMatrix() * vec4(viewPos, 1.0);
 
@@ -43,14 +45,20 @@ void main()
     float tmin = 0.001;
     float tmax = 1000.0;
 
-    isShadowed = true;
+    hitDistance = -1.0;
 
-    //vec3 noiseDir = (texture(noiseTexture, vec3((gl_LaunchIDEXT.xy) / float(NOISE_TEXTURE_SIZE_PER_SIDE), float(ub.sunDirectionAndNoiseIndex.w) / float(NOISE_TEXTURE_VECTOR_COUNT))).rgb);
-    //noiseDir *= ub.sunAreaAngle;
+    vec2 diskOffset = texture(noiseTexture, vec3(gl_LaunchIDEXT.xy / float(NOISE_TEXTURE_SIZE_PER_SIDE), 0)).rg;
+    diskOffset *= ub.sunAreaAngle; 
 
-    vec3 direction = -normalize(ub.sunDirectionAndNoiseIndex.xyz); // + noiseDir;
+    vec3 sunDir = normalize(-ub.sunDirectionAndNoiseIndex.xyz);
+    vec3 helper = abs(sunDir.y) < 0.99 ? vec3(0, 1, 0) : vec3(1, 0, 0);
+    vec3 tangent = normalize(cross(sunDir, helper));
+    vec3 bitangent = cross(sunDir, tangent);
 
-    traceRay(rayFlags, cullMask, 0 /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, 0 /*missIndex*/, origin.xyz + direction.xyz * 0.01f, tmin, direction.xyz, tmax);
+    vec3 direction = normalize(sunDir + (tangent * diskOffset.x) + (bitangent * diskOffset.y));
 
-    imageStore(image, ivec2(renderXY.xy), vec4(isShadowed ? 0.0 : 1.0, 0.0, 0.0, 0.0));
+    traceRay(rayFlags, cullMask, 0 /*sbtRecordOffset*/, 0 /*sbtRecordStride*/, 0 /*missIndex*/, origin.xyz + direction.xyz * 0.1, tmin, direction.xyz, tmax);
+
+    imageStore(image, ivec2(renderXY.xy), vec4(hitDistance > 0.0 ? 0.0 : 1.0, 0.0, 0.0, 0.0));
+    imageStore(occluderDistanceImage, ivec2(renderXY.xy), vec4(hitDistance, 0.0, 0.0, 0.0));
 }

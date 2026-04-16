@@ -31,6 +31,7 @@ private:
 	glm::vec3 getSunDirection() const;
 	float getSunIntensity() const;
 	glm::vec3 getSunColor() const;
+	float getSunAngle() const;
 
 	void forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString);
 	bool updateCubeMap();
@@ -45,6 +46,8 @@ private:
 	static constexpr uint32_t LIGHT_TYPE_REALTIME_COMPUTE = 0;
 	static constexpr uint32_t LIGHT_TYPE_BAKED = 1;
 	EditorParamEnum m_lightType = EditorParamEnum(LIGHT_TYPE_STRING_LIST, "Light model type", TAB, "General", [this]() { m_requestReloadCallback(this); });
+
+	EditorParamFloat m_sunAngle = EditorParamFloat("Sun angle", TAB, "Sun", 0.0f, 1.0f);
 
 	/* Realtime compute */
 	EditorParamFloat m_sunIntensity = EditorParamFloat("Intensity (cd/m2)", TAB, "Sun", 0.0f, 1000.0f);
@@ -70,9 +73,10 @@ private:
 	float m_sunIntensityFromSphericalMap;
 	glm::vec3 m_sunColorFromSphericalMap;
 
-	std::array<EditorParamInterface*, 1> m_alwaysVisibleParams =
+	std::array<EditorParamInterface*, 2> m_alwaysVisibleParams =
 	{
-		&m_lightType
+		&m_lightType,
+		&m_sunAngle
 	};
 
 	std::array<EditorParamInterface*, 7> m_realtimeComputeParams =

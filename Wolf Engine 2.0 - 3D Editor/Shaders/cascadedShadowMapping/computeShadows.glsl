@@ -69,7 +69,7 @@ float computeShadowOcclusionForCascade(in uint cascadeIndex, in vec4 worldPos, i
 		noise *= getCascadeScale(cascadeIndex);
 
 		float closestDepth = textureGrad(sampler2D(shadowMaps[cascadeIndex], shadowMapsSampler), projCoords.xy + noise, shadowMapDDX, shadowMapDDY).r;
-		shadow += currentDepth - BIAS > closestDepth  ? 0.0 : 1.0;
+		shadow += (currentDepth + BIAS < closestDepth) ? 0.0 : 1.0;
 	}
 
 	shadow /= float(NOISE_TEXTURE_PATTERN_PIXEL_COUNT);

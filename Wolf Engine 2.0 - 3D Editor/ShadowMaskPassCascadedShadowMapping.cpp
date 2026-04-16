@@ -11,8 +11,9 @@
 #include "LightManager.h"
 #include "PreDepthPass.h"
 
-ShadowMaskPassCascadedShadowMapping::ShadowMaskPassCascadedShadowMapping(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass,	const Wolf::ResourceNonOwner<CascadedShadowMapsPass>& csmPass)
-		: m_editorParams(editorParams), m_preDepthPass(preDepthPass), m_csmPass(csmPass)
+ShadowMaskPassCascadedShadowMapping::ShadowMaskPassCascadedShadowMapping(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass,
+	const Wolf::ResourceNonOwner<CascadedShadowMapsPass>& csmPass, const Wolf::ResourceNonOwner<GPUNoiseManager>& noiseManager)
+		: m_editorParams(editorParams), m_preDepthPass(preDepthPass), m_csmPass(csmPass), m_noiseManager(noiseManager)
 {
 
 }
@@ -41,40 +42,6 @@ void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::Initia
 
 	m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(ShadowUBData)));
 	m_shadowMapsSampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 1.0f, VK_FILTER_LINEAR));
-
-	// Noise
-	Wolf::CreateImageInfo noiseImageCreateInfo;
-	noiseImageCreateInfo.extent = { NOISE_TEXTURE_SIZE_PER_SIDE, NOISE_TEXTURE_SIZE_PER_SIDE, NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE };
-	noiseImageCreateInfo.format = Wolf::Format::R32G32_SFLOAT;
-	noiseImageCreateInfo.mipLevelCount = 1;
-	noiseImageCreateInfo.usage = Wolf::ImageUsageFlagBits::TRANSFER_DST | Wolf::ImageUsageFlagBits::SAMPLED;
-	m_noiseImage.reset(Wolf::Image::createImage(noiseImageCreateInfo));
-
-	std::vector<float> noiseData(static_cast<size_t>(NOISE_TEXTURE_SIZE_PER_SIDE) * NOISE_TEXTURE_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE * 2u);
-	for (uint32_t texY = 0; texY < NOISE_TEXTURE_SIZE_PER_SIDE; ++texY)
-	{
-		for (uint32_t texX = 0; texX < NOISE_TEXTURE_SIZE_PER_SIDE; ++texX)
-		{
-			for (uint32_t v = 0; v < 4; ++v)
-			{
-				for (uint32_t u = 0; u < 4; u++)
-				{
-					float x = (static_cast<float>(u) + 0.5f + jitter()) / static_cast<float>(NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE);
-					float y = (static_cast<float>(v) + 0.5f + jitter()) / static_cast<float>(NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE);
-
-					const uint32_t patternIdx = u + v * NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE;
-					const uint32_t idx = texX + texY * NOISE_TEXTURE_SIZE_PER_SIDE + patternIdx * (NOISE_TEXTURE_SIZE_PER_SIDE * NOISE_TEXTURE_SIZE_PER_SIDE);
-
-					constexpr float PI = 3.14159265358979323846264338327950288f;
-					noiseData[2 * idx] = sqrtf(y) * cosf(2.0f * PI * x);
-					noiseData[2 * idx + 1] = sqrtf(y) * sinf(2.0f * PI * x);
-				}
-			}
-		}
-	}
-	m_noiseImage->copyCPUBuffer(reinterpret_cast<unsigned char*>(noiseData.data()), Wolf::Image::SampledInFragmentShader());
-
-	m_noiseSampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1.0f, VK_FILTER_NEAREST));
 
 	createPipeline();
 	createOutputImages(context.swapChainWidth, context.swapChainHeight);
@@ -243,7 +210,7 @@ void ShadowMaskPassCascadedShadowMapping::updateDescriptorSet() const
 	}
 	outputDescriptorSetGenerator.setImages(2, shadowMapImageDescriptions);
 	outputDescriptorSetGenerator.setSampler(3, *m_shadowMapsSampler);
-	outputDescriptorSetGenerator.setCombinedImageSampler(4, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
+	outputDescriptorSetGenerator.setCombinedImageSampler(4, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_noiseManager->getVogelDiskImage()->getDefaultImageView(), *m_noiseManager->getVogelDiskSampler());
 
 	m_outputComputeDescriptorSet->update(outputDescriptorSetGenerator.getDescriptorSetCreateInfo());
 
@@ -268,11 +235,3 @@ void ShadowMaskPassCascadedShadowMapping::updateDescriptorSet() const
 		m_outputMaskDescriptorSet->update(descriptorSetGenerator.getDescriptorSetCreateInfo());
 	}
 }
-
-float ShadowMaskPassCascadedShadowMapping::jitter()
-{
-	static std::default_random_engine generator;
-	static std::uniform_real_distribution distrib(-0.5f, 0.5f);
-	return distrib(generator);
-}
-

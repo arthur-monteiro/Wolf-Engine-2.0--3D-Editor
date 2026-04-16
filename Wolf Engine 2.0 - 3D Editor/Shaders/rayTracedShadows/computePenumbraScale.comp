@@ -1,0 +1,64 @@
+#extension GL_EXT_samplerless_texture_functions : require
+
+layout(binding = 0, set = 0, r8) uniform writeonly image2D outputImage;
+layout(binding = 1, set = 0, r16f) uniform readonly image2D inputShadowMask;
+layout(binding = 2, set = 0) uniform texture2D depthTexture;
+layout(binding = 3, set = 0, r16f) uniform image2D occluderDistanceImage;
+layout(binding = 4, set = 0) uniform UniformBuffer
+{
+    float sunAreaAngle;
+    uint screenHeight;
+    float tanHalfFov;
+} ub;
+
+const uint LOCAL_SIZE = 16;
+layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
+void main()
+{
+    ivec2 centerCoord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(inputShadowMask);
+    if (centerCoord.x >= size.x || centerCoord.y >= size.y) return;
+
+    float centerDepth = linearizeDepth(texelFetch(depthTexture, centerCoord, 0).r);
+
+    const ivec2 nearestOffsets[25] = ivec2[](
+        ivec2(0,0),                                          // Dist 0.0
+        ivec2(0,1), ivec2(0,-1), ivec2(1,0), ivec2(-1,0),    // Dist 1.0
+        ivec2(1,1), ivec2(1,-1), ivec2(-1,1), ivec2(-1,-1),  // Dist 1.41
+        ivec2(0,2), ivec2(0,-2), ivec2(2,0), ivec2(-2,0),    // Dist 2.0
+        ivec2(1,2), ivec2(1,-2), ivec2(-1,2), ivec2(-1,-2),  // Dist 2.23
+        ivec2(2,1), ivec2(2,-1), ivec2(-2,1), ivec2(-2,-1),  // Dist 2.23
+        ivec2(2,2), ivec2(2,-2), ivec2(-2,2), ivec2(-2,-2)   // Dist 2.82
+    );
+
+    float finalDist = 0.0;
+    for (int i = 0; i < 24; i++) 
+    {
+        ivec2 sampleCoord = centerCoord + nearestOffsets[i];
+        
+        if (sampleCoord.x < 0 || sampleCoord.y < 0 || sampleCoord.x >= size.x || sampleCoord.y >= size.y) continue;
+
+        if (abs(linearizeDepth(texelFetch(depthTexture, sampleCoord, 0).r) - centerDepth) < 0.1)
+        {
+            float d = imageLoad(occluderDistanceImage, sampleCoord).r;
+            if (d > 0.0) 
+            {
+                finalDist = d;
+                break;
+            }
+        }
+    }
+
+    float penumbraFactor = 0.0;
+    if (finalDist > 0.0)
+    {
+        float penumbraSizeMeters = finalDist * tan(ub.sunAreaAngle);
+
+        float receiverDepth = min(centerDepth, 5.0); 
+        
+        float pixelRadius = (penumbraSizeMeters * ub.screenHeight) / (2.0 * receiverDepth * ub.tanHalfFov);
+        penumbraFactor = clamp(pow(pixelRadius / 8.0, 0.7), 0.0, 1.0);
+    }
+
+    imageStore(outputImage, centerCoord, vec4(penumbraFactor));
+}

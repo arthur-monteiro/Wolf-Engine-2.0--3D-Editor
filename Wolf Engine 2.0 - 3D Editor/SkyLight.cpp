@@ -64,7 +64,7 @@ void SkyLight::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 
 void SkyLight::addLightsToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const
 {
-	lightManager->addSunLightInfoForNextFrame({ getSunDirection(), 0.1f, getSunColor(), getSunIntensity() });
+	lightManager->addSunLightInfoForNextFrame({ getSunDirection(), getSunAngle(), getSunColor(), getSunIntensity() });
 }
 
 glm::vec3 SkyLight::getSunDirection() const
@@ -110,6 +110,11 @@ glm::vec3 SkyLight::getSunColor() const
 	}
 
 	return sunColor;
+}
+
+float SkyLight::getSunAngle() const
+{
+	return m_sunAngle * 0.01f;
 }
 
 void SkyLight::forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString)

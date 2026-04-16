@@ -1,8 +1,8 @@
 #extension GL_EXT_ray_tracing : require
 
-layout(location = 0) rayPayloadInEXT bool isShadowed;
+layout(location = 0) rayPayloadInEXT float hitDistance;
 
 void main()
 {
-    isShadowed = true;
+    hitDistance = gl_HitTEXT;
 }

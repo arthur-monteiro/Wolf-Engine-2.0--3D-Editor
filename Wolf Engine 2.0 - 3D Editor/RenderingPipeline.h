@@ -12,6 +12,7 @@
 #include "DrawIdsPass.h"
 #include "ForwardPass.h"
 #include "GPUBufferToGPUBufferCopyPass.h"
+#include "GPUNoiseManager.h"
 #include "ParticleUpdatePass.h"
 #include "PathTracingPass.h"
 #include "PreDepthPass.h"
@@ -64,6 +65,7 @@ public:
 
 private:
 	Wolf::ResourceUniqueOwner<SkyBoxManager> m_skyBoxManager;
+	Wolf::ResourceUniqueOwner<GPUNoiseManager> m_noiseManager;
 
 	Wolf::ResourceUniqueOwner<UpdateRayTracedWorldPass> m_updateRayTracedWorldPass;
 	Wolf::ResourceUniqueOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;

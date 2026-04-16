@@ -12,6 +12,7 @@
 
 #include "CascadedShadowMapsPass.h"
 #include "EditorParams.h"
+#include "GPUNoiseManager.h"
 #include "ShadowMaskPassInterface.h"
 
 class PreDepthPass;
@@ -20,7 +21,8 @@ class SharedGPUResources;
 class ShadowMaskPassCascadedShadowMapping : public Wolf::CommandRecordBase, public ShadowMaskPassInterface
 {
 public:
-	ShadowMaskPassCascadedShadowMapping(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<CascadedShadowMapsPass>& csmPass);
+	ShadowMaskPassCascadedShadowMapping(EditorParams* editorParams, const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::ResourceNonOwner<CascadedShadowMapsPass>& csmPass,
+		const Wolf::ResourceNonOwner<GPUNoiseManager>& noiseManager);
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
@@ -41,9 +43,8 @@ private:
 	void createPipeline();
 	void updateDescriptorSet() const;
 
-	static float jitter();
-
 	EditorParams* m_editorParams;
+	Wolf::ResourceNonOwner<GPUNoiseManager> m_noiseManager;
 
 	/* Pipeline */
 	std::unique_ptr<Wolf::ShaderParser> m_computeShaderParser;
@@ -75,10 +76,4 @@ private:
 	};
 	std::unique_ptr<Wolf::UniformBuffer> m_uniformBuffer;
 	std::unique_ptr<Wolf::Sampler> m_shadowMapsSampler;
-
-	// Noise
-	static constexpr uint32_t NOISE_TEXTURE_SIZE_PER_SIDE = 128;
-	static constexpr uint32_t NOISE_TEXTURE_PATTERN_SIZE_PER_SIDE = 4;
-	std::unique_ptr<Wolf::Image> m_noiseImage;
-	std::unique_ptr<Wolf::Sampler> m_noiseSampler;
 };
