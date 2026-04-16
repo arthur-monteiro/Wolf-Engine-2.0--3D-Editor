@@ -324,6 +324,7 @@ void ForwardPass::createPipelines()
 
 		// Depth testing
 		pipelineCreateInfo.enableDepthWrite = false;
+		pipelineCreateInfo.depthCompareOp = Wolf::CompareOp::GREATER_OR_EQUAL;
 
 		// Dynamic state
 		pipelineCreateInfo.dynamicStates.push_back(Wolf::DynamicState::VIEWPORT);
