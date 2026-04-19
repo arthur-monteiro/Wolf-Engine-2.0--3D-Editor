@@ -80,7 +80,7 @@ StaticModel::StaticModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>
 			pipelineInfo.lightDescriptorSlot = DescriptorSetSlots::DESCRIPTOR_SET_SLOT_LIGHT_INFO;
 			pipelineInfo.dynamicStates.clear();
 			pipelineInfo.enableDepthWrite = true;
-			pipelineInfo.depthCompareOp = Wolf::CompareOp::LESS_OR_EQUAL;
+			pipelineInfo.depthCompareOp = Wolf::CompareOp::GREATER_OR_EQUAL;
 			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/customRender.frag";
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER);
 		}));
@@ -133,7 +133,6 @@ void StaticModel::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::
 				reloadEntity();
 			}
 
-			onDrawLODTypeChanged();
 			onRayTracedWorldLODTypeChanged();
 
 			m_isWaitingForMeshLoading = false;
@@ -156,22 +155,17 @@ bool StaticModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outL
 	if (!m_assetManager->isModelLoaded(m_modelAssetId))
 		return false;
 
-	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_assetManager->getModelMesh(m_modelAssetId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
-	if (m_drawLOD > 0)
+	float radius = m_assetManager->getModelMesh(m_modelAssetId)->getBoundingSphere().getRadius();
+
+	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	meshToRenderInfo.m_lods.emplace_back(m_assetManager->getModelMesh(m_modelAssetId).duplicateAs<Wolf::MeshInterface>(), Wolf::InstanceMeshRenderer::computeLODDistance(radius,
+		m_assetManager->getModelMesh(m_modelAssetId)->getIndexCount(), 1.0f));
+
+	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultLODs = m_assetManager->getModelDefaultSimplifiedMeshes(m_modelAssetId);
+	for (uint32_t lod = 0; lod < defaultLODs.size(); ++lod)
 	{
-		// TODO: repair this
-		// if (m_drawLODType == 0) // Default
-		// {
-		// 	meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelDefaultSimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
-		// }
-		// else if (m_drawLODType == 1) // Sloppy
-		// {
-		// 	meshToRenderInfo.m_overrideIndexBuffer = m_resourceManager->getModelSloppySimplifiedIndexBuffers(m_modelAssetId)[m_drawLOD - 1];
-		// }
-		// else
-		// {
-		// 	Wolf::Debug::sendCriticalError("Unhandled LOD type");
-		// }
+		float lodDistance = lod == defaultLODs.size() - 1 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, defaultLODs[lod]->getIndexCount(), 1.0f);
+		meshToRenderInfo.m_lods.emplace_back(defaultLODs[lod].duplicateAs<Wolf::MeshInterface>(), lodDistance);
 	}
 
 	InstanceData instanceData{};
@@ -509,30 +503,6 @@ void StaticModel::SubMesh::onTextureSetAdded()
 
 	if (m_reloadEntityCallback)
 		m_reloadEntityCallback();
-}
-
-void StaticModel::onDrawLODTypeChanged()
-{
-	if (m_assetManager->isModelLoaded(m_modelAssetId))
-	{
-		uint32_t maxLOD;
-		if (m_drawLODType == 0) // Default
-		{
-			maxLOD = m_assetManager->getModelDefaultSimplifiedMeshes(m_modelAssetId).size();
-		}
-		else if (m_drawLODType == 1) // Sloppy
-		{
-			maxLOD = m_assetManager->getModelSloppySimplifiedMeshes(m_modelAssetId).size();
-		}
-		else
-		{
-			Wolf::Debug::sendCriticalError("Unhandled draw LOD type");
-			maxLOD = 0;
-		}
-
-		m_drawLOD.setMax(maxLOD);
-	}
-	notifySubscribers();
 }
 
 void StaticModel::onRayTracedWorldLODTypeChanged()

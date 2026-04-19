@@ -8,6 +8,7 @@ layout (location = 4) in mat3 inTBN;
 layout (location = 7) in vec3 inWorldSpaceNormal;
 layout (location = 8) in vec3 inWorldSpacePos;
 layout (location = 9) flat in uint inEntityId;
+layout (location = 10) flat in uint inLOD;
 
 layout (location = 0) out vec4 outColor;
 
@@ -107,6 +108,14 @@ vec4 computeLighting(MaterialInfo materialInfo)
     }
 }
 
+vec3 computeColorFromUint(uint value)
+{
+    uvec3 col = value * uvec3(158, 2 * 156, 3 * 159);
+    col = col % uvec3(255, 253, 256); // skips some channel values
+
+    return vec3(col) / 255.0;
+}
+
 void main() 
 {
     MaterialInfo materialInfo = fetchMaterial(inTexCoords, inMaterialID, inTBN, computeWorldPosFromViewPos(inViewPos));
@@ -131,10 +140,7 @@ void main()
         outColor = computeLighting(materialInfo);
     else if (ubDisplay.displayType == DISPLAY_TYPE_ENTITY_IDX)
     {
-        uvec3 col = (inEntityId) * uvec3(158, 2 * 156, 3 * 159);
-        col = col % uvec3(255, 253, 256); // skips some channel values
-
-        outColor = vec4(vec3(col) / 255.0, 1.0);
+        outColor = vec4(computeColorFromUint(inEntityId), 1.0);;
     }
     else if (ubDisplay.displayType == DISPLAY_TYPE_GLOBAL_IRRADIANCE)    
     {
@@ -143,6 +149,10 @@ void main()
         vec3 worldPos = (getInvViewMatrix() * vec4(inViewPos, 1.0f)).xyz;
 
         outColor = vec4(computeIrradiance(worldPos, normal, ubDisplay.enableTrilinearVoxelGI == 1), 1.0);
+    }
+    else if (ubDisplay.displayType == DISPLAY_TYPE_LOD_LEVEL)
+    {
+        outColor = vec4(computeColorFromUint(inLOD + 1), 1.0);
     }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);

@@ -22,7 +22,8 @@ struct GameContext
 		PATH_TRACING = 11,
 		GLOBAL_IRRADIANCE = 12,
 		VERTEX_COLOR = 13,
-		VERTEX_NORMAL = 14
+		VERTEX_NORMAL = 14,
+		LOD_LEVEL = 15
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 

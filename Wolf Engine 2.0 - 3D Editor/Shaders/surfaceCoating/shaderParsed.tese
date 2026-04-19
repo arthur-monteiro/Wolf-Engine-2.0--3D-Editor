@@ -58,7 +58,7 @@ vec2 getCameraJitter()
 
 float linearizeDepth(float d)
 {
-    return ubCamera.near * ubCamera.far / (ubCamera.far - d * (ubCamera.far - ubCamera.near));
+    return ubCamera.near * ubCamera.far / (d * (ubCamera.far - ubCamera.near) + ubCamera.near);
 }
 
 mat4 getPreviousViewMatrix()
@@ -149,14 +149,14 @@ void main()
     vec3 projCoords = posProjectionSpace.xyz / posProjectionSpace.w;
 
     float depth = texture(sampler2D(depthTexture, depthSampler), projCoords.xy).r;
-    if (depth > 0.999)
+    if (depth < 0.001)
     {
         gl_Position = vec4(0.0 / 0.0);
         return;
     }
     vec3 normal = texture(sampler2D(normalTexture, depthSampler), projCoords.xy).xyz;
 
-    float yPos = mix(ub.yMin, ub.yMax, 1.0 - depth);
+    float yPos = mix(ub.yMin, ub.yMax, depth);
     worldPos.y = yPos + ub.verticalOffset;
 
     // Apply patter

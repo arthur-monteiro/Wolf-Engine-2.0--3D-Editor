@@ -94,7 +94,7 @@ void CustomSceneRenderPass::Request::recordCommands(const Wolf::CommandBuffer* c
         return;
 
     std::vector<Wolf::ClearValue> clearValues(m_outputs.size() + 1);
-    clearValues[0] = {{{1.0f}}};
+    clearValues[0] = {{{0.0f}}};
     for (uint32_t i = 0; i < m_outputs.size(); ++i)
     {
         clearValues[i + 1] = {{{0.0f, 0.0f, 0.0f}}};

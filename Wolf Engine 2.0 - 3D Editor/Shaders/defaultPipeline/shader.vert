@@ -15,6 +15,7 @@ layout(location = 4) out mat3 outTBN;
 layout(location = 7) out vec3 outWorldSpaceNormal;
 layout(location = 8) out vec3 outWorldSpacePos;
 layout(location = 9) out uint outEntityId;
+layout(location = 10) out uint outLOD;
  
 out gl_PerVertex
 {
@@ -49,4 +50,5 @@ void main()
 	outWorldSpaceNormal = normalize(inNormal);
 	outWorldSpacePos =  (transform * vec4(inPosition, 1.0)).xyz;
 	outEntityId = getCustomData();
+	outLOD = getLOD();
 } 

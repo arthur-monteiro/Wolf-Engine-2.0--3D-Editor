@@ -153,12 +153,12 @@ void DrawManager::activateCameras(const Wolf::CameraList& cameraList) const
 }
 
 DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer)
-	: m_mesh(meshToRender.m_mesh)
+	: m_mesh(meshToRender.m_lods[0].m_mesh)
 {
 	m_meshIdx = instanceMeshRenderer->registerMesh(meshToRender);
 }
 
 bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const
 {
-	return m_mesh == otherMeshToRender.m_mesh;
+	return m_mesh == otherMeshToRender.m_lods[0].m_mesh;
 }

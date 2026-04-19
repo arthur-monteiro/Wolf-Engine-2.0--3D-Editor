@@ -135,9 +135,7 @@ private:
 	static constexpr uint32_t MAX_SUB_MESHES = 256;
 	EditorParamArray<SubMesh> m_subMeshes = EditorParamArray<SubMesh>("Sub meshes", TAB, "Mesh", MAX_SUB_MESHES, false, true);
 
-	void onDrawLODTypeChanged();
-	EditorParamEnum m_drawLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for draw", TAB, "Quality", [this]() { onDrawLODTypeChanged(); });
-	EditorParamUInt m_drawLOD = EditorParamUInt("LOD for draw", TAB, "Quality", 0, 0, [this]() { notifySubscribers(); });
+	EditorParamEnum m_drawLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for draw", TAB, "Quality", [this]() { notifySubscribers(); });
 
 	void onRayTracedWorldLODTypeChanged();
 	EditorParamEnum m_rayTracedWorldLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for ray traced world", TAB, "Quality", [this]() { onRayTracedWorldLODTypeChanged(); });
@@ -148,11 +146,10 @@ private:
 		&m_loadingPathParam
 	};
 
-	std::array<EditorParamInterface*, 5> m_alwaysVisibleEditorParams =
+	std::array<EditorParamInterface*, 4> m_alwaysVisibleEditorParams =
 	{
 		&m_subMeshes,
 		&m_drawLODType,
-		&m_drawLOD,
 		&m_rayTracedWorldLODType,
 		&m_rayTracedWorldLOD
 	};

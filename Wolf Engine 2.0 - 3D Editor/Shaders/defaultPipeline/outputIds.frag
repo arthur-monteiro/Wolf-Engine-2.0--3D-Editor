@@ -8,6 +8,7 @@ layout (location = 4) in mat3 inTBN;
 layout (location = 7) in vec3 inWorldSpaceNormal;
 layout (location = 8) in vec3 inWorldSpacePos;
 layout (location = 9) flat in uint inEntityId;
+layout (location = 10) flat in uint inLOD;
 
 layout (location = 0) out uvec4 outIds;
 

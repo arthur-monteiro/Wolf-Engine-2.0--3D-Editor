@@ -206,7 +206,8 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 	if (m_hideModel == true)
 		return true;
 
-	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_resourceManager->getModelMesh(m_meshResourceId).duplicateAs<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+	meshToRenderInfo.m_lods.emplace_back(m_resourceManager->getModelMesh(m_meshResourceId).duplicateAs<Wolf::MeshInterface>(), 10'000.0f);
 
 	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
 	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
@@ -215,7 +216,12 @@ bool AnimatedModel::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& ou
 	descriptorSetBindInfo.setBindingSlot(6);
 	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(descriptorSetBindInfo);
 
-	outList.push_back({ meshToRenderInfo, { m_transform, m_materialIdx } });
+	InstanceData instanceData{};
+	instanceData.transform = m_transform;
+	instanceData.firstMaterialIdx = m_materialIdx;
+	instanceData.entityIdx = m_entity->getIdx();
+
+	outList.push_back({meshToRenderInfo, instanceData});
 
 	return true;
 }

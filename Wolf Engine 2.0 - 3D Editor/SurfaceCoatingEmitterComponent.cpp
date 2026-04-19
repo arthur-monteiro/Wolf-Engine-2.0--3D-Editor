@@ -312,7 +312,8 @@ void SurfaceCoatingEmitterComponent::addDebugInfo(DebugRenderingManager& debugRe
 
 bool SurfaceCoatingEmitterComponent::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
 {
-    Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_mesh.createNonOwnerResource<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+    Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
+    meshToRenderInfo.m_lods.emplace_back(m_mesh.createNonOwnerResource<Wolf::MeshInterface>());
 
     Wolf::DescriptorSetBindInfo descriptorSetBindInfoNoLighting(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
     meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].push_back(descriptorSetBindInfoNoLighting);

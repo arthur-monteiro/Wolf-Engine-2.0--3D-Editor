@@ -741,6 +741,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 	}
 	else if (displayType == "globalIrradiance")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::GLOBAL_IRRADIANCE;
+	else if (displayType == "lodLevel")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::LOD_LEVEL;
 	else
 		Wolf::Debug::sendError("Unsupported display type: " + displayType);
 

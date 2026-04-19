@@ -1142,7 +1142,7 @@ void AssetManager::Mesh::loadModel(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 		meshFormatterDataInput.m_staticVertices = std::move(loadedMeshData.m_staticVertices);
 		meshFormatterDataInput.m_skeletonVertices = std::move(loadedMeshData.m_skeletonVertices);
 		meshFormatterDataInput.m_indices = std::move(loadedMeshData.m_indices);
-		meshFormatterDataInput.m_generateDefaultLODCount = 8;
+		meshFormatterDataInput.m_generateDefaultLODCount = 16;
 		meshFormatterDataInput.m_generateSloppyLODCount= 16;
 		meshFormatterDataInput.m_textureSetsInfo = std::move(loadedMeshData.m_textureSetsInfo);
 		meshFormatterDataInput.m_animationData = std::move(loadedMeshData.m_animationData);

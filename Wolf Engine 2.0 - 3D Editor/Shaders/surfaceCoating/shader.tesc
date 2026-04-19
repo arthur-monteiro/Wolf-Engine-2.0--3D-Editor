@@ -37,8 +37,8 @@ void main()
     vec2 patchBoundsUVs = inGridUVs[gl_InvocationID].xy;
     ivec2 patchBoundsXY = ivec2(patchBoundsUVs * vec2(32, 32));
     vec2 patchDepthBounds = imageLoad(patchBoundsImage, patchBoundsXY).xy;
-    float patchWorldHeightMin = (1.0 - patchDepthBounds.y) * ub.depthScale + ub.depthOffset + ub.verticalOffset;
-    float patchWorldHeightMax = (1.0 - patchDepthBounds.x) * ub.depthScale + ub.depthOffset + ub.verticalOffset + ub.globalThickness;
+    float patchWorldHeightMin = patchDepthBounds.x * ub.depthScale + ub.depthOffset + ub.verticalOffset;
+    float patchWorldHeightMax = patchDepthBounds.y * ub.depthScale + ub.depthOffset + ub.verticalOffset + ub.globalThickness;
 
     float minHeight = patchWorldHeightMin;
     float maxHeight = patchWorldHeightMax;
