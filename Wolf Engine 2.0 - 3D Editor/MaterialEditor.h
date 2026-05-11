@@ -1,42 +1,42 @@
 #pragma once
 
+#include "AssetId.h"
 #include "ComponentInterface.h"
 #include "EditorTypesTemplated.h"
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
-#include "TextureSetComponent.h"
 
-class MaterialComponent : public ComponentInterface
+class AssetManager;
+
+class MaterialEditor : public ComponentInterface
 {
 public:
-	static inline std::string ID = "materialComponent";
+	static inline std::string ID = "materialEditor";
 	std::string getId() const override { return ID; }
 
-	MaterialComponent(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const std::function<void(ComponentInterface*)>& requestReloadCallback,
-		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+	MaterialEditor(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, AssetManager* assetManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
+	void updateBeforeFrame();
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
 	void saveCustom() const override {}
-	void releaseAllNullableNonOwnerResources() override;
 
 	static constexpr uint32_t DEFAULT_MATERIAL_IDX = 0;
-	uint32_t getMaterialIdx() const { return m_materialIdx; }
+	uint32_t getMaterialGPUIdx() const { return m_materialGPUIdx; }
 
+	void addTextureSet(const std::string& textureSetPath, float strength);
 	uint32_t getTextureSetCount() const { return m_textureSets.size(); }
-	Wolf::NullableResourceNonOwner<TextureSetComponent> getTextureSetComponent(uint32_t textureSetIdx) const;
 
 private:
 	inline static const std::string TAB = "Material";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	AssetManager* m_assetManager;
 
 	bool m_shadingModeChanged = false;
 	void onShadingModeChanged();
@@ -50,33 +50,32 @@ private:
 		TextureSet();
 		TextureSet(const TextureSet&) = delete;
 
-		void setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+		void setAssetManager(AssetManager* assetManager);
 
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
 		bool hasDefaultName() const override;
 
-		void releaseAllNullableNonOwnerResources();
+		void setTextureSetPath(const std::string& path);
+		void setStrength(float strength) { m_strength = strength; }
 
 		static constexpr uint32_t NO_TEXTURE_SET_IDX = -1;
 		uint32_t getTextureSetIdx() const;
 		float getStrength() const { return m_strength; }
-		Wolf::NullableResourceNonOwner<TextureSetComponent> getTextureSetComponent() const { return m_textureSetComponent; }
 
 	private:
 		inline static const std::string DEFAULT_NAME = "New texture set";
-		std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+		AssetManager* m_assetManager = nullptr;
 
-		void onTextureSetEntityChanged();
-		EditorParamString m_textureSetEntityParam = EditorParamString("Texture set entity", TAB, "Texture set", [this]() { onTextureSetEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
+		void onTextureSetAssetChanged();
+		AssetId m_textureSetAssetId = NO_ASSET;
+		EditorParamString m_textureSetAssetParam = EditorParamString("Texture set", TAB, "Texture set", [this]() { onTextureSetAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
 		EditorParamFloat m_strength = EditorParamFloat("Strength", TAB, "Material", 0.01f, 2.0f, [this]() { notifySubscribers(); });
 		std::array<EditorParamInterface*, 2> m_allParams =
 		{
-			&m_textureSetEntityParam,
+			&m_textureSetAssetParam,
 			&m_strength
 		};
-
-		Wolf::NullableResourceNonOwner<TextureSetComponent> m_textureSetComponent;
 	};
 
 	static constexpr uint32_t MAX_TEXTURE_SETS = 16;
@@ -89,6 +88,6 @@ private:
 		&m_textureSets
 	};
 
-	uint32_t m_materialIdx = DEFAULT_MATERIAL_IDX;
+	uint32_t m_materialGPUIdx = DEFAULT_MATERIAL_IDX;
 };
 

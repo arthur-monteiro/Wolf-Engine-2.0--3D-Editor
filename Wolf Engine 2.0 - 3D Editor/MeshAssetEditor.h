@@ -4,7 +4,6 @@
 #include "EditorTypesTemplated.h"
 #include "Entity.h"
 #include "MeshFormatter.h"
-#include "ModelLoader.h"
 #include "Notifier.h"
 #include "ParameterGroupInterface.h"
 #include "PhysicShapes.h"
@@ -23,12 +22,11 @@ public:
 		MESH = 1 << 1
 	};
 
-	std::string getId() const override { return "meshResourceEditor"; }
-	MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, Wolf::ResourceNonOwner<Wolf::Mesh> mesh,
-		const std::vector<MeshFormatter::LODInfo>& defaultLODInfo, const std::vector<MeshFormatter::LODInfo>& sloppyLODInfo, std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultSimplifiedMeshes,
-		std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> sloppySimplifiedMeshes, uint32_t firstMaterialIdx, const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
-		const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
-		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
+	std::string getId() const override { return "meshAssetEditor"; }
+	MeshAssetEditor(const std::string& name, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
+		const std::function<void(const glm::mat4&)>& requestThumbnailReload, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
+		const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
+	~MeshAssetEditor() override = default;
 
 	void loadParams(Wolf::JSONReader& jsonReader) override {}
 	void addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape);
@@ -52,23 +50,34 @@ public:
 
 	void computeInfoOutputJSON(std::string& out);
 
-private:
-	inline static const std::string TAB = "Mesh Resource";
+	void setIsCentered(bool isCentered);
+	struct AddLODInfo
+	{
+		Wolf::NullableResourceNonOwner<Wolf::Mesh> m_mesh;
+		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_blas;
+		uint32_t m_materialIdx;
 
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
+		uint32_t m_lodType;
+		uint32_t m_lodIdx;
+		float m_error;
+	};
+	void addLOD(const AddLODInfo& addLodInfo);
+
+private:
+	inline static const std::string TAB = "Mesh asset";
+
 	std::function<void(const std::string&)> m_isolateMeshCallback;
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
 	std::function<void(const glm::mat4&)> m_requestThumbnailReload;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
-	EditorParamString m_filepath = EditorParamString("Filepath", TAB, "General", EditorParamString::ParamStringType::STRING, false, false, true);
+	EditorParamString m_name = EditorParamString("Name", TAB, "General", EditorParamString::ParamStringType::STRING, false, true);
 
 	class PhysicMesh : public ParameterGroupInterface, public Notifier
 	{
 	public:
 		PhysicMesh();
-		void setRequestReloadCallback(const std::function<void(ComponentInterface*)>& requestReloadCallback) { m_requestReloadCallback = requestReloadCallback; }
 
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
@@ -94,7 +103,6 @@ private:
 
 	private:
 		inline static const std::string DEFAULT_NAME = "New physic mesh";
-		std::function<void(ComponentInterface*)> m_requestReloadCallback;
 
 		void onValueChanged();
 
@@ -166,7 +174,7 @@ private:
 		void setRenderingPipeline(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline) { m_renderingPipeline = renderingPipeline; }
 		void setEditorPushDataToGPU(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU) { m_editorPushDataToGPU = editorPushDataToGPU; }
 		void setMesh(const Wolf::ResourceNonOwner<Wolf::Mesh>& mesh) { m_mesh = mesh; }
-		void setFirstMaterialIdx(uint32_t firstMaterialIdx) { m_firstMaterialIdx = firstMaterialIdx; }
+		void setDefaultMaterialIdx(uint32_t defaultMaterialIdx) { m_defaultMaterialIdx = defaultMaterialIdx; }
 		void setBottomLevelAccelerationStructure(const Wolf::ResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& accelerationStructure) { m_bottomLevelAccelerationStructure = accelerationStructure; }
 		void setLODIndexAndType(uint32_t lodIdx, uint32_t lodType);
 		void setError(float error) { m_error = std::to_string(error * 100) + "%"; }
@@ -179,12 +187,12 @@ private:
 		Wolf::NullableResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_bottomLevelAccelerationStructure;
 		Wolf::NullableResourceNonOwner<Wolf::Mesh> m_mesh;
-		uint32_t m_firstMaterialIdx;
+		uint32_t m_defaultMaterialIdx;
 		uint32_t m_lodIdx = 0;
 		uint32_t m_lodType = 0;
 
-		EditorParamString m_error = EditorParamString("Error", TAB, "Info", EditorParamString::ParamStringType::STRING, false, false, true);
-		EditorParamString m_indexCount = EditorParamString("Index count", TAB, "Info", EditorParamString::ParamStringType::STRING, false, false, true);
+		EditorParamString m_error = EditorParamString("Error", TAB, "Info", EditorParamString::ParamStringType::STRING, false, true);
+		EditorParamString m_indexCount = EditorParamString("Index count", TAB, "Info", EditorParamString::ParamStringType::STRING, false, true);
 
 		void onComputeVertexColorsAndNormals();
 		EditorParamButton m_computeVertexColorsAndNormals = EditorParamButton("Compute vertex colors and normals", TAB, "Actions", [this]() { onComputeVertexColorsAndNormals();});
@@ -202,7 +210,7 @@ private:
 
 	std::array<EditorParamInterface*, 7> m_editorParams =
 	{
-		&m_filepath,
+		&m_name,
 
 		&m_physicsMeshes,
 

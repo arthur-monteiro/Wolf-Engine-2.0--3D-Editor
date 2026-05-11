@@ -4,23 +4,25 @@
 
 #include <ProfilerCommon.h>
 
+#include "AnimatedMesh.h"
 #include "CommonLayouts.h"
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 #include "ExternalSceneLoader.h"
-#include "StaticModel.h"
+#include "StaticMesh.h"
 
 ExternalSceneComponent::ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityCallback,
                                                const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-                                               const std::function<void(ComponentInterface*)>& requestReloadCallback)
-: m_assetManager(assetManager), m_getEntityCallback(getEntityCallback), m_createEntityCallback(createEntityCallback), m_materialsGPUManager(materialsGPUManager), m_requestReloadCallback(requestReloadCallback)
+                                               const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+: m_assetManager(assetManager), m_getEntityCallback(getEntityCallback), m_createEntityCallback(createEntityCallback), m_materialsGPUManager(materialsGPUManager),
+  m_requestReloadCallback(requestReloadCallback), m_renderingPipeline(renderingPipeline)
 {
 }
 
 void ExternalSceneComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
 	EditorModelInterface::loadParams(jsonReader, ID);
-    ::loadParams(jsonReader, ID, m_editorParams);
+    ::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void ExternalSceneComponent::activateParams()
@@ -51,15 +53,10 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
         	std::filesystem::path currentEntityPath(g_editorConfiguration->computeFullPathFromLocalPath(m_entity->getLoadingPath()));
         	std::filesystem::path currentEntityDirectory = currentEntityPath.parent_path();
 
-        	std::filesystem::path scenePath(g_editorConfiguration->computeFullPathFromLocalPath(m_loadingPathParam));
+        	std::filesystem::path scenePath(g_editorConfiguration->computeFullPathFromLocalPath(m_assetParam));
         	std::filesystem::path sceneFilename = currentEntityPath.filename();
 
         	std::string newEntitiesFolder = EditorConfiguration::sanitizeFilePath(currentEntityDirectory.string() + "/" + sceneFilename.string() + "_children");
-
-        	if (!std::filesystem::is_directory(newEntitiesFolder) || !std::filesystem::exists(newEntitiesFolder))
-        	{
-        		std::filesystem::create_directory(newEntitiesFolder);
-        	}
 
         	for (uint32_t i = 0; i < instances.size(); i++)
         	{
@@ -68,27 +65,35 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
         		AssetId modelAssetId = modelAssetsId[instance.m_meshIdx];
 
         		std::string modelName = m_assetManager->computeModelName(modelAssetId);
+        		bool isAnimated = m_assetManager->isMeshAnimated(modelAssetId);
 
         		std::string newEntityPath = newEntitiesFolder + "/" + modelName + "_" + std::to_string(i) + ".json";
         		std::string newEntityLocalPath = g_editorConfiguration->computeLocalPathFromFullPath(newEntityPath);
 
         		if (Wolf::NullableResourceNonOwner<Entity> entity = m_getEntityCallback(newEntityLocalPath); static_cast<bool>(entity))
         		{
-        			Wolf::NullableResourceNonOwner<StaticModel> staticModel = entity->getComponent<StaticModel>();
-        			if (!staticModel)
-        				Wolf::Debug::sendCriticalError("Entity should have static model component");
-        			staticModel->setInfoFromParent(modelAssetId);
-
-        			continue;
+        			Wolf::Debug::sendCriticalError("Entity should not already exist");
         		}
 
         		Entity* newEntity = m_createEntityCallback(this, newEntityLocalPath);
         		newEntity->setName(modelName + "_" + std::to_string(i));
+        		newEntity->setTransient();
 
-        		StaticModel* staticModelComponent = new StaticModel(m_materialsGPUManager, m_assetManager, m_requestReloadCallback, m_getEntityCallback);
-        		newEntity->addComponent(staticModelComponent);
+        		StaticMesh* staticModelComponent = nullptr;
+        		AnimatedMesh* animatedModelComponent = nullptr;
 
-        		staticModelComponent->setInfoFromParent(modelAssetId);
+        		if (isAnimated)
+        		{
+        			animatedModelComponent = new AnimatedMesh(m_assetManager, m_getEntityCallback, m_renderingPipeline, m_requestReloadCallback);
+        			newEntity->addComponent(animatedModelComponent);
+        			animatedModelComponent->setInfoFromParent(modelAssetId);
+        		}
+        		else
+        		{
+        			staticModelComponent = new StaticMesh(m_assetManager);
+        			newEntity->addComponent(staticModelComponent);
+        			staticModelComponent->setInfoFromParent(modelAssetId);
+        		}
 
         		glm::vec3 scale;
         		glm::quat rotation;
@@ -97,9 +102,18 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
         		glm::vec4 perspective;
         		if (glm::decompose(instance.m_transform, scale, rotation, translation, skew, perspective))
         		{
-        			staticModelComponent->setPosition(translation);
-        			staticModelComponent->setScale(scale);
-        			staticModelComponent->setRotation(glm::conjugate(rotation));
+        			if (staticModelComponent)
+        			{
+        				staticModelComponent->setPosition(translation);
+        				staticModelComponent->setScale(scale);
+        				staticModelComponent->setRotation(glm::conjugate(rotation));
+        			}
+        			else
+        			{
+        				animatedModelComponent->setPosition(translation);
+        				animatedModelComponent->setScale(scale);
+        				animatedModelComponent->setRotation(glm::conjugate(rotation));
+        			}
         		}
         		else
         		{
@@ -135,7 +149,7 @@ bool ExternalSceneComponent::areAllMeshLoaded()
 	bool hasAMeshNotLoaded = false;
 	for (AssetId modelAssetId : modelAssetsId)
 	{
-		if (!m_assetManager->isModelLoaded(modelAssetId))
+		if (!m_assetManager->isMeshLoaded(modelAssetId))
 		{
 			hasAMeshNotLoaded = true;
 		}
@@ -147,19 +161,19 @@ bool ExternalSceneComponent::areAllMeshLoaded()
 	return true;
 }
 
-void ExternalSceneComponent::requestSceneLoading()
+void ExternalSceneComponent::onAssetChanged()
 {
-    std::string loadingPathStr = std::string(m_loadingPathParam);
-    if (!loadingPathStr.empty())
-    {
-        if (std::string sanitizedLoadingPath = EditorConfiguration::sanitizeFilePath(loadingPathStr); sanitizedLoadingPath != loadingPathStr)
-        {
-            m_loadingPathParam = sanitizedLoadingPath;
-            return;
-        }
+	if (static_cast<std::string>(m_assetParam) == "")
+		return;
 
-        m_sceneAssetId = m_assetManager->addExternalScene(loadingPathStr);
-        m_isWaitingForSceneLoading = true;
-        notifySubscribers();
-    }
+	AssetId assetId = m_assetManager->getAssetIdForPath(m_assetParam);
+	if (!m_assetManager->isExternalScene(assetId))
+	{
+		Wolf::Debug::sendWarning("Asset is not an external scene");
+		m_assetParam = "";
+	}
+
+	m_sceneAssetId = assetId;
+	m_isWaitingForSceneLoading = true;
+	notifySubscribers();
 }

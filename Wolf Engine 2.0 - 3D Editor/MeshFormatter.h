@@ -30,7 +30,6 @@ public:
         uint32_t m_generateDefaultLODCount = 1;
         uint32_t m_generateSloppyLODCount = 1;
 
-        std::vector<TextureSetLoader::TextureSetFileInfoGGX> m_textureSetsInfo;
         Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
     };
     void computeData(const DataInput& input);
@@ -75,7 +74,6 @@ private:
     template <typename T>
     void createLODs(std::vector<T>& vertices, uint32_t generateDefaultLODCount, uint32_t generateSloppyLODCount);
 
-    void loadTextureSets(const std::vector<TextureSetLoader::TextureSetFileInfoGGX>& textureSetsFileInfo);
     static void writeBoneToCache(const AnimationData::Bone& bone, std::ofstream& file);
     static void readBoneFromCache(AnimationData::Bone& bone, std::ifstream& file);
 

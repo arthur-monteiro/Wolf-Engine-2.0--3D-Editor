@@ -11,7 +11,7 @@
 class DummyParameterGroup final : public ParameterGroupInterface
 {
 public:
-	DummyParameterGroup() : ParameterGroupInterface("Dummy") {}
+	DummyParameterGroup() : ParameterGroupInterface("Dummy", "Dummy") {}
 	DummyParameterGroup(const DummyParameterGroup&) = default;
 	void getAllParams(std::vector<EditorParamInterface*>& out) const override {}
 	void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override {}
@@ -19,9 +19,8 @@ public:
 };
 
 template <typename GroupItemType = DummyParameterGroup>
-inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId, std::span<EditorParamInterface*> params, bool loadArrayItems = true)
+inline void loadParams(Wolf::JSONReader::JSONObjectInterface* root, const std::string& objectId, std::span<EditorParamInterface*> params, bool loadArrayItems = true)
 {
-	Wolf::JSONReader::JSONObjectInterface* root = jsonReader.getRoot()->getPropertyObject(objectId);
 	const uint32_t paramCount = root->getArraySize("params");
 
 	auto findParamObject = [&root, paramCount](const std::string& paramName, const std::string& paramCategory)
@@ -38,27 +37,6 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 
 			return static_cast<Wolf::JSONReader::JSONObjectInterface*>(nullptr);
 		};
-
-	// First change category depending on strings driving category name
-	bool stringDrivingCategoryNameAlreadyFound = false;
-	for (EditorParamInterface* param : params)
-	{
-		if (param->getType() == EditorParamInterface::Type::STRING)
-		{
-			if (dynamic_cast<EditorParamString*>(param)->drivesCategoryName())
-			{
-				if (stringDrivingCategoryNameAlreadyFound)
-				{
-					Wolf::Debug::sendError("Only one string driving category name can be there, otherwise we can't know which string needs which value");
-				}
-				else if (Wolf::JSONReader::JSONObjectInterface * object = findParamObject(param->getName(), ""))
-				{
-					*dynamic_cast<EditorParamString*>(param) = object->getPropertyString("value"); // will call callbacks changing the category for all properties concerned
-				}
-				stringDrivingCategoryNameAlreadyFound = true;
-			}
-		}
-	}
 
 	for (EditorParamInterface* param : params)
 	{
@@ -109,6 +87,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 			case EditorParamInterface::Type::STRING:
 			case EditorParamInterface::Type::FILE:
 			case EditorParamInterface::Type::ENTITY:
+			case EditorParamInterface::Type::ASSET:
 				{
 					if (Wolf::JSONReader::JSONObjectInterface* object = findParamObject(param->getName(), param->getCategory()))
 					{
@@ -129,7 +108,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 					{
 						GroupItemType& item = static_cast<EditorParamArray<GroupItemType>*>(param)->emplace_back();
 						if (loadArrayItems)
-							item.loadParams(jsonReader, objectId);
+							item.loadParams(object->getArrayObjectItem("values", itemArrayIdx), objectId);
 					}
 				}
 				break;
@@ -148,7 +127,7 @@ inline void loadParams(Wolf::JSONReader& jsonReader, const std::string& objectId
 				std::vector<EditorParamInterface*> arrayItemParams;
 				item.getAllParams(arrayItemParams);
 				arrayItemParams.push_back(item.getNameParam());
-				loadParams(jsonReader, objectId, arrayItemParams);
+				loadParams(root, objectId, arrayItemParams);
 
 				break;
 			}

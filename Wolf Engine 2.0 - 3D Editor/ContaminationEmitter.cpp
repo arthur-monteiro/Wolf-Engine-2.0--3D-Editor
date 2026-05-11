@@ -9,7 +9,7 @@
 #include "DebugRenderingManager.h"
 #include "EditorModelInterface.h"
 #include "EditorParamsHelper.h"
-#include "MaterialComponent.h"
+#include "MaterialEditor.h"
 #include "RenderingPipelineInterface.h"
 #include "UpdateGPUBuffersPass.h"
 
@@ -60,7 +60,7 @@ ContaminationEmitter::~ContaminationEmitter()
 
 void ContaminationEmitter::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams<ContaminationMaterialArrayItem<TAB>>(jsonReader, ID, m_savedEditorParams);
+	::loadParams<ContaminationMaterialArrayItem<TAB>>(jsonReader.getRoot()->getPropertyObject(ID), ID, m_savedEditorParams);
 }
 
 void ContaminationEmitter::activateParams()

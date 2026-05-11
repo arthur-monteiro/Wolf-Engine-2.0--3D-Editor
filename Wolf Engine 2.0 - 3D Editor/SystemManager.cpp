@@ -11,7 +11,6 @@
 #include <ProfilerCommon.h>
 
 #include "GraphicSettingsFakeEntity.h"
-#include "MaterialListFakeEntity.h"
 #include "RuntimeContext.h"
 #include "Vertex2DTextured.h"
 
@@ -57,18 +56,18 @@ SystemManager::SystemManager()
 
 	m_requestReloadCallback = [this](ComponentInterface* component)
 		{
-			if (m_selectedEntity && (!component || component->isOnEntity(*m_selectedEntity)))
-				m_entityReloadRequested = true;
+			// if (m_selectedEntity && (!component || component->isOnEntity(*m_selectedEntity)))
+			// 	m_entityReloadRequested = true;
 		};
 
-	m_assetManager.reset(new AssetManager([this](const std::string& resourceName, const std::string& iconPath, AssetId assetId)
+	m_assetManager.reset(new AssetManager([this](const std::string& assetName, const std::string& assetPath, const std::string& iconPath, AssetId assetId, const std::string& assetType)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("addAssetToList(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
+			m_wolfInstance->evaluateUserInterfaceScript("addAssetToList(\"" + assetName + "\", \"" + assetPath + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\", \"" + assetType + "\");");
 		}, [this](const std::string& resourceName, const std::string& iconPath, AssetId assetId)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("updateAsset(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
-		}
-		, m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback, m_configuration.createNonOwnerResource(),
+		},
+		m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback, m_configuration.createNonOwnerResource(),
 		[this](const std::string& loadingPath) { forceCustomViewForMesh(loadingPath); },
 		[this](glm::mat4& outViewMatrix)
 		{
@@ -83,7 +82,7 @@ SystemManager::SystemManager()
 		std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 		for (Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 		{
-			if (!entity->isFake() && EditorConfiguration::sanitizeFilePath(entity->getLoadingPath()) == EditorConfiguration::sanitizeFilePath(entityLoadingPath))
+			if (!entity->isTransient() && EditorConfiguration::sanitizeFilePath(entity->getLoadingPath()) == EditorConfiguration::sanitizeFilePath(entityLoadingPath))
 				return Wolf::NullableResourceNonOwner<Entity>(entity.createNonOwnerResource());
 		}
 		return Wolf::NullableResourceNonOwner<Entity>();
@@ -325,6 +324,7 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["saveScene"] = std::bind(&SystemManager::saveSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["loadScene"] = std::bind(&SystemManager::loadSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["exportScene"] = std::bind(&SystemManager::exportSceneJSCallback, this, std::placeholders::_1, std::placeholders::_2);
+	jsObject["createAsset"] = std::bind(&SystemManager::createAssetJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["displayTypeSelectChanged"] = std::bind(&SystemManager::displayTypeSelectChangedJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openUIInBrowser"] = std::bind(&SystemManager::openUIInBrowserJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["takeScreenshot"] = std::bind(&SystemManager::takeScreenshotJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -354,8 +354,7 @@ void SystemManager::forceCustomViewForMesh(const std::string& loadingPath)
 	m_temporaryEntityForThumbnailSetup.reset(new Entity("", [this](Entity*){}, [](Entity*){}, [](const std::string&) { return Wolf::NullableResourceNonOwner<Entity>(); }));
 	m_temporaryEntityForThumbnailSetup->setName("Temporary entity for thumbnail setup");
 
-	StaticModel* staticModel = new StaticModel(m_wolfInstance->getMaterialsManager(), m_assetManager.createNonOwnerResource(), [this](ComponentInterface*){},
-		[this](const std::string&){ return m_entityContainer->getEntities()[0].createNonOwnerResource(); });
+	StaticMesh* staticModel = new StaticMesh(m_assetManager.createNonOwnerResource());
 	staticModel->setLoadingPath(loadingPath);
 	m_temporaryEntityForThumbnailSetup->addComponent(staticModel);
 
@@ -497,6 +496,8 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 		fullFilePath = m_configuration->computeLocalPathFromFullPath(fullFilePath);
 	}
 
+	fullFilePath = EditorConfiguration::sanitizeFilePath(fullFilePath);
+
 	return fullFilePath.c_str();
 }
 
@@ -614,11 +615,15 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	outputFile << "\t\t\"theta\": " << m_camera->getTheta() << "\n";
 	outputFile << "\t},\n";
 
+	// Assets
+	m_assetManager->save(outputFile);
+
+	// Entities
 	const std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 	uint32_t entityCountToSave = 0;
 	for (const Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 	{
-		if (!entity->isFake())
+		if (!entity->isTransient())
 		{
 			entityCountToSave++;
 		}
@@ -630,7 +635,7 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 	for (uint32_t i = 0; i < allEntities.size(); ++i)
 	{
 		const Wolf::ResourceUniqueOwner<Entity>& entity = allEntities[i];
-		if (entity->isFake())
+		if (entity->isTransient())
 			continue;
 
 		entity->save();
@@ -652,8 +657,6 @@ void SystemManager::saveSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 	outputFile.close();
 
-	m_assetManager->save();
-
 	Wolf::Debug::sendInfo("Save successful!");
 }
 
@@ -667,6 +670,37 @@ void SystemManager::exportSceneJSCallback(const ultralight::JSObject& thisObject
 {
 	const std::string& exportExePath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
 	m_exportSceneRequest = exportExePath;
+}
+
+void SystemManager::createAssetJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string& assetPath = EditorConfiguration::sanitizeFilePath(static_cast<ultralight::String>(args[0].ToString()).utf8().data());
+	const std::string& assetType = static_cast<ultralight::String>(args[1].ToString()).utf8().data();
+
+	if (assetType == "textureSet")
+	{
+		m_assetManager->addTextureSet(assetPath);
+	}
+	else if (assetType == "externalScene")
+	{
+		m_assetManager->addExternalScene(assetPath);
+	}
+	else if (assetType == "image")
+	{
+		m_assetManager->addImage(assetPath);
+	}
+	else if (assetType == "material")
+	{
+		m_assetManager->addMaterial(assetPath);
+	}
+	else if (assetType == "particle")
+	{
+		m_assetManager->addParticle(assetPath);
+	}
+	else
+	{
+		Wolf::Debug::sendError("Unhandled asset type");
+	}
 }
 
 void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -857,7 +891,7 @@ void SystemManager::editAssetJSCallback(const ultralight::JSObject& thisObject, 
 	AssetId resourceId = static_cast<AssetId>(std::stoi(resourceIdStr));
 
 	m_selectedEntity.reset(nullptr);
-	Wolf::ResourceNonOwner<Entity> entity = m_assetManager->computeResourceEditor(resourceId);
+	Wolf::ResourceNonOwner<Entity> entity = m_assetManager->computeAssetEditor(resourceId);
 	m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(entity));
 
 	updateUISelectedEntity();
@@ -982,7 +1016,7 @@ void SystemManager::updateBeforeFrame()
 		const std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
 		for (const Wolf::ResourceUniqueOwner<Entity>& entity : allEntities)
 		{
-			std::string scriptToAddModelToList = "addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\", " + (entity->isFake() ? "true" : "false") + ", ";
+			std::string scriptToAddModelToList = "addEntityToList(\"" + entity->getName() + "\", \"" + entity->computeEscapedLoadingPath() + "\", " + (entity->isTransient() ? "true" : "false") + ", ";
 			scriptToAddModelToList += (entity->getParentEntity() ? "\"" + entity->getParentEntity()->computeEscapedLoadingPath() + "\"" : "null") + ")";
 
 			m_wolfInstance->evaluateUserInterfaceScript(scriptToAddModelToList);
@@ -1184,6 +1218,58 @@ void SystemManager::loadScene()
 		m_camera->setTheta(theta);
 	}
 
+	// Assets
+	Wolf::JSONReader::JSONObjectInterface* assetsObject = jsonReader.getRoot()->getPropertyObject("assets");
+
+	uint32_t externalScenesCount = assetsObject->getArraySize("externalScenes");
+	for (uint32_t externalSceneIdx = 0; externalSceneIdx < externalScenesCount; externalSceneIdx++)
+	{
+		Wolf::JSONReader::JSONObjectInterface* externalSceneObject = assetsObject->getArrayObjectItem("externalScenes", externalSceneIdx);
+		const std::string& externalSceneLoadingPath = externalSceneObject->getPropertyString("loadingPath");
+
+		m_assetManager->addExternalScene(externalSceneLoadingPath);
+	}
+	m_assetManager->updateBeforeFrame();
+
+	uint32_t imageCount = assetsObject->getArraySize("images");
+	for (uint32_t imageIdx = 0; imageIdx < imageCount; imageIdx++)
+	{
+		Wolf::JSONReader::JSONObjectInterface* imageObject = assetsObject->getArrayObjectItem("images", imageIdx);
+		const std::string& imageLoadingPath = imageObject->getPropertyString("loadingPath");
+
+		m_assetManager->addImage(imageLoadingPath);
+	}
+
+	uint32_t textureSetCount = assetsObject->getArraySize("textureSets");
+	for (uint32_t textureSetIdx = 0; textureSetIdx < textureSetCount; textureSetIdx++)
+	{
+		Wolf::JSONReader::JSONObjectInterface* textureSetObject = assetsObject->getArrayObjectItem("textureSets", textureSetIdx);
+		const std::string& textureSetLoadingPath = textureSetObject->getPropertyString("loadingPath");
+
+		m_assetManager->addTextureSet(textureSetLoadingPath);
+	}
+
+	uint32_t materialCount = assetsObject->getArraySize("materials");
+	for (uint32_t materialIdx = 0; materialIdx < materialCount; materialIdx++)
+	{
+		Wolf::JSONReader::JSONObjectInterface* materialObject = assetsObject->getArrayObjectItem("materials", materialIdx);
+		const std::string& materialLoadingPath = materialObject->getPropertyString("loadingPath");
+
+		m_assetManager->addMaterial(materialLoadingPath);
+	}
+
+	uint32_t particleCount = assetsObject->getArraySize("particles");
+	for (uint32_t particleIdx = 0; particleIdx < particleCount; particleIdx++)
+	{
+		Wolf::JSONReader::JSONObjectInterface* particleObject = assetsObject->getArrayObjectItem("particles", particleIdx);
+		const std::string& particleLoadingPath = particleObject->getPropertyString("loadingPath");
+
+		m_assetManager->addParticle(particleLoadingPath);
+	}
+
+	m_assetManager->updateBeforeFrame();
+
+	// Entities
 	const uint32_t entityCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("entityCount"));
 	for(uint32_t entityIdx = 0; entityIdx < entityCount; entityIdx++)
 	{
@@ -1291,10 +1377,6 @@ void SystemManager::addComponent(const std::string& componentId)
 
 void SystemManager::addFakeEntities()
 {
-	MaterialListFakeEntity* materialListFakeEntity = new MaterialListFakeEntity(m_wolfInstance->getMaterialsManager(), m_configuration.createNonOwnerResource());
-	m_entityContainer->addEntity(materialListFakeEntity);
-	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + materialListFakeEntity->getName() + "\", \"" + materialListFakeEntity->computeEscapedLoadingPath() + "\", true)");
-
 	GraphicSettingsFakeEntity* graphicSettingsFakeEntity = new GraphicSettingsFakeEntity(m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), this, m_requestReloadCallback);
 	m_entityContainer->addEntity(graphicSettingsFakeEntity);
 	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + graphicSettingsFakeEntity->getName() + "\", \"" + graphicSettingsFakeEntity->computeEscapedLoadingPath() + "\", true)");
@@ -1329,44 +1411,7 @@ void SystemManager::updateUISelectedEntity() const
 
 void SystemManager::exportScene()
 {
-	auto removeSpaces = [](const std::string& line)
-	{
-		std::string out;
-		for (char c : line)
-		{
-			if (c == ' ')
-				out += '_';
-			else
-				out += c;
-		}
-		return out;
-	};
-
-	auto now = std::chrono::system_clock::now();
-	std::string currentDateAndTimeStr = std::format("{:%Y-%m-%d_%H-%M-%S}", now);
-
-	std::string dumpLocalPath = "dumps/" + removeSpaces(m_currentSceneName) + "/" + currentDateAndTimeStr;
-	std::filesystem::create_directories(m_configuration->computeFullPathFromLocalPath(dumpLocalPath));
-
-	std::ofstream outputJSON;
-	outputJSON.open(m_configuration->computeFullPathFromLocalPath(dumpLocalPath + "/scene.json"));
-	outputJSON << "{" << std::endl;
-
-	std::string escapedDataFolder;
-	for (const char character : m_configuration->getDataFolderPath())
-	{
-		if (character == '\\')
-			escapedDataFolder += "\\\\";
-		else
-			escapedDataFolder += character;
-	}
-	outputJSON << "\t\"dataFolder\": \"" + escapedDataFolder + "\",\n";
-
-	outputJSON << "\t\"sceneJSON\": \"" + m_currentSceneJSON + "\"\n";
-	outputJSON << "}" << std::endl;
-	outputJSON.close();
-
-	m_assetManager->dump(dumpLocalPath);
+	// TODO
 
 	m_exportSceneRequest = "";
 }

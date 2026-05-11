@@ -18,7 +18,7 @@ public:
 
     const std::string& getName() const override { return m_name; }
     std::string computeEscapedLoadingPath() const override { return "graphicSettingsId"; }
-    bool isFake() const override { return true; }
+    bool isTransient() const override { return true; }
 
 private:
     std::string m_name = "Graphic Settings";

@@ -16,7 +16,7 @@ ContaminationReceiver::ContaminationReceiver(std::function<Wolf::NullableResourc
 void ContaminationReceiver::loadParams(Wolf::JSONReader& jsonReader)
 {
 	std::vector<EditorParamInterface*> params = { &m_contaminationEmitterParam };
-	::loadParams(jsonReader, ID, params);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, params);
 }
 
 void ContaminationReceiver::activateParams()

@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG 4188d23906ad693036818897bde67ce53026887b
+        GIT_TAG b48b75b52b29b3786fa2efb2ec20ddf5788614ab
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -51,7 +51,7 @@ include_directories("ThirdParty/tiny_gltf")
 
 link_directories("dependencies/wolfenginecontent-src/x64/Debug/lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/vulkan/Lib")
-link_directories("dependencies/wolfenginecontent-src/ThirdParty/GLFW/lib-vc2019")
+link_directories("dependencies/wolfenginecontent-src/ThirdParty/GLFW/lib-vc2022")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/UltraLight/windows/lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/meshoptimizer/lib")
 link_directories("x64/Debug/lib")

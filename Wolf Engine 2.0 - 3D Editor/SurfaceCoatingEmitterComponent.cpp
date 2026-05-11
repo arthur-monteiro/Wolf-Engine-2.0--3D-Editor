@@ -7,7 +7,7 @@
 #include "CommonLayouts.h"
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
-#include "MaterialComponent.h"
+#include "MaterialEditor.h"
 #include "SurfaceCoatingDataPreparationPass.h"
 
 SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
@@ -148,7 +148,7 @@ SurfaceCoatingEmitterComponent::~SurfaceCoatingEmitterComponent() = default;
 
 void SurfaceCoatingEmitterComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
-    ::loadParams<PatternImageArrayItem>(jsonReader, ID, m_editorParams);
+    ::loadParams<PatternImageArrayItem>(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void SurfaceCoatingEmitterComponent::activateParams()
@@ -416,7 +416,7 @@ void SurfaceCoatingEmitterComponent::onCustomRenderResolutionChanged()
     }
 }
 
-SurfaceCoatingEmitterComponent::PatternImageArrayItem::PatternImageArrayItem() : ParameterGroupInterface(TAB)
+SurfaceCoatingEmitterComponent::PatternImageArrayItem::PatternImageArrayItem() : ParameterGroupInterface(TAB, "Pattern image")
 {
     m_name = DEFAULT_NAME;
     m_patternScale = glm::vec2(1.0f);
@@ -437,9 +437,9 @@ bool SurfaceCoatingEmitterComponent::PatternImageArrayItem::hasDefaultName() con
     return std::string(m_name) == DEFAULT_NAME;
 }
 
-void SurfaceCoatingEmitterComponent::PatternImageArrayItem::setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager)
+void SurfaceCoatingEmitterComponent::PatternImageArrayItem::setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& assetManager)
 {
-    m_resourceManager = resourceManager;
+    m_assetManager = assetManager;
 }
 
 void SurfaceCoatingEmitterComponent::PatternImageArrayItem::setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
@@ -454,12 +454,12 @@ bool SurfaceCoatingEmitterComponent::PatternImageArrayItem::hasHeightImage() con
 
 bool SurfaceCoatingEmitterComponent::PatternImageArrayItem::isHeightImageLoaded() const
 {
-    return m_patternImageHeightAssetId == NO_ASSET || m_resourceManager->isImageLoaded(m_patternImageHeightAssetId);
+    return m_patternImageHeightAssetId == NO_ASSET || m_assetManager->isImageLoaded(m_patternImageHeightAssetId);
 }
 
 Wolf::ResourceNonOwner<Wolf::Image> SurfaceCoatingEmitterComponent::PatternImageArrayItem::getHeightImage()
 {
-    return m_resourceManager->getImage(m_patternImageHeightAssetId);
+    return m_assetManager->getImage(m_patternImageHeightAssetId, Wolf::Format::R8G8B8A8_UNORM); // TODO
 }
 
 void SurfaceCoatingEmitterComponent::PatternImageArrayItem::removeHeightImage()
@@ -471,7 +471,7 @@ void SurfaceCoatingEmitterComponent::PatternImageArrayItem::onPatternImageHeight
 {
     if (static_cast<std::string>(m_patternImageHeight) != "")
     {
-        m_patternImageHeightAssetId = m_resourceManager->addImage(m_patternImageHeight, false, Wolf::Format::R8G8B8A8_UNORM, false, false);
+        m_patternImageHeightAssetId = m_assetManager->addImage(m_patternImageHeight);
     }
     notifySubscribers();
 }
@@ -492,7 +492,7 @@ void SurfaceCoatingEmitterComponent::PatternImageArrayItem::onMaterialEntityChan
     }
 
     m_materialEntity = m_getEntityFromLoadingPathCallback(entityStr);
-    if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
+    if (Wolf::NullableResourceNonOwner<MaterialEditor> materialComponent = m_materialEntity->getComponent<MaterialEditor>())
     {
         if (!materialComponent->isSubscribed(this))
         {
@@ -514,26 +514,26 @@ void SurfaceCoatingEmitterComponent::PatternImageArrayItem::onMaterialEntityChan
 
 void SurfaceCoatingEmitterComponent::PatternImageArrayItem::updateMaterialInfo()
 {
-    if (Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = m_materialEntity->getComponent<MaterialComponent>())
+    if (Wolf::NullableResourceNonOwner<MaterialEditor> materialComponent = m_materialEntity->getComponent<MaterialEditor>())
     {
         // Sanity checks
         uint32_t textureSetCountInMaterial = materialComponent->getTextureSetCount();
         for (uint32_t i = 0; i < textureSetCountInMaterial; i++)
         {
-            if (Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = materialComponent->getTextureSetComponent(i))
-            {
-                if (textureSetComponent->getSamplingMode() == static_cast<uint32_t>(Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TRIPLANAR))
-                {
-                    glm::vec3 triplanarScale = textureSetComponent->getTriplanarScale();
-                }
-                else
-                {
-                    Wolf::Debug::sendError("Surface coating pattern image: all texture set sampling modes should be triplanar");
-                }
-            }
+            // if (Wolf::NullableResourceNonOwner<TextureSetComponent> textureSetComponent = materialComponent->getTextureSetComponent(i))
+            // {
+            //     if (textureSetComponent->getSamplingMode() == static_cast<uint32_t>(Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TRIPLANAR))
+            //     {
+            //         glm::vec3 triplanarScale = textureSetComponent->getTriplanarScale();
+            //     }
+            //     else
+            //     {
+            //         Wolf::Debug::sendError("Surface coating pattern image: all texture set sampling modes should be triplanar");
+            //     }
+            // }
         }
 
-        m_materialIdx = materialComponent->getMaterialIdx();
+        m_materialIdx = materialComponent->getMaterialGPUIdx();
 
     }
     else

@@ -12,7 +12,7 @@ public:
 
     ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityCallback,
         const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-        const std::function<void(ComponentInterface*)>& requestReloadCallback);
+        const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
     void loadParams(Wolf::JSONReader& jsonReader) override;
     void activateParams() override;
@@ -41,14 +41,15 @@ private:
     std::function<Entity*(ComponentInterface*, const std::string&)> m_createEntityCallback;
     Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
     std::function<void(ComponentInterface*)> m_requestReloadCallback;
+    Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
     bool m_isWaitingForSceneLoading = false;
-    void requestSceneLoading();
-    EditorParamString m_loadingPathParam = EditorParamString("Mesh", TAB, "Loading", [this] { requestSceneLoading(); }, EditorParamString::ParamStringType::FILE_EXTERNAL_SCENE);
+    void onAssetChanged();
+    EditorParamString m_assetParam = EditorParamString("Mesh", TAB, "Loading", [this] { onAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
 
     std::array<EditorParamInterface*, 1> m_editorParams =
     {
-        &m_loadingPathParam
+        &m_assetParam
     };
 
     AssetId m_sceneAssetId = NO_ASSET;

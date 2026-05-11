@@ -7,7 +7,7 @@
 #include "ComponentInterface.h"
 #include "CustomSceneRenderPass.h"
 #include "EditorTypes.h"
-#include "Particle.h"
+#include "ParticleEditor.h"
 #include "TextureSetEditor.h"
 #include "RenderingPipelineInterface.h"
 
@@ -17,8 +17,7 @@ public:
 	static inline std::string ID = "particleEmitter";
 	std::string getId() const override { return ID; }
 
-	ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
-		const std::function<void(ComponentInterface*)>& requestReloadCallback);
+	ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
 	~ParticleEmitter() override;
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -92,11 +91,10 @@ public:
 	float getDelayBetweenTwoParticlesInMs() const { return m_delayBetweenTwoParticles * 1000.0f; }
 
 private:
-	void onEntityRegistered() override;
 	void forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString);
 
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	inline static const std::string TAB = "Particle emitter";
+	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 
 	// ----- Spawn -----
 	EditorParamBool m_isEmitting = EditorParamBool("Emits", TAB, "Spawn");
@@ -106,7 +104,7 @@ private:
 	EditorParamUInt m_usedTileCountInFlipBook = EditorParamUInt("Number of tiles used in flip-book", TAB, "Spawn", 0, 1, [this]() { onUsedTileCountInFlipBookChanged(); });
 	static constexpr uint32_t SPAWN_CYLINDER_SHAPE = 0;
 	static constexpr uint32_t SPAWN_BOX_SHAPE = 1;
-	EditorParamEnum m_spawnShape = EditorParamEnum({ "Cylinder", "Box" }, "Shape", TAB, "Spawn", [this]() { m_requestReloadCallback(this); });
+	EditorParamEnum m_spawnShape = EditorParamEnum({ "Cylinder", "Box" }, "Shape", TAB, "Spawn", [this]() { });
 
 	// Cylinder shape
 	EditorParamVector3 m_spawnCylinderCenterPosition = EditorParamVector3("Cylinder center position", TAB, "Spawn", -10.0f, 10.0f);
@@ -141,7 +139,7 @@ private:
 	EditorParamFloat m_maxSpeed = EditorParamFloat("Speed max (m/s)", TAB, "Movement", 0.0f, 10.0f);
 
 	static constexpr uint32_t DIRECTION_CONE_SHAPE = 0;
-	EditorParamEnum m_directionShape = EditorParamEnum({ "Cone"}, "Shape", TAB, "Movement", [this]() { m_requestReloadCallback(this); });
+	EditorParamEnum m_directionShape = EditorParamEnum({ "Cone"}, "Shape", TAB, "Movement", [this]() { });
 
 	void updateNormalizedDirection();
 	// Cone shape
@@ -166,10 +164,10 @@ private:
 	EditorParamCurve m_particleOpacity = EditorParamCurve("Opacity", TAB, "Particle", [this]() { onParticleOpacityChanged(); });
 	EditorParamFloat m_particleOrientationMinAngle = EditorParamFloat("Orientation min (rad)", TAB, "Particle", 0.0f, glm::pi<float>());
 	EditorParamFloat m_particleOrientationMaxAngle = EditorParamFloat("Orientation max (rad)", TAB, "Particle", 0.0f, glm::pi<float>());
-	Wolf::NullableResourceNonOwner<Particle> m_particleComponent;
-	void onParticleEntityChanged();
+	void onParticleAssetChanged();
 	void onParticleDataChanged();
-	EditorParamString m_particleEntityParam = EditorParamString("Particle entity", TAB, "Particle", [this]() { onParticleEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
+	AssetId m_particleAssetId = NO_ASSET;
+	EditorParamString m_particleAssetParam = EditorParamString("Particle", TAB, "Particle", [this]() { onParticleAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
 	EditorParamVector3 m_particleColor = EditorParamVector3("Color", TAB, "Particle", 0.0f, 1.0f);
 
 	// ----- Collisions -----
@@ -226,7 +224,7 @@ private:
 		&m_particleOrientationMinAngle,
 		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
-		&m_particleEntityParam,
+		&m_particleAssetParam,
 		&m_particleColor,
 
 		&m_collisionType,
@@ -258,7 +256,7 @@ private:
 		&m_particleOrientationMinAngle,
 		&m_particleOrientationMaxAngle,
 		&m_particleOpacity,
-		&m_particleEntityParam,
+		&m_particleAssetParam,
 		&m_particleColor,
 
 		&m_collisionType
@@ -266,7 +264,6 @@ private:
 
 	Wolf::ResourceNonOwner<ParticleUpdatePass> m_particleUpdatePass;
 	Wolf::ResourceNonOwner<CustomSceneRenderPass> m_customDepthPass;
-	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
 	// Info for current execution
 	uint64_t m_nextSpawnMsTimer = 0;
@@ -279,9 +276,6 @@ private:
 	uint32_t m_materialIdx = 0;
 	uint32_t m_flipBookSizeX = 1;
 	uint32_t m_flipBookSizeY = 1;
-
-	bool m_particleNotificationRegistered = false;
-	bool m_needCheckForNewLinkedEntities = true;
 
 	// Graphic resources
 	bool m_needToRegisterDepthTexture = false;

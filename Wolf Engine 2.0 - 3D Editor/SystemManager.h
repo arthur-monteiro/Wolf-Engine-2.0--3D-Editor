@@ -67,6 +67,7 @@ private:
 	void saveSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void loadSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void exportSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	void createAssetJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void displayTypeSelectChangedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openUIInBrowserJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void takeScreenshotJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);

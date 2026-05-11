@@ -65,7 +65,7 @@ private:
         void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
         bool hasDefaultName() const override;
 
-        void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager);
+        void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& assetManager);
         void setGetEntityFromLoadingPathCallback(const std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
 
         [[nodiscard]] bool hasHeightImage() const;
@@ -77,7 +77,7 @@ private:
 
     private:
         inline static const std::string DEFAULT_NAME = "New pattern image";
-        Wolf::NullableResourceNonOwner<AssetManager> m_resourceManager;
+        Wolf::NullableResourceNonOwner<AssetManager> m_assetManager;
         std::function<Wolf::ResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 
         void onPatternImageHeightChanged();

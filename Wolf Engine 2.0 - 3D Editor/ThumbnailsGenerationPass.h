@@ -2,13 +2,14 @@
 
 #include <deque>
 
-#include <CommandRecordBase.h>
-#include <ShaderParser.h>
-
 #include <GifEncoder.h>
 
-#include "FirstPersonCamera.h"
-#include "ModelLoader.h"
+#include <CommandRecordBase.h>
+#include <FirstPersonCamera.h>
+#include <Mesh.h>
+#include <ShaderParser.h>
+
+#include "SkeletonVertex.h"
 
 class ThumbnailsGenerationPass : public Wolf::CommandRecordBase
 {

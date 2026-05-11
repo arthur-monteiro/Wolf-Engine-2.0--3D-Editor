@@ -15,7 +15,7 @@ class VoxelGlobalIlluminationPass : public Wolf::CommandRecordBase, public Globa
 public:
     VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
-    void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager);
+    void setAssetManager(const Wolf::ResourceNonOwner<AssetManager>& assetManager);
     void setEnableDebug(bool value) { m_enableDebug = value; }
     void setDebugPostionFace(uint32_t faceId) { m_debugPositionFaceId = faceId;}
     void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList);
@@ -44,7 +44,7 @@ private:
     void createOutputDescriptorSet();
 
     Wolf::ResourceNonOwner<RayTracedWorldManager> m_rayTracedWorldManager;
-    Wolf::NullableResourceNonOwner<AssetManager> m_resourceManager;
+    Wolf::NullableResourceNonOwner<AssetManager> m_assetManager;
 
     bool m_wasEnabledThisFrame = false;
 

@@ -6,11 +6,10 @@
 #include "EditorParamsHelper.h"
 #include "Entity.h"
 #include "MathsUtilsEditor.h"
-#include "ModelLoader.h"
-#include "StaticModel.h"
+#include "StaticMesh.h"
 
 GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
-	const std::function<void(ComponentInterface*)>& requestReloadCallback)
+                                           const std::function<void(ComponentInterface*)>& requestReloadCallback)
 	: m_physicsManager(physicsManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback), m_requestReloadCallback(requestReloadCallback)
 {
 	m_descriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
@@ -27,7 +26,7 @@ GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Ph
 
 void GasCylinderComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams<ContaminationMaterialArrayItem<TAB>>(jsonReader, ID, m_editorParams);
+	::loadParams<ContaminationMaterialArrayItem<TAB>>(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void GasCylinderComponent::activateParams()

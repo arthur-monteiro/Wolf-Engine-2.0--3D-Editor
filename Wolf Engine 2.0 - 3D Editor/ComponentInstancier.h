@@ -4,7 +4,7 @@
 #include <functional>
 #include <string>
 
-#include "AnimatedModel.h"
+#include "AnimatedMesh.h"
 #include "AssetManager.h"
 #include "CameraSettingsComponent.h"
 #include "ColorGradingComponent.h"
@@ -16,14 +16,11 @@
 #include "EntityContainer.h"
 #include "ExternalSceneComponent.h"
 #include "GasCylinderComponent.h"
-#include "MaterialComponent.h"
-#include "TextureSetComponent.h"
-#include "Particle.h"
 #include "ParticleEmitter.h"
 #include "PlayerComponent.h"
 #include "PointLight.h"
 #include "SkyLight.h"
-#include "StaticModel.h"
+#include "StaticMesh.h"
 #include "SurfaceCoatingEmitterComponent.h"
 
 class RenderingPipelineInterface;
@@ -60,15 +57,15 @@ private:
 		std::function<ComponentInterface*()> instancingFunction;
 	};
 
-	std::array<ComponentInfo, 17> m_componentsInfo =
+	std::array<ComponentInfo, 14> m_componentsInfo =
 	{
 		ComponentInfo
 		{
 			"Static model",
-			StaticModel::ID,
+			StaticMesh::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new StaticModel(m_materialsGPUManager, m_assetManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new StaticMesh(m_assetManager));
 			}
 		},
 		ComponentInfo
@@ -114,16 +111,7 @@ private:
 			ParticleEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ParticleEmitter(m_renderingPipeline, m_getEntityFromLoadingPathCallback, m_requestReloadCallback));
-			}
-		},
-		ComponentInfo
-		{
-			"Particle component",
-			Particle::ID,
-			[this]()
-			{
-				return static_cast<ComponentInterface*>(new Particle(m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new ParticleEmitter(m_renderingPipeline, m_assetManager));
 			}
 		},
 		ComponentInfo
@@ -137,29 +125,11 @@ private:
 		},
 		ComponentInfo
 		{
-			"Texture set",
-			TextureSetComponent::ID,
-			[this]()
-			{
-				return static_cast<ComponentInterface*>(new TextureSetComponent(m_materialsGPUManager, m_editorConfiguration, m_requestReloadCallback, m_assetManager));
-			}
-		},
-		ComponentInfo
-		{
-			"Material",
-			MaterialComponent::ID,
-			[this]()
-			{
-				return static_cast<ComponentInterface*>(new MaterialComponent(m_materialsGPUManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
-			}
-		},
-		ComponentInfo
-		{
 			"Animated model",
-			AnimatedModel::ID,
+			AnimatedMesh::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new AnimatedModel(m_materialsGPUManager, m_assetManager, m_getEntityFromLoadingPathCallback, m_renderingPipeline, m_requestReloadCallback));
+				return static_cast<ComponentInterface*>(new AnimatedMesh(m_assetManager, m_getEntityFromLoadingPathCallback, m_renderingPipeline, m_requestReloadCallback));
 			}
 		},
 		ComponentInfo
@@ -214,7 +184,7 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new ExternalSceneComponent(m_assetManager, m_getEntityFromLoadingPathCallback, m_createEntityCallback, m_materialsGPUManager,
-					m_requestReloadCallback));
+					m_requestReloadCallback, m_renderingPipeline));
 			}
 		}
 	};

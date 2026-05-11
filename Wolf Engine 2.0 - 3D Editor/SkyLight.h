@@ -12,7 +12,7 @@ public:
 	static inline std::string ID = "skyLight";
 	std::string getId() const override { return ID; }
 
-	SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
+	SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
 		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -68,6 +68,7 @@ private:
 	/* Baked */
 	void onSphericalMapChanged();
 	AssetId m_sphericalMapAssetId = NO_ASSET;
+	static constexpr Wolf::Format SPHERICAL_MAP_FORMAT = Wolf::Format::R32G32B32A32_SFLOAT;
 	EditorParamString m_sphericalMap = EditorParamString("Spherical map", TAB, "Sky", [this] { onSphericalMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 	glm::vec3 m_sunDirectionFromSphericalMap;
 	float m_sunIntensityFromSphericalMap;

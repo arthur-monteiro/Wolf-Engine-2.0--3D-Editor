@@ -2,7 +2,7 @@
 #include <string>
 
 enum class BrowseToFileOption { FILE_OPEN, FILE_SAVE };
-enum class BrowseToFileFilter { SAVE, OBJ, DAE, EXTERNAL_SCENE, IMG, EXPORT_EXE };
+enum class BrowseToFileFilter { SAVE, EXTERNAL_SCENE, IMG, EXPORT_EXE };
 
 #if defined(WIN32)
 #include <shtypes.h>
@@ -23,14 +23,8 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
 	case BrowseToFileFilter::SAVE:
 		ofn.lpstrFilter = "Wolf Editor Save (JSON)\0*.json\0";
 		break;
-	case BrowseToFileFilter::OBJ:
-		ofn.lpstrFilter = "Object (OBJ)\0*.obj\0";
-		break;
-	case BrowseToFileFilter::DAE:
-		ofn.lpstrFilter = "Animated model (DAE)\0*.dae\0";
-		break;
 	case BrowseToFileFilter::EXTERNAL_SCENE:
-		ofn.lpstrFilter = "External scene\0*.gltf\0";
+		ofn.lpstrFilter = "External scene\0*.gltf;*.obj;*.dae\0";
 		break;
 	case BrowseToFileFilter::IMG:
 		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga;*.dds;*.hdr;*.cube\0";
@@ -81,17 +75,11 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
         gtk_file_filter_set_name(gtk_filter, "Wolf Editor Save (JSON)");
         gtk_file_filter_add_pattern(gtk_filter, "*.json");
         break;
-    case BrowseToFileFilter::OBJ:
-        gtk_file_filter_set_name(gtk_filter, "Object (OBJ)");
-        gtk_file_filter_add_pattern(gtk_filter, "*.obj");
-        break;
-    case BrowseToFileFilter::DAE:
-        gtk_file_filter_set_name(gtk_filter, "Animated model (DAE)");
-        gtk_file_filter_add_pattern(gtk_filter, "*.dae");
-        break;
     case BrowseToFileFilter::EXTERNAL_SCENE:
     	gtk_file_filter_set_name(gtk_filter, "External scene");
     	gtk_file_filter_add_pattern(gtk_filter, "*.gltf");
+    	gtk_file_filter_add_pattern(gtk_filter, "*.obj");
+    	gtk_file_filter_add_pattern(gtk_filter, "*.dae");
     	break;
     case BrowseToFileFilter::IMG:
         gtk_file_filter_set_name(gtk_filter, "Image");
@@ -144,12 +132,8 @@ int main(int argc, char** argv)
 	}
 
 	BrowseToFileFilter browseToFileFilter;
-	if (inputFilter == "obj")
-		browseToFileFilter = BrowseToFileFilter::OBJ;
-	else if (inputFilter == "save")
+	if (inputFilter == "save")
 		browseToFileFilter = BrowseToFileFilter::SAVE;
-	else if (inputFilter == "dae")
-		browseToFileFilter = BrowseToFileFilter::DAE;
 	else if (inputFilter == "img")
 		browseToFileFilter = BrowseToFileFilter::IMG;
 	else if (inputFilter == "externalScene")

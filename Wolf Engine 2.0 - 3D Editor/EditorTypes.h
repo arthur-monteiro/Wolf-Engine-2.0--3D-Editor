@@ -28,10 +28,10 @@ public:
 	virtual void activate();
 	virtual void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const = 0;
 
-	void setCategory(const std::string& category) { m_category = category; }
 	void setName(const std::string& name) { m_name = name; }
+	void setArrayIndex(uint32_t arrayIdx) { m_arrayIdx = arrayIdx; }
 
-	enum class Type { FLOAT, VECTOR2, VECTOR3, VECTOR4, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON, LABEL };
+	enum class Type { FLOAT, VECTOR2, VECTOR3, VECTOR4, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON, LABEL, ASSET };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 	const std::string& getCategory() const { return m_category; }
@@ -46,6 +46,7 @@ protected:
 	std::string m_name;
 	std::string m_tab;
 	std::string m_category;
+	uint32_t m_arrayIdx = 0;
 	bool m_isActivable;
 	bool m_isReadOnly;
 	std::function<void()> m_callbackValueChanged;
@@ -212,11 +213,11 @@ private:
 class EditorParamString : public EditorParamInterface
 {
 public:
-	enum class ParamStringType { STRING, FILE_OBJ, FILE_IMG, FILE_EXTERNAL_SCENE, ENTITY, FILE_DAE };
-	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false, bool isReadOnly = false)
-		: EditorParamInterface(stringTypeToParamType(stringType), name, tab, category, isActivable, isReadOnly), m_stringType(stringType), m_drivesCategoryName(drivesCategoryName) {}
-	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, ParamStringType stringType = ParamStringType::STRING, bool drivesCategoryName = false, bool isActivable = false)
-		: EditorParamString(name, tab, category, stringType, drivesCategoryName, isActivable, false)
+	enum class ParamStringType { STRING, FILE_IMG, FILE_EXTERNAL_SCENE, ENTITY, ASSET };
+	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, ParamStringType stringType = ParamStringType::STRING, bool isActivable = false, bool isReadOnly = false)
+		: EditorParamInterface(stringTypeToParamType(stringType), name, tab, category, isActivable, isReadOnly), m_stringType(stringType) {}
+	EditorParamString(const std::string& name, const std::string& tab, const std::string& category, const std::function<void()>& callbackValueChanged, ParamStringType stringType = ParamStringType::STRING, bool isActivable = false)
+		: EditorParamString(name, tab, category, stringType, isActivable, false)
 	{
 		m_callbackValueChanged = callbackValueChanged;
 	}
@@ -228,8 +229,8 @@ public:
 	operator std::string& () { return m_value; }
 	operator const std::string& () const { return m_value; }
 
-	bool drivesCategoryName() const { return m_drivesCategoryName; }
 	void setNoEntitySelectedString(const std::string& value) { m_noEntitySelectedString = value; }
+	void setValueNoCallback(const std::string& value) { m_value = value; }
 
 private:
 	static Type stringTypeToParamType(ParamStringType stringType);
@@ -237,7 +238,6 @@ private:
 	void setValueJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	ParamStringType m_stringType;
-	bool m_drivesCategoryName;
 	std::string m_value;
 
 	std::string m_noEntitySelectedString = "No entity selected";

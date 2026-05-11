@@ -5,21 +5,27 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include <glm/gtx/quaternion.hpp>
 
 #include "Debug.h"
 #include "EditorConfiguration.h"
-#include "ModelLoader.h"
 #include "Timer.h"
 
-DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingInfo) : m_outputModel(&outputModel)
+DAEImporter::DAEImporter(ExternalSceneLoader::OutputData& outputData, const ExternalSceneLoader::SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager)
 {
-	Wolf::Debug::sendInfo("Loading DAE file " + modelLoadingInfo.filename);
-	Wolf::Timer albedoTimer("Loading DAE file " + modelLoadingInfo.filename);
+	Wolf::Debug::sendInfo("Loading DAE file " + sceneLoadingInfo.filename);
 
-	outputModel.m_animationData.reset(new AnimationData);
+	ExternalSceneLoader::MeshData& meshData = outputData.m_meshesData.emplace_back();
+	meshData.m_name = "DAE_unique_mesh";
+	meshData.m_animationData.reset(new AnimationData);
 
-	std::string fullpathFilename = g_editorConfiguration->computeFullPathFromLocalPath(modelLoadingInfo.filename);
+	m_meshData = &meshData;
+
+	ExternalSceneLoader::InstanceData& instanceData = outputData.m_instancesData.emplace_back();
+	instanceData.m_materialIdx = -1;
+	instanceData.m_meshIdx = 0;
+	instanceData.m_transform = glm::mat4(1.0f);
+
+	std::string fullpathFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename);
 	std::ifstream file(fullpathFilename);
 
 	std::string line;
@@ -427,7 +433,7 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 
 		if (boneIndicesAndWeightIndices[index.x].size() % 2 != 0)
 		{
-			Wolf::Debug::sendError("There not weight for all indices");
+			Wolf::Debug::sendError("There's not weight for all indices");
 		}
 
 		for (uint32_t i = 0; i < std::min(boneIndicesAndWeightIndices[index.x].size(), static_cast<size_t>(8)); ++i)
@@ -446,11 +452,11 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 
 		if (!uniqueVertices.contains(vertex))
 		{
-			uniqueVertices[vertex] = static_cast<uint32_t>(m_outputModel->m_skeletonVertices.size());
-			m_outputModel->m_skeletonVertices.push_back(vertex);
+			uniqueVertices[vertex] = static_cast<uint32_t>(m_meshData->m_skeletonVertices.size());
+			m_meshData->m_skeletonVertices.push_back(vertex);
 		}
 
-		m_outputModel->m_indices.push_back(uniqueVertices[vertex]);
+		m_meshData->m_indices.push_back(uniqueVertices[vertex]);
 	}
 
 	// Animation
@@ -523,11 +529,11 @@ DAEImporter::DAEImporter(ModelData& outputModel, ModelLoadingInfo& modelLoadingI
 		}
 	}
 
-	m_outputModel->m_animationData->m_boneCount = jointsCount;
+	m_meshData->m_animationData->m_boneCount = jointsCount;
 
 	// Hierarchy
 	Node* visualSceneNode = m_rootNodes[0]->getFirstChildByName("library_visual_scenes")->getFirstChildByName("visual_scene");
-	findNodesInHierarchy(visualSceneNode, m_outputModel->m_animationData->m_rootBones);
+	findNodesInHierarchy(visualSceneNode, m_meshData->m_animationData->m_rootBones);
 }
 
 void DAEImporter::extractFloatValues(const std::string& input, std::vector<float>& outValues)

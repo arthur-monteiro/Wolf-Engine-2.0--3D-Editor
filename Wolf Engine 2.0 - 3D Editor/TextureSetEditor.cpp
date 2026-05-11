@@ -3,119 +3,73 @@
 #include "AssetManager.h"
 #include "EditorParamsHelper.h"
 #include "ImageFileLoader.h"
+#include "MaterialsGPUManager.h"
 #include "TextureSetLoader.h"
 #include "MipMapGenerator.h"
 
-TextureSetEditor::TextureSetEditor(const std::string& tab, const std::string& category, Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode shadingMode)
-	: m_albedoPathParam("Albedo file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_normalPathParam("Normal file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_roughnessParam("Roughness file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_metalnessParam("Metalness file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_aoParam("AO file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_anisoStrengthParam("Aniso Strength file", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_sixWaysLightmap0("6 ways light map 0", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_sixWaysLightmap1("6 ways light map 1", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_enableAlpha("Enable alpha",tab, category, [this]() { onTextureChanged(); }),
-	m_alphaPathParam("Alpha map", tab, category, [this]() { onTextureChanged(); }, EditorParamString::ParamStringType::FILE_IMG),
-	m_shadingMode(Wolf::MaterialsGPUManager::MaterialInfo::SHADING_MODE_STRING_LIST, "Shading Mode", tab, category, [this]() { onShadingModeChanged(); }, false, true)
+TextureSetEditor::TextureSetEditor(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, AssetManager* assetManager, AssetId textureSetAssetId)
+: m_materialGPUManager(materialGPUManager), m_assetManager(assetManager), m_textureSetAssetId(textureSetAssetId)
 {
-	m_shadingMode = static_cast<uint32_t>(shadingMode);
+	m_shadingMode = static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX);
+	m_textureCoordsScale = glm::vec2(1.0f);
 }
 
-void TextureSetEditor::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceReference<AssetManager>& assetManager)
+void TextureSetEditor::updateBeforeFrame()
 {
-	if (m_textureSetCacheInfo.textureSetIdx == 0)
+	if (m_textureSetIdx == 0)
 	{
-		materialGPUManager->lockTextureSets();
+		m_materialGPUManager->lockTextureSets();
 
-		m_textureSetCacheInfo.textureSetIdx = materialGPUManager->getCurrentTextureSetCount();
-		materialGPUManager->addNewTextureSet(m_textureSetInfo);
+		m_textureSetIdx = m_materialGPUManager->getCurrentTextureSetCount();
+		m_materialGPUManager->addNewTextureSet(computeTextureSetInfo());
 
-		materialGPUManager->unlockTextureSets();
+		m_materialGPUManager->unlockTextureSets();
 	}
 	else if (m_textureChanged) // wait a frame between the creation of the texture set and the texture update
 	{
-		if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX) || m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AnisoGGX))
-		{
-			TextureSetLoader::TextureSetFileInfoGGX materialFileInfo{};
-			materialFileInfo.name = "Custom material";
-			materialFileInfo.albedo = EditorConfiguration::sanitizeFilePath(m_albedoPathParam);
-			materialFileInfo.normal = EditorConfiguration::sanitizeFilePath(m_normalPathParam);
-			materialFileInfo.roughness = EditorConfiguration::sanitizeFilePath(m_roughnessParam);
-			materialFileInfo.metalness = EditorConfiguration::sanitizeFilePath(m_metalnessParam);
-			materialFileInfo.ao = EditorConfiguration::sanitizeFilePath(m_aoParam);
-
-			if (m_textureSetCacheInfo.imageNames.empty() || m_textureSetCacheInfo.imageNames[0] != materialFileInfo.albedo.substr(materialFileInfo.albedo.size() - m_textureSetCacheInfo.imageNames[0].size()))
-			{
-				TextureSetLoader::OutputLayout outputLayout{};
-				outputLayout.albedoCompression = m_enableAlpha ? Wolf::ImageCompression::Compression::BC3 : Wolf::ImageCompression::Compression::BC1;
-				outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
-
-				TextureSetLoader textureSetLoader(materialFileInfo, outputLayout, true, assetManager);
-
-				for (uint32_t i = 0; i < 2; i++)
-				{
-					if (AssetId assetId = textureSetLoader.getImageAssetId(i); assetId != NO_ASSET)
-					{
-						m_textureSetInfo.images[i] = assetManager->getImage(assetId);
-						m_textureSetInfo.slicesFolders[i] = assetManager->getImageSlicesFolder(assetId);
-					}
-				}
-
-				if (AssetId assetId = textureSetLoader.getImageAssetId(2); assetId != NO_ASSET)
-				{
-					m_textureSetInfo.images[2] = assetManager->getCombinedImage(assetId);
-					m_textureSetInfo.slicesFolders[2] = assetManager->getCombinedImageSlicesFolder(assetId);
-				}
-
-				materialGPUManager->lockTextureSets();
-				materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
-				materialGPUManager->unlockTextureSets();
-
-				notifySubscribers();
-			}
-		}
-		else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::SixWaysLighting))
-		{
-			TextureSetLoader::TextureSetFileInfoSixWayLighting materialFileInfo;
-			materialFileInfo.name = "Custom material";
-			materialFileInfo.tex0 = EditorConfiguration::sanitizeFilePath(m_sixWaysLightmap0);
-			materialFileInfo.tex1 = EditorConfiguration::sanitizeFilePath(m_sixWaysLightmap1);
-
-			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
-			m_textureSetInfo.images[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
-			m_textureSetInfo.images[1] = assetManager->getImage(textureSetLoader.getImageAssetId(1));
-
-			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
-
-			notifySubscribers();
-		}
-		else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AlphaOnly))
-		{
-			TextureSetLoader::TextureSetFileInfoAlphaOnly materialFileInfo;
-			materialFileInfo.name = "Custom material";
-			materialFileInfo.alphaMap = EditorConfiguration::sanitizeFilePath(m_alphaPathParam);
-
-			TextureSetLoader textureSetLoader(materialFileInfo, assetManager);
-			m_textureSetInfo.images[0] = assetManager->getImage(textureSetLoader.getImageAssetId(0));
-
-			materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
-
-			notifySubscribers();
-		}
+		m_materialGPUManager->lockTextureSets();
+		// TODO
+		//m_materialGPUManager->changeExistingTextureSetBeforeFrame(m_textureSetCacheInfo, m_textureSetInfo);
+		m_materialGPUManager->unlockTextureSets();
 
 		m_textureChanged = false;
 	}
 }
 
-void TextureSetEditor::activateParams()
+void TextureSetEditor::loadParams(Wolf::JSONReader& jsonReader)
 {
-	Wolf::Debug::sendError("Not implemented");
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_allParams);
+	m_textureSetIdx = 0;
 }
 
-void TextureSetEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount, bool isLast)
+void TextureSetEditor::activateParams()
 {
-	Wolf::Debug::sendError("Not implemented");
+	for (EditorParamInterface* editorParam : m_allParams)
+ 	{
+		editorParam->activate();
+ 	}
+}
+
+void TextureSetEditor::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
+{
+	std::vector<EditorParamInterface*> visibleParams;
+	getAllVisibleParams(visibleParams);
+
+	for (const EditorParamInterface* editorParam : visibleParams)
+	{
+		editorParam->addToJSON(outJSON, tabCount, false);
+	}
+}
+
+void TextureSetEditor::copy(const Wolf::ResourceNonOwner<TextureSetEditor>& other)
+{
+	m_albedoPathParam = static_cast<std::string>(other->m_albedoPathParam);
+	m_normalPathParam = static_cast<std::string>(other->m_normalPathParam);
+	m_roughnessParam = static_cast<std::string>(other->m_roughnessParam);
+	m_metalnessParam = static_cast<std::string>(other->m_metalnessParam);
+	m_aoParam = static_cast<std::string>(other->m_aoParam);
+
+	m_textureSetIdx = static_cast<uint32_t>(other->m_textureSetIdx);
 }
 
 void TextureSetEditor::getAllParams(std::vector<EditorParamInterface*>& out) const
@@ -130,7 +84,7 @@ void TextureSetEditor::getAllVisibleParams(std::vector<EditorParamInterface*>& o
 		out.push_back(editorParam);
 	}
 
-	// Shape specific params
+	// Shading mode specific params
 	switch (static_cast<Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode>(static_cast<uint32_t>(m_shadingMode)))
 	{
 		case Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX:
@@ -169,20 +123,173 @@ void TextureSetEditor::getAllVisibleParams(std::vector<EditorParamInterface*>& o
 			Wolf::Debug::sendError("Undefined shading mode");
 			break;
 	}
+
+	if (m_samplingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TEXTURE_COORDS))
+	{
+		for (EditorParamInterface* editorParam : m_textureCoordsParams)
+		{
+			out.push_back(editorParam);
+		}
+	}
+
+	if (m_samplingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TRIPLANAR))
+	{
+		for (EditorParamInterface* editorParam : m_triplanarParams)
+		{
+			out.push_back(editorParam);
+		}
+	}
 }
 
 uint32_t TextureSetEditor::getTextureSetIdx() const
 {
-	return m_textureSetCacheInfo.textureSetIdx;
+	return m_textureSetIdx;
 }
 
-void TextureSetEditor::onTextureChanged()
+Wolf::MaterialsGPUManager::TextureSetInfo TextureSetEditor::computeTextureSetInfo()
 {
-	m_textureChanged = true;
+	Wolf::MaterialsGPUManager::TextureSetInfo r{};
+
+	if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::GGX) || m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AnisoGGX))
+	{
+		TextureSetLoader::TextureSetAssetsInfoGGX textureSetFileInfo{};
+		textureSetFileInfo.m_name = "Custom material";
+		textureSetFileInfo.m_albedoAssetId = m_albedoAssetId;
+		textureSetFileInfo.m_normalAssetId = m_normalAssetId;
+		textureSetFileInfo.m_roughnessAssetId = m_roughnessAssetId;
+		textureSetFileInfo.m_metalnessAssetId = m_metalnessAssetId;
+		textureSetFileInfo.m_aoAssetId = m_aoAssetId;
+
+		TextureSetLoader::OutputLayout outputLayout{};
+		if (m_enableAlpha)
+		{
+			Wolf::Debug::sendCriticalError("Doesn't seem to be supported?");
+		}
+		outputLayout.albedoCompression = m_enableAlpha ? Wolf::ImageCompression::Compression::BC3 : Wolf::ImageCompression::Compression::BC1;
+		outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
+
+		TextureSetLoader textureSetLoader(textureSetFileInfo, outputLayout, true, m_assetManager, m_textureSetAssetId);
+
+		if (AssetId assetId = textureSetLoader.getImageAssetId(0); assetId != NO_ASSET)
+		{
+			r.images[0] = m_assetManager->getImage(assetId, Wolf::Format::BC1_RGB_SRGB_BLOCK);
+			r.slicesFolders[0] = m_assetManager->getImageSlicesFolder(assetId);
+		}
+
+		if (AssetId assetId = textureSetLoader.getImageAssetId(1); assetId != NO_ASSET)
+		{
+			r.images[1] = m_assetManager->getImage(assetId, Wolf::Format::BC5_UNORM_BLOCK);
+			r.slicesFolders[1] = m_assetManager->getImageSlicesFolder(assetId);
+		}
+
+		if (AssetId assetId = textureSetLoader.getImageAssetId(2); assetId != NO_ASSET)
+		{
+			r.images[2] = m_assetManager->getCombinedImage(assetId, Wolf::Format::BC3_UNORM_BLOCK);
+			r.slicesFolders[2] = m_assetManager->getCombinedImageSlicesFolder(assetId);
+		}
+
+		r.scale = glm::vec3(static_cast<glm::vec2>(m_textureCoordsScale), 1.0f);
+	}
+	else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::SixWaysLighting))
+	{
+		TextureSetLoader::TextureSetAssetsInfoSixWayLighting materialFileInfo;
+		materialFileInfo.name = "Custom material";
+		materialFileInfo.m_tex0AssetId = m_sixWayLightmap0AssetId;
+		materialFileInfo.m_tex1AssetId = m_sixWayLightmap1AssetId;
+
+		TextureSetLoader textureSetLoader(materialFileInfo, m_assetManager);
+		r.images[0] = m_assetManager->getImage(textureSetLoader.getImageAssetId(0), Wolf::Format::R8G8B8A8_UNORM);
+		r.images[1] = m_assetManager->getImage(textureSetLoader.getImageAssetId(1), Wolf::Format::R8G8B8A8_UNORM);
+	}
+	else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::AlphaOnly))
+	{
+		TextureSetLoader::TextureSetAssetInfoAlphaOnly materialFileInfo;
+		materialFileInfo.name = "Custom material";
+		materialFileInfo.m_alphaMapAssetId = m_alphaMapAssetId;
+
+		TextureSetLoader textureSetLoader(materialFileInfo, m_assetManager);
+		r.images[0] = m_assetManager->getImage(textureSetLoader.getImageAssetId(0), Wolf::Format::R8G8B8A8_UNORM);
+	}
+
+	return r;
 }
 
 void TextureSetEditor::onShadingModeChanged()
 {
 	notifySubscribers(0);
 	m_shadingModeChanged = true;
+}
+
+void TextureSetEditor::updateAssetId(AssetId& outAssetId , EditorParamString& param)
+{
+	if (static_cast<std::string>(param) == "")
+		return;
+
+	AssetId assetId = m_assetManager->getAssetIdForPath(param);
+	if (!m_assetManager->isImage(assetId))
+	{
+		Wolf::Debug::sendWarning("Asset is not an image");
+		param = "";
+	}
+
+	outAssetId = assetId;
+	m_textureChanged = true;
+	notifySubscribers();
+}
+
+void TextureSetEditor::onAlbedoAssetChanged()
+{
+	updateAssetId(m_albedoAssetId, m_albedoPathParam);
+}
+
+void TextureSetEditor::onNormalAssetChanged()
+{
+	updateAssetId(m_normalAssetId, m_normalPathParam);
+}
+
+void TextureSetEditor::onRoughnessAssetChanged()
+{
+	updateAssetId(m_roughnessAssetId, m_roughnessParam);
+}
+
+void TextureSetEditor::onMetalnessAssetChanged()
+{
+	updateAssetId(m_metalnessAssetId, m_metalnessParam);
+}
+
+void TextureSetEditor::onAOAssetChanged()
+{
+	updateAssetId(m_aoAssetId, m_aoParam);
+}
+
+void TextureSetEditor::onAnisoAssetChanged()
+{
+	updateAssetId(m_anisoAssetId, m_anisoStrengthParam);
+}
+
+void TextureSetEditor::onSixWayLightmap0AssetChanged()
+{
+	updateAssetId(m_sixWayLightmap0AssetId, m_sixWaysLightmap0);
+}
+
+void TextureSetEditor::onSixWayLightmap1AssetChanged()
+{
+	updateAssetId(m_sixWayLightmap1AssetId, m_sixWaysLightmap1);
+}
+
+void TextureSetEditor::onAlphaAssetChanged()
+{
+	updateAssetId(m_alphaMapAssetId, m_alphaPathParam);
+}
+
+void TextureSetEditor::onSamplingModeChanged()
+{
+}
+
+void TextureSetEditor::onTextureCoordsScaleChanged()
+{
+}
+
+void TextureSetEditor::onTriplanarScaleChanged()
+{
 }

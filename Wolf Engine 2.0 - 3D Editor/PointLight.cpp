@@ -11,7 +11,7 @@ PointLight::PointLight()
 
 void PointLight::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_editorParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void PointLight::activateParams()

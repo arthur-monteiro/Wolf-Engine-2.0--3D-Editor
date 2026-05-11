@@ -58,6 +58,14 @@ void EntityContainer::clear()
 		entity->removeAllComponents();
 	}
 
+	for (int32_t i = m_currentEntities.size() - 1; i >= 0; --i)
+	{
+		if (m_currentEntities[i]->getParentEntity())
+		{
+			m_currentEntities.erase(m_currentEntities.begin() + i);
+		}
+	}
+
 	m_currentEntities.clear();
 	m_newEntities.clear();
 }

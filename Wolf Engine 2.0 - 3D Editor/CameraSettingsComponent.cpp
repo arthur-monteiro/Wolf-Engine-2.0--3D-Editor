@@ -10,7 +10,7 @@ CameraSettingsComponent::CameraSettingsComponent(const Wolf::ResourceNonOwner<Re
 
 void CameraSettingsComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
-    ::loadParams(jsonReader, ID, m_editorParams);
+    ::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void CameraSettingsComponent::activateParams()

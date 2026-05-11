@@ -8,18 +8,18 @@
 #include "EditorParamsHelper.h"
 #include "glm/gtx/quaternion.hpp"
 
-SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& resourceManager,
+SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-: m_requestReloadCallback(requestReloadCallback), m_assetManager(resourceManager), m_renderingPipeline(renderingPipeline), m_bufferPoolInterface(bufferPoolInterface)
+: m_requestReloadCallback(requestReloadCallback), m_assetManager(assetManager), m_renderingPipeline(renderingPipeline), m_bufferPoolInterface(bufferPoolInterface)
 {
 	m_color = glm::vec3(1.0f, 1.0f, 1.0f);
 }
 
 void SkyLight::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_alwaysVisibleParams);
-	::loadParams(jsonReader, ID, m_realtimeComputeParams);
-	::loadParams(jsonReader, ID, m_bakedParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_alwaysVisibleParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_realtimeComputeParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_bakedParams);
 
 	buildDebugMesh();
 }
@@ -162,15 +162,10 @@ bool SkyLight::updateCubeMap()
 				if (m_sphericalMapAssetId == NO_ASSET || !m_assetManager->isImageLoaded(m_sphericalMapAssetId))
 					return false;
 
-				Wolf::ResourceNonOwner<Wolf::Image> image = m_assetManager->getImage(m_sphericalMapAssetId);
+				Wolf::ResourceNonOwner<Wolf::Image> image = m_assetManager->getImage(m_sphericalMapAssetId, SPHERICAL_MAP_FORMAT);
 				m_renderingPipeline->getComputeSkyCubeMapPass()->setInputSphericalMap(image, [this]() { m_assetManager->releaseImage(m_sphericalMapAssetId); });
 
-				if (image->getFormat() != Wolf::Format::R32G32B32A32_SFLOAT)
-				{
-					Wolf::Debug::sendError("Wrong format for spherical map");
-				}
-
-				const glm::vec4* imageData = reinterpret_cast<const glm::vec4*>(m_assetManager->getImageData(m_sphericalMapAssetId));
+				const glm::vec4* imageData = reinterpret_cast<const glm::vec4*>(m_assetManager->getImageData(m_sphericalMapAssetId, 0, SPHERICAL_MAP_FORMAT));
 				Wolf::Extent3D imageExtent = image->getExtent();
 
 				glm::vec4 maxValue(0.0f);
@@ -242,7 +237,7 @@ void SkyLight::onSphericalMapChanged()
 			return;
 		}
 
-		m_sphericalMapAssetId = m_assetManager->addImage(m_sphericalMap, false, Wolf::Format::R32G32B32A32_SFLOAT, true, false);
+		m_sphericalMapAssetId = m_assetManager->addImage(m_sphericalMap);
 		m_cubeMapUpdateRequested = true;
 	}
 }

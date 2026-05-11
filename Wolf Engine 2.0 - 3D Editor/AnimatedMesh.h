@@ -6,15 +6,14 @@
 #include "ParameterGroupInterface.h"
 #include "AssetManager.h"
 
-class AnimatedModel : public EditorModelInterface
+class AnimatedMesh : public EditorModelInterface
 {
 public:
-	static inline std::string ID = "animatedModel";
+	static inline std::string ID = "animatedMesh";
 	std::string getId() const override { return ID; }
 
-	AnimatedModel(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<AssetManager>& resourceManager, 
-		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
-		const std::function<void(ComponentInterface*)>& requestReloadCallback);
+	AnimatedMesh(const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
+		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
@@ -32,6 +31,8 @@ public:
 
 	void saveCustom() const override {}
 
+	void setInfoFromParent(AssetId assetId);
+
 	void getAnimationOptions(std::vector<std::string>& out);
 	const std::vector<std::pair<std::string, uint32_t>>& getBoneNamesAndIndices() const { return m_boneNamesAndIndices; }
 	glm::vec3 getBonePosition(uint32_t boneIdx) const;
@@ -41,13 +42,12 @@ private:
 	void addBonesToDebug(const AnimationData::Bone* bone, DebugRenderingManager& debugRenderingManager);
 	void addBoneNamesAndIndices(const AnimationData::Bone* bone);
 
-	inline static const std::string TAB = "Model";
-	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-	Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
+	inline static const std::string TAB = "Mesh";
+	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	std::function<void(ComponentInterface*)> m_requestReloadCallback;
-	AssetId m_meshResourceId = NO_ASSET;
+	AssetId m_meshAssetId = NO_ASSET;
 
 	Wolf::NullableResourceNonOwner<AnimationData> findAnimationData(bool& success);
 
@@ -56,14 +56,12 @@ private:
 	float m_maxTimer = 0.0f;
 
 	uint32_t m_waitingForMeshLoadingFrameCount = 0;
-	void requestModelLoading();
-	EditorParamString m_loadingPathParam = EditorParamString("Mesh", TAB, "Loading", [this] { requestModelLoading(); }, EditorParamString::ParamStringType::FILE_DAE);
+	void onMeshChanged();
+	EditorParamString m_meshAssetParam = EditorParamString("Mesh", TAB, "Loading", [this] { onMeshChanged(); }, EditorParamString::ParamStringType::ASSET);
 
-	void onTextureSetEntityChanged();
-	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_textureSetEntity;
-	bool m_textureSetIdxChanged = false;
-	EditorParamString m_textureSetEntityParam = EditorParamString("Texture set entity", TAB, "Texture set", [this]() { onTextureSetEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
-	uint32_t getTextureSetIdx() const;
+	void onMaterialAssetChanged();
+	uint32_t m_materialGPUIdx = 0;
+	EditorParamString m_materialAsset = EditorParamString("Material", TAB, "Material", [this]() { onMaterialAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
 
 	class Animation : public ParameterGroupInterface, public Notifier
 	{
@@ -71,27 +69,27 @@ private:
 		Animation();
 		Animation(const Animation&) = delete;
 
-		void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) { m_resourceManager.reset(new Wolf::ResourceNonOwner<AssetManager>(resourceManager)); }
+		void setAssetManager(const Wolf::ResourceNonOwner<AssetManager>& assetManager) { m_assetManager = assetManager; }
 
 		void getAllParams(std::vector<EditorParamInterface*>& out) const override;
 		void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const override;
 		bool hasDefaultName() const override;
 
-		uint32_t getResourceId() const { return m_resourceId; }
+		uint32_t getAssetId() const { return m_assetId; }
 
 	protected:
 		void onNameChanged() override { notifySubscribers(); }
 
 	private:
 		inline static const std::string DEFAULT_NAME = "New animation";
-		std::unique_ptr<Wolf::ResourceNonOwner<AssetManager>> m_resourceManager;
+		Wolf::NullableResourceNonOwner<AssetManager> m_assetManager;
 
-		uint32_t m_resourceId = -1;
-		void onFileParamChanged();
-		EditorParamString m_fileParam = EditorParamString("File", TAB, "Animation", [this]() { onFileParamChanged(); }, EditorParamString::ParamStringType::FILE_DAE);
+		uint32_t m_assetId = -1;
+		void onAnimationParamChanged();
+		EditorParamString m_animationAssetParam = EditorParamString("File", TAB, "Animation", [this]() { onAnimationParamChanged(); }, EditorParamString::ParamStringType::ASSET);
 		std::array<EditorParamInterface*, 1> m_editorParams =
 		{
-			&m_fileParam,
+			&m_animationAssetParam,
 		};
 	};
 
@@ -107,13 +105,12 @@ private:
 	EditorParamFloat m_forceTimer = EditorParamFloat("Force timer", TAB, "Debug", 0.0f, 1.0f, true);
 	EditorParamBool m_forceTPoseParam = EditorParamBool("Force T-Pose", TAB, "Debug");
 
-	uint32_t m_materialIdx = 0;
 	std::vector<std::pair<std::string, uint32_t>> m_boneNamesAndIndices;
 
 	std::array<EditorParamInterface*, 9> m_editorParams =
 	{
-		&m_loadingPathParam,
-		&m_textureSetEntityParam,
+		&m_meshAssetParam,
+		&m_materialAsset,
 		&m_animationsParam,
 		&m_animationSelectParam,
 		&m_showBonesParam,
@@ -124,7 +121,7 @@ private:
 	};
 
 	/* Rendering */
-	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, AnimatedModel>> m_defaultPipelineSet;
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::PipelineSet, AnimatedMesh>> m_defaultPipelineSet;
 
 	uint32_t m_boneCount = 0;
 	Wolf::ResourceUniqueOwner<Wolf::Buffer> m_bonesBuffer;
@@ -132,7 +129,7 @@ private:
 	std::vector<BoneInfoCPU> m_bonesInfoCPU;
 	
 	Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
-	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, AnimatedModel>> m_descriptorSetLayout;
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, AnimatedMesh>> m_descriptorSetLayout;
 	Wolf::ResourceUniqueOwner<Wolf::DescriptorSet> m_descriptorSet;
 };
 

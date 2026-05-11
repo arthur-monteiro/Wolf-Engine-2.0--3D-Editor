@@ -218,8 +218,6 @@ MeshFormatter::MeshFormatter(const std::string& filename, AssetManager* assetMan
 			CacheHelper::readString(input, anisoStrength);
 		}
 
-		loadTextureSets(textureSetsFileInfo);
-
 		bool hasAnimationData = false;
 		input.read(reinterpret_cast<char*>(&hasAnimationData), sizeof(hasAnimationData));
 
@@ -262,8 +260,6 @@ void MeshFormatter::computeData(const DataInput& input)
 		Wolf::Debug::sendCriticalError("No vertex provided");
 	}
 
-	loadTextureSets(input.m_textureSetsInfo);
-
 	if (input.m_animationData)
 	{
 		m_animationData.reset(new AnimationData());
@@ -304,23 +300,6 @@ void MeshFormatter::computeData(const DataInput& input)
 	writeLODStorage(m_defaultSimplifiedLODs);
 	writeLODStorage(m_sloppySimplifiedLODs);
 
-	// Texture sets info
-	{
-		size_t textureSetCount = input.m_textureSetsInfo.size();
-		outCacheFile.write(reinterpret_cast<const char*>(&textureSetCount), sizeof(textureSetCount));
-		for (const TextureSetLoader::TextureSetFileInfoGGX& textureSetInfo : input.m_textureSetsInfo)
-		{
-			const auto& [name, albedo, normal, roughness, metalness, ao, anisoStrength] = textureSetInfo;
-			CacheHelper::writeString(outCacheFile, name);
-			CacheHelper::writeString(outCacheFile, albedo);
-			CacheHelper::writeString(outCacheFile, normal);
-			CacheHelper::writeString(outCacheFile, roughness);
-			CacheHelper::writeString(outCacheFile, metalness);
-			CacheHelper::writeString(outCacheFile, ao);
-			CacheHelper::writeString(outCacheFile, anisoStrength);
-		}
-	}
-
 	// Animation data
 	{
 		bool hasAnimationData = static_cast<bool>(m_animationData);
@@ -336,51 +315,6 @@ void MeshFormatter::computeData(const DataInput& input)
 			{
 				writeBoneToCache(root, outCacheFile);
 			}
-		}
-	}
-}
-
-void MeshFormatter::loadTextureSets(const std::vector<TextureSetLoader::TextureSetFileInfoGGX>& textureSetsFileInfo)
-{
-	m_textureSetsInfo.resize(textureSetsFileInfo.size());
-	for (uint32_t i = 0; i < textureSetsFileInfo.size(); ++i)
-	{
-		const TextureSetLoader::TextureSetFileInfoGGX& textureSetFileInfo = textureSetsFileInfo[i];
-		Wolf::MaterialsGPUManager::TextureSetInfo& textureSetInfo = m_textureSetsInfo[i];
-
-		textureSetInfo.name = textureSetFileInfo.name;
-		textureSetInfo.imageNames.resize(6);
-		textureSetInfo.imageNames[0] = textureSetFileInfo.albedo;
-		textureSetInfo.imageNames[1] = textureSetFileInfo.normal;
-		textureSetInfo.imageNames[2] = textureSetFileInfo.roughness;
-		textureSetInfo.imageNames[3] = textureSetFileInfo.metalness;
-		textureSetInfo.imageNames[4] = textureSetFileInfo.ao;
-		textureSetInfo.imageNames[5] = textureSetFileInfo.anisoStrength;
-
-		TextureSetLoader::OutputLayout outputLayout;
-		outputLayout.albedoCompression = Wolf::ImageCompression::Compression::BC1;
-		outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
-
-		TextureSetLoader textureSetLoader(textureSetFileInfo, outputLayout, true, m_assetManager);
-
-		for (uint32_t i = 0; i < 2 /* albedo and normal */; ++i)
-		{
-			if (AssetId assetId = textureSetLoader.getImageAssetId(i); assetId != NO_ASSET)
-			{
-				textureSetInfo.imageAssetIds[i] = assetId;
-
-				textureSetInfo.images[i] = m_assetManager->getImage(textureSetLoader.getImageAssetId(i));
-				textureSetInfo.slicesFolders[i] = m_assetManager->getImageSlicesFolder(textureSetLoader.getImageAssetId(i));
-			}
-		}
-
-		// Combined image
-		if (AssetId assetId = textureSetLoader.getImageAssetId(2); assetId != NO_ASSET)
-		{
-			textureSetInfo.imageAssetIds[2] = assetId;
-
-			textureSetInfo.images[2] = m_assetManager->getCombinedImage(textureSetLoader.getImageAssetId(2));
-			textureSetInfo.slicesFolders[2] = m_assetManager->getCombinedImageSlicesFolder(textureSetLoader.getImageAssetId(2));
 		}
 	}
 }

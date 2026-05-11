@@ -148,7 +148,7 @@ function setNewParams(inputJSON) {
 }
 
 function computeInput(param, isLast) {
-    let nameForCallback = formatStringForFunctionName(param.tab) + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category);
+    let nameForCallback = formatStringForFunctionName(param.tab) + formatStringForFunctionName(param.name) + formatStringForFunctionName(param.category) + param.arrayIndex;
     let htmlToAdd = "<div class='inputParam' style='" + (param.type == "Button" ? "text-align: -webkit-center;" : "") + "'>";
 
     let classForElements = "inputClass" + nameForCallback;
@@ -168,8 +168,7 @@ function computeInput(param, isLast) {
     if (param.type == "String") {
         htmlToAdd += "<span>" + param.name + " :</span> <input type=\"text\" id=\"nameInput" + nameForCallback + "\" name=\"name\" value=\"" + param.value + "\" oninput=\"(function() { "
             + "let value = document.getElementById('nameInput" + nameForCallback + "').value;"
-            + "change" + nameForCallback + "(value); " 
-            + (param.drivesCategoryName ? "document.getElementById('" + formatStringForFunctionName(param.category) + "').innerHTML = value;" : "")
+            + "change" + nameForCallback + "(value); "
             + "})()\"";
         if (param.isReadOnly)
             htmlToAdd += " disabled";
@@ -214,9 +213,33 @@ function computeInput(param, isLast) {
         htmlToAdd += "</table>";
     }
     else if (param.type == "Array") {
-        htmlToAdd += "<span>" + param.name + ": " + param.count + "</span>";
-        if (!param.isReadOnly) 
-            htmlToAdd += "<div class='addButton' onclick='addTo" + nameForCallback + "()'></div>";
+        htmlToAdd += "<div class='arrayContainer'>";
+        htmlToAdd += "  <div class='arrayHeader'>";
+        htmlToAdd += "    <span>" + param.name + " (" + param.count + ")</span>";
+        if (!param.isReadOnly) {
+            htmlToAdd += "    <div class='addButton' onclick='addTo" + nameForCallback + "()'>+</div>";
+        }
+        htmlToAdd += "  </div>";
+
+        if (param.values && param.values.length > 0) {
+            htmlToAdd += "<div class='arrayContent' style='margin-left: 15px; border-left: 1px solid #444; padding-left: 10px;'>";
+            
+            param.values.forEach((element, index) => {
+                if (element.params) {
+                    element.params.forEach((subParam, subIndex) => {
+                        let isLastParam = (index === param.values.length - 1) && (subIndex === element.params.length - 1);
+                        htmlToAdd += computeInput(subParam, isLastParam);
+                    });
+                }
+                
+                if (index < param.values.length - 1) {
+                    htmlToAdd += "<hr class='arraySeparator' style='border: 0; border-top: 1px solid #333; margin: 10px 0;'>";
+                }
+            });
+            
+            htmlToAdd += "</div>";
+        }
+        htmlToAdd += "</div>";
     }
     else if (param.type == "Entity") {
         var entityDivs = document.getElementById('entityList').getElementsByTagName('div');
@@ -264,7 +287,7 @@ function computeInput(param, isLast) {
         }
         htmlToAdd += "function setToPreview" + nameForCallback + "() { curveEditor" + nameForCallback + ".setToPreview(); }\n";
         htmlToAdd += "animationsInstances.push(curveEditor" + nameForCallback + ");";
-        htmlToAdd += "</script>";        
+        htmlToAdd += "</script>";
     }
     else if (param.type == "Time") {
         htmlToAdd += "<script>";
@@ -297,6 +320,16 @@ function computeInput(param, isLast) {
     }
     else if (param.type == "Label") {
         htmlToAdd += "<div>" + param.name + "</div>";
+    }
+    else if (param.type == "Asset") {
+        let inputId = "assetInput" + nameForCallback;
+        htmlToAdd += "<div class='asset-param-container'>";
+        htmlToAdd += "  <span style='width: 30%; font-size: 12px;'>" + param.name + ":</span>";
+        htmlToAdd += "  <input type='text' id='" + inputId + "' value='" + (param.value || "") + "' readonly ";
+        htmlToAdd += "    class='asset-drop-zone' ";
+        htmlToAdd += "    data-callback='change" + nameForCallback + "' ";
+        htmlToAdd += "    placeholder='Drop asset here...' />";
+        htmlToAdd += "</div>";
     }
 
     htmlToAdd += "</div>"

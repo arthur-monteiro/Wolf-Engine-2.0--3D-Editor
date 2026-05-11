@@ -1,7 +1,7 @@
 #include "ContaminationMaterial.h"
 
 #include "EditorParamsHelper.h"
-#include "MaterialComponent.h"
+#include "MaterialEditor.h"
 
 ContaminationMaterial::ContaminationMaterial(const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
 	: m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
@@ -11,7 +11,7 @@ ContaminationMaterial::ContaminationMaterial(const std::function<Wolf::NullableR
 
 void ContaminationMaterial::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_editorParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void ContaminationMaterial::activateParams()
@@ -34,7 +34,7 @@ void ContaminationMaterial::updateBeforeFrame(const Wolf::Timer& globalTimer, co
 {
 	if (m_materialEntity && !m_materialNotificationRegistered)
 	{
-		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
+		if (const Wolf::NullableResourceNonOwner<MaterialEditor> materialComponent = (*m_materialEntity)->getComponent<MaterialEditor>())
 		{
 			materialComponent->subscribe(this, [this](Flags) { notifySubscribers(); });
 			m_materialNotificationRegistered = true;
@@ -53,9 +53,9 @@ uint32_t ContaminationMaterial::getMaterialIdx() const
 {
 	if (m_materialEntity)
 	{
-		if (const Wolf::NullableResourceNonOwner<MaterialComponent> materialComponent = (*m_materialEntity)->getComponent<MaterialComponent>())
+		if (const Wolf::NullableResourceNonOwner<MaterialEditor> materialComponent = (*m_materialEntity)->getComponent<MaterialEditor>())
 		{
-			return materialComponent->getMaterialIdx();
+			return materialComponent->getMaterialGPUIdx();
 		}
 	}
 

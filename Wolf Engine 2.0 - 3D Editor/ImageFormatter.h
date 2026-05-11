@@ -19,22 +19,23 @@ class ImageFormatter
 public:
 	enum class KeepDataMode { ONLY_GPU, CPU_AND_GPU, ONLY_CPU};
 
-	ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& filename, const std::string& slicesFolder, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode,
+	ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& fullFilePath, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode,
 		bool loadMips);
 	ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::vector<Wolf::ImageCompression::RGBA8>& data, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels,
-		Wolf::Extent3D extent, const std::string& binFolder, const std::string& path, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode);
+		Wolf::Extent3D extent, const std::string& fullFilePath, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode);
 
 	void transferImageTo(Wolf::ResourceUniqueOwner<Wolf::Image>& output);
 	std::string getSlicesFolder() const { return m_slicesFolder; }
 	uint32_t getMipCountKeptOnCPU() const { return m_mipLevelPixels.size(); }
 	const uint8_t* getPixels(uint32_t mipLevel = 0) const;
 
-	static bool isCacheAvailable(const std::string& filename, const std::string& binFolder, bool canBeVirtualized);
+	static bool isCacheAvailable(const std::string& filename, Wolf::Format format, bool canBeVirtualized);
 	static void loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RGBA8>& pixels, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels, Wolf::Extent3D& outExtent);
 	static void loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RG32F>& pixels, std::vector<std::vector<Wolf::ImageCompression::RG32F>>& mipLevels, Wolf::Extent3D& outExtent);
 	static void loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RGBA32F>& pixels, std::vector<std::vector<Wolf::ImageCompression::RGBA32F>>& mipLevels, Wolf::Extent3D& outExtent);
 
 private:
+	static void computeCachePaths(const std::string& inFullPath, Wolf::Format format, std::string& outCache, std::string& outSlicesFolder);
 	static constexpr uint64_t HASH = Wolf::HASH_IMAGE_FORMATTER_H ^ Wolf::HASH_IMAGE_FORMATTER_CPP;
 
 	KeepDataMode m_keepDataMode;
@@ -42,6 +43,7 @@ private:
 	std::vector<std::vector<uint8_t>> m_mipLevelPixels;
 	bool m_loadMips;
 	Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
+	std::string m_cacheFilename;
 
 	std::string m_originFilename = "Unknown filename";
 
@@ -63,9 +65,9 @@ private:
 	std::string m_slicesFolder;
 
     template <typename PixelType, typename CompressionType>
-    void createSlicedCacheFromData(const std::string& binFolder, Wolf::Extent3D extent, const std::vector<PixelType>& pixels, const std::vector<std::vector<PixelType>>& mipLevels);
+    void createSlicedCacheFromData(Wolf::Extent3D extent, const std::vector<PixelType>& pixels, const std::vector<std::vector<PixelType>>& mipLevels);
     template <typename PixelType, typename CompressionType>
-    void createSlicedCacheFromFile(const std::string& filename, const std::string& slicesFolder, bool sRGB, Wolf::Format format);
+    void createSlicedCacheFromFile(const std::string& filename, bool sRGB, Wolf::Format format);
 };
 
 template <typename PixelType>
@@ -88,9 +90,9 @@ void ImageFormatter::createImageFileFromSource(const std::string& filename, Wolf
 		extent.width = extent.height = 4;
 	}
 
-	Wolf::Debug::sendInfo("Creating new cache");
+	Wolf::Debug::sendInfo("Creating new cache: " + m_cacheFilename);
 
-	std::fstream outCacheFile(filename + ".bin", std::ios::out | std::ios::binary);
+	std::fstream outCacheFile(m_cacheFilename, std::ios::out | std::ios::binary);
 
 	/* Hash */
 	uint64_t hash = HASH;
@@ -183,7 +185,7 @@ void ImageFormatter::compressAndCreateImage(std::vector<std::vector<PixelType>>&
 }
 
 template <typename PixelType, typename CompressionType>
-void ImageFormatter::createSlicedCacheFromData(const std::string& binFolder, Wolf::Extent3D extent, const std::vector<PixelType>& pixels, const std::vector<std::vector<PixelType>>& mipLevels)
+void ImageFormatter::createSlicedCacheFromData(Wolf::Extent3D extent, const std::vector<PixelType>& pixels, const std::vector<std::vector<PixelType>>& mipLevels)
 {
     if (extent.depth != 1 ||
 		(extent.width > Wolf::VirtualTextureManager::VIRTUAL_PAGE_SIZE && (extent.width % Wolf::VirtualTextureManager::VIRTUAL_PAGE_SIZE) != 0) ||
@@ -197,8 +199,8 @@ void ImageFormatter::createSlicedCacheFromData(const std::string& binFolder, Wol
 		Wolf::Debug::sendCriticalError("Wrong width or height");
 	}
 
-	Wolf::ConfigurationHelper::writeInfoToFile(binFolder + "info.txt", "width", extent.width);
-	Wolf::ConfigurationHelper::writeInfoToFile(binFolder + "info.txt", "height", extent.height);
+	Wolf::ConfigurationHelper::writeInfoToFile(m_slicesFolder + "info.txt", "width", extent.width);
+	Wolf::ConfigurationHelper::writeInfoToFile(m_slicesFolder + "info.txt", "height", extent.height);
 
 	Wolf::Extent3D maxSliceExtent{ Wolf::VirtualTextureManager::VIRTUAL_PAGE_SIZE, Wolf::VirtualTextureManager::VIRTUAL_PAGE_SIZE, 1 };
 
@@ -213,7 +215,7 @@ void ImageFormatter::createSlicedCacheFromData(const std::string& binFolder, Wol
 		{
 			for (uint32_t sliceY = 0; sliceY < sliceCountY; ++sliceY)
 			{
-				std::string binFilename = binFolder + "mip" + std::to_string(mipLevel) + "_sliceX" + std::to_string(sliceX) + "_sliceY" + std::to_string(sliceY) + ".bin";
+				std::string binFilename = m_slicesFolder + "mip" + std::to_string(mipLevel) + "_sliceX" + std::to_string(sliceX) + "_sliceY" + std::to_string(sliceY) + ".bin";
 				if (std::filesystem::exists(binFilename))
 				{
 					std::ifstream input(binFilename, std::ios::in | std::ios::binary);
@@ -314,33 +316,8 @@ void ImageFormatter::createSlicedCacheFromData(const std::string& binFolder, Wol
 }
 
 template <typename PixelType, typename CompressionType>
-void ImageFormatter::createSlicedCacheFromFile(const std::string& filename, const std::string& slicesFolder, bool sRGB, Wolf::Format format)
+void ImageFormatter::createSlicedCacheFromFile(const std::string& filename, bool sRGB, Wolf::Format format)
 {
-	m_slicesFolder= slicesFolder;
-
-	if (m_slicesFolder.empty())
-	{
-		std::string filenameNoExtension = filename.substr(filename.find_last_of("\\") + 1, filename.find_last_of("."));
-		std::string folder = filename.substr(0, filename.find_last_of("\\"));
-		std::string binFolder = folder + '\\' + filenameNoExtension + "_bin" + "\\";
-
-		std::string binFolderFixed;
-		for (const char character : binFolder)
-		{
-			if (character == '/')
-				binFolderFixed += "\\";
-			else
-				binFolderFixed += character;
-		}
-
-		if (!std::filesystem::is_directory(binFolderFixed) || !std::filesystem::exists(binFolderFixed))
-		{
-			std::filesystem::create_directory(binFolderFixed);
-		}
-
-		m_slicesFolder = binFolderFixed;
-	}
-
 	// Check 1st file to avoid loading pixels if we don't need
 	std::string binFilename = m_slicesFolder + "mip0_sliceX0_sliceY0.bin";
 	if (std::filesystem::exists(binFilename) && m_keepDataMode == KeepDataMode::ONLY_GPU) // need to re-read the file if we want data on CPU
@@ -373,7 +350,7 @@ void ImageFormatter::createSlicedCacheFromFile(const std::string& filename, cons
 		extent.width = extent.height = 4;
 	}
 
-	createSlicedCacheFromData<PixelType, CompressionType>(m_slicesFolder, extent, pixels, mipLevels);
+	createSlicedCacheFromData<PixelType, CompressionType>(extent, pixels, mipLevels);
 
 	if (m_keepDataMode == KeepDataMode::CPU_AND_GPU || m_keepDataMode == KeepDataMode::ONLY_CPU)
 	{

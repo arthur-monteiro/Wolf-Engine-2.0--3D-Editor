@@ -1,69 +1,94 @@
 #include "TextureSetLoader.h"
 
 #include <filesystem>
-#include <fstream>
-
-#include <Configuration.h>
 
 #include "AssetManager.h"
-#include "CodeFileHashes.h"
-#include "ConfigurationHelper.h"
-#include "EditorConfiguration.h"
 #include "ImageFileLoader.h"
-#include "MipMapGenerator.h"
-#include "GPUDataTransfersManager.h"
 #include "Timer.h"
-#include "VirtualTextureManager.h"
 
-TextureSetLoader::TextureSetLoader(const TextureSetFileInfoGGX& textureSet, const OutputLayout& outputLayout, bool useCache, const Wolf::ResourceReference<AssetManager>& assetManager) : m_useCache(useCache)
+TextureSetLoader::TextureSetLoader(const TextureSetAssetsInfoGGX& textureSet, const OutputLayout& outputLayout, bool useCache, const Wolf::ResourceReference<AssetManager>& assetManager, AssetId parentAssetId) : m_useCache(useCache)
 {
-	Wolf::Debug::sendInfo("Loading material " + textureSet.name);
-	Wolf::Timer globalTimer("Loading material " + textureSet.name);
+	Wolf::Debug::sendInfo("Loading texture set " + textureSet.m_name);
+	Wolf::Timer globalTimer("Loading texture set " + textureSet.m_name);
 
 	// Albedo
-	if (!textureSet.albedo.empty())
+	m_imageAssetIds[0] = textureSet.m_albedoAssetId;
+	if (textureSet.m_albedoAssetId != NO_ASSET)
 	{
-		Wolf::Debug::sendInfo("Loading albedo " + textureSet.albedo);
-		Wolf::Timer albedoTimer("Loading albedo " + textureSet.albedo);
-
 		if (outputLayout.albedoCompression != DEFAULT_ALBEDO_COMPRESSION)
 		{
 			Wolf::Debug::sendCriticalError("Albedo compression must be BC1");
 		}
 
-		m_imageAssetIds[0] = assetManager->addImage(textureSet.albedo, true, Wolf::Format::BC1_RGB_SRGB_BLOCK, false, true, true);
-	}
-	else
-	{
-		m_imageAssetIds[0] = NO_ASSET;
+
+		AssetImageInterface::LoadingRequest loadingRequest{};
+		loadingRequest.m_format = Wolf::Format::BC1_RGB_SRGB_BLOCK;
+		loadingRequest.m_loadMips = true;
+		loadingRequest.m_canBeVirtualized = true;
+		assetManager->requestImageLoading(textureSet.m_albedoAssetId, loadingRequest, true);
 	}
 
 	// Normal
-	if (!textureSet.normal.empty())
+	m_imageAssetIds[1] = textureSet.m_normalAssetId;
+	if (textureSet.m_normalAssetId != NO_ASSET)
 	{
-		Wolf::Debug::sendInfo("Loading normal " + textureSet.normal);
-		Wolf::Timer albedoTimer("Loading normal " + textureSet.normal);
-
 		if (outputLayout.normalCompression != DEFAULT_NORMAL_COMPRESSION)
 		{
 			Wolf::Debug::sendError("Normal compression must be BC5");
 		}
 
-		m_imageAssetIds[1] = assetManager->addImage(textureSet.normal, true, Wolf::Format::BC5_UNORM_BLOCK, false, true, true);
-	}
-	else
-	{
-		m_imageAssetIds[1] = NO_ASSET;
+		AssetImageInterface::LoadingRequest loadingRequest{};
+		loadingRequest.m_format = Wolf::Format::BC5_UNORM_BLOCK;
+		loadingRequest.m_loadMips = true;
+		loadingRequest.m_canBeVirtualized = true;
+		assetManager->requestImageLoading(textureSet.m_normalAssetId, loadingRequest, true);
 	}
 
-	if (!textureSet.roughness.empty())
-	{
-		std::string message = "Loading combined image " + textureSet.roughness + ", " + textureSet.metalness + ", " + textureSet.ao + ", " + textureSet.anisoStrength;
-		Wolf::Debug::sendInfo(message);
-		Wolf::Timer albedoTimer(message);
 
-		m_imageAssetIds[2] = assetManager->addCombinedImage(textureSet.roughness, textureSet.metalness, textureSet.ao, textureSet.anisoStrength, true,
-			Wolf::Format::BC3_UNORM_BLOCK, false, true, true);
+	if (textureSet.m_roughnessAssetId != NO_ASSET)
+	{
+		Wolf::Debug::sendInfo("Loading combined image");
+
+		std::array<AssetId, 4> channelAssetsId = { textureSet.m_roughnessAssetId, textureSet.m_metalnessAssetId, textureSet.m_aoAssetId, textureSet.m_anisoStrengthAssetId };
+
+		std::string folderPath;
+		std::array<std::string, 4> channelFilenames;
+		for (uint32_t channelIdx = 0; channelIdx < 4; channelIdx++)
+		{
+			if (channelAssetsId[channelIdx] == NO_ASSET)
+			{
+				channelFilenames[channelIdx] = "noAsset";
+				continue;
+			}
+
+			std::string loadingPathStr = g_editorConfiguration->computeFullPathFromLocalPath(assetManager->getImageLoadingPath(channelAssetsId[channelIdx]));
+			std::filesystem::path loadingPath(loadingPathStr);
+
+			if (channelIdx == 0)
+			{
+				folderPath = loadingPath.parent_path().string();
+			}
+			channelFilenames[channelIdx] = loadingPath.filename().string();
+		}
+
+		std::string combinedLoadingPath = folderPath + "/" + "combined_";
+		for (uint32_t channelIdx = 0; channelIdx < 4; channelIdx++)
+		{
+			combinedLoadingPath += channelFilenames[channelIdx] + "_";
+		}
+
+		m_imageAssetIds[2] = assetManager->addCombinedImage(g_editorConfiguration->computeLocalPathFromFullPath(combinedLoadingPath), parentAssetId);
+		Wolf::ResourceNonOwner<CombinedImageEditor> combinedImageEditor = assetManager->getCombinedImageEditor(m_imageAssetIds[2]);
+		for (uint32_t channelIdx = 0; channelIdx < 4; ++channelIdx)
+		{
+			combinedImageEditor->setAssetId(channelIdx, channelAssetsId[channelIdx]);
+		}
+
+		AssetImageInterface::LoadingRequest loadingRequest{};
+		loadingRequest.m_format = Wolf::Format::BC3_UNORM_BLOCK;
+		loadingRequest.m_loadMips = true;
+		loadingRequest.m_canBeVirtualized = true;
+		assetManager->requestCombinedImageLoading(m_imageAssetIds[2], loadingRequest, true);
 	}
 	else
 	{
@@ -71,23 +96,38 @@ TextureSetLoader::TextureSetLoader(const TextureSetFileInfoGGX& textureSet, cons
 	}
 }
 
-TextureSetLoader::TextureSetLoader(const TextureSetFileInfoSixWayLighting& textureSet, const Wolf::ResourceReference<AssetManager>& assetManager)
+TextureSetLoader::TextureSetLoader(const TextureSetAssetsInfoSixWayLighting& textureSet, const Wolf::ResourceReference<AssetManager>& assetManager)
 {
-	if (!textureSet.tex0.empty())
+	m_imageAssetIds[0] = textureSet.m_tex0AssetId;
+	if (textureSet.m_tex0AssetId != NO_ASSET)
 	{
-		m_imageAssetIds[0] = assetManager->addImage(textureSet.tex0, true, Wolf::Format::R8G8B8A8_UNORM, false, true, true);
+		AssetImageInterface::LoadingRequest loadingRequest{};
+		loadingRequest.m_format = Wolf::Format::R8G8B8A8_UNORM;
+		loadingRequest.m_loadMips = true;
+		loadingRequest.m_canBeVirtualized = true;
+		assetManager->requestImageLoading(textureSet.m_tex0AssetId, loadingRequest, true);
 	}
 
-	if (!textureSet.tex1.empty())
+	m_imageAssetIds[1] = textureSet.m_tex1AssetId;
+	if (textureSet.m_tex1AssetId != NO_ASSET)
 	{
-		m_imageAssetIds[1] = assetManager->addImage(textureSet.tex1, true, Wolf::Format::R8G8B8A8_UNORM, false, true, true);
+		AssetImageInterface::LoadingRequest loadingRequest{};
+		loadingRequest.m_format = Wolf::Format::R8G8B8A8_UNORM;
+		loadingRequest.m_loadMips = true;
+		loadingRequest.m_canBeVirtualized = true;
+		assetManager->requestImageLoading(textureSet.m_tex1AssetId, loadingRequest, true);
 	}
 }
 
-TextureSetLoader::TextureSetLoader(const TextureSetFileInfoAlphaOnly& textureSet, const Wolf::ResourceReference<AssetManager>& assetManager)
+TextureSetLoader::TextureSetLoader(const TextureSetAssetInfoAlphaOnly& textureSet, const Wolf::ResourceReference<AssetManager>& assetManager)
 {
-	if (!textureSet.alphaMap.empty())
+	m_imageAssetIds[0] = textureSet.m_alphaMapAssetId;
+	if (textureSet.m_alphaMapAssetId != NO_ASSET)
 	{
-		m_imageAssetIds[0] = assetManager->addImage(textureSet.alphaMap, true, Wolf::Format::R8G8B8A8_UNORM, false, true, true);
+		AssetImageInterface::LoadingRequest loadingRequest{};
+		loadingRequest.m_format = Wolf::Format::R8G8B8A8_UNORM;
+		loadingRequest.m_loadMips = true;
+		loadingRequest.m_canBeVirtualized = true;
+		assetManager->requestImageLoading(textureSet.m_alphaMapAssetId, loadingRequest, true);
 	}
 }

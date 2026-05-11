@@ -6,10 +6,11 @@
 #include <ShaderParser.h>
 #include <UniformBuffer.h>
 
+#include "DynamicResourceUniqueOwnerArray.h"
 #include "EditorGPUDataTransfersManager.h"
 #include "Mesh.h"
-#include "ModelLoader.h"
 #include "RayTracedWorldManager.h"
+#include "Vertex3D.h"
 
 namespace Wolf
 {

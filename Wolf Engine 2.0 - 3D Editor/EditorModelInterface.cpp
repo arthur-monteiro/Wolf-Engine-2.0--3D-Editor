@@ -60,10 +60,10 @@ void EditorModelInterface::loadParams(JSONReader& jsonReader, const std::string&
 	std::vector<EditorParamInterface*> rotationQuaternionParams(1);
 	rotationQuaternionParams[0] = &m_rotationQuaternionParam;
 
-	::loadParams(jsonReader, id, rotationQuaternionParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(id), id, rotationQuaternionParams);
 	glm::vec4 rotationQuaternionAsVec4 = m_rotationQuaternionParam;
 
-	::loadParams(jsonReader, id, m_modelParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(id), id, m_modelParams);
 
 	// Reading euler rotations have re-computed quaternion value, if it's saved: restore it
 	if (rotationQuaternionAsVec4 != glm::vec4(0.0f))

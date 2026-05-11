@@ -17,9 +17,12 @@
 		</ul>
 	</div>
 
-	<div id="assetContextMenu" style="display: none; z-index: 1000;">
+	<div id="assetContextMenu">
 		<ul class="menuList">
-			<li class="menuItem" id="edit" onclick="onAssetEdit()">Edit</li>
+			<li class="menuItem" onpointerdown="onAssetEdit(event)">Edit</li>
+			<li class="menuItem disabled">Rename</li>
+			<li class="menuItem disabled">Duplicate</li>
+			<li class="menuItem disabled" style="color: #ff5555;">Delete</li>
 		</ul>
 	</div>
 
@@ -74,6 +77,51 @@
 			<div id="assetBrowserHeader">
 				<span class="material-symbols-outlined" style="font-size: 18px; color: #888;">search</span>
 				<input type="text" id="assetSearch" placeholder="Search assets..." style="background: #111; border: 1px solid #333; color: #eee; font-size: 12px; padding: 2px 5px; outline: none;">
+
+				<div class="filter-container">
+				<button class="filter-button" onclick="toggleFilterMenu(event)">
+					<span>Filter Assets</span>
+					<span class="arrow-icon">▼</span>
+				</button>
+				
+				<div id="assetFilterDropdown" class="filter-dropdown">
+					<label class="filter-item">
+						<input type="checkbox" value="all" checked onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> All Types
+					</label>
+					<div class="filter-separator"></div>
+					<label class="filter-item">
+						<input type="checkbox" value="mesh" class="type-filter" onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> Meshes
+					</label>
+					<label class="filter-item">
+						<input type="checkbox" value="image" class="type-filter" onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> Image
+					</label>
+					<label class="filter-item">
+						<input type="checkbox" value="combinedImage" class="type-filter" onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> Combined Image
+					</label>
+					<label class="filter-item">
+						<input type="checkbox" value="externalScene" class="type-filter" onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> External Scene
+					</label>
+					<label class="filter-item">
+						<input type="checkbox" value="textureSet" class="type-filter" onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> Texture Set
+					</label>
+					<label class="filter-item">
+						<input type="checkbox" value="material" class="type-filter" onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> Material
+					</label>
+					<label class="filter-item">
+						<input type="checkbox" value="particle" class="type-filter" onchange="handleFilterChange(this)">
+						<span class="checkmark"></span> Particle
+					</label>
+				</div>
+			</div>
+
+				<button id="addAssetButton" class="addButton" onclick="openAssetAdd()" title="Create New Asset">+</button>
 			</div>
 
 			<div id="assetGrid">
@@ -158,6 +206,42 @@
 
 		<div id="addComponentWindowContentNoComponent" style="display: none; padding: 20px; text-align: center;">
 			<p style="color: #888; font-size: 11px;">No component available for the selected entity</p>
+		</div>
+	</div>
+
+	<div id="addAssetWindow" class="modalWindow" style="display: none;">
+		<div class='closeButton' onclick="closeAssetAdd()">
+			<span>&times;</span>
+		</div>
+		<div class="blockParametersTitle">CREATE NEW ASSET</div>
+		
+		<div style="padding: 10px 0;">
+			<div class="inputParam" id="addAssetPathTR">
+				<span>Path :</span>
+				<div class="path-input-container">
+					<div id="addAssetPath" class="path-display">No file selected</div>
+					
+					<button class="browseButton" onclick="pickFileAndSetValue('addAssetPath', 'save', 'save')">
+						Browse
+					</button>
+				</div>
+			</div>
+			<div class="inputParam">
+				<span>Type:</span>
+				<select id="newAssetType">
+					<option value="image">Image</option>
+					<option value="material">Material</option>
+					<option value="textureSet">Texture set</option>
+					<option value="externalScene">External scene</option>
+					<option value="particle">Particle</option>
+				</select>
+			</div>
+		</div>
+
+		<div class="modal-footer">
+			<button class="primary" onclick="finishAddAsset()">
+				Create Asset
+			</button>
 		</div>
 	</div>
 
@@ -323,6 +407,11 @@
 		</div>
 	</div>
 
+	<div id="assetGhost">
+		<span class="material-symbols-outlined" style="vertical-align: middle; font-size: 16px;">description</span>
+		<span id="assetGhostName" style="vertical-align: middle; margin-left: 5px;">Asset</span>
+	</div>
+
     <script src="./slider.js"></script>
     <script src="./select.js"></script>
 	<script src="curveEditor/curveEditor.js"></script>
@@ -357,6 +446,7 @@
 	
 	window.addEventListener('DOMContentLoaded', (event) => {
 		document.getElementById('frameRate').parentElement.onclick = openPerformances;
+		document.addEventListener('contextmenu', event => event.preventDefault());
 
 		setTimeout(()=> {
 			updateStats();
@@ -374,23 +464,52 @@
 			}
 		});
 
-		const searchInput = document.getElementById('assetSearch');
-		searchInput.addEventListener('input', (e) => {
-			const searchTerm = e.target.value.toLowerCase();
-			const assets = document.querySelectorAll('.assetItem');
-			
-			assets.forEach(asset => {
-				const assetName = asset.querySelector('.assetName').textContent.toLowerCase();
-				
-				if (assetName.includes(searchTerm)) {
-					asset.classList.remove('hidden');
-				} else {
-					asset.classList.add('hidden');
+		document.getElementById('assetSearch').addEventListener('input', filterAssets);
+		document.getElementsByTagName('body')[0].addEventListener("click", (event) => { closeEntityContextMenu() });
+
+		window.currentDraggedAsset = null;
+
+		document.addEventListener('pointermove', function(e) {
+			if (window.currentDraggedAsset) {
+				const ghost = document.getElementById('assetGhost');
+				ghost.style.display = 'block';
+				ghost.style.left = (e.clientX + 10) + 'px';
+				ghost.style.top = (e.clientY + 10) + 'px';
+
+				document.querySelectorAll('.asset-drop-zone').forEach(el => el.classList.remove('drag-hover'));
+
+				let target = document.elementFromPoint(e.clientX, e.clientY);
+				let dropZone = target ? target.closest('.asset-drop-zone') : null;
+
+				if (dropZone) {
+					dropZone.classList.add('drag-hover');
 				}
-			});
+			}
 		});
 
-		document.getElementsByTagName('body')[0].addEventListener("click", (event) => { closeEntityContextMenu() });
+		document.addEventListener('pointerup', function(e) {
+			if (window.currentDraggedAsset) {
+				document.querySelectorAll('.asset-drop-zone').forEach(el => el.classList.remove('drag-active'));
+				document.querySelectorAll('.asset-drop-zone').forEach(el => el.classList.remove('drag-hover'));
+
+				let target = document.elementFromPoint(e.clientX, e.clientY);
+				let dropZone = target ? target.closest('.asset-drop-zone') : null;
+				
+				if (dropZone) {
+					let value = window.currentDraggedAsset;
+					let callbackName = dropZone.getAttribute('data-callback');
+					
+					dropZone.value = value;
+					window[callbackName](value);
+				}
+				
+				// Clear the drag state
+				window.currentDraggedAsset = null;
+				document.getElementById('assetGhost').style.display = 'none';
+
+				unselectAllAssetItems();
+			}
+		});
 	});
 
 	function frame() {
@@ -479,6 +598,25 @@
 
 		filepath = document.getElementById("componentTypeSelect").value;
 		addComponent(filepath);
+	}
+
+	function openAssetAdd() {
+		document.getElementById('addAssetWindow').style.display = "block";
+		openModalWindow();
+	}
+
+	function closeAssetAdd() {
+		document.getElementById('addAssetWindow').style.display = "none";
+		closeModalWindow();
+	}
+
+	function finishAddAsset() {
+		const path = document.getElementById("addAssetPath").innerHTML;
+		const type = document.getElementById("newAssetType").value;
+		
+		createAsset(path, type);
+
+		closeAssetAdd();
 	}
 
 	function finishSaveScene() {
@@ -591,7 +729,7 @@
 		}
 	}
 
-	function addEntityToList(name, path, isFake = false, parentPath = null) 
+	function addEntityToList(name, path, isTransient = false, parentPath = null) 
 	{
 		const cleanPath = path.trim().replace(/\\/g, '/');
 		const safeParentPath = parentPath ? parentPath.trim().replace(/\\/g, '/').replace(/[^a-zA-Z0-9]/g, '_') : null;
@@ -611,9 +749,9 @@
 
 		item.innerHTML = `
 			<span class="entityToggle">▼</span>
-			<span class="entityName" ${isFake ? "style='font-style: italic;'" : ""}>${name}</span>
+			<span class="entityName" ${isTransient ? "style='font-style: italic;'" : ""}>${name}</span>
 			<span class="childCount"></span>
-			<div class="entityType">${isFake ? "Fake" : "Entity"}</div>
+			<div class="entityType">${isTransient ? "Transient" : "Entity"}</div>
 		`;
 
 		const toggle = item.querySelector('.entityToggle');
@@ -657,22 +795,59 @@
 		document.getElementById("assetContextMenu").style.display = "none";
 	}
 
-	function onAssetEdit() {
+	function onAssetEdit(e) {
+		if (e) e.stopPropagation(); // Prevent the document listener from hiding the menu immediately
+
 		editAsset(selectedAssetId);
 
 		closeAssetContextMenu();
 	}
 
+	function unselectAllAssetItems() {
+		const previouslySelected = document.querySelectorAll('.assetItem.selected');
+		previouslySelected.forEach(el => {
+			el.classList.remove('selected');
+		});
+	}
+
+	function updateAssetSelectionUI(id) {
+		unselectAllAssetItems();
+
+		const currentTarget = document.getElementById("asset_" + id);
+		if (currentTarget) {
+			currentTarget.classList.add('selected');
+		}
+
+		selectedAssetId = id;
+	}
+
 	function onMouseDownAsset(e, id) {
 		let isRightClick = getMouseButtons(e) == RMB;
 
-		selectedAssetId = id;
+		updateAssetSelectionUI(id);
 
 		if (isRightClick) {
-			document.getElementById("assetContextMenu").style.display = "block";
-			document.getElementById("assetContextMenu").style.position = "absolute";
-			document.getElementById("assetContextMenu").style.left = e.clientX;
-			document.getElementById("assetContextMenu").style.top = e.clientY;
+			const menu = document.getElementById("assetContextMenu");
+        
+			menu.style.display = "block";
+			menu.style.position = "fixed";
+
+			let posX = e.clientX;
+			let posY = e.clientY;
+
+			const menuWidth = 150; 
+			if (posX + menuWidth > window.innerWidth) posX -= menuWidth;
+
+			menu.style.left = posX + "px";
+			menu.style.top = posY + "px";
+
+			const closeMenu = () => {
+				menu.style.display = "none";
+				document.removeEventListener('mousedown', closeMenu);
+
+				unselectAllAssetItems();
+			};
+			setTimeout(() => document.addEventListener('mousedown', closeMenu), 10);
 		}
 	}
 
@@ -706,8 +881,18 @@
 		document.getElementById("boundingSphereIcon").style.opacity = opacity;
 	}
 
-	function addAssetToList(name, iconPath, id) {
-		let assetInfoDiv = "<div class='assetItem' id='asset_" + id + "' class='assetMesh' onmousedown=\"onMouseDownAsset(event, '" + id + "');\">";
+	function startAssetDrag(assetPath) {
+		window.currentDraggedAsset = assetPath;
+		
+		const fileName = assetPath.split('/').pop();
+		document.getElementById('assetGhostName').innerText = fileName;
+
+		document.querySelectorAll('.asset-drop-zone').forEach(el => el.classList.add('drag-active'));
+	}
+
+	function addAssetToList(name, assetPath, iconPath, id, assetType) {
+		let assetInfoDiv = "<div class='assetItem' draggable='true' id='asset_" + id + "' data-asset-type='" + assetType + "' onmousedown=\"onMouseDownAsset(event, '" + id + "');\" "
+			+ "onpointerdown=\"if (event.button === 0) startAssetDrag('" + assetPath + "')\">";
 		assetInfoDiv += "<div class='assetIcon'><img src='" + iconPath + "'/></div>";
 		assetInfoDiv += "<div class='assetName'>" + name + "</div>";
 		assetInfoDiv += "</div>";
@@ -721,6 +906,70 @@
 		
 		assetElement.getElementsByClassName("assetName")[0].innerHTML = name;
 		assetElement.getElementsByClassName("assetIcon")[0].innerHTML = "<img src='" + iconPath + "'/>";
+	}
+
+	function filterAssets() {
+		const searchTerm = document.getElementById('assetSearch').value.toLowerCase();
+		const activeFilters = Array.from(document.querySelectorAll('.filter-item input:checked')).map(cb => cb.value);
+		const assets = document.querySelectorAll('.assetItem');
+
+		assets.forEach(asset => {
+			const assetName = asset.querySelector('.assetName').textContent.toLowerCase();
+			const assetType = asset.getAttribute('data-asset-type');
+			
+			const matchesSearch = assetName.includes(searchTerm);
+			const matchesType = activeFilters.includes('all') || activeFilters.includes(assetType);
+
+			if (matchesSearch && matchesType) {
+				asset.classList.remove('hidden');
+			} else {
+				asset.classList.add('hidden');
+			}
+		});
+	}
+
+	function toggleFilterMenu(event) {
+		event.stopPropagation();
+		
+		const dropdown = document.getElementById('assetFilterDropdown');
+		const isOpening = dropdown.style.display !== 'block';
+
+		if (isOpening) {
+			dropdown.style.display = 'block';
+
+			document.addEventListener('pointerdown', closeFilterMenuOutside);
+		} else {
+			closeFilterMenu();
+		}
+	}
+
+	function closeFilterMenuOutside(event) {
+		const dropdown = document.getElementById('assetFilterDropdown');
+		const button = document.querySelector('.filter-button');
+
+		if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+			closeFilterMenu();
+		}
+	}
+
+	function closeFilterMenu() {
+		const dropdown = document.getElementById('assetFilterDropdown');
+		dropdown.style.display = 'none';
+		
+		document.removeEventListener('pointerdown', closeFilterMenuOutside);
+	}
+
+	function handleFilterChange(input) {
+		const allCheckbox = document.querySelector('input[value="all"]');
+		const typeCheckboxes = document.querySelectorAll('.type-filter');
+
+		if (input.value === "all" && input.checked) {
+			typeCheckboxes.forEach(cb => cb.checked = false);
+		} else if (input.checked) {
+			allCheckbox.checked = false;
+		}
+
+		filterAssets();
 	}
 
 	function makeID(length) {

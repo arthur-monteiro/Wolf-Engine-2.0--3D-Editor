@@ -2,28 +2,48 @@
 
 #include <array>
 
+#include "AssetId.h"
 #include "ComponentInterface.h"
-#include "EditorConfiguration.h"
 #include "EditorTypes.h"
-#include "Notifier.h"
 
 class AssetManager;
 
-class TextureSetEditor : public Notifier
+class TextureSetEditor : public ComponentInterface
 {
 public:
-	TextureSetEditor(const std::string& tab, const std::string& category, Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode shadingMode);
+	static inline std::string ID = "textureSetEditor";
+	std::string getId() const override { return ID; }
+
+	TextureSetEditor(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, AssetManager* assetManager, AssetId textureSetAssetId);
 	TextureSetEditor(const TextureSetEditor&) = delete;
 
-	void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceReference<AssetManager>& assetManager);
+	void loadParams(Wolf::JSONReader& jsonReader) override;
+	void activateParams() override;
+	void addParamsToJSON(std::string& outJSON, uint32_t tabCount) override;
 
-	void activateParams();
-	void addParamsToJSON(std::string& outJSON, uint32_t tabCount, bool isLast);
+	// TODO: inherit from something else than ComponentInterface to avoid having that update override
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
+	void updateBeforeFrame();
+
+	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
+	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
+
+	void saveCustom() const override {}
+
+	void copy(const Wolf::ResourceNonOwner<TextureSetEditor>& other);
 
 	void getAllParams(std::vector<EditorParamInterface*>& out) const;
 	void getAllVisibleParams(std::vector<EditorParamInterface*>& out) const;
 
 	uint32_t getTextureSetIdx() const;
+
+	std::string getAlbedoPath() const { return m_albedoPathParam; }
+	std::string getNormalPath() const { return m_normalPathParam; }
+	std::string getRoughnessPath() const { return m_roughnessParam; }
+	std::string getMetalnessPath() const { return m_metalnessParam; }
+	std::string getAOPath() const { return m_aoParam; }
+	std::string getAnisoStrengthPath() const { return m_anisoStrengthParam; }
+	uint32_t getShadingMode() const { return m_shadingMode; }
 
 	void setAlbedoPath(const std::string& albedoPath) { m_albedoPathParam = albedoPath; }
 	void setNormalPath(const std::string& normalPath) { m_normalPathParam = normalPath; }
@@ -34,21 +54,72 @@ public:
 	void setShadingMode(uint32_t shadingMode) { m_shadingMode = shadingMode; }
 
 private:
-	void onTextureChanged();
+	inline static const std::string TAB = "Texture Set";
+	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
+	AssetManager* m_assetManager;
+	AssetId m_textureSetAssetId;
+
+	Wolf::MaterialsGPUManager::TextureSetInfo computeTextureSetInfo();
+
 	void onShadingModeChanged();
 
-	EditorParamString m_albedoPathParam;
-	EditorParamString m_normalPathParam;
-	EditorParamString m_roughnessParam;
-	EditorParamString m_metalnessParam;
-	EditorParamString m_aoParam;
-	EditorParamString m_anisoStrengthParam;
-	EditorParamString m_sixWaysLightmap0;
-	EditorParamString m_sixWaysLightmap1;
-	EditorParamBool m_enableAlpha;
-	EditorParamString m_alphaPathParam;
+	void updateAssetId(AssetId& outAssetId, EditorParamString& param);
 
-	EditorParamEnum m_shadingMode;
+	void onAlbedoAssetChanged();
+	AssetId m_albedoAssetId = NO_ASSET;
+	EditorParamString m_albedoPathParam = EditorParamString("Albedo file", TAB, "Textures", [this]() { onAlbedoAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onNormalAssetChanged();
+	AssetId m_normalAssetId = NO_ASSET;
+	EditorParamString m_normalPathParam = EditorParamString("Normal file", TAB, "Textures", [this]() { onNormalAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onRoughnessAssetChanged();
+	AssetId m_roughnessAssetId = NO_ASSET;
+	EditorParamString m_roughnessParam = EditorParamString("Roughness file", TAB, "Textures", [this]() { onRoughnessAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onMetalnessAssetChanged();
+	AssetId m_metalnessAssetId = NO_ASSET;
+	EditorParamString m_metalnessParam = EditorParamString("Metalness file", TAB, "Textures", [this]() { onMetalnessAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onAOAssetChanged();
+	AssetId m_aoAssetId = NO_ASSET;
+	EditorParamString m_aoParam = EditorParamString("AO file", TAB, "Textures", [this]() { onAOAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onAnisoAssetChanged();
+	AssetId m_anisoAssetId = NO_ASSET;
+	EditorParamString m_anisoStrengthParam = EditorParamString("Aniso Strength file", TAB, "Textures", [this]() { onAnisoAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onSixWayLightmap0AssetChanged();
+	AssetId m_sixWayLightmap0AssetId = NO_ASSET;
+	EditorParamString m_sixWaysLightmap0 = EditorParamString("6 ways light map 0", TAB, "Textures", [this]() { onSixWayLightmap0AssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onSixWayLightmap1AssetChanged();
+	AssetId m_sixWayLightmap1AssetId = NO_ASSET;
+	EditorParamString m_sixWaysLightmap1 = EditorParamString("6 ways light map 1", TAB, "Textures", [this]() { onSixWayLightmap1AssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onAlphaAssetChanged();
+	AssetId m_alphaMapAssetId = NO_ASSET;
+	EditorParamBool m_enableAlpha = EditorParamBool("Enable alpha",TAB, "Alpha", [this]() { /* TODO */ });
+	EditorParamString m_alphaPathParam = EditorParamString("Alpha map", TAB, "Alpha", [this]() { onAlphaAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	EditorParamEnum m_shadingMode = EditorParamEnum(Wolf::MaterialsGPUManager::MaterialInfo::SHADING_MODE_STRING_LIST, "Shading Mode", TAB, "Shading", [this]() { onShadingModeChanged(); }, false, true);
+
+	EditorParamUInt m_textureSetIdx = EditorParamUInt("Texture set index", TAB, "Debug", 0, 1000, EditorParamUInt::ParamUIntType::NUMBER, false, true);
+
+	// Sampling common
+	void onSamplingModeChanged();
+	bool m_changeSamplingModeRequested = false;
+	EditorParamEnum m_samplingMode = EditorParamEnum({ "Mesh texture coordinates", "Triplanar" }, "Sampling mode", TAB, "Sampling", [this]() { onSamplingModeChanged(); });
+
+	// Mesh texture coordinates
+	void onTextureCoordsScaleChanged();
+	bool m_changeTextureCoordsScaleRequested = false;
+	EditorParamVector2 m_textureCoordsScale = EditorParamVector2("Scale", TAB, "Texture coordinates", 0.0f, 8.0f, [this]() { onTextureCoordsScaleChanged(); });
+
+	// Triplanar
+	void onTriplanarScaleChanged();
+	bool m_changeTriplanarScaleRequested = false;
+	EditorParamVector3 m_triplanarScale = EditorParamVector3("Scale", TAB, "Triplanar", 0.0f, 8.0f, [this]() { onTriplanarScaleChanged(); });
 
 	std::array<EditorParamInterface*, 6> m_shadingModeGGXParams
 	{
@@ -82,12 +153,24 @@ private:
 		&m_alphaPathParam
 	};
 
-	std::array<EditorParamInterface*, 1> m_alwaysVisibleParams
+	std::array<EditorParamInterface*, 3> m_alwaysVisibleParams
 	{
-		&m_shadingMode
+		&m_shadingMode,
+		&m_samplingMode,
+		&m_textureSetIdx
 	};
 
-	std::array<EditorParamInterface*, 11> m_allParams =
+	std::array<EditorParamInterface*, 1> m_textureCoordsParams =
+	{
+		&m_textureCoordsScale
+	};
+
+	std::array<EditorParamInterface*, 1> m_triplanarParams =
+	{
+		&m_triplanarScale
+	};
+
+	std::array<EditorParamInterface*, 15> m_allParams =
 	{
 		&m_albedoPathParam,
 		&m_normalPathParam,
@@ -99,11 +182,12 @@ private:
 		&m_sixWaysLightmap1,
 		&m_enableAlpha,
 		&m_alphaPathParam,
-		&m_shadingMode
+		&m_shadingMode,
+		&m_samplingMode,
+		&m_textureCoordsScale,
+		&m_triplanarScale,
+		&m_textureSetIdx
 	};
-
-	Wolf::MaterialsGPUManager::TextureSetCacheInfo m_textureSetCacheInfo;
-	Wolf::MaterialsGPUManager::TextureSetInfo m_textureSetInfo;
 
 	bool m_shadingModeChanged = false;
 	bool m_textureChanged = false;

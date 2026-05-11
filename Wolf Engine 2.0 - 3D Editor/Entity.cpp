@@ -25,7 +25,7 @@ void Entity::loadParams(const std::function<ComponentInterface* (const std::stri
 
 		if (static_cast<const std::string&>(m_nameParam) == "Undefined")
 		{
-			::loadParams(jsonReader, "entity", m_entityParams);
+			::loadParams(jsonReader.getRoot()->getPropertyObject("entity"), "entity", m_entityParams);
 		}
 
 

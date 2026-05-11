@@ -4,13 +4,13 @@
 #include "EditorParamsHelper.h"
 
 ColorGradingComponent::ColorGradingComponent(const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
-    : m_resourceManager(resourceManager), m_renderingPipeline(renderingPipeline)
+    : m_assetManager(resourceManager), m_renderingPipeline(renderingPipeline)
 {
 }
 
 void ColorGradingComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
-    ::loadParams(jsonReader, ID, m_editorParams);
+    ::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void ColorGradingComponent::activateParams()
@@ -42,19 +42,7 @@ void ColorGradingComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, co
 
 bool ColorGradingComponent::updateLUTImage()
 {
-    if (static_cast<std::string>(m_lutImageParam) == "")
-    {
-        m_renderingPipeline->getCompositionPass()->releaseInputLUT();
-        return true;
-    }
-
-    if (m_lutImageResourceId == NO_ASSET || !m_resourceManager->isImageLoaded(m_lutImageResourceId))
-        return false;
-
-    Wolf::ResourceNonOwner<Wolf::Image> image = m_resourceManager->getImage(m_lutImageResourceId);
-
-    m_renderingPipeline->getCompositionPass()->setInputLUT(image);
-
+    // TODO
     return true;
 }
 
@@ -62,7 +50,7 @@ void ColorGradingComponent::onLUTImageMapChanged()
 {
     if (static_cast<std::string>(m_lutImageParam) != "")
     {
-        m_lutImageResourceId = m_resourceManager->addImage(m_lutImageParam, false, Wolf::Format::R16G16B16A16_SFLOAT, false, false);
+        m_lutImageResourceId = m_assetManager->addImage(m_lutImageParam);
     }
     else
     {

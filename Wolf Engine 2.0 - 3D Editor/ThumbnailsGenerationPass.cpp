@@ -13,9 +13,8 @@
 
 #include "AnimationHelper.h"
 #include "CommonLayouts.h"
-#include "ModelLoader.h"
 
-class AnimatedModel;
+class AnimatedMesh;
 
 ThumbnailsGenerationPass::ThumbnailsGenerationPass()
 {

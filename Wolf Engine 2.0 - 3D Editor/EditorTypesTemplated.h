@@ -33,7 +33,7 @@ public:
 		ultralight::JSObject jsObject;
 		ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-		const std::string functionChangeName = "addTo" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+		const std::string functionChangeName = "addTo" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 		jsObject[functionChangeName.c_str()] = std::bind(&EditorParamArray<T>::addValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 
 		for (uint32_t i = 0; i < m_value.size(); ++i)
@@ -41,7 +41,7 @@ public:
 			T& value = m_value[i];
 
 			ParameterGroupInterface* valueAsParameterGroup = static_cast<ParameterGroupInterface*>(&value);
-			valueAsParameterGroup->activateParams();
+			valueAsParameterGroup->activateParams(i);
 		}
 		
 	}
@@ -52,14 +52,26 @@ public:
 
 		out += tabs + +"{\n";
 		addCommonInfoToJSON(out, tabCount + 1);
-		out += tabs + '\t' + R"("count" : )" + std::to_string(m_value.size()) + "\n";
-		out += tabs + "}" + (isLast && m_value.empty() ? "\n" : ",\n");
+		out += tabs + '\t' + R"("count" : )" + std::to_string(m_value.size()) + ",\n";
+		out += tabs + '\t' + R"("values" : [)" + "\n";
 
 		for (uint32_t i = 0; i < m_value.size(); ++i)
 		{
+			out += tabs + "\t\t{";
+			out += tabs + "\t\t\t\"params\": [";
 			const ParameterGroupInterface* valueAsParameterGroup = static_cast<const ParameterGroupInterface*>(&m_value[i]);
-			valueAsParameterGroup->addParamsToJSON(out, tabCount, isLast && i == m_value.size() - 1);
+			valueAsParameterGroup->addParamsToJSON(out, tabCount + 3, true);
+			out += tabs + "\t\t\t]";
+			out += tabs + "\t\t}";
+			if (i != m_value.size() - 1)
+			{
+				out += tabs + ",";
+			}
+			out += "\n";
 		}
+
+		out += tabs + '\t' + "]\n";
+		out += tabs + "}" + (isLast ? "\n" : ",\n");
 	}
 
 	void clear() { m_value.clear(); }

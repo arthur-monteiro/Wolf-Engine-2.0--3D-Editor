@@ -8,7 +8,7 @@
 #include "GasCylinderComponent.h"
 #include "ParticleEmitter.h"
 
-class AnimatedModel;
+class AnimatedMesh;
 
 class PlayerComponent : public ComponentInterface
 {
@@ -64,7 +64,7 @@ private:
 
 	EditorParamUInt m_gamepadIdx = EditorParamUInt("Gamepad Idx", TAB, "General", 0, Wolf::InputHandler::MAX_GAMEPAD_COUNT);
 
-	std::unique_ptr<Wolf::ResourceNonOwner<AnimatedModel>> m_animatedModel;
+	std::unique_ptr<Wolf::ResourceNonOwner<AnimatedMesh>> m_animatedModel;
 	EditorParamEnum m_animationIdle = EditorParamEnum({ "Default" }, "Idle animation", TAB, "Animations");
 	EditorParamEnum m_animationWalk = EditorParamEnum({ "Default" }, "Walk animation", TAB, "Animations");
 	EditorParamEnum m_animationRun = EditorParamEnum({ "Default" }, "Run animation", TAB, "Animations");

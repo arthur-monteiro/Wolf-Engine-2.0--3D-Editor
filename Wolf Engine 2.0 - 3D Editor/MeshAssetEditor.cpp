@@ -7,73 +7,14 @@
 #include "ComputeVertexDataPass.h"
 #include "EditorConfiguration.h"
 #include "MathsUtilsEditor.h"
-#include "ModelLoader.h"
 
-MeshAssetEditor::MeshAssetEditor(const std::string& filepath, const std::function<void(ComponentInterface*)>& requestReloadCallback, bool isMeshCentered, Wolf::ResourceNonOwner<Wolf::Mesh> mesh,
-const std::vector<MeshFormatter::LODInfo>& defaultLODInfo, const std::vector<MeshFormatter::LODInfo>& sloppyLODInfo, std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultSimplifiedMeshes,
-	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> sloppySimplifiedMeshes, uint32_t firstMaterialIdx,	const Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure>& bottomLevelAccelerationStructure,
-	const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const std::function<void(const glm::mat4&)>& requestThumbnailReload,
-	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
-: m_requestReloadCallback(requestReloadCallback), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback), m_requestThumbnailReload(requestThumbnailReload),
+MeshAssetEditor::MeshAssetEditor(const std::string& name, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
+		const std::function<void(const glm::mat4&)>& requestThumbnailReload, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
+		const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
+: m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback), m_requestThumbnailReload(requestThumbnailReload),
   m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU)
 {
-	m_filepath = filepath;
-
-	if (isMeshCentered)
-	{
-		m_isCenteredLabel.setName("Mesh is centered");
-	}
-	else
-	{
-		m_isCenteredLabel.setName("Mesh is not centered");
-	}
-
-	LODInfo& lodInfo = m_defaultLODsInfo.emplace_back();
-	lodInfo.setRenderingPipeline(m_renderingPipeline);
-	lodInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
-	lodInfo.setMesh(mesh);
-	lodInfo.setFirstMaterialIdx(firstMaterialIdx);
-	lodInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
-	lodInfo.setLODIndexAndType(0, 0);
-	lodInfo.setError(0.0f);
-	lodInfo.setIndexCount(mesh->getIndexCount());
-	lodInfo.setName("LOD 0");
-
-	uint32_t lodIdx = 1;
-	for (const MeshFormatter::LODInfo& modelLODInfo : defaultLODInfo)
-	{
-		LODInfo& editorLODInfo = m_defaultLODsInfo.emplace_back();
-		editorLODInfo.setRenderingPipeline(m_renderingPipeline);
-		editorLODInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
-		editorLODInfo.setMesh(defaultSimplifiedMeshes[lodIdx - 1]);
-		editorLODInfo.setFirstMaterialIdx(firstMaterialIdx);
-		editorLODInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
-		editorLODInfo.setLODIndexAndType(lodIdx, 0);
-		editorLODInfo.setError(modelLODInfo.m_error);
-		editorLODInfo.setIndexCount(modelLODInfo.m_indexCount);
-		editorLODInfo.setName("LOD " + std::to_string(lodIdx));
-
-		lodIdx++;
-	}
-
-	if (!sloppyLODInfo.empty())
-	{
-		uint32_t sloppyIdx = 1;
-		for (const MeshFormatter::LODInfo& modelSloppyLODInfo : sloppyLODInfo)
-		{
-			LODInfo& editorSloppyInfo = m_sloppyLODsInfo.emplace_back();
-			editorSloppyInfo.setRenderingPipeline(m_renderingPipeline);
-			editorSloppyInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
-			editorSloppyInfo.setMesh(sloppySimplifiedMeshes[lodIdx - 1]);
-			editorSloppyInfo.setFirstMaterialIdx(firstMaterialIdx);
-			editorSloppyInfo.setBottomLevelAccelerationStructure(bottomLevelAccelerationStructure);
-			editorSloppyInfo.setLODIndexAndType(sloppyIdx, 1);
-			editorSloppyInfo.setError(modelSloppyLODInfo.m_error);
-			editorSloppyInfo.setIndexCount(modelSloppyLODInfo.m_indexCount);
-			editorSloppyInfo.setName("Sloppy LOD " + std::to_string(sloppyIdx));
-			sloppyIdx++;
-		}
-	}
+	m_name = name;
 }
 
 void MeshAssetEditor::addShape(Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& shape)
@@ -236,7 +177,26 @@ void MeshAssetEditor::computeInfoOutputJSON(std::string& out)
 	out += "}\n";
 }
 
-MeshAssetEditor::PhysicMesh::PhysicMesh() : ParameterGroupInterface(TAB)
+void MeshAssetEditor::setIsCentered(bool isCentered)
+{
+	m_isCenteredLabel.setName("Mesh is " + std::string(isCentered ? "centered" : "not centered"));
+}
+
+void MeshAssetEditor::addLOD(const AddLODInfo& addLodInfo)
+{
+	LODInfo& lodInfo = addLodInfo.m_lodType == 0 ? m_defaultLODsInfo.emplace_back() : m_sloppyLODsInfo.emplace_back();
+	lodInfo.setRenderingPipeline(m_renderingPipeline);
+	lodInfo.setEditorPushDataToGPU(m_editorPushDataToGPU);
+	lodInfo.setMesh(addLodInfo.m_mesh);
+	lodInfo.setDefaultMaterialIdx(addLodInfo.m_materialIdx);
+	//lodInfo.setBottomLevelAccelerationStructure(addLodInfo.m_blas);
+	lodInfo.setLODIndexAndType(addLodInfo.m_lodIdx, addLodInfo.m_lodType);
+	lodInfo.setError(addLodInfo.m_error);
+	lodInfo.setIndexCount(addLodInfo.m_mesh->getIndexCount());
+	lodInfo.setName("LOD " + std::to_string(addLodInfo.m_lodIdx));
+}
+
+MeshAssetEditor::PhysicMesh::PhysicMesh() : ParameterGroupInterface(TAB, "Shape")
 {
 	m_name = DEFAULT_NAME;
 }
@@ -292,19 +252,16 @@ void MeshAssetEditor::PhysicMesh::onValueChanged()
 void MeshAssetEditor::PhysicMesh::onShapeTypeChanged()
 {
 	onValueChanged();
-	m_requestReloadCallback(nullptr);
 }
 
 void MeshAssetEditor::onPhysicsMeshAdded()
 {
-	m_requestReloadCallback(this);
-	m_physicsMeshes.back().setRequestReloadCallback(m_requestReloadCallback);
 	m_physicsMeshes.back().subscribe(this, [this](Notifier::Flags) { notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::PHYSICS)); });
 }
 
 void MeshAssetEditor::centerMesh()
 {
-	std::string fullFilepath = g_editorConfiguration->computeFullPathFromLocalPath(m_filepath) + ".config";
+	std::string fullFilepath = g_editorConfiguration->computeFullPathFromLocalPath(m_name) + ".config";
 	Wolf::ConfigurationHelper::writeInfoToFile(fullFilepath, "forceCenter", true);
 
 	notifySubscribers(static_cast<uint32_t>(ResourceEditorNotificationFlagBits::MESH));
@@ -316,20 +273,18 @@ void MeshAssetEditor::toggleCustomViewForThumbnail()
 
 	if (m_isInCustomViewForThumbnail)
 	{
-		m_isolateMeshCallback(m_filepath);
+		m_isolateMeshCallback(m_name);
 		m_toggleCustomViewForThumbnail.setName("Exit view for thumbnail generation and save info");
-		m_requestReloadCallback(this);
 	}
 	else
 	{
 		m_removeIsolationAndGetViewMatrixCallback(m_viewMatrixForThumbnail);
 		m_requestThumbnailReload(m_viewMatrixForThumbnail);
 		m_toggleCustomViewForThumbnail.setName("Enter view for thumbnail generation");
-		m_requestReloadCallback(this);
 	}
 }
 
-MeshAssetEditor::LODInfo::LODInfo() : ParameterGroupInterface(TAB)
+MeshAssetEditor::LODInfo::LODInfo() : ParameterGroupInterface(TAB, "Info")
 {
 	m_name = DEFAULT_NAME;
 }
@@ -365,6 +320,6 @@ void MeshAssetEditor::LODInfo::onComputeVertexColorsAndNormals()
 		return;
 	}
 
-	ComputeVertexDataPass::Request request(m_editorPushDataToGPU, m_mesh, m_firstMaterialIdx, m_bottomLevelAccelerationStructure);
+	ComputeVertexDataPass::Request request(m_editorPushDataToGPU, m_mesh, m_defaultMaterialIdx, m_bottomLevelAccelerationStructure);
 	computeVertexDataPass->addRequestBeforeFrame(request);
 }

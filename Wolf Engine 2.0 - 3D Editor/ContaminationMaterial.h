@@ -91,7 +91,7 @@ private:
 };
 
 template <const std::string& TAB>
-ContaminationMaterialArrayItem<TAB>::ContaminationMaterialArrayItem() : ParameterGroupInterface(TAB)
+ContaminationMaterialArrayItem<TAB>::ContaminationMaterialArrayItem() : ParameterGroupInterface(TAB, "Material")
 {
 	m_name = DEFAULT_NAME;
 }

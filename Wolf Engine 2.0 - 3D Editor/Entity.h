@@ -31,6 +31,7 @@ public:
 	void releaseAllComponentNullableNonOwnerResources() const;
 	void removeAllComponents();
 	void setIdx(uint32_t idx) { m_idx = idx; }
+	void setTransient() { m_isTransient = true; }
 
 	virtual void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler, const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<DrawManager>& drawManager, const Wolf::ResourceNonOwner<EditorPhysicsManager>& editorPhysicsManager);
 	void addLightToLightManager(const Wolf::ResourceNonOwner<Wolf::LightManager>& lightManager) const;
@@ -44,7 +45,7 @@ public:
 	virtual const std::string& getName() const { return m_nameParam; }
 	const std::string& getLoadingPath() const { return m_filepath; }
 	virtual std::string computeEscapedLoadingPath() const;
-	virtual bool isFake() const { return false; }
+	virtual bool isTransient() const { return m_isTransient; }
 	uint32_t getIdx() const { return m_idx; }
 
 	void setIncludeEntityParams(bool value) { m_includeEntityParams = value; }
@@ -126,4 +127,6 @@ private:
 
 	static constexpr uint32_t INVALID_ID = -1;
 	uint32_t m_idx = INVALID_ID;
+
+	bool m_isTransient = false;
 };

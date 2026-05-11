@@ -52,12 +52,12 @@ protected:
 	glm::mat4 m_transform;
 	bool m_computeFromLine = false;
 
-	EditorParamVector3 m_scaleParam = EditorParamVector3("Scale", "Model", "Transform", -1.0f, 1.0f, [this] { recomputeTransform(); });
-	EditorParamVector3 m_translationParam = EditorParamVector3("Translation", "Model", "Transform", -10.0f, 10.0f, [this] { recomputeTransform(); });
+	EditorParamVector3 m_scaleParam = EditorParamVector3("Scale", "Mesh", "Transform", -1.0f, 1.0f, [this] { recomputeTransform(); });
+	EditorParamVector3 m_translationParam = EditorParamVector3("Translation", "Mesh", "Transform", -10.0f, 10.0f, [this] { recomputeTransform(); });
 
 	void updateRotation();
-	EditorParamVector4 m_rotationQuaternionParam = EditorParamVector4("Rotation quaternion", "Model", "Transform", -1.0f, 1.0f, [this] { recomputeTransform(); }, false, true);
-	EditorParamVector3 m_rotationParam = EditorParamVector3("Rotation", "Model", "Transform", 0.0f, 6.29f, [this] { updateRotation(); });
+	EditorParamVector4 m_rotationQuaternionParam = EditorParamVector4("Rotation quaternion", "Mesh", "Transform", -1.0f, 1.0f, [this] { recomputeTransform(); }, false, true);
+	EditorParamVector3 m_rotationParam = EditorParamVector3("Rotation", "Mesh", "Transform", 0.0f, 6.29f, [this] { updateRotation(); });
 
 	std::array<EditorParamInterface*, 4> m_modelParams =
 	{

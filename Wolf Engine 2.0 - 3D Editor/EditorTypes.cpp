@@ -16,10 +16,10 @@ void EditorParamInterface::activate()
 		ultralight::JSObject jsObject;
 		ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-		const std::string functionDisableName = "disable" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+		const std::string functionDisableName = "disable" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 		jsObject[functionDisableName.c_str()] = std::bind(&EditorParamInterface::disableParamJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 
-		const std::string functionEnableName = "enable" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+		const std::string functionEnableName = "enable" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 		jsObject[functionEnableName.c_str()] = std::bind(&EditorParamInterface::enabledParamJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	}
 }
@@ -35,6 +35,7 @@ void EditorParamInterface::addCommonInfoToJSON(std::string& out, uint32_t tabCou
 	out += tabs + R"("type" : ")" + getTypeAsString() + "\",\n";
 	out += tabs + R"("isActivable" : )" + (m_isActivable ? "true" : "false") + ",\n";
 	out += tabs + R"("isReadOnly" : )" + (m_isReadOnly ? "true" : "false") + ",\n";
+	out += tabs + R"("arrayIndex" : )" + std::to_string(m_arrayIdx) + ",\n";
 }
 
 std::string EditorParamInterface::getTypeAsString() const
@@ -73,6 +74,8 @@ std::string EditorParamInterface::getTypeAsString() const
 			return "Button";
 		case Type::LABEL:
 			return "Label";
+		case Type::ASSET:
+			return "Asset";
 		default:
 			Wolf::Debug::sendError("Undefined type");
 			return "Undefined_type";
@@ -141,7 +144,7 @@ void EditorParamsVector<T>::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionPrefix = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionPrefix = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 
 	const std::string functionChangeXName = functionPrefix + "X";
 	jsObject[functionChangeXName.c_str()] = std::bind(&EditorParamsVector::setValueXJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -232,7 +235,7 @@ void EditorParamUInt::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamUInt::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -290,7 +293,7 @@ void EditorParamFloat::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamFloat::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -327,7 +330,7 @@ void EditorParamString::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 	
-	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamString::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -339,17 +342,10 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 	out += tabs + +"{\n";
 	addCommonInfoToJSON(out, tabCount + 1);
 	out += tabs + '\t' + R"("value" : ")" + m_value + "\",\n";
-	out += tabs + '\t' + R"("drivesCategoryName" : )" + (m_drivesCategoryName ? "true" : "false") + ",\n";
 	out += tabs + '\t' + R"("fileFilter" : ")";
 	switch (m_stringType)
 	{
 		case ParamStringType::STRING:
-			break;
-		case ParamStringType::FILE_OBJ: 
-			out += "obj";
-			break;
-		case ParamStringType::FILE_DAE:
-			out += "dae";
 			break;
 		case ParamStringType::FILE_IMG: 
 			out += "img";
@@ -357,6 +353,8 @@ void EditorParamString::addToJSON(std::string& out, uint32_t tabCount, bool isLa
 		case ParamStringType::FILE_EXTERNAL_SCENE:
 			out += "externalScene";
 			break;
+		case ParamStringType::ASSET:
+			out += "asset";
 		case ParamStringType::ENTITY: break;
 	}
 	out += "\",\n";
@@ -370,13 +368,13 @@ EditorParamInterface::Type EditorParamString::stringTypeToParamType(ParamStringT
 	{
 		case ParamStringType::STRING:
 			return Type::STRING;
-		case ParamStringType::FILE_OBJ:
 		case ParamStringType::FILE_IMG:
-		case ParamStringType::FILE_DAE:
 		case ParamStringType::FILE_EXTERNAL_SCENE:
 			return Type::FILE;
 		case ParamStringType::ENTITY:
 			return Type::ENTITY;
+		case ParamStringType::ASSET:
+			return Type::ASSET;
 		default:
 			Wolf::Debug::sendError("Unhandled string type");
 			return Type::STRING;
@@ -404,7 +402,7 @@ void EditorParamBool::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamBool::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -440,7 +438,7 @@ void EditorParamButton::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamButton::onClickJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -469,7 +467,7 @@ void EditorParamEnum::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamEnum::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
@@ -525,7 +523,7 @@ void EditorParamCurve::activate()
 	ultralight::JSObject jsObject;
 	ms_wolfInstance->getUserInterfaceJSObject(jsObject);
 
-	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category);
+	const std::string functionChangeName = "change" + formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
 	jsObject[functionChangeName.c_str()] = std::bind(&EditorParamCurve::setValueJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 

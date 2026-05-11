@@ -2,7 +2,7 @@
 
 #include <glm/gtc/constants.hpp>
 
-#include "AnimatedModel.h"
+#include "AnimatedMesh.h"
 #include "ContaminationEmitter.h"
 #include "DebugRenderingManager.h"
 #include "EditorParamsHelper.h"
@@ -18,7 +18,7 @@ PlayerComponent::PlayerComponent(std::function<Wolf::NullableResourceNonOwner<En
 
 void PlayerComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_editorParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
 void PlayerComponent::activateParams()
@@ -236,9 +236,9 @@ void PlayerComponent::onEntityRegistered()
 
 void PlayerComponent::updateAnimatedModel()
 {
-	if (Wolf::NullableResourceNonOwner<AnimatedModel> animatedModel = m_entity->getComponent<AnimatedModel>())
+	if (Wolf::NullableResourceNonOwner<AnimatedMesh> animatedModel = m_entity->getComponent<AnimatedMesh>())
 	{
-		m_animatedModel.reset(new Wolf::ResourceNonOwner<AnimatedModel>(animatedModel));
+		m_animatedModel.reset(new Wolf::ResourceNonOwner<AnimatedMesh>(animatedModel));
 
 		animatedModel->unsubscribe(this);
 		animatedModel->subscribe(this, [this](Flags) { updateAnimatedModel(); });

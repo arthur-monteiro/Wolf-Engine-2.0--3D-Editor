@@ -170,7 +170,6 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
 
                 ExternalSceneLoader::MaterialData& outputMaterialData = outputData.m_materialsData.emplace_back();
                 tinygltf::Material& material = model.materials[primitive.material];
-                outputMaterialData.m_textureSet.name = material.name;
 
                 TextureSetLoader::TextureSetFileInfoGGX& materialFileInfoGGX = outputMaterialData.m_textureSetFileInfo;
                 materialFileInfoGGX.name = material.name;
@@ -218,32 +217,6 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                 materialFileInfoGGX.metalness = metalnessFilename;
                 materialFileInfoGGX.ao = "";
                 materialFileInfoGGX.anisoStrength = "";
-
-                TextureSetLoader::OutputLayout outputLayout;
-                outputLayout.albedoCompression = Wolf::ImageCompression::Compression::BC1;
-                outputLayout.normalCompression = Wolf::ImageCompression::Compression::BC5;
-
-                TextureSetLoader textureSetLoader(materialFileInfoGGX, outputLayout, true, assetManager);
-
-                for (uint32_t i = 0; i < 2 /* albedo and normal */; ++i)
-                {
-                    if (AssetId assetId = textureSetLoader.getImageAssetId(i); assetId != NO_ASSET)
-                    {
-                        outputMaterialData.m_textureSet.imageAssetIds[i] = assetId;
-
-                        outputMaterialData.m_textureSet.images[i] = assetManager->getImage(textureSetLoader.getImageAssetId(i));
-                        outputMaterialData.m_textureSet.slicesFolders[i] = assetManager->getImageSlicesFolder(textureSetLoader.getImageAssetId(i));
-                    }
-                }
-
-                // Get combined image
-                if (AssetId assetId = textureSetLoader.getImageAssetId(2); assetId != NO_ASSET)
-                {
-                    outputMaterialData.m_textureSet.imageAssetIds[2] = assetId;
-
-                    outputMaterialData.m_textureSet.images[2] = assetManager->getCombinedImage(textureSetLoader.getImageAssetId(2));
-                    outputMaterialData.m_textureSet.slicesFolders[2] = assetManager->getCombinedImageSlicesFolder(textureSetLoader.getImageAssetId(2));
-                }
             }
         }
     }
@@ -254,9 +227,6 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
     {
         traverseNodes(outputData, model, nodeIdx, glm::mat4(1.0f), nodesVisited);
     }
-
-    std::string cacheFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename + ".bin");
-    ExternalSceneLoader::writeCache(cacheFilename, outputData);
 }
 
 void GLTFImporter::traverseNodes(ExternalSceneLoader::OutputData& outputData, const tinygltf::Model& model, uint32_t nodeIdx, const glm::mat4& parentTransform, std::vector<bool>& nodesVisited)

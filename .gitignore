@@ -386,7 +386,8 @@ tmp/
 Wolf Engine 2.0 - 3D Editor/reports/*.json
 
 */Data*/
-Wolf Engine 2.0 - 3D Editor/UI/media/resourceIcon/
+*/cache*/
+Wolf Engine 2.0 - 3D Editor/UI/media/assetIcons/
 
 dependencies/*
 */PathTracingResults/*

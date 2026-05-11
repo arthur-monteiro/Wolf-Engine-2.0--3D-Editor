@@ -4,9 +4,11 @@
 
 #include <Configuration.h>
 #include <DebugMarker.h>
+#include <MaterialsGPUManager.h>
 #include <Pipeline.h>
 #include <RayTracingShaderGroupGenerator.h>
 
+#include "DescriptorSetGenerator.h"
 #include "RayTracedWorldManager.h"
 
 Wolf::DescriptorSetLayoutGenerator ComputeVertexDataPass::m_resetBuffersDescriptorSetLayoutGenerator;

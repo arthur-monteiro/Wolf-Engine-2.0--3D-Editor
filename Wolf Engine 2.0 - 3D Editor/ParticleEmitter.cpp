@@ -1,14 +1,13 @@
 #include "ParticleEmitter.h"
 
+#include "AssetManager.h"
 #include "EditorParamsHelper.h"
 #include "Entity.h"
 #include "ParticleUpdatePass.h"
 
-ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const std::function<void(ComponentInterface*)>& requestReloadCallback) :
-	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_customDepthPass(renderingPipeline->getCustomRenderPass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+ParticleEmitter::ParticleEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& assetManager) :
+	m_particleUpdatePass(renderingPipeline->getParticleUpdatePass()), m_customDepthPass(renderingPipeline->getCustomRenderPass()), m_assetManager(assetManager)
 {
-	m_requestReloadCallback = requestReloadCallback;
-
 	m_particleUpdatePass->registerEmitter(this);
 
 	m_maxParticleCount = 1;
@@ -29,7 +28,7 @@ ParticleEmitter::~ParticleEmitter()
 
 void ParticleEmitter::loadParams(Wolf::JSONReader& jsonReader)
 {
-	::loadParams(jsonReader, ID, m_allEditorParams);
+	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_allEditorParams);
 }
 
 void ParticleEmitter::activateParams()
@@ -45,12 +44,6 @@ void ParticleEmitter::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
-	if (m_needCheckForNewLinkedEntities)
-	{
-		onParticleEntityChanged();
-		m_needCheckForNewLinkedEntities = false;
-	}
-
 	// Set next idx from previous spawn
 	m_nextParticleToSpawnIdx = (m_nextParticleToSpawnIdx + m_nextParticleToSpawnCount) % m_maxParticleCount;
 
@@ -67,14 +60,6 @@ void ParticleEmitter::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wo
 	if (!m_isEmitting)
 	{
 		m_nextParticleToSpawnCount = 0;
-	}
-
-	if (!m_particleNotificationRegistered && m_particleComponent)
-	{
-		m_particleComponent->subscribe(this, [this](Flags) { onParticleDataChanged(); });
-		m_particleNotificationRegistered = true;
-
-		onParticleDataChanged();
 	}
 
 	if (m_needToRegisterDepthTexture)
@@ -171,11 +156,6 @@ float ParticleEmitter::getSpawnBoxDepth() const
 	return m_spawnBoxDepth;
 }
 
-void ParticleEmitter::onEntityRegistered()
-{
-	m_needCheckForNewLinkedEntities = true;
-}
-
 void ParticleEmitter::forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString)
 {
 	for (EditorParamInterface* editorParam : m_alwaysVisibleEditorParams)
@@ -251,8 +231,6 @@ void ParticleEmitter::onUsedTileCountInFlipBookChanged()
 	m_firstFlipBookRandomRange.setMax(m_flipBookSizeX * m_flipBookSizeY - m_usedTileCountInFlipBook);
 
 	m_particleUpdatePass->updateEmitter(this);
-
-	m_requestReloadCallback(this);
 }
 
 void ParticleEmitter::onParticleCountChanged()
@@ -281,39 +259,31 @@ void ParticleEmitter::onParticleOpacityChanged()
 	m_particleUpdatePass->updateEmitter(this);
 }
 
-void ParticleEmitter::onParticleEntityChanged()
+void ParticleEmitter::onParticleAssetChanged()
 {
-	if (!m_entity)
+	if (static_cast<std::string>(m_particleAssetParam) == "")
 		return;
 
-	std::string entityStr = static_cast<std::string>(m_particleEntityParam);
-	if (std::string sanitizedEntity = EditorConfiguration::sanitizeFilePath(entityStr); sanitizedEntity != entityStr)
+	AssetId assetId = m_assetManager->getAssetIdForPath(m_particleAssetParam);
+	if (!m_assetManager->isParticle(assetId))
 	{
-		m_particleEntityParam = sanitizedEntity;
-		return;
+		Wolf::Debug::sendWarning("Asset is not a particle");
+		m_particleAssetParam = "";
 	}
 
-	if (!entityStr.empty())
-	{
-		if (Wolf::NullableResourceNonOwner<Particle> particleComponent = m_getEntityFromLoadingPathCallback(entityStr)->getComponent<Particle>())
-		{
-			m_particleComponent = particleComponent;
-			//m_usedTileCountInFlipBook = 0; // will be set to max in 'onParticleDataChanged'
-			m_particleNotificationRegistered = false;
-		}
-	}
-	else
-	{
-		m_particleComponent = Wolf::NullableResourceNonOwner<Particle>();
-		m_firstFlipBookIdx.setMax(1);
-	}
+	m_particleAssetId = assetId;
+	m_assetManager->getParticleEditor(m_particleAssetId)->subscribe(this, [this](Flags) { onParticleDataChanged(); });
+	onParticleDataChanged();
+	notifySubscribers();
 }
 
 void ParticleEmitter::onParticleDataChanged()
 {
-	m_materialIdx = m_particleComponent->getMaterialIdx();
-	m_flipBookSizeX = m_particleComponent->getFlipBookSizeX();
-	m_flipBookSizeY = m_particleComponent->getFlipBookSizeY();
+	Wolf::ResourceNonOwner<ParticleEditor> particleEditor = m_assetManager->getParticleEditor(m_particleAssetId);
+
+	m_materialIdx = particleEditor->getMaterialIdx();
+	m_flipBookSizeX = particleEditor->getFlipBookSizeX();
+	m_flipBookSizeY = particleEditor->getFlipBookSizeY();
 	m_firstFlipBookIdx.setMax(m_flipBookSizeX * m_flipBookSizeY);
 	m_firstFlipBookRandomRange.setMax(m_flipBookSizeX * m_flipBookSizeY);
 	m_usedTileCountInFlipBook.setMax(m_flipBookSizeX * m_flipBookSizeY);
@@ -323,8 +293,6 @@ void ParticleEmitter::onParticleDataChanged()
 	}
 
 	m_particleUpdatePass->updateEmitter(this);
-
-	m_requestReloadCallback(this);
 }
 
 void ParticleEmitter::onCollisionTypeChanged()
@@ -349,8 +317,6 @@ void ParticleEmitter::onCollisionTypeChanged()
 			m_needToRegisterDepthTexture = true;
 		}
 	}
-
-	m_requestReloadCallback(this);
 }
 
 void ParticleEmitter::onCollisionBehaviourChanged()

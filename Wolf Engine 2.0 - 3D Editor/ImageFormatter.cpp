@@ -6,28 +6,36 @@
 #include <ImageFileLoader.h>
 #include <GPUDataTransfersManager.h>
 
+#include "EditorConfiguration.h"
 #include "MipMapGenerator.h"
 
-ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& filename, const std::string& slicesFolder, Wolf::Format finalFormat, bool canBeVirtualized,
-	KeepDataMode keepDataMode, bool loadMips) : m_keepDataMode(keepDataMode), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU), m_originFilename(filename)
+ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& fullFilePath, Wolf::Format finalFormat, bool canBeVirtualized,
+	KeepDataMode keepDataMode, bool loadMips) : m_keepDataMode(keepDataMode), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU), m_originFilename(EditorConfiguration::sanitizeFilePath(fullFilePath))
 {
+	computeCachePaths(fullFilePath, finalFormat, m_cacheFilename, m_slicesFolder);
+
     if (canBeVirtualized && Wolf::g_configuration->getUseVirtualTexture())
     {
+    	if (!std::filesystem::is_directory(m_slicesFolder) || !std::filesystem::exists(m_slicesFolder))
+    	{
+    		std::filesystem::create_directory(m_slicesFolder);
+    	}
+
         if (finalFormat == Wolf::Format::BC1_RGB_SRGB_BLOCK)
         {
-            createSlicedCacheFromFile<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::BC1>(filename, slicesFolder, Wolf::isSRGBFormat(finalFormat), finalFormat);
+            createSlicedCacheFromFile<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::BC1>(fullFilePath, Wolf::isSRGBFormat(finalFormat), finalFormat);
         }
     	else if (finalFormat == Wolf::Format::BC5_UNORM_BLOCK)
     	{
-    		createSlicedCacheFromFile<Wolf::ImageCompression::RG32F, Wolf::ImageCompression::BC5>(filename, slicesFolder, Wolf::isSRGBFormat(finalFormat), finalFormat);
+    		createSlicedCacheFromFile<Wolf::ImageCompression::RG32F, Wolf::ImageCompression::BC5>(fullFilePath, Wolf::isSRGBFormat(finalFormat), finalFormat);
     	}
     	else if (finalFormat == Wolf::Format::BC3_UNORM_BLOCK)
     	{
-    		createSlicedCacheFromFile<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::BC3>(filename, slicesFolder, Wolf::isSRGBFormat(finalFormat), finalFormat);
+    		createSlicedCacheFromFile<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::BC3>(fullFilePath, Wolf::isSRGBFormat(finalFormat), finalFormat);
     	}
     	else if (finalFormat == Wolf::Format::R8G8B8A8_UNORM)
     	{
-    		createSlicedCacheFromFile<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::RGBA8>(filename, slicesFolder, Wolf::isSRGBFormat(finalFormat), finalFormat);
+    		createSlicedCacheFromFile<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::RGBA8>(fullFilePath, Wolf::isSRGBFormat(finalFormat), finalFormat);
     	}
         else
         {
@@ -38,23 +46,23 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
     {
         if (finalFormat == Wolf::Format::BC1_RGB_SRGB_BLOCK || finalFormat == Wolf::Format::BC3_UNORM_BLOCK || finalFormat == Wolf::Format::R8G8B8A8_UNORM || finalFormat == Wolf::Format::R8G8B8A8_SRGB)
         {
-            if (!createImageFileFromCache(filename, finalFormat))
+            if (!createImageFileFromCache(fullFilePath, finalFormat))
             {
-                createImageFileFromSource<Wolf::ImageCompression::RGBA8>(filename, finalFormat);
+                createImageFileFromSource<Wolf::ImageCompression::RGBA8>(fullFilePath, finalFormat);
             }
         }
     	else if (finalFormat == Wolf::Format::BC5_UNORM_BLOCK)
     	{
-    		if (!createImageFileFromCache(filename, finalFormat))
+    		if (!createImageFileFromCache(fullFilePath, finalFormat))
     		{
-    			createImageFileFromSource<Wolf::ImageCompression::RG32F>(filename, finalFormat);
+    			createImageFileFromSource<Wolf::ImageCompression::RG32F>(fullFilePath, finalFormat);
     		}
     	}
     	else if (finalFormat == Wolf::Format::R32G32B32A32_SFLOAT)
     	{
-    		if (!createImageFileFromCache(filename, finalFormat))
+    		if (!createImageFileFromCache(fullFilePath, finalFormat))
     		{
-    			createImageFileFromSource<Wolf::ImageCompression::RGBA32F>(filename, finalFormat);
+    			createImageFileFromSource<Wolf::ImageCompression::RGBA32F>(fullFilePath, finalFormat);
     		}
     	}
         else
@@ -65,7 +73,7 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
 }
 
 ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::vector<Wolf::ImageCompression::RGBA8>& data, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels,
-	Wolf::Extent3D extent, const std::string& binFolder, const std::string& path, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode)
+	Wolf::Extent3D extent, const std::string& fullFilePath, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode)
 : m_keepDataMode(keepDataMode), m_editorPushDataToGPU(editorPushDataToGPU)
 {
 	if (finalFormat != Wolf::Format::BC3_UNORM_BLOCK)
@@ -73,27 +81,27 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
 		Wolf::Debug::sendCriticalError("Unsupported format");
 	}
 
+	computeCachePaths(fullFilePath, finalFormat, m_cacheFilename, m_slicesFolder);
+
 	if (canBeVirtualized && Wolf::g_configuration->getUseVirtualTexture())
 	{
-		std::string binFolderForSlices = binFolder;
-		if (!std::filesystem::is_directory(binFolderForSlices) || !std::filesystem::exists(binFolderForSlices))
+		if (!std::filesystem::is_directory(m_slicesFolder) || !std::filesystem::exists(m_slicesFolder))
 		{
-			std::filesystem::create_directory(binFolderForSlices);
+			std::filesystem::create_directory(m_slicesFolder);
 		}
 
-		m_slicesFolder = binFolderForSlices;
-		createSlicedCacheFromData<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::BC3>(binFolderForSlices, extent, data, mipLevels);
+		createSlicedCacheFromData<Wolf::ImageCompression::RGBA8, Wolf::ImageCompression::BC3>(extent, data, mipLevels);
 	}
 	else
 	{
-		std::fstream outCacheFile(path + ".bin", std::ios::out | std::ios::binary);
+		std::fstream outCacheFile(fullFilePath + ".bin", std::ios::out | std::ios::binary);
 
 		/* Hash */
 		uint64_t hash = HASH;
 		outCacheFile.write(reinterpret_cast<char*>(&hash), sizeof(hash));
 		outCacheFile.write(reinterpret_cast<char*>(&extent), sizeof(Wolf::Extent3D));
 
-		compressAndCreateImage<Wolf::ImageCompression::BC3>(mipLevels, data, extent, Wolf::Format::BC3_UNORM_BLOCK, path, outCacheFile);
+		compressAndCreateImage<Wolf::ImageCompression::BC3>(mipLevels, data, extent, Wolf::Format::BC3_UNORM_BLOCK, fullFilePath, outCacheFile);
 	}
 }
 
@@ -110,21 +118,15 @@ const uint8_t* ImageFormatter::getPixels(uint32_t mipLevel) const
 		return m_mipLevelPixels[mipLevel - 1].data();
 }
 
-bool ImageFormatter::isCacheAvailable(const std::string& filename, const std::string& binFolder, bool canBeVirtualized)
+bool ImageFormatter::isCacheAvailable(const std::string& fullFilePath, Wolf::Format format, bool canBeVirtualized)
 {
+	std::string cacheFilename, slicesFolder;
+	computeCachePaths(fullFilePath, format, cacheFilename, slicesFolder);
+
 	if (canBeVirtualized && Wolf::g_configuration->getUseVirtualTexture())
 	{
-		std::string binFolderForSlices;
-		for (const char character : binFolder)
-		{
-			if (character == '/')
-				binFolderForSlices += "\\";
-			else
-				binFolderForSlices += character;
-		}
-
 		// Check 1st file to avoid loading pixels if we don't need
-		std::string binFilename = binFolderForSlices + "mip0_sliceX0_sliceY0.bin";
+		std::string binFilename = slicesFolder + "mip0_sliceX0_sliceY0.bin";
 		if (std::filesystem::exists(binFilename))
 		{
 			std::ifstream input(binFilename, std::ios::in | std::ios::binary);
@@ -139,10 +141,9 @@ bool ImageFormatter::isCacheAvailable(const std::string& filename, const std::st
 	}
 	else
 	{
-		std::string binFilename = filename + ".bin";
-		if (std::filesystem::exists(binFilename))
+		if (std::filesystem::exists(cacheFilename))
 		{
-			std::ifstream input(binFilename, std::ios::in | std::ios::binary);
+			std::ifstream input(cacheFilename, std::ios::in | std::ios::binary);
 
 			uint64_t hash;
 			input.read(reinterpret_cast<char*>(&hash), sizeof(hash));
@@ -187,16 +188,15 @@ Wolf::Format ImageFormatter::findUncompressedFormat(Wolf::Format format)
 
 bool ImageFormatter::createImageFileFromCache(const std::string& filename, Wolf::Format format)
 {
-    std::string binFilename = filename + ".bin";
-	if (std::filesystem::exists(binFilename))
+	if (std::filesystem::exists(m_cacheFilename))
 	{
-		std::ifstream input(binFilename, std::ios::in | std::ios::binary);
+		std::ifstream input(m_cacheFilename, std::ios::in | std::ios::binary);
 
 		uint64_t hash;
 		input.read(reinterpret_cast<char*>(&hash), sizeof(hash));
 		if (hash != HASH)
 		{
-			Wolf::Debug::sendInfo("Cache found but hash is incorrect");
+			Wolf::Debug::sendInfo("Cache found but hash is incorrect: " + m_cacheFilename);
 			return false;
 		}
 
@@ -245,7 +245,7 @@ bool ImageFormatter::createImageFileFromCache(const std::string& filename, Wolf:
 		return true;
 	}
 
-	Wolf::Debug::sendInfo("Cache not found");
+	Wolf::Debug::sendInfo("Cache not found: " + m_cacheFilename);
 	return false;
 }
 
@@ -350,6 +350,20 @@ void ImageFormatter::loadImageFile(const std::string& filename, Wolf::Format for
 	}
 
 	outExtent = { (imageFileLoader.getWidth()), (imageFileLoader.getHeight()), 1 };
+}
+
+void ImageFormatter::computeCachePaths(const std::string& inFullPath, Wolf::Format format, std::string& outCache, std::string& outSlicesFolder)
+{
+	std::string escapedFilename = g_editorConfiguration->computeLocalPathFromFullPath(inFullPath);
+	for (size_t i = 0; i < escapedFilename.length(); ++i)
+	{
+		if (escapedFilename[i] == '/' || escapedFilename[i] == '\\')
+		{
+			escapedFilename[i] = '_';
+		}
+	}
+	outCache = g_editorConfiguration->getCacheFolderPath() + "/" + escapedFilename + "_" + Wolf::formatToString(format) + ".bin";
+	outSlicesFolder = outCache + "_slices/";
 }
 
 void ImageFormatter::createImageFromData(Wolf::Extent3D extent, Wolf::Format format, const uint8_t* pixels, const std::vector<const unsigned char*>& mipLevels)

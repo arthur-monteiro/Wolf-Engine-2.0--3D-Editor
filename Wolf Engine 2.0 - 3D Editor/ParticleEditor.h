@@ -1,24 +1,27 @@
 #pragma once
 
+#include "AssetId.h"
 #include "ComponentInterface.h"
 #include "EditorConfiguration.h"
 #include "EditorTypesTemplated.h"
 #include "EditorTypes.h"
 
-class Particle : public ComponentInterface
+class AssetManager;
+
+class ParticleEditor : public ComponentInterface
 {
 public:
-	static inline std::string ID = "particleComponent";
+	static inline std::string ID = "particleEditor";
 	std::string getId() const override { return ID; }
 
-	Particle(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, 
-		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback);
+	ParticleEditor(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, AssetManager* assetManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
 	void addParamsToJSON(std::string& outJSON, uint32_t tabCount) override;
 
-	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
+	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override {}
+	void updateBeforeFrame();
 	void alterMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& renderMeshList) override {}
 	void addDebugInfo(DebugRenderingManager& debugRenderingManager) override {}
 
@@ -31,20 +34,19 @@ public:
 private:
 	inline static const std::string TAB = "Particle";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
-	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
-	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
+	AssetManager* m_assetManager;
 
-	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_materialEntity;
-	void onMaterialEntityChanged();
-	bool m_materialNotificationRegistered = false;
-
-	EditorParamString m_materialEntityParam = EditorParamString("Material entity", TAB, "Material", [this]() { onMaterialEntityChanged(); }, EditorParamString::ParamStringType::ENTITY);
+	void onMaterialAssetChanged();
+	AssetId m_materialAssetId = NO_ASSET;
+	bool m_waitingForMaterialToLoad = false;
+	uint32_t m_materialIdx = 0;
+	EditorParamString m_materialAssetParam = EditorParamString("Material", TAB, "Material", [this]() { onMaterialAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
 	EditorParamUInt m_flipBookSizeX = EditorParamUInt("Flip book size X", TAB, "Material", 1, 8, [this]() { notifySubscribers(); });
 	EditorParamUInt m_flipBookSizeY = EditorParamUInt("Flip book size Y", TAB, "Material", 1, 8, [this]() { notifySubscribers(); });
 
 	std::array<EditorParamInterface*, 3> m_editorParams =
 	{
-		&m_materialEntityParam,
+		&m_materialAssetParam,
 		&m_flipBookSizeX,
 		&m_flipBookSizeY
 	};

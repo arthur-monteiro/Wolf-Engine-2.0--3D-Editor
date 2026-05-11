@@ -24,7 +24,7 @@ public:
 
 private:
     inline static const std::string TAB = "Color grading";
-    Wolf::ResourceNonOwner<AssetManager> m_resourceManager;
+    Wolf::ResourceNonOwner<AssetManager> m_assetManager;
     Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
     bool updateLUTImage();
@@ -32,6 +32,7 @@ private:
     void onLUTImageMapChanged();
     AssetId m_lutImageResourceId = NO_ASSET;
     bool m_lutImageUpdateRequested = true;
+    static constexpr Wolf::Format LUT_IMAGE_FORMAT = Wolf::Format::R16G16B16A16_SFLOAT;
     EditorParamString m_lutImageParam = EditorParamString("LUT image", TAB, "Resources", [this]() { onLUTImageMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
 
     std::array<EditorParamInterface*, 1> m_editorParams =

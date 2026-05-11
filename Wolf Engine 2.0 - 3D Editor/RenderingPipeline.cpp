@@ -224,7 +224,7 @@ void RenderingPipeline::setResourceManager(const Wolf::ResourceNonOwner<AssetMan
 {
 	if (m_voxelGIPass)
 	{
-		m_voxelGIPass->setResourceManager(resourceManager);
+		m_voxelGIPass->setAssetManager(resourceManager);
 	}
 }
 

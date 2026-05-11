@@ -2,10 +2,9 @@
 
 #include <string>
 
-#include <AABB.h>
-#include <BoundingSphere.h>
 #include <PhysicShapes.h>
 
+#include "SkeletonVertex.h"
 #include "TextureSetLoader.h"
 #include "Vertex3D.h"
 
@@ -35,15 +34,15 @@ public:
         std::string m_name;
 
         std::vector<Vertex3D> m_staticVertices;
+        std::vector<SkeletonVertex> m_skeletonVertices;
         std::vector<uint32_t> m_indices;
 
+        Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
         std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>> m_physicsShapes;
     };
 
     struct MaterialData
     {
-        Wolf::MaterialsGPUManager::TextureSetInfo m_textureSet;
-
         TextureSetLoader::TextureSetFileInfoGGX m_textureSetFileInfo;
     };
 
@@ -61,10 +60,12 @@ public:
         std::vector<InstanceData> m_instancesData;
     };
 
-    static void loadScene(OutputData& outputData, SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager);
+    static void loadScene(OutputData& outputData, const SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager);
 
     static void writeCache(const std::string& filename, const OutputData& data);
 
 private:
     static void loadCache(const std::string& filename, OutputData& outData, AssetManager* assetManager);
+    static void writeBoneToCache(std::ofstream& file, const AnimationData::Bone& bone);
+    static void readBoneFromCache(std::ifstream& file, AnimationData::Bone& bone);
 };
