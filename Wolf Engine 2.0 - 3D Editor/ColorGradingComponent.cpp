@@ -31,30 +31,48 @@ void ColorGradingComponent::addParamsToJSON(std::string& outJSON, uint32_t tabCo
 
 void ColorGradingComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
-    if (m_lutImageUpdateRequested)
-    {
-        if (updateLUTImage())
-        {
-            m_lutImageUpdateRequested = false;
-        }
-    }
 }
 
 bool ColorGradingComponent::updateLUTImage()
 {
-    // TODO
+    if (m_lutImageAssetId == NO_ASSET)
+    {
+        m_renderingPipeline->getCompositionPass()->releaseInputLUT();
+        return true;
+    }
+
+    AssetImageInterface::LoadingRequest loadingRequest{};
+    loadingRequest.m_keepDataOnCPU = true;
+    loadingRequest.m_canBeVirtualized = false;
+    loadingRequest.m_format = LUT_IMAGE_FORMAT;
+    loadingRequest.m_loadMips = false;
+
+    m_assetManager->requestImageLoading(m_lutImageAssetId, loadingRequest, true);
+    Wolf::ResourceNonOwner<Wolf::Image> image = m_assetManager->getImage(m_lutImageAssetId, LUT_IMAGE_FORMAT);
+
+    m_renderingPipeline->getCompositionPass()->setInputLUT(image);
+
     return true;
 }
 
 void ColorGradingComponent::onLUTImageMapChanged()
 {
-    if (static_cast<std::string>(m_lutImageParam) != "")
+    if (static_cast<std::string>(m_lutImageParam) == "")
     {
-        m_lutImageResourceId = m_assetManager->addImage(m_lutImageParam);
+        m_lutImageAssetId = NO_ASSET;
     }
     else
     {
-        m_lutImageResourceId = NO_ASSET;
+        AssetId assetId = m_assetManager->getAssetIdForPath(m_lutImageParam);
+        if (!m_assetManager->isImage(assetId))
+        {
+            Wolf::Debug::sendWarning("Asset is not an image");
+            m_lutImageParam = "";
+        }
+
+        m_lutImageAssetId = assetId;
     }
-    m_lutImageUpdateRequested = true;
+
+    updateLUTImage();
+    notifySubscribers();
 }

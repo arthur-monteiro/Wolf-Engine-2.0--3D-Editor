@@ -83,6 +83,7 @@ private:
 	ultralight::JSValue isAABBShowedForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
 	void toggleBoundingSphereDisplayForSelectedEntity(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue isBoundingSphereShowedForSelectedEntityJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args) const;
+	void reloadEntityUIJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	void selectEntity() const;
 	void goToEntity(Entity* entity) const;
@@ -123,7 +124,6 @@ private:
 
 	std::unique_ptr<EditorParams> m_editorParams;
 
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	std::unique_ptr<Wolf::ResourceNonOwner<Entity>> m_selectedEntity;
 	std::mutex m_entityChangedMutex;

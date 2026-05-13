@@ -38,10 +38,10 @@ public:
 		}
 
 		Request(const unsigned char* pixels, const Wolf::ResourceNonOwner<Wolf::Image>& outputImage, const Wolf::Image::TransitionLayoutInfo& finalLayout, uint32_t mipLevel,
-			const glm::ivec2& copySize, const glm::ivec2& imageOffset) :
+			const glm::ivec3& copySize, const glm::ivec3& imageOffset) :
 			m_data(pixels), m_outputImage(outputImage), m_finalLayout(finalLayout), m_mipLevel(mipLevel), m_copySize(copySize), m_imageOffset(imageOffset)
 		{
-			m_size = static_cast<uint32_t>(static_cast<float>(copySize.x) * static_cast<float>(copySize.y) * m_outputImage->getBPP());
+			m_size = static_cast<uint32_t>(static_cast<float>(copySize.x) * static_cast<float>(copySize.y) * static_cast<float>(copySize.z) * m_outputImage->getBPP());
 		}
 
 		Request(uint32_t fillData, uint32_t size, const Wolf::ResourceNonOwner<Wolf::Buffer>& outputBuffer, uint32_t outputOffset)
@@ -61,8 +61,8 @@ public:
 		[[nodiscard]] uint32_t getOutputOffset() const { return m_outputOffset; }
 		[[nodiscard]] const Wolf::Image::TransitionLayoutInfo& getImageFinalLayout() const { return m_finalLayout; }
 		[[nodiscard]] uint32_t getMipLevel() const { return m_mipLevel; }
-		[[nodiscard]] const glm::ivec2& getCopySize() const { return m_copySize; }
-		[[nodiscard]] const glm::ivec2& getImageOffset() const { return m_imageOffset; }
+		[[nodiscard]] const glm::ivec3& getCopySize() const { return m_copySize; }
+		[[nodiscard]] const glm::ivec3& getImageOffset() const { return m_imageOffset; }
 
 	private:
 		const void* m_data = nullptr;
@@ -73,8 +73,8 @@ public:
 		uint32_t m_outputOffset = 0;
 		Wolf::Image::TransitionLayoutInfo m_finalLayout{};
 		uint32_t m_mipLevel = 0;
-		glm::ivec2 m_copySize{};
-		glm::ivec2 m_imageOffset{};
+		glm::ivec3 m_copySize{};
+		glm::ivec3 m_imageOffset{};
 	};
 	void addRequestBeforeFrame(const Request& request);
 

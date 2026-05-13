@@ -44,6 +44,10 @@
 				<span class="material-symbols-outlined" style="font-size: 16px;">ios_share</span>
 				Export
 			</button>
+			<button class="toolbarButton" onclick="reloadParameters()" title="Reload UI Parameters (F5)">
+				<span class="material-symbols-outlined" style="font-size: 16px;">refresh</span>
+				Reload
+			</button>
 
 			<div id="sceneName">Unknown scene</div>
 
@@ -461,6 +465,13 @@
 				for (const input of inputs) {
 					input.blur();
 				}
+			}
+		});
+
+		window.addEventListener('keydown', (e) => {
+			if (e.key === 'F5') {
+				e.preventDefault();
+				reloadParameters();
 			}
 		});
 

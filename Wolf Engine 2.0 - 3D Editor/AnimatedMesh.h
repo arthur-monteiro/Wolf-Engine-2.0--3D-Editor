@@ -12,8 +12,7 @@ public:
 	static inline std::string ID = "animatedMesh";
 	std::string getId() const override { return ID; }
 
-	AnimatedMesh(const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
-		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback);
+	AnimatedMesh(const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 
@@ -44,9 +43,7 @@ private:
 
 	inline static const std::string TAB = "Mesh";
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
-	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	AssetId m_meshAssetId = NO_ASSET;
 
 	Wolf::NullableResourceNonOwner<AnimationData> findAnimationData(bool& success);

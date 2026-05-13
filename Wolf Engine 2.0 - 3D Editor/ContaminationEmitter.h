@@ -19,7 +19,7 @@ public:
 	std::string getId() const override { return ID; }
 	static constexpr uint32_t CONTAMINATION_IDS_IMAGE_SIZE = 64;
 
-	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, 
+	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
 		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
 		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
@@ -49,7 +49,6 @@ private:
 	void onEntityRegistered() override;
 
 	inline static const std::string TAB = "Contamination emitter";
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialGPUManager;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	Wolf::ResourceNonOwner<ContaminationUpdatePass> m_contaminationUpdatePass;

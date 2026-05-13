@@ -11,11 +11,11 @@
 #include "ExternalSceneLoader.h"
 #include "StaticMesh.h"
 
-ExternalSceneComponent::ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityCallback,
+ExternalSceneComponent::ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager,
                                                const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-                                               const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
-: m_assetManager(assetManager), m_getEntityCallback(getEntityCallback), m_createEntityCallback(createEntityCallback), m_materialsGPUManager(materialsGPUManager),
-  m_requestReloadCallback(requestReloadCallback), m_renderingPipeline(renderingPipeline)
+                                               const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+: m_assetManager(assetManager), m_createEntityCallback(createEntityCallback), m_materialsGPUManager(materialsGPUManager),
+  m_renderingPipeline(renderingPipeline)
 {
 }
 
@@ -70,11 +70,6 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
         		std::string newEntityPath = newEntitiesFolder + "/" + modelName + "_" + std::to_string(i) + ".json";
         		std::string newEntityLocalPath = g_editorConfiguration->computeLocalPathFromFullPath(newEntityPath);
 
-        		if (Wolf::NullableResourceNonOwner<Entity> entity = m_getEntityCallback(newEntityLocalPath); static_cast<bool>(entity))
-        		{
-        			Wolf::Debug::sendCriticalError("Entity should not already exist");
-        		}
-
         		Entity* newEntity = m_createEntityCallback(this, newEntityLocalPath);
         		newEntity->setName(modelName + "_" + std::to_string(i));
         		newEntity->setTransient();
@@ -84,7 +79,7 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
 
         		if (isAnimated)
         		{
-        			animatedModelComponent = new AnimatedMesh(m_assetManager, m_getEntityCallback, m_renderingPipeline, m_requestReloadCallback);
+        			animatedModelComponent = new AnimatedMesh(m_assetManager, m_renderingPipeline);
         			newEntity->addComponent(animatedModelComponent);
         			animatedModelComponent->setInfoFromParent(modelAssetId);
         		}

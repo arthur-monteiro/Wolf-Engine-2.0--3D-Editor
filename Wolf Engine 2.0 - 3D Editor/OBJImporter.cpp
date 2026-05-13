@@ -57,11 +57,19 @@ OBJImporter::OBJImporter(ExternalSceneLoader::OutputData& outputData, const Exte
                 attrib.vertices[3 * index.vertex_index + 2]
             };
 
-            vertex.texCoord =
+            if (index.texcoord_index >= 0)
             {
-                attrib.texcoords[2 * index.texcoord_index + 0],
-                1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-            };
+                vertex.texCoord =
+                {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+            }
+            else
+            {
+                vertex.texCoord = glm::vec2(0.0f);
+            }
+
 
             if (attrib.normals.size() <= 3 * index.normal_index + 2)
             {
@@ -76,8 +84,6 @@ OBJImporter::OBJImporter(ExternalSceneLoader::OutputData& outputData, const Exte
                     attrib.normals[3 * index.normal_index + 2]
                 };
             }
-
-            vertex.subMeshIdx = 0;
 
             uint32_t materialId = mesh.material_ids[indexInIndices / 3];
             if (materialId < 0)

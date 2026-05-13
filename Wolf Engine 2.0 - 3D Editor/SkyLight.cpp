@@ -8,9 +8,9 @@
 #include "EditorParamsHelper.h"
 #include "glm/gtx/quaternion.hpp"
 
-SkyLight::SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
+SkyLight::SkyLight(const Wolf::ResourceNonOwner<AssetManager>& assetManager,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-: m_requestReloadCallback(requestReloadCallback), m_assetManager(assetManager), m_renderingPipeline(renderingPipeline), m_bufferPoolInterface(bufferPoolInterface)
+: m_assetManager(assetManager), m_renderingPipeline(renderingPipeline), m_bufferPoolInterface(bufferPoolInterface)
 {
 	m_color = glm::vec3(1.0f, 1.0f, 1.0f);
 }
@@ -153,48 +153,48 @@ bool SkyLight::updateCubeMap()
 	switch (static_cast<uint32_t>(m_lightType))
 	{
 		case LIGHT_TYPE_REALTIME_COMPUTE:
-			{
-				// TODO
-				return true;
-			}
+		{
+			// TODO
+			return true;
+		}
 		case LIGHT_TYPE_BAKED:
+		{
+			if (m_sphericalMapAssetId == NO_ASSET /* || !m_assetManager->isImageLoaded(m_sphericalMapAssetId) this function is obsolete: it should take format as param */)
+				return false;
+
+			Wolf::ResourceNonOwner<Wolf::Image> image = m_assetManager->getImage(m_sphericalMapAssetId, SPHERICAL_MAP_FORMAT);
+			m_renderingPipeline->getComputeSkyCubeMapPass()->setInputSphericalMap(image, [this]() { m_assetManager->releaseImage(m_sphericalMapAssetId); });
+
+			const glm::vec4* imageData = reinterpret_cast<const glm::vec4*>(m_assetManager->getImageData(m_sphericalMapAssetId, 0, SPHERICAL_MAP_FORMAT));
+			Wolf::Extent3D imageExtent = image->getExtent();
+
+			glm::vec4 maxValue(0.0f);
+			glm::uvec2 maxValuePos(0);
+			for (uint32_t x = 0; x < imageExtent.width; ++x)
 			{
-				if (m_sphericalMapAssetId == NO_ASSET || !m_assetManager->isImageLoaded(m_sphericalMapAssetId))
-					return false;
-
-				Wolf::ResourceNonOwner<Wolf::Image> image = m_assetManager->getImage(m_sphericalMapAssetId, SPHERICAL_MAP_FORMAT);
-				m_renderingPipeline->getComputeSkyCubeMapPass()->setInputSphericalMap(image, [this]() { m_assetManager->releaseImage(m_sphericalMapAssetId); });
-
-				const glm::vec4* imageData = reinterpret_cast<const glm::vec4*>(m_assetManager->getImageData(m_sphericalMapAssetId, 0, SPHERICAL_MAP_FORMAT));
-				Wolf::Extent3D imageExtent = image->getExtent();
-
-				glm::vec4 maxValue(0.0f);
-				glm::uvec2 maxValuePos(0);
-				for (uint32_t x = 0; x < imageExtent.width; ++x)
+				for (uint32_t y = 0; y < imageExtent.height; ++y)
 				{
-					for (uint32_t y = 0; y < imageExtent.height; ++y)
-					{
-						const glm::vec4& pixel = imageData[x + y * imageExtent.width];
+					const glm::vec4& pixel = imageData[x + y * imageExtent.width];
 
-						if (glm::length2(pixel) > glm::length2(maxValue))
-						{
-							maxValue = pixel;
-							maxValuePos = glm::uvec2(x, y);
-						}
+					if (glm::length2(pixel) > glm::length2(maxValue))
+					{
+						maxValue = pixel;
+						maxValuePos = glm::uvec2(x, y);
 					}
 				}
-
-				float longitude = ((static_cast<float>(maxValuePos.x) / static_cast<float>(imageExtent.width)) - 0.5f) * glm::two_pi<float>();
-				float latitude = ((1.0f - (static_cast<float>(maxValuePos.y) / static_cast<float>(imageExtent.height))) - 0.5f) * glm::pi<float>();
-
-				m_sunDirectionFromSphericalMap = -glm::vec3(glm::cos(longitude) * glm::cos(latitude), glm::sin(latitude), glm::cos(latitude) * glm::sin(longitude));
-				m_sunIntensityFromSphericalMap = glm::length(maxValue) * 0.02f;
-				m_sunColorFromSphericalMap = glm::normalize(maxValue) * glm::sqrt(3.0f);
-
-				m_assetManager->deleteImageData(m_sphericalMapAssetId);
-
-				return true;
 			}
+
+			float longitude = ((static_cast<float>(maxValuePos.x) / static_cast<float>(imageExtent.width)) - 0.5f) * glm::two_pi<float>();
+			float latitude = ((1.0f - (static_cast<float>(maxValuePos.y) / static_cast<float>(imageExtent.height))) - 0.5f) * glm::pi<float>();
+
+			m_sunDirectionFromSphericalMap = -glm::vec3(glm::cos(longitude) * glm::cos(latitude), glm::sin(latitude), glm::cos(latitude) * glm::sin(longitude));
+			m_sunIntensityFromSphericalMap = glm::length(maxValue) * 0.02f;
+			m_sunColorFromSphericalMap = glm::normalize(maxValue) * glm::sqrt(3.0f);
+
+			m_assetManager->deleteImageData(m_sphericalMapAssetId);
+
+			return true;
+		}
 		default:
 			Wolf::Debug::sendError("Undefined light type");
 			break;
@@ -228,18 +228,31 @@ void SkyLight::onAngleChanged()
 
 void SkyLight::onSphericalMapChanged()
 {
-	std::string filePathStr = static_cast<std::string>(m_sphericalMap);
-	if (!filePathStr.empty())
+	if (static_cast<std::string>(m_sphericalMap) == "")
 	{
-		if (std::string sanitizedFilePath = EditorConfiguration::sanitizeFilePath(filePathStr); sanitizedFilePath != filePathStr)
+		m_sphericalMapAssetId = NO_ASSET;
+	}
+	else
+	{
+		AssetId assetId = m_assetManager->getAssetIdForPath(m_sphericalMap);
+		if (!m_assetManager->isImage(assetId))
 		{
-			m_sphericalMap = sanitizedFilePath;
-			return;
+			Wolf::Debug::sendWarning("Asset is not an image");
+			m_sphericalMap = "";
 		}
 
-		m_sphericalMapAssetId = m_assetManager->addImage(m_sphericalMap);
-		m_cubeMapUpdateRequested = true;
+		m_sphericalMapAssetId = assetId;
 	}
+
+	AssetImageInterface::LoadingRequest loadingRequest{};
+	loadingRequest.m_keepDataOnCPU = true;
+	loadingRequest.m_canBeVirtualized = false;
+	loadingRequest.m_format = SPHERICAL_MAP_FORMAT;
+	loadingRequest.m_loadMips = false;
+
+	m_assetManager->requestImageLoading(m_sphericalMapAssetId, loadingRequest, true);
+	m_cubeMapUpdateRequested = true;
+	notifySubscribers();
 }
 
 void SkyLight::buildDebugMesh()

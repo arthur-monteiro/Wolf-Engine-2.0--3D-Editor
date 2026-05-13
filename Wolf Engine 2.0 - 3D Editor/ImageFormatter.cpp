@@ -65,6 +65,13 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
     			createImageFileFromSource<Wolf::ImageCompression::RGBA32F>(fullFilePath, finalFormat);
     		}
     	}
+    	else if (finalFormat == Wolf::Format::R16G16B16A16_SFLOAT)
+    	{
+    		if (!createImageFileFromCache(fullFilePath, finalFormat))
+    		{
+    			createImageFileFromSource<Wolf::ImageCompression::RGBA16F>(fullFilePath, finalFormat);
+    		}
+    	}
         else
         {
             Wolf::Debug::sendCriticalError("Unhandled case");
@@ -94,7 +101,7 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
 	}
 	else
 	{
-		std::fstream outCacheFile(fullFilePath + ".bin", std::ios::out | std::ios::binary);
+		std::fstream outCacheFile(m_cacheFilename, std::ios::out | std::ios::binary);
 
 		/* Hash */
 		uint64_t hash = HASH;
@@ -332,6 +339,15 @@ void ImageFormatter::loadImageFile(const std::string& filename, Wolf::Format for
 	}
 	else
 	{
+		if (imageFileLoader.getFormat() != Wolf::Format::R32G32B32A32_SFLOAT)
+		{
+			Wolf::Debug::sendCriticalError("Wrong format for copy");
+		}
+		if (imageFileLoader.getDepth() != 1)
+		{
+			Wolf::Debug::sendCriticalError("Unhandled");
+		}
+
 		pixels.assign(reinterpret_cast<Wolf::ImageCompression::RGBA32F*>(imageFileLoader.getPixels()),
 			reinterpret_cast<Wolf::ImageCompression::RGBA32F*>(imageFileLoader.getPixels()) + static_cast<size_t>(imageFileLoader.getWidth()) * imageFileLoader.getHeight());
 	}
@@ -350,6 +366,34 @@ void ImageFormatter::loadImageFile(const std::string& filename, Wolf::Format for
 	}
 
 	outExtent = { (imageFileLoader.getWidth()), (imageFileLoader.getHeight()), 1 };
+}
+
+void ImageFormatter::loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RGBA16F>& pixels,
+	std::vector<std::vector<Wolf::ImageCompression::RGBA16F>>& mipLevels, Wolf::Extent3D& outExtent)
+{
+	const Wolf::ImageFileLoader imageFileLoader(filename, true);
+
+	if (imageFileLoader.getCompression() != Wolf::ImageCompression::Compression::NO_COMPRESSION)
+	{
+		Wolf::Debug::sendCriticalError("Unhandled");
+	}
+	else
+	{
+		if (imageFileLoader.getFormat() != Wolf::Format::R16G16B16A16_SFLOAT)
+		{
+			Wolf::Debug::sendCriticalError("Wrong format for copy");
+		}
+
+		pixels.assign(reinterpret_cast<Wolf::ImageCompression::RGBA16F*>(imageFileLoader.getPixels()),
+			reinterpret_cast<Wolf::ImageCompression::RGBA16F*>(imageFileLoader.getPixels()) + static_cast<size_t>(imageFileLoader.getWidth()) * imageFileLoader.getHeight() * imageFileLoader.getDepth());
+	}
+
+	if (loadMips)
+	{
+		Wolf::Debug::sendCriticalError("Not implemented");
+	}
+
+	outExtent = { (imageFileLoader.getWidth()), (imageFileLoader.getHeight()), (imageFileLoader.getDepth()) };
 }
 
 void ImageFormatter::computeCachePaths(const std::string& inFullPath, Wolf::Format format, std::string& outCache, std::string& outSlicesFolder)

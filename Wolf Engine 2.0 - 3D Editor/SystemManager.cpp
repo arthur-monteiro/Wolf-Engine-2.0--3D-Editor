@@ -54,12 +54,6 @@ SystemManager::SystemManager()
 	m_editorPushDataToGPU->setUpdateGPUBuffersPass(m_renderer->getUpdateGPUBuffersPass());
 	m_editorPushDataToGPU->setGPUBufferToGPUBufferCopyPass(m_renderer->getGPUBufferToGPUBufferCopyPass());
 
-	m_requestReloadCallback = [this](ComponentInterface* component)
-		{
-			// if (m_selectedEntity && (!component || component->isOnEntity(*m_selectedEntity)))
-			// 	m_entityReloadRequested = true;
-		};
-
 	m_assetManager.reset(new AssetManager([this](const std::string& assetName, const std::string& assetPath, const std::string& iconPath, AssetId assetId, const std::string& assetType)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("addAssetToList(\"" + assetName + "\", \"" + assetPath + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\", \"" + assetType + "\");");
@@ -67,7 +61,7 @@ SystemManager::SystemManager()
 		{
 			m_wolfInstance->evaluateUserInterfaceScript("updateAsset(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
 		},
-		m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback, m_configuration.createNonOwnerResource(),
+		m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_configuration.createNonOwnerResource(),
 		[this](const std::string& loadingPath) { forceCustomViewForMesh(loadingPath); },
 		[this](glm::mat4& outViewMatrix)
 		{
@@ -89,7 +83,7 @@ SystemManager::SystemManager()
 	};
 	
 	m_entityContainer.reset(new EntityContainer);
-	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_requestReloadCallback,
+	m_componentInstancier.reset(new ComponentInstancier(m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(),
 		m_getEntityFromLoadingPathCallback,
 		m_configuration.createNonOwnerResource(),
 		m_assetManager.createNonOwnerResource(),
@@ -339,6 +333,7 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["isAABBShowedForSelectedEntity"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::isAABBShowedForSelectedEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["toggleBoundingSphereDisplayForSelectedEntity"] = std::bind(&SystemManager::toggleBoundingSphereDisplayForSelectedEntity, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["isBoundingSphereShowedForSelectedEntity"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::isBoundingSphereShowedForSelectedEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["reloadParameters"] = std::bind(&SystemManager::reloadEntityUIJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void SystemManager::resizeCallback(uint32_t width, uint32_t height) const
@@ -936,6 +931,11 @@ ultralight::JSValue SystemManager::isBoundingSphereShowedForSelectedEntityJSCall
 	return m_showBoundingSphereForSelectedEntity ? "true" : "false";
 }
 
+void SystemManager::reloadEntityUIJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	m_entityReloadRequested = true;
+}
+
 void SystemManager::selectEntity() const
 {
 	updateUISelectedEntity();
@@ -1377,7 +1377,7 @@ void SystemManager::addComponent(const std::string& componentId)
 
 void SystemManager::addFakeEntities()
 {
-	GraphicSettingsFakeEntity* graphicSettingsFakeEntity = new GraphicSettingsFakeEntity(m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), this, m_requestReloadCallback);
+	GraphicSettingsFakeEntity* graphicSettingsFakeEntity = new GraphicSettingsFakeEntity(m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), this);
 	m_entityContainer->addEntity(graphicSettingsFakeEntity);
 	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + graphicSettingsFakeEntity->getName() + "\", \"" + graphicSettingsFakeEntity->computeEscapedLoadingPath() + "\", true)");
 }

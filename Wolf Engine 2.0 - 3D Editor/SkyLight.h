@@ -12,7 +12,7 @@ public:
 	static inline std::string ID = "skyLight";
 	std::string getId() const override { return ID; }
 
-	SkyLight(const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
+	SkyLight(const Wolf::ResourceNonOwner<AssetManager>& assetManager,
 		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
@@ -37,7 +37,6 @@ private:
 	bool updateCubeMap();
 
 	inline static const std::string TAB = "Sky light";
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
@@ -45,7 +44,7 @@ private:
 	std::vector<std::string> LIGHT_TYPE_STRING_LIST = { "Realtime", "Baked" };
 	static constexpr uint32_t LIGHT_TYPE_REALTIME_COMPUTE = 0;
 	static constexpr uint32_t LIGHT_TYPE_BAKED = 1;
-	EditorParamEnum m_lightType = EditorParamEnum(LIGHT_TYPE_STRING_LIST, "Light model type", TAB, "General", [this]() { m_requestReloadCallback(this); });
+	EditorParamEnum m_lightType = EditorParamEnum(LIGHT_TYPE_STRING_LIST, "Light model type", TAB, "General", [this]() { });
 
 	EditorParamFloat m_sunAngle = EditorParamFloat("Sun angle", TAB, "Sun", 0.0f, 1.0f);
 
@@ -69,7 +68,7 @@ private:
 	void onSphericalMapChanged();
 	AssetId m_sphericalMapAssetId = NO_ASSET;
 	static constexpr Wolf::Format SPHERICAL_MAP_FORMAT = Wolf::Format::R32G32B32A32_SFLOAT;
-	EditorParamString m_sphericalMap = EditorParamString("Spherical map", TAB, "Sky", [this] { onSphericalMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
+	EditorParamString m_sphericalMap = EditorParamString("Spherical map", TAB, "Sky", [this] { onSphericalMapChanged(); }, EditorParamString::ParamStringType::ASSET);
 	glm::vec3 m_sunDirectionFromSphericalMap;
 	float m_sunIntensityFromSphericalMap;
 	glm::vec3 m_sunColorFromSphericalMap;

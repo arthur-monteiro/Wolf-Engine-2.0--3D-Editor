@@ -13,14 +13,12 @@
 #include "RenderingPipelineInterface.h"
 #include "UpdateGPUBuffersPass.h"
 
-ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
+ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
                                            const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
                                            const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
 	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
       m_physicsManager(physicsManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface)
 {
-	m_requestReloadCallback = requestReloadCallback;
-
 	Wolf::CreateImageInfo createImageInfo{};
 	createImageInfo.extent = { CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE };
 	createImageInfo.format = Wolf::Format::R8_UINT;
@@ -155,7 +153,6 @@ void ContaminationEmitter::onMaterialAdded()
 	m_contaminationMaterials.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
 	m_contaminationMaterials.back().subscribe(this, [this](Flags) { onParamChanged(); });
 	m_contaminationMaterials.back().setIndex(static_cast<uint32_t>(m_contaminationMaterials.size()) - 1);
-	m_requestReloadCallback(this);
 }
 
 void ContaminationEmitter::onFillSceneWithValueChanged() const

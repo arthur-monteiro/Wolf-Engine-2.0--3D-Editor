@@ -19,11 +19,11 @@
 AssetManager* AssetManager::ms_assetManager;
 
 AssetManager::AssetManager(const std::function<void(const std::string&, const std::string&, const std::string&, AssetId, const std::string&)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-                         const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback,
+                         const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
                          const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string& loadingPath)>& isolateMeshCallback,
                          const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU,
                          const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-	: m_addAssetToUICallback(addAssetToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_requestReloadCallback(requestReloadCallback), m_editorConfiguration(editorConfiguration),
+	: m_addAssetToUICallback(addAssetToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_editorConfiguration(editorConfiguration),
       m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
 	  m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU), m_bufferPoolInterface(bufferPoolInterface)
 {

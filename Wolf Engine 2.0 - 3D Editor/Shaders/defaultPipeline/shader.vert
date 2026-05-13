@@ -1,21 +1,18 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColor;
-layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec3 inTangent;
-layout(location = 4) in vec2 inTexCoord;
-layout(location = 5) in uint inSubMeshIdx;
+layout(location = 1) in vec3 inNormal;
+layout(location = 2) in vec3 inTangent;
+layout(location = 3) in vec2 inTexCoord;
 
 layout(location = 0) out vec3 outViewPos;
-layout(location = 1) out vec3 outColor;
-layout(location = 2) out vec2 outTexCoord;
-layout(location = 3) out uint outMaterialIdx;
-layout(location = 4) out mat3 outTBN;
-layout(location = 7) out vec3 outWorldSpaceNormal;
-layout(location = 8) out vec3 outWorldSpacePos;
-layout(location = 9) out uint outEntityId;
-layout(location = 10) out uint outLOD;
+layout(location = 1) out vec2 outTexCoord;
+layout(location = 2) out uint outMaterialIdx;
+layout(location = 3) out mat3 outTBN;
+layout(location = 6) out vec3 outWorldSpaceNormal;
+layout(location = 7) out vec3 outWorldSpacePos;
+layout(location = 8) out uint outEntityId;
+layout(location = 9) out uint outLOD;
  
 out gl_PerVertex
 {
@@ -44,9 +41,8 @@ void main()
 	outTBN = transpose(mat3(t, b, n));
 
 	outViewPos = viewPos.xyz;
-	outColor = inColor;
     outTexCoord = inTexCoord;
-	outMaterialIdx = getMaterialIdx() + inSubMeshIdx;
+	outMaterialIdx = getMaterialIdx();
 	outWorldSpaceNormal = normalize(inNormal);
 	outWorldSpacePos =  (transform * vec4(inPosition, 1.0)).xyz;
 	outEntityId = getCustomData();

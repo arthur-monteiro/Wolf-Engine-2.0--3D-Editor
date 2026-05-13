@@ -7,7 +7,7 @@ class SystemManager;
 class GraphicSettingsFakeEntity : public Entity
 {
 public:
-    GraphicSettingsFakeEntity(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, SystemManager* systemManager, const std::function<void(ComponentInterface*)>& requestReloadCallback);
+    GraphicSettingsFakeEntity(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, SystemManager* systemManager);
 
     void activateParams() override;
     void fillJSONForParams(std::string& outJSON) override;
@@ -25,7 +25,6 @@ private:
     inline static const std::string TAB = "Settings";
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
     SystemManager* m_systemManager;
-    std::function<void(ComponentInterface*)> m_requestReloadCallback;
 
     void forAllVisibleParams(const std::function<void(EditorParamInterface*, std::string& inOutString)>& callback, std::string& inOutString);
 

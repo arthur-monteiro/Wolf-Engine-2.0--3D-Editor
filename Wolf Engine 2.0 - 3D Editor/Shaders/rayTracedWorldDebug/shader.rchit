@@ -19,7 +19,7 @@ void main()
 
     Vertex vertex = computeVertex(payload.instanceId, payload.primitiveId, attribs);
 
-    uint materialId = getFirstMaterialIdx(payload.instanceId) + vertex.subMeshIdx;
+    uint materialId = getMaterialIdx(payload.instanceId);
 
     mat3 usedModelMatrix = transpose(inverse(mat3(gl_WorldToObjectEXT)));
     vec3 n = normalize(usedModelMatrix * vertex.normal);

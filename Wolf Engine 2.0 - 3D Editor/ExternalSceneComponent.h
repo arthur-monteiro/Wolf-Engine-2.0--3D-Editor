@@ -10,9 +10,9 @@ public:
     static inline std::string ID = "externalSceneComponent";
     std::string getId() const override { return ID; }
 
-    ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityCallback,
+    ExternalSceneComponent(const Wolf::ResourceNonOwner<AssetManager>& assetManager,
         const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-        const std::function<void(ComponentInterface*)>& requestReloadCallback, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
+        const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline);
 
     void loadParams(Wolf::JSONReader& jsonReader) override;
     void activateParams() override;
@@ -37,10 +37,8 @@ private:
     inline static const std::string TAB = "Scene";
 
     Wolf::ResourceNonOwner<AssetManager> m_assetManager;
-    std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityCallback;
     std::function<Entity*(ComponentInterface*, const std::string&)> m_createEntityCallback;
     Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
-    std::function<void(ComponentInterface*)> m_requestReloadCallback;
     Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 
     bool m_isWaitingForSceneLoading = false;

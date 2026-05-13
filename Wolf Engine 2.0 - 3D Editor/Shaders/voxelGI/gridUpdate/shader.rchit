@@ -52,7 +52,7 @@ void main()
         Vertex vertex = computeVertex(gl_InstanceCustomIndexEXT, gl_PrimitiveID, attribs);
         vec3 L = normalize(-ubLights.sunLights[0].sunDirection.xyz);
 
-        vec3 albedo = vertex.vertexColor.xyz;
+        vec3 albedo = vec3(1.0); // TODO: fix this -- vertex.vertexColor.xyz;
         vec3 normal = vertex.normal.xyz;
 
         float NdotL = max(dot(normal, L), 0.0);

@@ -8,9 +8,9 @@
 #include "MathsUtilsEditor.h"
 #include "StaticMesh.h"
 
-GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
-                                           const std::function<void(ComponentInterface*)>& requestReloadCallback)
-	: m_physicsManager(physicsManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback), m_requestReloadCallback(requestReloadCallback)
+GasCylinderComponent::GasCylinderComponent(const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
+	const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+	: m_physicsManager(physicsManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
 	m_descriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::FRAGMENT, 0);
 	m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
@@ -136,7 +136,6 @@ void GasCylinderComponent::onMaterialAdded()
 {
 	m_contaminationMaterials.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
 	m_contaminationMaterials.back().subscribe(this, [this](Flags) { onMaterialChanged(); });
-	m_requestReloadCallback(this);
 }
 
 void GasCylinderComponent::onMaterialChanged()

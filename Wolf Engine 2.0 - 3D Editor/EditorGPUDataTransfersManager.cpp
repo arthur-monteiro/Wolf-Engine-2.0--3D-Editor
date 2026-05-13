@@ -52,12 +52,17 @@ void EditorGPUDataTransfersManager::pushDataToGPUImage(const PushDataToGPUImageI
         return;
     }
 
-    glm::ivec2 realCopySize = pushDataToGPUImageInfo.m_copySize;
-    if (realCopySize.x == 0 && realCopySize.y == 0)
+    if (!pushDataToGPUImageInfo.m_pixels)
+    {
+        Wolf::Debug::sendCriticalError("Pixels is nullptr");
+    }
+
+    glm::ivec3 realCopySize = pushDataToGPUImageInfo.m_copySize;
+    if (realCopySize.x == 0 && realCopySize.y == 0 && realCopySize.z == 0)
     {
         const Wolf::Extent3D imageExtent = { pushDataToGPUImageInfo.m_outputImage->getExtent().width >> pushDataToGPUImageInfo.m_mipLevel,
             pushDataToGPUImageInfo.m_outputImage->getExtent().height >> pushDataToGPUImageInfo.m_mipLevel, pushDataToGPUImageInfo.m_outputImage->getExtent().depth };
-        realCopySize = glm::ivec2(imageExtent.width, imageExtent.height);
+        realCopySize = glm::ivec3(imageExtent.width, imageExtent.height, imageExtent.depth);
     }
 
     m_updateGPUBufferPass->addRequestBeforeFrame({ pushDataToGPUImageInfo.m_pixels, pushDataToGPUImageInfo.m_outputImage, pushDataToGPUImageInfo.m_finalLayout, pushDataToGPUImageInfo.m_mipLevel,

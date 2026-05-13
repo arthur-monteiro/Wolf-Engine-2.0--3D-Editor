@@ -1,18 +1,13 @@
 layout (location = 0) in vec3 inViewPos;
-layout (location = 1) in vec3 inColor;
-layout (location = 2) in vec2 inTexCoords;
-layout (location = 3) flat in uint inMaterialID;
-layout (location = 4) in mat3 inTBN;
-layout (location = 7) in vec3 inWorldSpaceNormal;
-layout (location = 8) in vec3 inWorldSpacePos;
-layout (location = 9) flat in uint inEntityId;
+layout (location = 1) in vec2 inTexCoords;
+layout (location = 2) flat in uint inMaterialID;
+layout (location = 3) in mat3 inTBN;
+layout (location = 6) in vec3 inWorldSpaceNormal;
+layout (location = 7) in vec3 inWorldSpacePos;
+layout (location = 8) flat in uint inEntityId;
 
 #ifdef ALBEDO
 layout (location = ALBEDO_LOCATION) out vec4 outAlbedo;
-#endif
-
-#ifdef VERTEX_COLOR
-layout (location = VERTEX_COLOR_LOCATION) out vec4 outVertexColor;
 #endif
 
 #ifdef NORMAL
@@ -29,10 +24,6 @@ void main()
 
 #ifdef ALBEDO
     outAlbedo = vec4(materialInfo.albedo.rgb, 1.0);
-#endif
-    
-#ifdef VERTEX_COLOR
-    outVertexColor = vec4(inColor.rgb, 1.0);
 #endif
 
 #ifdef NORMAL

@@ -4,8 +4,9 @@
 #include "EditorParamsHelper.h"
 #include "SystemManager.h"
 
-GraphicSettingsFakeEntity::GraphicSettingsFakeEntity(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, SystemManager* systemManager, const std::function<void(ComponentInterface*)>& requestReloadCallback)
-: Entity("", [](Entity*){}, [](Entity*){}, [](const std::string&) { return Wolf::NullableResourceNonOwner<Entity>(); }), m_renderingPipeline(renderingPipeline), m_systemManager(systemManager), m_requestReloadCallback(requestReloadCallback)
+GraphicSettingsFakeEntity::GraphicSettingsFakeEntity(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, SystemManager* systemManager)
+: Entity("", [](Entity*){}, [](Entity*){}, [](const std::string&) { return Wolf::NullableResourceNonOwner<Entity>(); }),
+  m_renderingPipeline(renderingPipeline), m_systemManager(systemManager)
 {
     m_skyCubeMapResolution = m_renderingPipeline->getSkyBoxManager()->getCubeMapResolution();
     m_csmFar = m_renderingPipeline->getCascadedShadowMapsPass()->getFar();
@@ -121,8 +122,6 @@ void GraphicSettingsFakeEntity::updateShadowTechnique()
 {
     GameContext& gameContext = m_systemManager->getInModificationGameContext();
     gameContext.shadowTechnique = computeShadowTechnique();
-
-    m_requestReloadCallback(nullptr);
 }
 
 void GraphicSettingsFakeEntity::onCSMFarChanged()

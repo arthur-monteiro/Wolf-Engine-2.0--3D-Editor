@@ -11,8 +11,8 @@
 #include "SurfaceCoatingDataPreparationPass.h"
 
 SurfaceCoatingEmitterComponent::SurfaceCoatingEmitterComponent(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<AssetManager>& assetManager,
-    const std::function<void(ComponentInterface*)>& requestReloadCallback, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
-: m_renderingPipeline(renderingPipeline), m_customRenderPass(renderingPipeline->getCustomRenderPass()), m_assetManager(assetManager), m_requestReloadCallback(requestReloadCallback), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
+    const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback)
+: m_renderingPipeline(renderingPipeline), m_customRenderPass(renderingPipeline->getCustomRenderPass()), m_assetManager(assetManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback)
 {
     Wolf::ShaderStageFlags resourcesAccessibility = Wolf::ShaderStageFlagBits::TESSELLATION_CONTROL | Wolf::ShaderStageFlagBits::TESSELLATION_EVALUATION | Wolf::ShaderStageFlagBits::GEOMETRY;
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, resourcesAccessibility, 0, 1); // Depth texture
@@ -548,8 +548,6 @@ void SurfaceCoatingEmitterComponent::onPatternImageAdded()
     m_patternImages.back().setGetEntityFromLoadingPathCallback(m_getEntityFromLoadingPathCallback);
     uint32_t patterImageIdx = m_patternImages.size() - 1;
     m_patternImages.back().subscribe(this, [this, patterImageIdx](Flags) { onPatternImageChanged(patterImageIdx); });
-
-    m_requestReloadCallback(this);
 }
 
 void SurfaceCoatingEmitterComponent::onPatternImageChanged(uint32_t idx)

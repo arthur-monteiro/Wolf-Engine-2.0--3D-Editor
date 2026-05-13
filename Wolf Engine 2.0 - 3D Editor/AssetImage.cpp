@@ -79,7 +79,7 @@ void AssetImage::loadImage(const LoadingRequest& loadingRequest)
 	imageFormatter.transferImageTo(image);
 	m_slicesFolder = imageFormatter.getSlicesFolder();
 
-	if (!image) 
+	if (!image)
 		return;
 
 	if (keepDataOnCPU)
@@ -121,8 +121,18 @@ void AssetImage::recomputeThumbnail()
 		return;
 
 	LoadingRequest loadingRequest{};
+
+	std::string fileExtension = m_editor->getLoadingPath().substr(m_editor->getLoadingPath().find_last_of(".") + 1);
 	loadingRequest.m_format = Wolf::Format::R8G8B8A8_UNORM;
-	loadingRequest.m_loadMips = true;
+	if (fileExtension == "cube")
+	{
+		loadingRequest.m_format = Wolf::Format::R16G16B16A16_SFLOAT;
+	}
+	else if (fileExtension == "hdr")
+	{
+		loadingRequest.m_format = Wolf::Format::R32G32B32A32_SFLOAT;
+	}
+	loadingRequest.m_loadMips = fileExtension == "cube" ? false : true;
 	loadingRequest.m_canBeVirtualized = true;
 
 	requestImageLoading(loadingRequest);

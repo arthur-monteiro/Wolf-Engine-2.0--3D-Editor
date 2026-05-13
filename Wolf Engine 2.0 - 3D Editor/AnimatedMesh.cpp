@@ -10,10 +10,8 @@
 #include "MaterialEditor.h"
 #include "UpdateGPUBuffersPass.h"
 
-AnimatedMesh::AnimatedMesh(const Wolf::ResourceNonOwner<AssetManager>& resourceManager, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
-	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const std::function<void(ComponentInterface*)>& requestReloadCallback)
-: m_assetManager(resourceManager), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()),
-  m_requestReloadCallback(requestReloadCallback)
+AnimatedMesh::AnimatedMesh(const Wolf::ResourceNonOwner<AssetManager>& resourceManager,	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
+: m_assetManager(resourceManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass())
 {
 	m_defaultPipelineSet.reset(new Wolf::LazyInitSharedResource<Wolf::PipelineSet, AnimatedMesh>([](Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& pipelineSet)
 		{
@@ -343,8 +341,6 @@ void AnimatedMesh::updateMaxTimer()
 	findMaxTimer(animationData->m_rootBones.data(), m_maxTimer);
 	m_forceTimer.setMax(m_maxTimer);
 
-	m_requestReloadCallback(this);
-
 	if (success)
 	{
 		m_updateMaxTimerRequested = false;
@@ -426,8 +422,6 @@ void AnimatedMesh::updateAnimationsOptions()
 	std::vector<std::string> options;
 	getAnimationOptions(options);
 	m_animationSelectParam.setOptions(options);
-
-	m_requestReloadCallback(this);
 
 	notifySubscribers();
 }

@@ -33,6 +33,7 @@ public:
 	static void loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RGBA8>& pixels, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels, Wolf::Extent3D& outExtent);
 	static void loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RG32F>& pixels, std::vector<std::vector<Wolf::ImageCompression::RG32F>>& mipLevels, Wolf::Extent3D& outExtent);
 	static void loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RGBA32F>& pixels, std::vector<std::vector<Wolf::ImageCompression::RGBA32F>>& mipLevels, Wolf::Extent3D& outExtent);
+	static void loadImageFile(const std::string& filename, Wolf::Format format, bool loadMips, std::vector<Wolf::ImageCompression::RGBA16F>& pixels, std::vector<std::vector<Wolf::ImageCompression::RGBA16F>>& mipLevels, Wolf::Extent3D& outExtent);
 
 private:
 	static void computeCachePaths(const std::string& inFullPath, Wolf::Format format, std::string& outCache, std::string& outSlicesFolder);

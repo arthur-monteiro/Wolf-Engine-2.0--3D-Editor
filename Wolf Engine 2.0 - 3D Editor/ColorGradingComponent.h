@@ -30,10 +30,9 @@ private:
     bool updateLUTImage();
 
     void onLUTImageMapChanged();
-    AssetId m_lutImageResourceId = NO_ASSET;
-    bool m_lutImageUpdateRequested = true;
+    AssetId m_lutImageAssetId = NO_ASSET;
     static constexpr Wolf::Format LUT_IMAGE_FORMAT = Wolf::Format::R16G16B16A16_SFLOAT;
-    EditorParamString m_lutImageParam = EditorParamString("LUT image", TAB, "Resources", [this]() { onLUTImageMapChanged(); }, EditorParamString::ParamStringType::FILE_IMG);
+    EditorParamString m_lutImageParam = EditorParamString("LUT image", TAB, "Resources", [this]() { onLUTImageMapChanged(); }, EditorParamString::ParamStringType::ASSET);
 
     std::array<EditorParamInterface*, 1> m_editorParams =
     {

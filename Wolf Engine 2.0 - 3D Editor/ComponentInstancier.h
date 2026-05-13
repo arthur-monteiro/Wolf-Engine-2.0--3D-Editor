@@ -29,10 +29,9 @@ class ComponentInstancier
 {
 public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
-		std::function<void(ComponentInterface*)> requestReloadCallback, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
-		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const Wolf::ResourceNonOwner<AssetManager>& assetManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
-		const Wolf::ResourceNonOwner<EntityContainer>& entityContainer, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
-		const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback);
+		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
+		const Wolf::ResourceNonOwner<AssetManager>& assetManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
+		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -41,7 +40,6 @@ public:
 private:
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
-	std::function<void(ComponentInterface*)> m_requestReloadCallback;
 	std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> m_getEntityFromLoadingPathCallback;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
@@ -74,7 +72,7 @@ private:
 			ContaminationEmitter::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_requestReloadCallback, m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback,
+				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback,
 					m_physicsManager, m_bufferPoolInterface));
 			}
 		},
@@ -120,7 +118,7 @@ private:
 			SkyLight::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SkyLight(m_requestReloadCallback, m_assetManager, m_renderingPipeline, m_bufferPoolInterface));
+				return static_cast<ComponentInterface*>(new SkyLight(m_assetManager, m_renderingPipeline, m_bufferPoolInterface));
 			}
 		},
 		ComponentInfo
@@ -129,7 +127,7 @@ private:
 			AnimatedMesh::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new AnimatedMesh(m_assetManager, m_getEntityFromLoadingPathCallback, m_renderingPipeline, m_requestReloadCallback));
+				return static_cast<ComponentInterface*>(new AnimatedMesh(m_assetManager, m_renderingPipeline));
 			}
 		},
 		ComponentInfo
@@ -138,7 +136,7 @@ private:
 			GasCylinderComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new GasCylinderComponent(m_physicsManager, m_getEntityFromLoadingPathCallback, m_requestReloadCallback));
+				return static_cast<ComponentInterface*>(new GasCylinderComponent(m_physicsManager, m_getEntityFromLoadingPathCallback));
 			}
 		},
 		ComponentInfo
@@ -174,7 +172,7 @@ private:
 			SurfaceCoatingEmitterComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SurfaceCoatingEmitterComponent(m_renderingPipeline, m_assetManager, m_requestReloadCallback, m_getEntityFromLoadingPathCallback));
+				return static_cast<ComponentInterface*>(new SurfaceCoatingEmitterComponent(m_renderingPipeline, m_assetManager, m_getEntityFromLoadingPathCallback));
 			}
 		},
 		ComponentInfo
@@ -183,8 +181,7 @@ private:
 			ExternalSceneComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new ExternalSceneComponent(m_assetManager, m_getEntityFromLoadingPathCallback, m_createEntityCallback, m_materialsGPUManager,
-					m_requestReloadCallback, m_renderingPipeline));
+				return static_cast<ComponentInterface*>(new ExternalSceneComponent(m_assetManager, m_createEntityCallback, m_materialsGPUManager, m_renderingPipeline));
 			}
 		}
 	};

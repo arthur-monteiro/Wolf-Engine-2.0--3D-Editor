@@ -141,8 +141,8 @@ void UpdateGPUBuffersPass::InternalRequest::recordCopyToImage(const Wolf::Comman
 	bufferImageCopy.imageSubresource.baseArrayLayer = 0;
 	bufferImageCopy.imageSubresource.layerCount = 1;
 
-	bufferImageCopy.imageOffset = { m_request.getImageOffset().x, m_request.getImageOffset().y, 0 };
-	bufferImageCopy.imageExtent = { static_cast<uint32_t>(m_request.getCopySize().x), static_cast<uint32_t>(m_request.getCopySize().y), 1};
+	bufferImageCopy.imageOffset = { m_request.getImageOffset().x, m_request.getImageOffset().y, m_request.getImageOffset().z };
+	bufferImageCopy.imageExtent = { static_cast<uint32_t>(m_request.getCopySize().x), static_cast<uint32_t>(m_request.getCopySize().y), static_cast<uint32_t>(m_request.getCopySize().z)};
 
 	m_request.getOutputImage()->recordCopyGPUBuffer(*commandBuffer, *m_stagingBufferPool->getBuffer(m_stagingBufferPoolInstance), bufferImageCopy, m_request.getImageFinalLayout());
 }
