@@ -128,11 +128,6 @@ void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 			}
 		}
 
-		if (materialAssetId == -1)
-		{
-			Wolf::Debug::sendCriticalError("No instance has been found for this mesh");
-		}
-
 		m_meshAssetIds.push_back(m_assetManager->addMesh(meshData, sceneLoadingInfo.filename + "_mesh_" + meshData.m_name + "_" + std::to_string(meshIdx), materialAssetId, m_assetId));
 	}
 
