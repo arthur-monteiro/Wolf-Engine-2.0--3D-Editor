@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG 240f05431988082e94d77adec34507dddfaed9ad
+        GIT_TAG 0231b578f4e68a9ea34937c3f3bdfff642970799
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -48,6 +48,7 @@ include_directories("dependencies/wolfenginecontent-src/ThirdParty/Tracy/tracy")
 include_directories("dependencies/wolfenginecontent-src/ThirdParty/meshoptimizer/src")
 include_directories("GifEncoder/egif")
 include_directories("ThirdParty/tiny_gltf")
+include_directories("ThirdParty/sol")
 
 link_directories("dependencies/wolfenginecontent-src/x64/Debug/lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/vulkan/Lib")
@@ -59,6 +60,7 @@ link_directories("x64/Debug/lib")
 add_subdirectory("GifEncoder")
 add_subdirectory("BrowseToFile")
 add_subdirectory("dependencies/wolfenginecontent-src")
+add_subdirectory("ThirdParty/Lua")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -93,6 +95,7 @@ if(WIN32)
     target_link_libraries(WolfEngine_3DEditor PRIVATE GraphicAPIBroker.lib)
     target_link_libraries(WolfEngine_3DEditor PRIVATE WolfEngine.lib)
     target_link_libraries(WolfEngine_3DEditor PRIVATE GifEncoder.lib)
+    target_link_libraries(WolfEngine_3DEditor PRIVATE lua_static)
 elseif(UNIX AND NOT APPLE)
     set(WOLF_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/wolfenginecontent-src/x64/Debug/lib")
     set(ULTRALIGHT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/wolfenginecontent-src/ThirdParty/UltraLight/linux/bin")

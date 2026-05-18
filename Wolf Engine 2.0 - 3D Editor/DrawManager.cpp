@@ -39,7 +39,7 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 			if (instancedMeshRegistered->isSame(meshToRender))
 			{
 				meshFound = true;
-				uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.firstMaterialIdx,
+				uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.materialIdx,
 					meshToDraw.instanceData.entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
 
 				m_infoByEntities[entity].push_back({ i, instanceIdx });
@@ -52,7 +52,7 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 		{
 			Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered.emplace_back(new InstancedMeshRegistered(meshToRender, m_instanceMeshRenderer));
 
-			uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.firstMaterialIdx,
+			uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.materialIdx,
 					meshToDraw.instanceData.entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
 
 			m_infoByEntities[entity].push_back({ static_cast<uint32_t>(m_meshesRegistered.size()) - 1, instanceIdx });

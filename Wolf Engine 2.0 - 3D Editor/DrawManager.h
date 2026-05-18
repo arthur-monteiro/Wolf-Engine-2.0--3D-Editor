@@ -12,7 +12,7 @@ class Entity;
 struct InstanceData
 {
 	glm::mat4 transform;
-	uint32_t firstMaterialIdx;
+	uint32_t materialIdx;
 	uint32_t entityIdx;
 };
 

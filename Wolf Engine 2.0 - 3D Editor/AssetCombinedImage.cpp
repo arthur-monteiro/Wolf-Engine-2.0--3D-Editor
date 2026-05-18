@@ -50,11 +50,13 @@ void AssetCombinedImage::loadImage(const LoadingRequest& loadingRequest)
 	std::string filenameNoExtensionA = EditorConfiguration::sanitizeFilePath(loadingPathA.substr(loadingPathA.find_last_of("/") + 1, loadingPathA.find_last_of(".")));
 	std::string folder = loadingPathR.substr(0, loadingPathR.find_last_of("/"));
 
-	bool keepDataOnCPU = m_thumbnailGenerationRequested || loadingRequest.m_keepDataOnCPU;
+	KeepDataMode keepDataMode = loadingRequest.m_keepDataMode;
+	if (m_thumbnailGenerationRequested && keepDataMode == KeepDataMode::ONLY_GPU)
+		keepDataMode = KeepDataMode::CPU_AND_GPU;
 
-	if (!keepDataOnCPU && ImageFormatter::isCacheAvailable(fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized))
+	if (keepDataMode == KeepDataMode::ONLY_GPU && ImageFormatter::isCacheAvailable(fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized))
 	{
-		ImageFormatter imageFormatter(m_editorPushDataToGPU, fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized, ImageFormatter::KeepDataMode::ONLY_GPU,
+		ImageFormatter imageFormatter(m_editorPushDataToGPU, fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized, KeepDataMode::ONLY_GPU,
 			loadingRequest.m_loadMips);
 		imageFormatter.transferImageTo(image);
 		m_slicesFolder = imageFormatter.getSlicesFolder();
@@ -76,17 +78,17 @@ void AssetCombinedImage::loadImage(const LoadingRequest& loadingRequest)
 		imageLoadingRequest.m_format = Wolf::Format::R8G8B8A8_UNORM;
 		imageLoadingRequest.m_loadMips = true;
 		imageLoadingRequest.m_canBeVirtualized = false;
-		imageLoadingRequest.m_keepDataOnCPU = true;
+		imageLoadingRequest.m_keepDataMode = KeepDataMode::CPU_AND_GPU; // TODO: only CPU should be enough
 		m_assetManager->requestImageLoading(channelAssetId, imageLoadingRequest, true);
-		Wolf::ResourceNonOwner<Wolf::Image> image = m_assetManager->getImage(channelAssetId, Wolf::Format::R8G8B8A8_UNORM);
+		Wolf::ResourceNonOwner<Wolf::Image> channelImage = m_assetManager->getImage(channelAssetId, Wolf::Format::R8G8B8A8_UNORM);
 
 		const uint8_t* pixels = m_assetManager->getImageData(channelAssetId, 0, Wolf::Format::R8G8B8A8_UNORM);
-		std::vector<const uint8_t*> mipLevels(image->getMipLevelCount() - 1);
+		std::vector<const uint8_t*> mipLevels(channelImage->getMipLevelCount() - 1);
 		for (uint32_t mipIdx = 0; mipIdx < mipLevels.size(); mipIdx++)
 		{
 			mipLevels[mipIdx] = m_assetManager->getImageData(channelAssetId, mipIdx + 1, Wolf::Format::R8G8B8A8_UNORM);
 		}
-		Wolf::Extent3D extent = image->getExtent();
+		Wolf::Extent3D extent = channelImage->getExtent();
 		uint32_t pixelCount = extent.width * extent.height * extent.depth;
 
 		if (channelIdx == 0)
@@ -129,40 +131,40 @@ void AssetCombinedImage::loadImage(const LoadingRequest& loadingRequest)
 		}
 	}
 
-	ImageFormatter imageFormatter(m_editorPushDataToGPU, combinedData, combinedMipLevels, combinedExtent, fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized,
-		keepDataOnCPU ? ImageFormatter::KeepDataMode::CPU_AND_GPU : ImageFormatter::KeepDataMode::ONLY_GPU);
+	ImageFormatter imageFormatter(m_editorPushDataToGPU, combinedData, combinedMipLevels, combinedExtent, fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized, keepDataMode);
 	imageFormatter.transferImageTo(image);
 	m_slicesFolder = imageFormatter.getSlicesFolder();
 
-	if (keepDataOnCPU)
+	if (keepDataMode != KeepDataMode::ONLY_GPU)
 	{
-		m_mipData.resize(imageFormatter.getMipCountKeptOnCPU());
-		for (uint32_t mipLevel = 0; mipLevel < m_mipData.size(); mipLevel++)
-		{
-			const Wolf::Extent3D mipExtent = { image->getExtent().width >> mipLevel, image->getExtent().height >> mipLevel, image->getExtent().depth };
-			m_mipData[mipLevel].resize(image->getBPP() * mipExtent.width * mipExtent.height * mipExtent.depth);
-			memcpy(m_mipData[mipLevel].data(), imageFormatter.getPixels(mipLevel), m_mipData[mipLevel].size());
-		}
-		m_mipDataFormat = loadingRequest.m_format;
+		CPUData& cpuData = m_cpuData[loadingRequest.m_format];
 
-		if (m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET)
-		{
-			m_dataOnCPUStatus = DataOnCPUStatus::AVAILABLE;
-		}
-	}
+		Wolf::Extent3D imageExtent = imageFormatter.getExtent();
+		cpuData.m_extent = imageExtent;
 
-	if (m_thumbnailGenerationRequested)
-	{
-		std::string iconPath = AssetManager::computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+		float imageBPP = Wolf::Image::computeBPPFromFormat(loadingRequest.m_format);
 
-		if (generateThumbnail(fullFilePath, iconPath))
+		cpuData.m_mipData.resize(imageFormatter.getMipCountKeptOnCPU() + 1);
+		for (uint32_t mipLevel = 0; mipLevel < cpuData.m_mipData.size(); mipLevel++)
 		{
-			m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+			const Wolf::Extent3D mipExtent = { imageExtent.width >> mipLevel, imageExtent.height >> mipLevel, imageExtent.depth };
+			cpuData.m_mipData[mipLevel].resize(imageBPP * mipExtent.width * mipExtent.height * mipExtent.depth);
+			memcpy(cpuData.m_mipData[mipLevel].data(), imageFormatter.getPixels(mipLevel), cpuData.m_mipData[mipLevel].size());
 		}
 
-		if (m_dataOnCPUStatus != DataOnCPUStatus::AVAILABLE)
+		if (m_thumbnailGenerationRequested)
 		{
-			deleteImageData();
+			std::string iconPath = AssetManager::computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+
+			if (generateThumbnail(fullFilePath, iconPath))
+			{
+				m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+			}
+		}
+
+		if (loadingRequest.m_keepDataMode != KeepDataMode::ONLY_GPU)
+		{
+			deleteImageData(loadingRequest.m_format);
 		}
 	}
 }

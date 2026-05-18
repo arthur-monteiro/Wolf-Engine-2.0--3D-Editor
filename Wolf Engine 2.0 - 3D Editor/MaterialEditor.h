@@ -32,6 +32,7 @@ public:
 
 	void addTextureSet(const std::string& textureSetPath, float strength);
 	uint32_t getTextureSetCount() const { return m_textureSets.size(); }
+	AssetId getTextureSetAssetId(uint32_t textureSetIdx) const { return m_textureSets[textureSetIdx].getAssetId(); }
 
 private:
 	inline static const std::string TAB = "Material";
@@ -61,6 +62,7 @@ private:
 
 		static constexpr uint32_t NO_TEXTURE_SET_IDX = -1;
 		uint32_t getTextureSetIdx() const;
+		AssetId getAssetId() const { return m_textureSetAssetId; }
 		float getStrength() const { return m_strength; }
 
 	private:

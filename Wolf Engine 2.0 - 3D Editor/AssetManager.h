@@ -17,6 +17,11 @@
 #include "RenderingPipelineInterface.h"
 #include "ThumbnailsGenerationPass.h"
 
+namespace sol
+{
+	class state;
+}
+
 class TextureSetEditor;
 class Entity;
 class ImageFormatter;
@@ -36,6 +41,7 @@ public:
 	void releaseRenderingPipeline();
 
 	Wolf::ResourceNonOwner<Entity> computeAssetEditor(AssetId assetId);
+	void addScriptCallbacks(sol::state& state);
 
 	AssetId getAssetIdForPath(const std::string& path);
 
@@ -58,7 +64,7 @@ public:
 	Wolf::ResourceNonOwner<AnimationData> getAnimationData(AssetId assetId) const;
 	Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(AssetId assetId, uint32_t lod, uint32_t lodType);
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& getPhysicsShapes(AssetId modelAssetId) const;
-	uint32_t getMaterialIdx(AssetId meshAssetId) const;
+	uint32_t getDefaultMeshMaterialAssetId(AssetId meshAssetId) const;
 	std::string computeModelName(AssetId modelAssetId) const;
 	void subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
@@ -67,7 +73,7 @@ public:
 	void requestImageLoading(AssetId assetId, const AssetImageInterface::LoadingRequest& loadingRequest, bool requestImmediateLoading = false);
 	Wolf::ResourceNonOwner<Wolf::Image> getImage(AssetId imageAssetId, Wolf::Format format) const;
 	const uint8_t* getImageData(AssetId imageAssetId, uint32_t mipLevel, Wolf::Format format) const;
-	void deleteImageData(AssetId imageAssetId) const;
+	void deleteImageData(AssetId imageAssetId, Wolf::Format format) const;
 	void releaseImage(AssetId imageAssetId) const;
 	std::string getImageSlicesFolder(AssetId imageAssetId) const;
 	std::string getImageLoadingPath(AssetId assetId) const;
@@ -102,8 +108,8 @@ private:
 	friend class AssetExternalScene;
 	friend class AssetTextureSet;
 
-	[[nodiscard]] AssetId addMesh(ExternalSceneLoader::MeshData& meshData, const std::string& name, uint32_t materialIdx, AssetId parentAssetId);
-	[[nodiscard]] AssetId addMeshInternal(const std::string& loadingPath, ExternalSceneLoader::MeshData& meshData, uint32_t defaultMaterialId, AssetId parentAssetId = -1);
+	[[nodiscard]] AssetId addMesh(ExternalSceneLoader::MeshData& meshData, const std::string& name, AssetId defaultMaterialAssetId, AssetId parentAssetId);
+	[[nodiscard]] AssetId addMeshInternal(const std::string& loadingPath, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId = -1);
 
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
 	static std::string computeIconPath(const std::string& loadingPath, uint32_t thumbnailsLockedCount);

@@ -6,10 +6,10 @@
 
 #include "ComponentInterface.h"
 #include "CustomSceneRenderPass.h"
-#include "EditorModelInterface.h"
+#include "EditorMeshInterface.h"
 #include "EditorTypes.h"
 
-class SurfaceCoatingEmitterComponent : public EditorModelInterface
+class SurfaceCoatingEmitterComponent : public EditorMeshInterface
 {
 public:
     static inline std::string ID = "surfaceCoatingEmitter";

@@ -3,7 +3,6 @@
 #include <string>
 
 #include <Debug.h>
-#include <DefaultMeshRenderer.h>
 #include <Timer.h>
 
 #include "DrawManager.h"

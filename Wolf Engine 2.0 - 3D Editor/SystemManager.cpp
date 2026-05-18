@@ -1,15 +1,17 @@
 #include "SystemManager.h"
 
-#include <ctime>
 #include <chrono>
 #include <fstream>
 #include <iostream>
+
+#include <sol/sol.hpp>
 
 #include <CPUMemoryDebug.h>
 #include <GPUMemoryDebug.h>
 #include <JSONReader.h>
 #include <ProfilerCommon.h>
 
+#include "BinaryWriter.h"
 #include "GraphicSettingsFakeEntity.h"
 #include "RuntimeContext.h"
 #include "Vertex2DTextured.h"
@@ -486,7 +488,7 @@ ultralight::JSValue SystemManager::pickFileJSCallback(const ultralight::JSObject
 	Wolf::Debug::sendCriticalError("Pick file not implemented for this platform");
 #endif
 
-	if (inputFilter != "exportExe")
+	if (inputFilter != "script")
 	{
 		fullFilePath = m_configuration->computeLocalPathFromFullPath(fullFilePath);
 	}
@@ -663,8 +665,8 @@ void SystemManager::loadSceneJSCallback(const ultralight::JSObject& thisObject, 
 
 void SystemManager::exportSceneJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
-	const std::string& exportExePath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
-	m_exportSceneRequest = exportExePath;
+	const std::string& exportScriptPath = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	m_exportSceneRequest = exportScriptPath;
 }
 
 void SystemManager::createAssetJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -943,7 +945,7 @@ void SystemManager::selectEntity() const
 
 void SystemManager::goToEntity(Entity* entity) const
 {
-	if (entity->hasModelComponent())
+	if (entity->hasMeshComponent())
 	{
 		Wolf::AABB entityAABB = entity->getAABB();
 		float entityHeight = entityAABB.getMax().y - entityAABB.getMin().y;
@@ -1032,7 +1034,7 @@ void SystemManager::updateBeforeFrame()
 		m_entityReloadRequested = false;
 	}
 
-	if (m_selectedEntity && (*m_selectedEntity)->hasModelComponent())
+	if (m_selectedEntity && (*m_selectedEntity)->hasMeshComponent())
 	{
 		if (m_showAABBForSelectedEntity)
 		{
@@ -1411,7 +1413,39 @@ void SystemManager::updateUISelectedEntity() const
 
 void SystemManager::exportScene()
 {
-	// TODO
+	sol::state luaState;
+
+	luaState.open_libraries(
+		sol::lib::base,
+		sol::lib::package,
+		sol::lib::table,
+		sol::lib::string,
+		sol::lib::io,
+		sol::lib::debug
+	);
+
+	luaState.set_function("getSceneName", [this]{ return m_currentSceneName; });
+	luaState.set_function("getEntityCount", [this] { return m_entityContainer->getEntities().size(); });
+	luaState.set_function("getEntity", [this] (uint32_t entityIdx) { return &*m_entityContainer->getEntities()[entityIdx]; });
+	luaState.new_usertype<Entity>("Entity",
+		"getName", [](const Entity& self) { return self.getName(); },
+		"hasStaticMeshComponent", [](const Entity& self) { return self.hasComponent(StaticMesh::ID); },
+		"getStaticMeshComponent", [](Entity& self) { return &*self.getComponent<StaticMesh>(); }
+	);
+	luaState.new_usertype<StaticMesh>("StaticMesh",
+		"getMeshAssetId", [](const StaticMesh& self) { return self.getAssetId(); },
+		"getTransform", [](const StaticMesh& self) { return self.getTransform(); },
+		"getMaterialAssetId", [](const StaticMesh& self) { return self.getMaterialAssetId(); }
+	);
+
+	auto log = luaState.create_table("Log");
+	log.set_function("info", [](const std::string& msg) { Wolf::Debug::sendInfo(msg); });
+	log.set_function("error", [](const std::string& msg) { Wolf::Debug::sendError(msg); });
+
+	m_assetManager->addScriptCallbacks(luaState);
+	BinaryWriter::addScriptCallbacks(luaState);
+
+	luaState.script_file(m_exportSceneRequest);
 
 	m_exportSceneRequest = "";
 }

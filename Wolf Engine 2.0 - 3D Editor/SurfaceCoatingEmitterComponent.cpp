@@ -331,7 +331,7 @@ bool SurfaceCoatingEmitterComponent::getMeshesToRender(std::vector<DrawManager::
     transform = glm::scale(transform, aabb.getSize());
     instanceData.transform = transform;
 
-    instanceData.firstMaterialIdx = 0; // TODO
+    instanceData.materialIdx = 0; // TODO
     instanceData.entityIdx = m_entity->getIdx();
     outList.push_back({ meshToRenderInfo, instanceData });
 
@@ -340,7 +340,7 @@ bool SurfaceCoatingEmitterComponent::getMeshesToRender(std::vector<DrawManager::
 
 bool SurfaceCoatingEmitterComponent::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos)
 {
-    return EditorModelInterface::getInstancesForRayTracedWorld(instanceInfos);
+    return EditorMeshInterface::getInstancesForRayTracedWorld(instanceInfos);
 }
 
 bool SurfaceCoatingEmitterComponent::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)

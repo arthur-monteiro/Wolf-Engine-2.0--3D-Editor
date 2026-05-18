@@ -80,7 +80,7 @@ AnimatedMesh::AnimatedMesh(const Wolf::ResourceNonOwner<AssetManager>& resourceM
 
 void AnimatedMesh::loadParams(Wolf::JSONReader& jsonReader)
 {
-	EditorModelInterface::loadParams(jsonReader, ID);
+	EditorMeshInterface::loadParams(jsonReader, ID);
 	::loadParams<Animation>(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 
@@ -88,7 +88,7 @@ void AnimatedMesh::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf:
 {
 	PROFILE_FUNCTION
 
-	EditorModelInterface::updateBeforeFrame(globalTimer, inputHandler);
+	EditorMeshInterface::updateBeforeFrame(globalTimer, inputHandler);
 
 	if (m_waitingForMeshLoadingFrameCount > 0)
 	{
@@ -184,7 +184,7 @@ bool AnimatedMesh::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& out
 
 	InstanceData instanceData{};
 	instanceData.transform = m_transform;
-	instanceData.firstMaterialIdx = m_materialGPUIdx;
+	instanceData.materialIdx = m_materialGPUIdx;
 	instanceData.entityIdx = m_entity->getIdx();
 
 	outList.push_back({meshToRenderInfo, instanceData});
@@ -212,7 +212,7 @@ void AnimatedMesh::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 
 void AnimatedMesh::activateParams()
 {
-	EditorModelInterface::activateParams();
+	EditorMeshInterface::activateParams();
 
 	for (EditorParamInterface* editorParam : m_editorParams)
 	{
@@ -222,7 +222,7 @@ void AnimatedMesh::activateParams()
 
 void AnimatedMesh::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
-	EditorModelInterface::addParamsToJSON(outJSON, tabCount);
+	EditorMeshInterface::addParamsToJSON(outJSON, tabCount);
 
 	for (const EditorParamInterface* editorParam : m_editorParams)
 	{

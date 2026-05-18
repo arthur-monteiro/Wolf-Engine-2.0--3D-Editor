@@ -1,4 +1,4 @@
-#include "EditorModelInterface.h"
+#include "EditorMeshInterface.h"
 
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -7,7 +7,7 @@
 
 using namespace Wolf;
 
-EditorModelInterface::EditorModelInterface()
+EditorMeshInterface::EditorMeshInterface()
 {
 	m_transform = glm::mat4(1.0f);
 	glm::quat quatRotation;
@@ -16,23 +16,23 @@ EditorModelInterface::EditorModelInterface()
 	glm::decompose(m_transform, m_scaleParam.getValue(), quatRotation, m_translationParam.getValue(), skew, perspective);
 	m_rotationParam = glm::eulerAngles(quatRotation) * 3.14159f / 180.f;
 
-	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, EditorModelInterface>([this](ResourceUniqueOwner<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
+	m_modelDescriptorSetLayoutGenerator.reset(new LazyInitSharedResource<DescriptorSetLayoutGenerator, EditorMeshInterface>([this](ResourceUniqueOwner<DescriptorSetLayoutGenerator>& descriptorSetLayoutGenerator)
 		{
 			descriptorSetLayoutGenerator.reset(new DescriptorSetLayoutGenerator);
 			descriptorSetLayoutGenerator->addUniformBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0); // matrices
 		}));
 
-	m_modelDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, EditorModelInterface>([this](ResourceUniqueOwner<DescriptorSetLayout>& descriptorSetLayout)
+	m_modelDescriptorSetLayout.reset(new LazyInitSharedResource<DescriptorSetLayout, EditorMeshInterface>([this](ResourceUniqueOwner<DescriptorSetLayout>& descriptorSetLayout)
 		{
 			descriptorSetLayout.reset(DescriptorSetLayout::createDescriptorSetLayout(m_modelDescriptorSetLayoutGenerator->getResource()->getDescriptorLayouts()));
 		}));
 }
 
-void EditorModelInterface::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
+void EditorMeshInterface::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
 }
 
-glm::mat3 EditorModelInterface::computeRotationMatrix() const
+glm::mat3 EditorMeshInterface::computeRotationMatrix() const
 {
 	glm::mat4 r(1.0f);
 	r = glm::rotate(r, static_cast<glm::vec3>(m_rotationParam).x, glm::vec3(1.0f, 0.0f, 0.0f));
@@ -42,7 +42,7 @@ glm::mat3 EditorModelInterface::computeRotationMatrix() const
 	return r;
 }
 
-void EditorModelInterface::activateParams()
+void EditorMeshInterface::activateParams()
 {
 	for (EditorParamInterface* param : m_modelParams)
 	{
@@ -50,12 +50,12 @@ void EditorModelInterface::activateParams()
 	}
 }
 
-void EditorModelInterface::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
+void EditorMeshInterface::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
 	::addParamsToJSON(outJSON, m_modelParams, false, tabCount);
 }
 
-void EditorModelInterface::loadParams(JSONReader& jsonReader, const std::string& id)
+void EditorMeshInterface::loadParams(JSONReader& jsonReader, const std::string& id)
 {
 	std::vector<EditorParamInterface*> rotationQuaternionParams(1);
 	rotationQuaternionParams[0] = &m_rotationQuaternionParam;
@@ -72,7 +72,7 @@ void EditorModelInterface::loadParams(JSONReader& jsonReader, const std::string&
 	}
 }
 
-void EditorModelInterface::recomputeTransform()
+void EditorMeshInterface::recomputeTransform()
 {
 	m_transform = glm::translate(glm::mat4(1.0f), static_cast<glm::vec3>(m_translationParam));
 
@@ -89,7 +89,7 @@ void EditorModelInterface::recomputeTransform()
 	notifySubscribers();
 }
 
-void EditorModelInterface::updateRotation()
+void EditorMeshInterface::updateRotation()
 {
 	glm::quat quatRotation = glm::quat(static_cast<glm::vec3>(m_rotationParam));
 	m_rotationQuaternionParam = glm::vec4(quatRotation.x, quatRotation.y, quatRotation.z, quatRotation.w);

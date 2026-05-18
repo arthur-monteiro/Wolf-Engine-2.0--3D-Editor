@@ -9,7 +9,7 @@ class AssetMesh : public AssetInterface
 {
 public:
 	AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateAssetInUICallback,
-		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, uint32_t defaultMaterialId, AssetId parentAssetId,
+		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, uint32_t defaultMaterialIdx, AssetId parentAssetId,
 		const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
 		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);
 	AssetMesh(const AssetMesh&) = delete;
@@ -32,7 +32,10 @@ public:
 	Wolf::ResourceNonOwner<AnimationData> getAnimationData() const { return m_animationData.createNonOwnerResource(); }
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& getPhysicsShapes() { return m_physicsShapes; }
 	Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(uint32_t lod, uint32_t lodType);
-	uint32_t getMaterialIdx() const { return m_materialIdx; }
+	AssetId getDefaultMaterialAssetId() const { return m_materialAssetId; }
+
+	[[nodiscard]] MeshFormatter* computeMeshFormatter();
+	const std::vector<Vertex3D>& getStaticVertices() const { return m_staticVertices; }
 
 private:
 	AssetManager* m_assetManager = nullptr;
@@ -40,7 +43,7 @@ private:
 	std::vector<Vertex3D> m_staticVertices;
 	std::vector<SkeletonVertex> m_skeletonVertices;
 	std::vector<uint32_t> m_indices;
-	uint32_t m_materialIdx;
+	AssetId m_materialAssetId = NO_ASSET;
 
 	void loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& meshFormatter);
 	void loadModel();

@@ -5,10 +5,10 @@
 
 
 AssetMesh::AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateAssetInUICallback,
-	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, uint32_t defaultMaterialId, AssetId parentAssetId,const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
+	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId,const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
 : AssetInterface(loadingPath, assetId, updateAssetInUICallback, parentAssetId), m_assetManager(assetManager), m_bufferPoolInterface(bufferPoolInterface), m_staticVertices(meshData.m_staticVertices),
-  m_indices(meshData.m_indices), m_skeletonVertices(meshData.m_skeletonVertices), m_animationData(meshData.m_animationData.release()), m_materialIdx(defaultMaterialId)
+  m_indices(meshData.m_indices), m_skeletonVertices(meshData.m_skeletonVertices), m_animationData(meshData.m_animationData.release()), m_materialAssetId(defaultMaterialAssetId)
 {
 	if (m_staticVertices.empty() && m_skeletonVertices.empty())
 	{
@@ -152,6 +152,14 @@ Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetMesh
 	return m_bottomLevelAccelerationStructures[lodType][lod].createNonOwnerResource();
 }
 
+MeshFormatter* AssetMesh::computeMeshFormatter()
+{
+	Wolf::ResourceUniqueOwner<MeshFormatter> meshFormatter;
+	loadMeshFormatter(meshFormatter);
+
+	return meshFormatter.release();
+}
+
 void AssetMesh::loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& meshFormatter)
 {
 	meshFormatter.reset(new MeshFormatter(m_loadingPath, m_assetManager));
@@ -217,7 +225,7 @@ void AssetMesh::loadModel()
 		}
 
 		MeshAssetEditor::AddLODInfo addLodInfo{};
-		addLodInfo.m_materialIdx = m_materialIdx;
+		addLodInfo.m_materialIdx = m_materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(m_materialAssetId)->getMaterialGPUIdx();
 		addLodInfo.m_mesh = m_defaultSimplifiedMeshes.back().createNonOwnerResource();
 		addLodInfo.m_lodType = 0;
 		addLodInfo.m_error = lod.m_error;
@@ -290,7 +298,10 @@ void AssetMesh::generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerat
 {
 	std::string iconPath = AssetManager::computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
 
-	thumbnailsGenerationPass->addRequestBeforeFrame({ getMesh(), isAnimated() ? Wolf::NullableResourceNonOwner<AnimationData>(getAnimationData()) : Wolf::NullableResourceNonOwner<AnimationData>(), m_materialIdx, iconPath,
+	AssetId materialAssetId = m_assetManager->getDefaultMeshMaterialAssetId(m_materialAssetId);
+	uint32_t materialGPUIdx = materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(materialAssetId)->getMaterialGPUIdx();
+
+	thumbnailsGenerationPass->addRequestBeforeFrame({ getMesh(), isAnimated() ? Wolf::NullableResourceNonOwner<AnimationData>(getAnimationData()) : Wolf::NullableResourceNonOwner<AnimationData>(), materialGPUIdx, iconPath,
 		[this, iconPath]() { m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId); },
 			m_thumbnailGenerationViewMatrix });
 }

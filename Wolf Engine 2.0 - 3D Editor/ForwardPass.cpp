@@ -11,7 +11,7 @@
 #include "CommonLayouts.h"
 #include "ContaminationUpdatePass.h"
 #include "GameContext.h"
-#include "EditorModelInterface.h"
+#include "EditorMeshInterface.h"
 #include "LightManager.h"
 #include "Vertex2DTextured.h"
 #include "VoxelGlobalIlluminationPass.h"

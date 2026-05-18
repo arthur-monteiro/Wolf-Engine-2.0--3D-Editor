@@ -2,7 +2,7 @@
 #include <string>
 
 enum class BrowseToFileOption { FILE_OPEN, FILE_SAVE };
-enum class BrowseToFileFilter { SAVE, EXTERNAL_SCENE, IMG, EXPORT_EXE };
+enum class BrowseToFileFilter { SAVE, EXTERNAL_SCENE, IMG, SCRIPT };
 
 #if defined(WIN32)
 #include <shtypes.h>
@@ -20,15 +20,18 @@ void BrowseToFile(std::string& filename, BrowseToFileOption option, BrowseToFile
 	ofn.nMaxFile = sizeof(szFile);
 	switch (filter)
 	{
-	case BrowseToFileFilter::SAVE:
-		ofn.lpstrFilter = "Wolf Editor Save (JSON)\0*.json\0";
-		break;
-	case BrowseToFileFilter::EXTERNAL_SCENE:
-		ofn.lpstrFilter = "External scene\0*.gltf;*.obj;*.dae\0";
-		break;
-	case BrowseToFileFilter::IMG:
-		ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga;*.dds;*.hdr;*.cube\0";
-		break;
+		case BrowseToFileFilter::SAVE:
+			ofn.lpstrFilter = "Wolf Editor Save (JSON)\0*.json\0";
+			break;
+		case BrowseToFileFilter::EXTERNAL_SCENE:
+			ofn.lpstrFilter = "External scene\0*.gltf;*.obj;*.dae\0";
+			break;
+		case BrowseToFileFilter::IMG:
+			ofn.lpstrFilter = "Image\0*.jpg;*.png;*.tga;*.dds;*.hdr;*.cube\0";
+			break;
+		case BrowseToFileFilter::SCRIPT:
+			ofn.lpstrFilter = "Script\0*.lua\0";
+			break;
 	}
 	ofn.nFilterIndex = 0;
 	ofn.lpstrFileTitle = NULL;
@@ -138,9 +141,9 @@ int main(int argc, char** argv)
 		browseToFileFilter = BrowseToFileFilter::IMG;
 	else if (inputFilter == "externalScene")
 		browseToFileFilter = BrowseToFileFilter::EXTERNAL_SCENE;
-	else if (inputFilter == "exportExe")
+	else if (inputFilter == "script")
 	{
-		browseToFileFilter = BrowseToFileFilter::EXPORT_EXE;
+		browseToFileFilter = BrowseToFileFilter::SCRIPT;
 		folderRestriction = "";
 	}
 	else

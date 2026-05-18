@@ -1,7 +1,6 @@
 #include "StaticMesh.h"
 
 #include <AABB.h>
-#include <Timer.h>
 #include <Pipeline.h>
 #include <ProfilerCommon.h>
 
@@ -84,17 +83,17 @@ StaticMesh::StaticMesh(const Wolf::ResourceNonOwner<AssetManager>& assetManager)
 
 void StaticMesh::loadParams(Wolf::JSONReader& jsonReader)
 {
-	EditorModelInterface::loadParams(jsonReader, ID);
+	EditorMeshInterface::loadParams(jsonReader, ID);
 	::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_alwaysVisibleEditorParams, false);
 }
 
 void StaticMesh::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler)
 {
-	EditorModelInterface::updateBeforeFrame(globalTimer, inputHandler);
+	EditorMeshInterface::updateBeforeFrame(globalTimer, inputHandler);
 
 	if (m_isWaitingForMeshLoading)
 	{
-		if (m_assetManager->isMeshLoaded(m_modelAssetId))
+		if (m_assetManager->isMeshLoaded(m_meshAssetId))
 		{
 			onRayTracedWorldLODTypeChanged();
 
@@ -107,20 +106,20 @@ bool StaticMesh::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outLi
 {
 	PROFILE_FUNCTION
 
-	if (m_modelAssetId == NO_ASSET)
+	if (m_meshAssetId == NO_ASSET)
 		return true;
 
-	if (!m_assetManager->isMeshLoaded(m_modelAssetId))
+	if (!m_assetManager->isMeshLoaded(m_meshAssetId))
 		return false;
 
-	float radius = m_assetManager->getMesh(m_modelAssetId)->getBoundingSphere().getRadius();
+	float radius = m_assetManager->getMesh(m_meshAssetId)->getBoundingSphere().getRadius();
 	constexpr float quality = 1.0f;
 
-	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultLODs = m_assetManager->getMeshDefaultSimplifiedMeshes(m_modelAssetId);
+	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultLODs = m_assetManager->getMeshDefaultSimplifiedMeshes(m_meshAssetId);
 
 	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
-	meshToRenderInfo.m_lods.emplace_back(m_assetManager->getMesh(m_modelAssetId).duplicateAs<Wolf::MeshInterface>(),
-		defaultLODs.empty() ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, m_assetManager->getMesh(m_modelAssetId)->getIndexCount(), quality));
+	meshToRenderInfo.m_lods.emplace_back(m_assetManager->getMesh(m_meshAssetId).duplicateAs<Wolf::MeshInterface>(),
+		defaultLODs.empty() ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, m_assetManager->getMesh(m_meshAssetId)->getIndexCount(), quality));
 
 	for (uint32_t lod = 0; lod < defaultLODs.size(); ++lod)
 	{
@@ -130,7 +129,8 @@ bool StaticMesh::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outLi
 
 	InstanceData instanceData{};
 	instanceData.transform = m_transform;
-	instanceData.firstMaterialIdx = m_assetManager->getMaterialIdx(m_modelAssetId);
+	AssetId materialAssetId = m_assetManager->getDefaultMeshMaterialAssetId(m_meshAssetId);
+	instanceData.materialIdx = materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(materialAssetId)->getMaterialGPUIdx();
 	instanceData.entityIdx = m_entity->getIdx();
 	outList.push_back({ meshToRenderInfo, instanceData});
 
@@ -141,21 +141,24 @@ bool StaticMesh::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager
 {
 	PROFILE_FUNCTION
 
-	if (!m_assetManager->isMeshLoaded(m_modelAssetId))
+	if (!m_assetManager->isMeshLoaded(m_meshAssetId))
 		return false;
 
-	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_assetManager->getBLAS(m_modelAssetId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform,
-		m_assetManager->getMaterialIdx(m_modelAssetId), m_assetManager->getMesh(m_modelAssetId) };
+	AssetId materialAssetId = m_assetManager->getDefaultMeshMaterialAssetId(m_meshAssetId);
+	uint32_t materialGPUIdx = materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(materialAssetId)->getMaterialGPUIdx();
+
+	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_assetManager->getBLAS(m_meshAssetId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform,
+		materialGPUIdx, m_assetManager->getMesh(m_meshAssetId) };
 
 	if (m_rayTracedWorldLOD > 0)
 	{
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			instanceInfo.m_mesh = m_assetManager->getMeshDefaultSimplifiedMeshes(m_modelAssetId)[m_rayTracedWorldLOD - 1];
+			instanceInfo.m_mesh = m_assetManager->getMeshDefaultSimplifiedMeshes(m_meshAssetId)[m_rayTracedWorldLOD - 1];
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			instanceInfo.m_mesh = m_assetManager->getMeshSloppySimplifiedMeshes(m_modelAssetId)[m_rayTracedWorldLOD - 1];
+			instanceInfo.m_mesh = m_assetManager->getMeshSloppySimplifiedMeshes(m_meshAssetId)[m_rayTracedWorldLOD - 1];
 		}
 		else
 		{
@@ -170,10 +173,10 @@ bool StaticMesh::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager
 
 bool StaticMesh::getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList)
 {
-	if (!m_assetManager->isMeshLoaded(m_modelAssetId))
+	if (!m_assetManager->isMeshLoaded(m_meshAssetId))
 		return false;
 
-	for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& physicsShape : m_assetManager->getPhysicsShapes(m_modelAssetId))
+	for (Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>& physicsShape : m_assetManager->getPhysicsShapes(m_meshAssetId))
 	{
 		outList.push_back({physicsShape.createNonOwnerResource(), m_transform });
 	}
@@ -187,7 +190,7 @@ void StaticMesh::addDebugInfo(DebugRenderingManager& debugRenderingManager)
 
 void StaticMesh::activateParams()
 {
-	EditorModelInterface::activateParams();
+	EditorMeshInterface::activateParams();
 
 	for (EditorParamInterface* editorParam : m_alwaysVisibleEditorParams)
 	{
@@ -197,7 +200,7 @@ void StaticMesh::activateParams()
 
 void StaticMesh::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 {
-	EditorModelInterface::addParamsToJSON(outJSON, tabCount);
+	EditorMeshInterface::addParamsToJSON(outJSON, tabCount);
 
 	for (const EditorParamInterface* editorParam : m_alwaysVisibleEditorParams)
 	{
@@ -207,27 +210,32 @@ void StaticMesh::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 
 void StaticMesh::setInfoFromParent(AssetId modelAssetId)
 {
-	m_modelAssetId = modelAssetId;
+	m_meshAssetId = modelAssetId;
 
-	m_assetManager->subscribeToMesh(m_modelAssetId, this, [this](Flags) { notifySubscribers(); });
+	m_assetManager->subscribeToMesh(m_meshAssetId, this, [this](Flags) { notifySubscribers(); });
 	m_isWaitingForMeshLoading = true;
 	notifySubscribers();
 }
 
 Wolf::AABB StaticMesh::getAABB() const
 {
-	if (m_assetManager->isMeshLoaded(m_modelAssetId))
-		return m_assetManager->getMesh(m_modelAssetId)->getAABB() * m_transform;
+	if (m_assetManager->isMeshLoaded(m_meshAssetId))
+		return m_assetManager->getMesh(m_meshAssetId)->getAABB() * m_transform;
 
 	return Wolf::AABB();
 }
 
 Wolf::BoundingSphere StaticMesh::getBoundingSphere() const
 {
-	if (m_assetManager->isMeshLoaded(m_modelAssetId))
-		return m_assetManager->getMesh(m_modelAssetId)->getBoundingSphere() * m_transform;
+	if (m_assetManager->isMeshLoaded(m_meshAssetId))
+		return m_assetManager->getMesh(m_meshAssetId)->getBoundingSphere() * m_transform;
 
 	return Wolf::BoundingSphere();
+}
+
+AssetId StaticMesh::getMaterialAssetId() const
+{
+	return m_assetManager->getDefaultMeshMaterialAssetId(m_meshAssetId);
 }
 
 void StaticMesh::onMeshAssetChanged()
@@ -242,22 +250,22 @@ void StaticMesh::onMeshAssetChanged()
 		m_meshAssetParam = "";
 	}
 
-	m_modelAssetId = meshAssetId;
+	m_meshAssetId = meshAssetId;
 	notifySubscribers();
 }
 
 void StaticMesh::onRayTracedWorldLODTypeChanged()
 {
-	if (m_assetManager->isMeshLoaded(m_modelAssetId))
+	if (m_assetManager->isMeshLoaded(m_meshAssetId))
 	{
 		uint32_t maxLOD;
 		if (m_rayTracedWorldLODType == 0) // Default
 		{
-			maxLOD = m_assetManager->getMeshDefaultSimplifiedMeshes(m_modelAssetId).size();
+			maxLOD = m_assetManager->getMeshDefaultSimplifiedMeshes(m_meshAssetId).size();
 		}
 		else if (m_rayTracedWorldLODType == 1) // Sloppy
 		{
-			maxLOD = m_assetManager->getMeshSloppySimplifiedMeshes(m_modelAssetId).size();
+			maxLOD = m_assetManager->getMeshSloppySimplifiedMeshes(m_meshAssetId).size();
 		}
 		else
 		{

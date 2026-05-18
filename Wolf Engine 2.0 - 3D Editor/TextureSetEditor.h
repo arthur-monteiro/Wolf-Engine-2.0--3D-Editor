@@ -37,6 +37,7 @@ public:
 
 	uint32_t getTextureSetIdx() const;
 
+	AssetId getAlbedoAssetId() const { return m_albedoAssetId; }
 	std::string getAlbedoPath() const { return m_albedoPathParam; }
 	std::string getNormalPath() const { return m_normalPathParam; }
 	std::string getRoughnessPath() const { return m_roughnessParam; }

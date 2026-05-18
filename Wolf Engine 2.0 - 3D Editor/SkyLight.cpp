@@ -191,7 +191,7 @@ bool SkyLight::updateCubeMap()
 			m_sunIntensityFromSphericalMap = glm::length(maxValue) * 0.02f;
 			m_sunColorFromSphericalMap = glm::normalize(maxValue) * glm::sqrt(3.0f);
 
-			m_assetManager->deleteImageData(m_sphericalMapAssetId);
+			m_assetManager->deleteImageData(m_sphericalMapAssetId, SPHERICAL_MAP_FORMAT);
 
 			return true;
 		}
@@ -245,7 +245,7 @@ void SkyLight::onSphericalMapChanged()
 	}
 
 	AssetImageInterface::LoadingRequest loadingRequest{};
-	loadingRequest.m_keepDataOnCPU = true;
+	loadingRequest.m_keepDataMode = AssetImageInterface::KeepDataMode::CPU_AND_GPU;
 	loadingRequest.m_canBeVirtualized = false;
 	loadingRequest.m_format = SPHERICAL_MAP_FORMAT;
 	loadingRequest.m_loadMips = false;

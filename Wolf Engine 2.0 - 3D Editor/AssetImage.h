@@ -17,7 +17,6 @@ public:
     void getEditors(std::vector<Wolf::ResourceNonOwner<ComponentInterface>>& outEditors) const override { outEditors.push_back(m_editor.createNonOwnerResource<ComponentInterface>()); }
 
     Wolf::ResourceNonOwner<ImageEditor> getEditor() const { return m_editor.createNonOwnerResource(); }
-    const uint8_t* getMipData(uint32_t mipLevel, Wolf::Format format) const;
 
 private:
     void loadImage(const LoadingRequest& loadingRequest);

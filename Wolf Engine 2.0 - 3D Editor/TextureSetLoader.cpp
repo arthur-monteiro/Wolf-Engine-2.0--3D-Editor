@@ -88,6 +88,7 @@ TextureSetLoader::TextureSetLoader(const TextureSetAssetsInfoGGX& textureSet, co
 		loadingRequest.m_format = Wolf::Format::BC3_UNORM_BLOCK;
 		loadingRequest.m_loadMips = true;
 		loadingRequest.m_canBeVirtualized = true;
+		loadingRequest.m_keepDataMode = AssetImageInterface::KeepDataMode::ONLY_GPU;
 		assetManager->requestCombinedImageLoading(m_imageAssetIds[2], loadingRequest, true);
 	}
 	else

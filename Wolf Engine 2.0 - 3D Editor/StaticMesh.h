@@ -2,10 +2,10 @@
 
 #include <PipelineSet.h>
 
-#include "EditorModelInterface.h"
+#include "EditorMeshInterface.h"
 #include "AssetManager.h"
 
-class StaticMesh : public EditorModelInterface
+class StaticMesh : public EditorMeshInterface
 {
 public:
 	static inline std::string ID = "staticMesh";
@@ -30,13 +30,15 @@ public:
 
 	Wolf::AABB getAABB() const override;
 	Wolf::BoundingSphere getBoundingSphere() const override;
+	AssetId getAssetId() const { return m_meshAssetId; }
+	AssetId getMaterialAssetId() const;
 
 	void saveCustom() const override {}
 
 private:
 	inline static const std::string TAB = "Mesh";
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
-	AssetId m_modelAssetId = NO_ASSET;
+	AssetId m_meshAssetId = NO_ASSET;
 
 	bool m_isWaitingForMeshLoading = false;
 

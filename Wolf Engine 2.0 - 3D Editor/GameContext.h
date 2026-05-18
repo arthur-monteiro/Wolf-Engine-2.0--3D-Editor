@@ -2,7 +2,7 @@
 
 #include <string>
 
-class EditorModelInterface;
+class EditorMeshInterface;
 
 struct GameContext
 {

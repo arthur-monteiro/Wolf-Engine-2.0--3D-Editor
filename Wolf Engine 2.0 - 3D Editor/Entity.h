@@ -57,7 +57,7 @@ public:
 
 	Wolf::AABB getAABB() const;
 	Wolf::BoundingSphere getBoundingSphere() const;
-	bool hasModelComponent() const { return m_modelComponent.get(); }
+	bool hasMeshComponent() const { return m_meshComponent; }
 	bool hasComponent(const std::string& componentId) const;
 	glm::vec3 getPosition() const;
 	void setPosition(const glm::vec3& newPosition) const;
@@ -103,7 +103,7 @@ private:
 	Wolf::DynamicResourceUniqueOwnerArray<ComponentInterface> m_components;
 
 	// Model related
-	std::unique_ptr<Wolf::ResourceNonOwner<EditorModelInterface>> m_modelComponent;
+	Wolf::NullableResourceNonOwner<EditorMeshInterface> m_meshComponent;
 	bool m_needsMeshesToRenderComputation = false;
 	bool m_needsMeshesForPhysicsComputation = false;
 

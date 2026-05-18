@@ -52,18 +52,18 @@ void Entity::addComponent(ComponentInterface* component)
 		Wolf::Debug::sendError("There are more components than supported, please remove components");
 	}
 
-	if (const Wolf::ResourceNonOwner<EditorModelInterface> componentAsModel = m_components.back().createNonOwnerResource<EditorModelInterface>())
+	if (const Wolf::ResourceNonOwner<EditorMeshInterface> componentAsModel = m_components.back().createNonOwnerResource<EditorMeshInterface>())
 	{
-		if (hasModelComponent())
+		if (hasMeshComponent())
 			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
-		m_modelComponent.reset(new Wolf::ResourceNonOwner<EditorModelInterface>(componentAsModel));
+		m_meshComponent = componentAsModel;
 	}
 	else if (const Wolf::ResourceNonOwner<EditorLightInterface> componentAsLight = m_components.back().createNonOwnerResource<EditorLightInterface>())
 	{
 		m_lightComponents.push_back(componentAsLight);
 	}
 
-	if (m_modelComponent)
+	if (m_meshComponent)
 	{
 		component->subscribe(this, [this](Flags) { m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true; });
 		m_needsMeshesToRenderComputation = m_needsMeshesForPhysicsComputation = true;
@@ -98,12 +98,12 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 
 	DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->updateBeforeFrame(globalTimer, inputHandler);)
 
-	if (m_modelComponent)
+	if (m_meshComponent)
 	{
 		if (m_needsMeshesToRenderComputation)
 		{
 			std::vector<DrawManager::DrawMeshInfo> meshes;
-			bool areMeshesLoaded = (*m_modelComponent)->getMeshesToRender(meshes);
+			bool areMeshesLoaded = m_meshComponent->getMeshesToRender(meshes);
 
 			DYNAMIC_RESOURCE_UNIQUE_OWNER_ARRAY_RANGE_LOOP(m_components, component, component->alterMeshesToRender(meshes);)
 
@@ -125,7 +125,7 @@ void Entity::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::InputHandler>&
 			std::vector<EditorPhysicsManager::PhysicsMeshInfo> meshes;
 
 			// Re-request meshes until they are loaded
-			if (bool areMeshesLoaded = (*m_modelComponent)->getMeshesForPhysics(meshes))
+			if (bool areMeshesLoaded = m_meshComponent->getMeshesForPhysics(meshes))
 			{
 				m_needsMeshesForPhysicsComputation = false;
 				editorPhysicsManager->addMeshes(meshes, this);
@@ -159,9 +159,9 @@ void Entity::addDebugInfo(DebugRenderingManager& debugRenderingManager) const
 
 bool Entity::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos)
 {
-	if (m_modelComponent)
+	if (m_meshComponent)
 	{
-		return (*m_modelComponent)->getInstancesForRayTracedWorld(instanceInfos);
+		return m_meshComponent->getInstancesForRayTracedWorld(instanceInfos);
 	}
 	return true;
 }
@@ -237,7 +237,7 @@ void Entity::save() const
 
 void Entity::removeAllComponents()
 {
-	m_modelComponent.reset();
+	m_meshComponent.release();
 	m_lightComponents.clear();
 	m_components.clear();
 	
@@ -245,9 +245,9 @@ void Entity::removeAllComponents()
 
 Wolf::AABB Entity::getAABB() const
 {
-	if (m_modelComponent)
+	if (m_meshComponent)
 	{
-		return (*m_modelComponent)->getAABB();
+		return m_meshComponent->getAABB();
 	}
 	Wolf::Debug::sendWarning("Getting AABB of entity which doesn't contain a model component");
 	return {};
@@ -255,9 +255,9 @@ Wolf::AABB Entity::getAABB() const
 
 Wolf::BoundingSphere Entity::getBoundingSphere() const
 {
-	if (m_modelComponent)
+	if (m_meshComponent)
 	{
-		return (*m_modelComponent)->getBoundingSphere();
+		return m_meshComponent->getBoundingSphere();
 	}
 	// TODO: add bounding sphere for all entities
 	//Wolf::Debug::sendWarning("Getting bounding sphere of entity which doesn't contain a model component");
@@ -275,8 +275,8 @@ bool Entity::hasComponent(const std::string& componentId) const
 
 glm::vec3 Entity::getPosition() const
 {
-	if (m_modelComponent)
-		return (*m_modelComponent)->getPosition();
+	if (m_meshComponent)
+		return m_meshComponent->getPosition();
 
 	Wolf::Debug::sendWarning("Getting position of entity which doesn't contain a model component");
 	return glm::vec3(0.0);
@@ -284,9 +284,9 @@ glm::vec3 Entity::getPosition() const
 
 void Entity::setPosition(const glm::vec3& newPosition) const
 {
-	if (m_modelComponent)
+	if (m_meshComponent)
 	{
-		(*m_modelComponent)->setPosition(newPosition);
+		m_meshComponent->setPosition(newPosition);
 		return;
 	}
 
@@ -295,9 +295,9 @@ void Entity::setPosition(const glm::vec3& newPosition) const
 
 void Entity::setRotation(const glm::vec3& newRotation) const
 {
-	if (m_modelComponent)
+	if (m_meshComponent)
 	{
-		(*m_modelComponent)->setRotation(newRotation);
+		m_meshComponent->setRotation(newRotation);
 		return;
 	}
 

@@ -20,10 +20,10 @@ namespace Wolf
 	class AABB;
 }
 
-class EditorModelInterface : public ComponentInterface
+class EditorMeshInterface : public ComponentInterface
 {
 public:
-	EditorModelInterface();
+	EditorMeshInterface();
 
 	void updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf::ResourceNonOwner<Wolf::InputHandler>& inputHandler) override;
 	virtual bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) = 0;
@@ -67,6 +67,6 @@ protected:
 		&m_rotationQuaternionParam
 	};
 
-	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayoutGenerator, EditorModelInterface>> m_modelDescriptorSetLayoutGenerator;
-	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, EditorModelInterface>> m_modelDescriptorSetLayout;
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayoutGenerator, EditorMeshInterface>> m_modelDescriptorSetLayoutGenerator;
+	std::unique_ptr<Wolf::LazyInitSharedResource<Wolf::DescriptorSetLayout, EditorMeshInterface>> m_modelDescriptorSetLayout;
 };

@@ -21,7 +21,7 @@ ExternalSceneComponent::ExternalSceneComponent(const Wolf::ResourceNonOwner<Asse
 
 void ExternalSceneComponent::loadParams(Wolf::JSONReader& jsonReader)
 {
-	EditorModelInterface::loadParams(jsonReader, ID);
+	EditorMeshInterface::loadParams(jsonReader, ID);
     ::loadParams(jsonReader.getRoot()->getPropertyObject(ID), ID, m_editorParams);
 }
 

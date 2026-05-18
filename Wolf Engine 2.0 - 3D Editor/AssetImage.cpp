@@ -40,22 +40,6 @@ bool AssetImage::isLoaded() const
 	return !m_images.empty();
 }
 
-const uint8_t* AssetImage::getMipData(uint32_t mipLevel, Wolf::Format format) const
-{
-	if (m_dataOnCPUStatus != DataOnCPUStatus::AVAILABLE)
-	{
-		Wolf::Debug::sendError("Data requested in not here");
-		return nullptr;
-	}
-
-	if (m_mipDataFormat != format)
-	{
-		Wolf::Debug::sendCriticalError("Data is available but with a different format");
-	}
-
-	return m_mipData[mipLevel].data();
-}
-
 void AssetImage::loadImage(const LoadingRequest& loadingRequest)
 {
 	if (m_editor->getLoadingPath().empty())
@@ -63,54 +47,55 @@ void AssetImage::loadImage(const LoadingRequest& loadingRequest)
 		Wolf::Debug::sendCriticalError("Loading path is empty");
 	}
 
-	if (m_images.contains(loadingRequest.m_format))
-	{
-		return;
-	}
+	KeepDataMode keepDataMode = loadingRequest.m_keepDataMode;
+	if (m_thumbnailGenerationRequested && keepDataMode == KeepDataMode::ONLY_GPU)
+		keepDataMode = KeepDataMode::CPU_AND_GPU;
+	keepDataMode = computeNeededKeepDataMode(loadingRequest.m_format, keepDataMode);
 
-	m_images[loadingRequest.m_format].reset(nullptr);
-	Wolf::ResourceUniqueOwner<Wolf::Image>& image = m_images[loadingRequest.m_format];
+	if (keepDataMode == KeepDataMode::DONT_KEEP)
+		return;
 
 	std::string fullFilePath = g_editorConfiguration->computeFullPathFromLocalPath(m_editor->getLoadingPath());
 
-	bool keepDataOnCPU = m_thumbnailGenerationRequested || loadingRequest.m_keepDataOnCPU;
-	ImageFormatter imageFormatter(m_editorPushDataToGPU, fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized,
-		keepDataOnCPU ? ImageFormatter::KeepDataMode::CPU_AND_GPU : ImageFormatter::KeepDataMode::ONLY_GPU, loadingRequest.m_loadMips);
-	imageFormatter.transferImageTo(image);
-	m_slicesFolder = imageFormatter.getSlicesFolder();
-
-	if (!image)
-		return;
-
-	if (keepDataOnCPU)
+	ImageFormatter imageFormatter(m_editorPushDataToGPU, fullFilePath, loadingRequest.m_format, loadingRequest.m_canBeVirtualized, keepDataMode, loadingRequest.m_loadMips);
+	if (keepDataMode != KeepDataMode::ONLY_CPU)
 	{
-		m_mipData.resize(imageFormatter.getMipCountKeptOnCPU() + 1);
-		for (uint32_t mipLevel = 0; mipLevel < m_mipData.size(); mipLevel++)
-		{
-			const Wolf::Extent3D mipExtent = { image->getExtent().width >> mipLevel, image->getExtent().height >> mipLevel, image->getExtent().depth };
-			m_mipData[mipLevel].resize(image->getBPP() * mipExtent.width * mipExtent.height * mipExtent.depth);
-			memcpy(m_mipData[mipLevel].data(), imageFormatter.getPixels(mipLevel), m_mipData[mipLevel].size());
-		}
-		m_mipDataFormat = loadingRequest.m_format;
+		Wolf::ResourceUniqueOwner<Wolf::Image>& image = m_images[loadingRequest.m_format];
 
-		if (m_dataOnCPUStatus == DataOnCPUStatus::NOT_LOADED_YET)
-		{
-			m_dataOnCPUStatus = DataOnCPUStatus::AVAILABLE;
-		}
+		imageFormatter.transferImageTo(image);
+		m_slicesFolder = imageFormatter.getSlicesFolder();
 	}
 
-	if (m_thumbnailGenerationRequested)
+	if (keepDataMode != KeepDataMode::ONLY_GPU)
 	{
-		std::string iconPath = AssetManager::computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+		CPUData& cpuData = m_cpuData[loadingRequest.m_format];
 
-		if (generateThumbnail(fullFilePath, iconPath))
+		Wolf::Extent3D imageExtent = imageFormatter.getExtent();
+		cpuData.m_extent = imageExtent;
+
+		float imageBPP = Wolf::Image::computeBPPFromFormat(loadingRequest.m_format);
+
+		cpuData.m_mipData.resize(imageFormatter.getMipCountKeptOnCPU() + 1);
+		for (uint32_t mipLevel = 0; mipLevel < cpuData.m_mipData.size(); mipLevel++)
 		{
-			m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+			const Wolf::Extent3D mipExtent = { imageExtent.width >> mipLevel, imageExtent.height >> mipLevel, imageExtent.depth };
+			cpuData.m_mipData[mipLevel].resize(imageBPP * mipExtent.width * mipExtent.height * mipExtent.depth);
+			memcpy(cpuData.m_mipData[mipLevel].data(), imageFormatter.getPixels(mipLevel), cpuData.m_mipData[mipLevel].size());
 		}
 
-		if (m_dataOnCPUStatus != DataOnCPUStatus::AVAILABLE)
+		if (m_thumbnailGenerationRequested)
 		{
-			deleteImageData();
+			std::string iconPath = AssetManager::computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+
+			if (generateThumbnail(fullFilePath, iconPath))
+			{
+				m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+			}
+		}
+
+		if (loadingRequest.m_keepDataMode == KeepDataMode::ONLY_GPU)
+		{
+			deleteImageData(loadingRequest.m_format);
 		}
 	}
 }

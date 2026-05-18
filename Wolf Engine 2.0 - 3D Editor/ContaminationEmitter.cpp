@@ -7,7 +7,7 @@
 #include "ContaminationReceiver.h"
 #include "ContaminationUpdatePass.h"
 #include "DebugRenderingManager.h"
-#include "EditorModelInterface.h"
+#include "EditorMeshInterface.h"
 #include "EditorParamsHelper.h"
 #include "MaterialEditor.h"
 #include "RenderingPipelineInterface.h"

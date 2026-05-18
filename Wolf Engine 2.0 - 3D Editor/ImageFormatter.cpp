@@ -10,7 +10,7 @@
 #include "MipMapGenerator.h"
 
 ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& fullFilePath, Wolf::Format finalFormat, bool canBeVirtualized,
-	KeepDataMode keepDataMode, bool loadMips) : m_keepDataMode(keepDataMode), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU), m_originFilename(EditorConfiguration::sanitizeFilePath(fullFilePath))
+	AssetImageInterface::KeepDataMode keepDataMode, bool loadMips) : m_keepDataMode(keepDataMode), m_loadMips(loadMips), m_editorPushDataToGPU(editorPushDataToGPU), m_originFilename(EditorConfiguration::sanitizeFilePath(fullFilePath))
 {
 	computeCachePaths(fullFilePath, finalFormat, m_cacheFilename, m_slicesFolder);
 
@@ -80,7 +80,7 @@ ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfe
 }
 
 ImageFormatter::ImageFormatter(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::vector<Wolf::ImageCompression::RGBA8>& data, std::vector<std::vector<Wolf::ImageCompression::RGBA8>>& mipLevels,
-	Wolf::Extent3D extent, const std::string& fullFilePath, Wolf::Format finalFormat, bool canBeVirtualized, KeepDataMode keepDataMode)
+	Wolf::Extent3D extent, const std::string& fullFilePath, Wolf::Format finalFormat, bool canBeVirtualized, AssetImageInterface::KeepDataMode keepDataMode)
 : m_keepDataMode(keepDataMode), m_editorPushDataToGPU(editorPushDataToGPU)
 {
 	if (finalFormat != Wolf::Format::BC3_UNORM_BLOCK)
@@ -412,7 +412,9 @@ void ImageFormatter::computeCachePaths(const std::string& inFullPath, Wolf::Form
 
 void ImageFormatter::createImageFromData(Wolf::Extent3D extent, Wolf::Format format, const uint8_t* pixels, const std::vector<const unsigned char*>& mipLevels)
 {
-	if (m_keepDataMode != KeepDataMode::ONLY_CPU)
+	m_extent = extent;
+
+	if (m_keepDataMode != AssetImageInterface::KeepDataMode::ONLY_CPU)
 	{
 		Wolf::CreateImageInfo createImageInfo;
 		createImageInfo.extent = extent;
@@ -435,7 +437,7 @@ void ImageFormatter::createImageFromData(Wolf::Extent3D extent, Wolf::Format for
 		}
 	}
 
-	if (m_keepDataMode == KeepDataMode::CPU_AND_GPU || m_keepDataMode == KeepDataMode::ONLY_CPU)
+	if (m_keepDataMode != AssetImageInterface::KeepDataMode::ONLY_GPU)
 	{
 		uint32_t copySize = extent.width * extent.height * extent.depth * Wolf::Image::computeBPPFromFormat(format);
 		m_pixels.resize(copySize);

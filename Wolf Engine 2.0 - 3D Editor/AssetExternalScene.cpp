@@ -58,8 +58,8 @@ void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 	ExternalSceneLoader::loadScene(outputData, sceneLoadingInfo, m_assetManager);
 
 	/* Add materials */
-	std::vector<uint32_t> materialGPUIndices;
-	materialGPUIndices.reserve(outputData.m_materialsData.size());
+	std::vector<uint32_t> materialAssetsId;
+	materialAssetsId.reserve(outputData.m_materialsData.size());
 	for (const ExternalSceneLoader::MaterialData& materialData : outputData.m_materialsData)
 	{
 		const TextureSetLoader::TextureSetFileInfoGGX& textureSetFileInfo = materialData.m_textureSetFileInfo;
@@ -109,7 +109,7 @@ void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 		materialEditor->addTextureSet(sceneLoadingInfo.filename + "_" + materialData.m_textureSetFileInfo.name + "_textureSet", 1.0f);
 		materialEditor->updateBeforeFrame();
 
-		materialGPUIndices.push_back(materialEditor->getMaterialGPUIdx());
+		materialAssetsId.push_back(materialAssetId);
 	}
 
 	/* Add meshes */
@@ -117,23 +117,23 @@ void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 	for (uint32_t meshIdx = 0; meshIdx < outputData.m_meshesData.size(); meshIdx++)
 	{
 		ExternalSceneLoader::MeshData& meshData = outputData.m_meshesData[meshIdx];
-		uint32_t materialIdx = -1;
+		uint32_t materialAssetId = -1;
 		for (uint32_t instanceIdx = 0; instanceIdx < outputData.m_instancesData.size(); ++instanceIdx)
 		{
 			ExternalSceneLoader::InstanceData& instanceData = outputData.m_instancesData[instanceIdx];
 			if (instanceData.m_meshIdx == meshIdx)
 			{
-				materialIdx = instanceData.m_materialIdx == -1 ? 0 : materialGPUIndices[instanceData.m_materialIdx];
+				materialAssetId = instanceData.m_materialIdx == -1 ? NO_ASSET : materialAssetsId[instanceData.m_materialIdx];
 				break;
 			}
 		}
 
-		if (materialIdx == -1)
+		if (materialAssetId == -1)
 		{
 			Wolf::Debug::sendCriticalError("No instance has been found for this mesh");
 		}
 
-		m_meshAssetIds.push_back(m_assetManager->addMesh(meshData, sceneLoadingInfo.filename + "_mesh_" + meshData.m_name + "_" + std::to_string(meshIdx), materialIdx, m_assetId));
+		m_meshAssetIds.push_back(m_assetManager->addMesh(meshData, sceneLoadingInfo.filename + "_mesh_" + meshData.m_name + "_" + std::to_string(meshIdx), materialAssetId, m_assetId));
 	}
 
 	//m_aabb = Wolf::AABB(sceneAABBMin, sceneAABBMax);

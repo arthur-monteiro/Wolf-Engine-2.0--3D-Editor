@@ -3,12 +3,14 @@
 #include <glm/gtc/packing.hpp>
 #include <fstream>
 
+#include <sol/sol.hpp>
+
 #include <ImageFileLoader.h>
 #include <MipMapGenerator.h>
 
 #include <ProfilerCommon.h>
-#include <Timer.h>
 
+#include "BinaryWriter.h"
 #include "EditorConfiguration.h"
 #include "Entity.h"
 #include "ImageFormatter.h"
@@ -224,6 +226,172 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeAssetEditor(AssetId assetId)
 	return m_transientEditionEntity.createNonOwnerResource();
 }
 
+void AssetManager::addScriptCallbacks(sol::state& state)
+{
+	// Mesh
+	state.set_function("getMeshFromAssetId", [this](AssetId assetId) -> AssetMesh*
+	{
+		if (!isMesh(assetId))
+		{
+			Wolf::Debug::sendCriticalError("Asset type is a mesh");
+		}
+		size_t index = assetId - MESH_ASSET_IDX_OFFSET;
+
+		if (index < m_meshes.size())
+		{
+			return &*m_meshes[index];
+		}
+
+		Wolf::Debug::sendCriticalError("Index out of range");
+		return nullptr;
+	});
+
+	state.new_usertype<AssetMesh>("Mesh",
+		"getLoadingPath", [](const AssetMesh& self) { return self.getLoadingPath(); },
+		"computeMeshFormatter", [](AssetMesh& self) { return self.computeMeshFormatter(); }
+	);
+	state.set_function("deleteMeshFormatter", [](const MeshFormatter* meshFormatter) { delete meshFormatter; });
+
+	state.new_usertype<MeshFormatter>("MeshFormatter",
+		"getAABB", [](const MeshFormatter& self) { return self.getAABB(); },
+		"getLODCount", [](MeshFormatter& self) { return self.getDefaultLODInfo().size() + 1; },
+		"getVertices", [](MeshFormatter& self, uint32_t lod) -> const std::vector<Vertex3D>&
+		{
+			if (lod == 0)
+				return self.getStaticVertices();
+			else
+				return self.getDefaultLODInfo()[lod - 1].m_staticVertices;
+		},
+		"getIndices", [](MeshFormatter& self, uint32_t lod) -> const std::vector<uint32_t>&
+		{
+			if (lod == 0)
+				return self.getIndices();
+			else
+				return self.getDefaultLODInfo()[lod - 1].m_indices;
+		}
+	);
+
+	state.new_usertype<Vertex3D>("Vertex3D",
+		"position", &Vertex3D::pos,
+		"normal", &Vertex3D::normal,
+		"texCoords", &Vertex3D::texCoord
+	);
+
+	// Material
+	state.set_function("getMaterialFromAssetId", [this](AssetId assetId) -> AssetMaterial*
+	{
+		if (!isMaterial(assetId))
+		{
+			Wolf::Debug::sendCriticalError("Asset type is a material");
+		}
+		size_t index = assetId - MATERIAL_ASSET_IDX_OFFSET;
+
+		if (index < m_materials.size())
+		{
+			return &*m_materials[index];
+		}
+
+		Wolf::Debug::sendCriticalError("Index out of range");
+		return nullptr;
+	});
+
+	state.new_usertype<AssetMaterial>("Material",
+		"getLoadingPath", [](const AssetMaterial& self) { return self.getLoadingPath(); },
+		"getTextureSetCount", [](const AssetMaterial& self) { return self.getEditor()->getTextureSetCount(); },
+		"getTextureSetAssetId", [](const AssetMaterial& self, uint32_t idx) { return self.getEditor()->getTextureSetAssetId(idx); }
+	);
+
+	// Texture set
+	state.set_function("getTextureSetFromAssetId", [this](AssetId assetId) -> AssetTextureSet*
+	{
+		if (!isTextureSet(assetId))
+		{
+			Wolf::Debug::sendCriticalError("Asset type is a texture set");
+		}
+		size_t index = assetId - TEXTURE_SET_ASSET_IDX_OFFSET;
+
+		if (index < m_textureSets.size())
+		{
+			return &*m_textureSets[index];
+		}
+
+		Wolf::Debug::sendCriticalError("Index out of range");
+		return nullptr;
+	});
+
+	state.new_usertype<AssetTextureSet>("TextureSet",
+		"getLoadingPath", [](const AssetTextureSet& self) { return self.getLoadingPath(); },
+		"getAlbedoAssetId", [](const AssetTextureSet& self) { return self.getTextureSetEditor()->getAlbedoAssetId(); }
+	);
+
+	// Image
+	state.set_function("getImageFromAssetId", [this](AssetId assetId) -> AssetImage*
+	{
+		if (!isImage(assetId))
+		{
+			Wolf::Debug::sendCriticalError("Asset type is an image");
+		}
+		size_t index = assetId - IMAGE_ASSET_IDX_OFFSET;
+
+		if (index < m_images.size())
+		{
+			return &*m_images[index];
+		}
+
+		Wolf::Debug::sendCriticalError("Index out of range");
+		return nullptr;
+	});
+
+	state.new_usertype<AssetImage>("Image",
+		"getLoadingPath", [](const AssetImage& self) { return self.getLoadingPath(); },
+		"loadImageAndDump", [this](AssetImage& self, BinaryWriter* binaryWriter, uint32_t mipSkippedRequestedCount)
+		{
+			AssetImage::LoadingRequest request{};
+			request.m_format = Wolf::Format::BC1_RGB_SRGB_BLOCK;
+			request.m_keepDataMode = AssetImageInterface::KeepDataMode::ONLY_CPU;
+			request.m_loadMips = true;
+			request.m_canBeVirtualized = false;
+			self.requestImageLoading(request);
+			self.updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
+
+			Wolf::ResourceNonOwner<Wolf::Image> image = self.getImage(request.m_format);
+
+			binaryWriter->writeUInt(static_cast<uint32_t>(request.m_format));
+
+			uint32_t mipLevelCount = image->getMipLevelCount();
+			uint32_t mipSkipped = 0;
+			if (mipLevelCount > mipSkippedRequestedCount + 1)
+			{
+				mipSkipped = mipSkippedRequestedCount;
+				mipLevelCount -= mipSkippedRequestedCount;
+			}
+			else
+			{
+				mipSkipped = mipLevelCount - 1;
+				mipLevelCount = 1;
+			}
+
+			const Wolf::Extent3D extent = image->getExtent();
+			binaryWriter->writeUInt(extent.width >> mipSkipped);
+			binaryWriter->writeUInt(extent.height >> mipSkipped);
+			binaryWriter->writeUInt(extent.depth);
+
+			binaryWriter->writeUInt(mipLevelCount);
+
+			for (uint32_t mipLevel = mipSkipped; mipLevel < image->getMipLevelCount(); ++mipLevel)
+			{
+				uint32_t mipPixelCount = (extent.width >> mipLevel) * (extent.height >> mipLevel) * extent.depth;
+				binaryWriter->writeUInt(mipPixelCount);
+
+				uint32_t copySize = mipPixelCount * Wolf::Image::computeBPPFromFormat(request.m_format);
+				binaryWriter->writeData(self.getMipData(mipLevel, request.m_format), copySize);
+			}
+
+			self.deleteImageData(request.m_format);
+		}
+	);
+}
+
 AssetId AssetManager::getAssetIdForPath(const std::string& path)
 {
 	for (uint32_t meshIdx = 0; meshIdx < m_meshes.size(); ++meshIdx)
@@ -418,14 +586,14 @@ std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& AssetManager::getP
 	return m_meshes[modelAssetId - MESH_ASSET_IDX_OFFSET]->getPhysicsShapes();
 }
 
-uint32_t AssetManager::getMaterialIdx(AssetId meshAssetId) const
+uint32_t AssetManager::getDefaultMeshMaterialAssetId(AssetId meshAssetId) const
 {
 	if (!isMesh(meshAssetId))
 	{
 		Wolf::Debug::sendError("AssetId is not a mesh");
 	}
 
-	return m_meshes[meshAssetId - MESH_ASSET_IDX_OFFSET]->getMaterialIdx();
+	return m_meshes[meshAssetId - MESH_ASSET_IDX_OFFSET]->getDefaultMaterialAssetId();
 }
 
 std::string AssetManager::computeModelName(AssetId modelAssetId) const
@@ -525,14 +693,14 @@ const uint8_t* AssetManager::getImageData(AssetId imageAssetId, uint32_t mipLeve
 	return m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->getMipData(mipLevel, format);
 }
 
-void AssetManager::deleteImageData(AssetId imageAssetId) const
+void AssetManager::deleteImageData(AssetId imageAssetId, Wolf::Format format) const
 {
 	if (!isImage(imageAssetId))
 	{
 		Wolf::Debug::sendError("AssetId is not an image");
 	}
 
-	m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->deleteImageData();
+	m_images[imageAssetId - IMAGE_ASSET_IDX_OFFSET]->deleteImageData(format);
 }
 
 void AssetManager::releaseImage(AssetId imageAssetId) const
@@ -893,12 +1061,12 @@ Wolf::ResourceNonOwner<ParticleEditor> AssetManager::getParticleEditor(AssetId a
 	return m_particles[assetId - PARTICLE_ASSET_IDX_OFFSET]->getEditor();
 }
 
-AssetId AssetManager::addMesh(ExternalSceneLoader::MeshData& meshData, const std::string& name, uint32_t materialIdx, AssetId parentAssetId)
+AssetId AssetManager::addMesh(ExternalSceneLoader::MeshData& meshData, const std::string& name, AssetId defaultMaterialAssetId, AssetId parentAssetId)
 {
-	return addMeshInternal(name, meshData, materialIdx, parentAssetId);
+	return addMeshInternal(name, meshData, defaultMaterialAssetId, parentAssetId);
 }
 
-AssetId AssetManager::addMeshInternal(const std::string& loadingPath, ExternalSceneLoader::MeshData& meshData, uint32_t defaultMaterialIdx, AssetId parentAssetId)
+AssetId AssetManager::addMeshInternal(const std::string& loadingPath, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId)
 {
 	if (m_meshes.size() >= MAX_ASSET_RESOURCE_COUNT)
 	{
@@ -937,7 +1105,7 @@ AssetId AssetManager::addMeshInternal(const std::string& loadingPath, ExternalSc
 
 	AssetId assetId = static_cast<uint32_t>(m_meshes.size()) + MESH_ASSET_IDX_OFFSET;
 
-	AssetMesh* newMesh = new AssetMesh(this, loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, m_bufferPoolInterface, meshData, defaultMaterialIdx, parentAssetId,
+	AssetMesh* newMesh = new AssetMesh(this, loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, m_bufferPoolInterface, meshData, defaultMaterialAssetId, parentAssetId,
 		m_isolateMeshCallback, m_removeIsolationAndGetViewMatrixCallback, m_renderingPipeline, m_editorPushDataToGPU);
 	m_meshes.emplace_back(newMesh);
 	m_addAssetToUICallback(m_meshes.back()->computeName(), loadingPath, iconFullPath, assetId, "mesh");

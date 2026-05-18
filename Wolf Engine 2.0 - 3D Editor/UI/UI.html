@@ -289,8 +289,8 @@
 			<div class="inputParam">
 				<span>Executable :</span>
 				<div class="path-input-container">
-					<div id="exportSceneExecutable" class="path-display">No file selected</div>
-					<button class="browseButton"  onclick="pickFileAndSetValue('exportSceneExecutable', 'open', 'exportExe')">
+					<div id="exportSceneScript" class="path-display">No file selected</div>
+					<button class="browseButton"  onclick="pickFileAndSetValue('exportSceneScript', 'open', 'script')">
 						Browse
 					</button>
 				</div>
@@ -639,9 +639,9 @@
 
 	function finishExportScene() {
 		document.getElementById('exportSceneWindow').style.display = "none";
-		exportScene(document.getElementById("exportSceneExecutable").innerHTML);
+		exportScene(document.getElementById("exportSceneScript").innerHTML);
 
-		document.getElementById("exportSceneExecutable").innerHTML = "No file selected";
+		document.getElementById("exportSceneScript").innerHTML = "No file selected";
 	}
 
 	function openOptions() {

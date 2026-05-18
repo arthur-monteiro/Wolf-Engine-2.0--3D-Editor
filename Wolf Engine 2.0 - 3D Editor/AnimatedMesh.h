@@ -1,12 +1,12 @@
 #pragma once
 
 #include "AnimationHelper.h"
-#include "EditorModelInterface.h"
+#include "EditorMeshInterface.h"
 #include "EditorTypesTemplated.h"
 #include "ParameterGroupInterface.h"
 #include "AssetManager.h"
 
-class AnimatedMesh : public EditorModelInterface
+class AnimatedMesh : public EditorMeshInterface
 {
 public:
 	static inline std::string ID = "animatedMesh";

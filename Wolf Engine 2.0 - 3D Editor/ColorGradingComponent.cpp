@@ -42,7 +42,7 @@ bool ColorGradingComponent::updateLUTImage()
     }
 
     AssetImageInterface::LoadingRequest loadingRequest{};
-    loadingRequest.m_keepDataOnCPU = true;
+    loadingRequest.m_keepDataMode = AssetImageInterface::KeepDataMode::ONLY_GPU;
     loadingRequest.m_canBeVirtualized = false;
     loadingRequest.m_format = LUT_IMAGE_FORMAT;
     loadingRequest.m_loadMips = false;

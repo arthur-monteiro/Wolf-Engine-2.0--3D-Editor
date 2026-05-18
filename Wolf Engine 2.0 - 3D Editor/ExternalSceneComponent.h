@@ -1,10 +1,10 @@
 #pragma once
 
 #include "AssetManager.h"
-#include "EditorModelInterface.h"
+#include "EditorMeshInterface.h"
 #include "EditorTypes.h"
 
-class ExternalSceneComponent : public EditorModelInterface
+class ExternalSceneComponent : public EditorMeshInterface
 {
 public:
     static inline std::string ID = "externalSceneComponent";

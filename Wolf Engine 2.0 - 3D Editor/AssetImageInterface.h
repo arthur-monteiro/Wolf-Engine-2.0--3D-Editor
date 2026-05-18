@@ -11,6 +11,8 @@ class ImageFormatter;
 class AssetImageInterface
 {
 public:
+    enum class KeepDataMode { DONT_KEEP, ONLY_GPU, CPU_AND_GPU, ONLY_CPU };
+
     AssetImageInterface() = delete;
 
     struct LoadingRequest
@@ -18,20 +20,22 @@ public:
         Wolf::Format m_format;
         bool m_loadMips;
         bool m_canBeVirtualized;
-        bool m_keepDataOnCPU;
+        KeepDataMode m_keepDataMode = KeepDataMode::ONLY_GPU;
     };
     void requestImageLoading(const LoadingRequest& loadingRequest);
 
     Wolf::ResourceNonOwner<Wolf::Image> getImage(Wolf::Format format);
     std::string getSlicesFolder() { return m_slicesFolder; }
 
-    void deleteImageData();
+    const uint8_t* getMipData(uint32_t mipLevel, Wolf::Format format) const;
+    void deleteImageData(Wolf::Format format);
     void releaseImages();
 
 protected:
     AssetImageInterface(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, bool needThumbnailsGeneration);
 
     bool generateThumbnail(const std::string& fullFilePath, const std::string& iconPath);
+    KeepDataMode computeNeededKeepDataMode(Wolf::Format format, KeepDataMode requestedKeepDataMode) const;
 
     Wolf::ResourceNonOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU;
 
@@ -42,7 +46,10 @@ protected:
     std::map<Wolf::Format, Wolf::ResourceUniqueOwner<Wolf::Image>> m_images;
     std::string m_slicesFolder;
 
-    enum class DataOnCPUStatus { NEVER_KEPT, NOT_LOADED_YET, AVAILABLE, DELETED } m_dataOnCPUStatus = DataOnCPUStatus::NOT_LOADED_YET;
-    std::vector<std::vector<uint8_t>> m_mipData;
-    Wolf::Format m_mipDataFormat;
+    struct CPUData
+    {
+        std::vector<std::vector<uint8_t>> m_mipData;
+        Wolf::Extent3D m_extent;
+    };
+    std::map<Wolf::Format, CPUData> m_cpuData;
 };
