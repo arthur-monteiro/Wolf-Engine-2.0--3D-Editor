@@ -113,6 +113,7 @@ elseif(UNIX AND NOT APPLE)
 
             ${CMAKE_CURRENT_SOURCE_DIR}/x64/Debug/lib/libGifEncoder.a
             ${MESHOPTIMIZER_LIB_PATH}/libmeshoptimizer.a
+            lua_static
 
             # The system dependencies found by PkgConfig
             ${GTK3_LIBRARIES}
