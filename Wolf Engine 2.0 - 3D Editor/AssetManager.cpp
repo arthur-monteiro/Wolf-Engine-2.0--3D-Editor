@@ -590,7 +590,7 @@ uint32_t AssetManager::getDefaultMeshMaterialAssetId(AssetId meshAssetId) const
 {
 	if (!isMesh(meshAssetId))
 	{
-		Wolf::Debug::sendError("AssetId is not a mesh");
+		Wolf::Debug::sendCriticalError("AssetId is not a mesh");
 	}
 
 	return m_meshes[meshAssetId - MESH_ASSET_IDX_OFFSET]->getDefaultMaterialAssetId();
