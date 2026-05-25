@@ -1,8 +1,8 @@
 #include "AssetParticle.h"
 
-AssetParticle::AssetParticle(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+AssetParticle::AssetParticle(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
     const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, AssetManager* assetManager)
-: AssetInterface(loadingPath, assetId, updateResourceInUICallback, NO_ASSET)
+: AssetInterface(loadingPath, assetId, onAssetUpdateCallback, NO_ASSET)
 {
     m_particleEditor.reset(new ParticleEditor(materialGPUManager, assetManager));
     m_particleEditor->subscribe(this, [this](Flags)

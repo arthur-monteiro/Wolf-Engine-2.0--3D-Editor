@@ -168,5 +168,7 @@ OBJImporter::OBJImporter(ExternalSceneLoader::OutputData& outputData, const Exte
         materialFileInfo.metalness =  EditorConfiguration::sanitizeFilePath(computeTexName(tinyObjMaterial.specular_texname, localFolderPath));
         materialFileInfo.ao = EditorConfiguration::sanitizeFilePath(computeTexName(tinyObjMaterial.ambient_texname, localFolderPath));
         materialFileInfo.anisoStrength = EditorConfiguration::sanitizeFilePath(computeTexName(tinyObjMaterial.sheen_texname, localFolderPath));
+
+        materialData.m_color = glm::vec3(tinyObjMaterial.diffuse[0], tinyObjMaterial.diffuse[1], tinyObjMaterial.diffuse[2]);
     }
 }

@@ -102,3 +102,11 @@ function setRenderOffsetLeft(value) { console.log("setRenderOffsetLeft " + value
 function setRenderOffsetRight(value) { console.log("setRenderOffsetRight " + value); }
 function changeBuildingWallMesh(idx, filename, folder) { console.log("changeBuildingWallMesh " + idx + " " + filename + " " + folder); }
 function displayTypeSelectChanged(value) { console.log("displayTypeSelectChanged " + value); }
+
+function requestAssetPayload(value) { return {
+		"assets": [
+			{ "id": "uuid_1", "name": "Heavy_Gate_01", "type": "mesh", "iconPath": "media/icons/mesh.svg", "path": "models/props/gate.wolf" },
+			{ "id": "uuid_2", "name": "Concrete_Albedo", "type": "texture", "iconPath": "media/icons/tex.svg", "path": "textures/concrete_a.dds" }
+		]
+	};
+}

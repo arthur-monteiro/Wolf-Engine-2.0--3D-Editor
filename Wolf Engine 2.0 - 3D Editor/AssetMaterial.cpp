@@ -4,9 +4,9 @@
 
 #include "EditorConfiguration.h"
 
-AssetMaterial::AssetMaterial(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+AssetMaterial::AssetMaterial(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
                            const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, AssetManager* assetManager, AssetId parentAssetId)
-: AssetInterface(loadingPath, assetId, updateResourceInUICallback, parentAssetId)
+: AssetInterface(loadingPath, assetId, onAssetUpdateCallback, parentAssetId)
 {
     m_materialEditor.reset(new MaterialEditor(materialGPUManager, assetManager));
 

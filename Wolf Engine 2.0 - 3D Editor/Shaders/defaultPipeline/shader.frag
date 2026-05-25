@@ -151,6 +151,10 @@ void main()
     {
         outColor = vec4(computeColorFromUint(inLOD + 1), 1.0);
     }
+    else if (ubDisplay.displayType == DISPLAY_TYPE_MATERIAL_COLOR)
+    {
+        outColor = vec4(materialInfo.materialColor.rgb, 1.0);
+    }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

@@ -9,6 +9,8 @@ public:
 	static inline std::string ID = "externalSceneAssetEditor";
 	std::string getId() const override { return ID; }
 
+	static constexpr uint32_t NOTIFICATION_FLAG_RECOMPUTE_ALL_MATERIALS_COLOR = 1;
+
 	ExternalSceneAssetEditor();
 	ExternalSceneAssetEditor(const ExternalSceneAssetEditor&) = delete;
 
@@ -31,8 +33,12 @@ private:
 	void onFilePathChanged();
 	EditorParamString m_filePathParam = EditorParamString("File", TAB, "File", [this]() { onFilePathChanged(); }, EditorParamString::ParamStringType::FILE_EXTERNAL_SCENE);
 
-	std::array<EditorParamInterface*, 1> m_params
+	void recomputeMaterials();
+	EditorParamButton m_recomputeMaterialsButton = EditorParamButton("Recompute all materials color", TAB, "Materials", [this]() { recomputeMaterials(); });
+
+	std::array<EditorParamInterface*, 2> m_params
 	{
-		&m_filePathParam
+		&m_filePathParam,
+		&m_recomputeMaterialsButton,
 	};
 };

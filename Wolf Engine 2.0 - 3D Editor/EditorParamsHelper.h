@@ -147,6 +147,12 @@ inline void loadParams(Wolf::JSONReader::JSONObjectInterface* root, const std::s
 				}
 				break;
 			}
+			case EditorParamInterface::Type::BUTTON:
+			case EditorParamInterface::Type::LABEL:
+			{
+				// Nothing to do
+				break;
+			}
 			default:
 				Wolf::Debug::sendError("Unsupported type");
 				break;

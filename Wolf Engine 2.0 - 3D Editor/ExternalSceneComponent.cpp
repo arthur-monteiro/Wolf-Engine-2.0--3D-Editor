@@ -5,7 +5,6 @@
 #include <ProfilerCommon.h>
 
 #include "AnimatedMesh.h"
-#include "CommonLayouts.h"
 #include "EditorConfiguration.h"
 #include "EditorParamsHelper.h"
 #include "ExternalSceneLoader.h"

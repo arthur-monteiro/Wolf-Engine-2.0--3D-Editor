@@ -52,7 +52,10 @@ void main()
         Vertex vertex = computeVertex(gl_InstanceCustomIndexEXT, gl_PrimitiveID, attribs);
         vec3 L = normalize(-ubLights.sunLights[0].sunDirection.xyz);
 
-        vec3 albedo = vec3(1.0); // TODO: fix this -- vertex.vertexColor.xyz;
+        uint materialId = getMaterialIdx(gl_InstanceCustomIndexEXT);
+        mat3 TBN = mat3(1.0);
+        MaterialInfo materialInfo = fetchMaterial(vertex.texCoords, materialId, TBN, inPayload.hitWorldPos);
+        vec3 albedo = materialInfo.materialColor;
         vec3 normal = vertex.normal.xyz;
 
         float NdotL = max(dot(normal, L), 0.0);

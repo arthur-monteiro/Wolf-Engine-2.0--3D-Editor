@@ -123,6 +123,10 @@
 						<span class="checkmark"></span> Particle
 					</label>
 				</div>
+
+				<button class="toolbarButton" style="padding: 2px 8px; height: 24px;" onclick="AssetBrowser.nextPage()">
+					Load More
+				</button>
 			</div>
 
 				<button id="addAssetButton" class="addButton" onclick="openAssetAdd()" title="Create New Asset">+</button>
@@ -337,7 +341,7 @@
 				<div>
 					<select id="displayTypeSelect" onchange="displayTypeSelectChanged(this.value)">
 						<option value="albedo">Albedo</option>
-						<option value="vertexColor">Vertex color</option>
+						<option value="materialColor">Material color</option>
 						<option value="normal">Normal</option>
 						<option value="vertexNormal">Vertex normal</option>
 						<option value="roughness">Roughness</option>
@@ -420,6 +424,7 @@
     <script src="./select.js"></script>
 	<script src="curveEditor/curveEditor.js"></script>
 	<script src="./paramsEdition.js"></script>
+	<script src="./assetBrowser.js"></script>
 	<script type="text/javascript">
 	var animationsInstances = [];
 	var selectedEntityName = "";
@@ -475,7 +480,6 @@
 			}
 		});
 
-		document.getElementById('assetSearch').addEventListener('input', filterAssets);
 		document.getElementsByTagName('body')[0].addEventListener("click", (event) => { closeEntityContextMenu() });
 
 		window.currentDraggedAsset = null;
@@ -919,26 +923,6 @@
 		assetElement.getElementsByClassName("assetIcon")[0].innerHTML = "<img src='" + iconPath + "'/>";
 	}
 
-	function filterAssets() {
-		const searchTerm = document.getElementById('assetSearch').value.toLowerCase();
-		const activeFilters = Array.from(document.querySelectorAll('.filter-item input:checked')).map(cb => cb.value);
-		const assets = document.querySelectorAll('.assetItem');
-
-		assets.forEach(asset => {
-			const assetName = asset.querySelector('.assetName').textContent.toLowerCase();
-			const assetType = asset.getAttribute('data-asset-type');
-			
-			const matchesSearch = assetName.includes(searchTerm);
-			const matchesType = activeFilters.includes('all') || activeFilters.includes(assetType);
-
-			if (matchesSearch && matchesType) {
-				asset.classList.remove('hidden');
-			} else {
-				asset.classList.add('hidden');
-			}
-		});
-	}
-
 	function toggleFilterMenu(event) {
 		event.stopPropagation();
 		
@@ -980,7 +964,7 @@
 			allCheckbox.checked = false;
 		}
 
-		filterAssets();
+		// TODO
 	}
 
 	function makeID(length) {

@@ -7,9 +7,9 @@
 
 #include "ImageFileLoader.h"
 
-AssetTextureSet::AssetTextureSet(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
+AssetTextureSet::AssetTextureSet(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
     const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, AssetManager* assetManager, AssetId parentAssetId)
-: AssetInterface(loadingPath, assetId, updateResourceInUICallback, parentAssetId)
+: AssetInterface(loadingPath, assetId, onAssetUpdateCallback, parentAssetId)
 {
     m_textureSetEditor.reset(new TextureSetEditor(materialGPUManager, assetManager, assetId));
     m_textureSetEditor->subscribe(this, [this](Flags)
@@ -61,11 +61,11 @@ void AssetTextureSet::generateThumbnail()
     constexpr int SLICE_WIDTH = ICON_SIZE / 5;
     constexpr int CHANNEL_COUNT = 4;
 
-    Wolf::ImageFileLoader albedoLoader(AssetManager::computeIconPath(m_textureSetEditor->getAlbedoPath(), 0));
-    Wolf::ImageFileLoader normalLoader(AssetManager::computeIconPath(m_textureSetEditor->getNormalPath(), 0));
-    Wolf::ImageFileLoader roughnessLoader(AssetManager::computeIconPath(m_textureSetEditor->getRoughnessPath(), 0));
-    Wolf::ImageFileLoader metalnessLoader(AssetManager::computeIconPath(m_textureSetEditor->getMetalnessPath(), 0));
-    Wolf::ImageFileLoader aoLoader(AssetManager::computeIconPath(m_textureSetEditor->getAOPath(), 0));
+    Wolf::ImageFileLoader albedoLoader(AssetManager::computeIconPath(m_textureSetEditor->getAlbedoPath().empty() ? "" : m_textureSetEditor->getAlbedoPath(), 0));
+    Wolf::ImageFileLoader normalLoader(AssetManager::computeIconPath(m_textureSetEditor->getNormalPath().empty() ? "" : m_textureSetEditor->getNormalPath(), 0));
+    Wolf::ImageFileLoader roughnessLoader(AssetManager::computeIconPath(m_textureSetEditor->getRoughnessPath().empty() ? "" : m_textureSetEditor->getRoughnessPath(), 0));
+    Wolf::ImageFileLoader metalnessLoader(m_textureSetEditor->getMetalnessPath().empty() ? "" : AssetManager::computeIconPath(m_textureSetEditor->getMetalnessPath(), 0));
+    Wolf::ImageFileLoader aoLoader(m_textureSetEditor->getAOPath().empty() ? "" : AssetManager::computeIconPath(m_textureSetEditor->getAOPath(), 0));
 
     unsigned char* loaders[] = {
         albedoLoader.getPixels(),
@@ -100,5 +100,5 @@ void AssetTextureSet::generateThumbnail()
 
     stbi_write_png(iconPath.c_str(), ICON_SIZE, ICON_SIZE, CHANNEL_COUNT, combinedPixels.data(), ICON_SIZE * CHANNEL_COUNT);
 
-    m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+    m_updateAssetInUICallback(m_assetId);
 }

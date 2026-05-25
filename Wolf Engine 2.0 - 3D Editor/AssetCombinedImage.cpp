@@ -5,8 +5,8 @@
 #include "ImageFormatter.h"
 
 AssetCombinedImage::AssetCombinedImage(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& loadingPath, bool needThumbnailsGeneration,
-	AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateAssetInUICallback, AssetManager* assetManager, AssetId parentAssetId)
- : m_assetManager(assetManager), AssetInterface(loadingPath, assetId, updateAssetInUICallback, parentAssetId), AssetImageInterface(editorPushDataToGPU, needThumbnailsGeneration)
+	AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback, AssetManager* assetManager, AssetId parentAssetId)
+ : m_assetManager(assetManager), AssetInterface(loadingPath, assetId, onAssetUpdateCallback, parentAssetId), AssetImageInterface(editorPushDataToGPU, needThumbnailsGeneration)
 {
 	m_editor.reset(new CombinedImageEditor(assetManager));
 }
@@ -158,7 +158,7 @@ void AssetCombinedImage::loadImage(const LoadingRequest& loadingRequest)
 
 			if (generateThumbnail(fullFilePath, iconPath))
 			{
-				m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+				m_updateAssetInUICallback(m_assetId);
 			}
 		}
 

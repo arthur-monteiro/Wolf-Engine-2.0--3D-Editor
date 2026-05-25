@@ -9,8 +9,8 @@ class AssetManager;
 class AssetExternalScene : public AssetInterface
 {
 public:
-    AssetExternalScene(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId,
-        const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, AssetId parentAssetId);
+    AssetExternalScene(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
+        AssetId parentAssetId);
     AssetExternalScene(const AssetExternalScene&) = delete;
     ~AssetExternalScene() override = default;
 
@@ -36,6 +36,7 @@ private:
     bool m_loadingRequested = false;
     bool m_thumbnailGenerationRequested = false;
 
+    std::vector<AssetId> m_materialAssetsId;
     std::vector<AssetId> m_meshAssetIds;
     Wolf::AABB m_aabb;
 

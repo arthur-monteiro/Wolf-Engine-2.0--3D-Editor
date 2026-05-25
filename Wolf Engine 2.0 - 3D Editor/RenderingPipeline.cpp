@@ -220,7 +220,7 @@ void RenderingPipeline::clear()
 	m_thumbnailsGenerationPass->clear();
 }
 
-void RenderingPipeline::setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) const
+void RenderingPipeline::setAssetManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) const
 {
 	if (m_voxelGIPass)
 	{

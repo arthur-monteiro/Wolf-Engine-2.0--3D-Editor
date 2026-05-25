@@ -8,7 +8,7 @@
 class AssetMesh : public AssetInterface
 {
 public:
-	AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateAssetInUICallback,
+	AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
 		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, uint32_t defaultMaterialIdx, AssetId parentAssetId,
 		const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
 		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU);

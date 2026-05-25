@@ -8,7 +8,7 @@ class AssetImage : public AssetInterface, public AssetImageInterface
 {
 public:
     AssetImage(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId,
-        const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, AssetId parentAssetId);
+        const std::function<void(AssetId)>& updateResourceInUICallback, AssetId parentAssetId);
     AssetImage(const AssetImage&) = delete;
 
     void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;

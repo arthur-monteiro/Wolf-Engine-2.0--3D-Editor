@@ -122,6 +122,18 @@ wolf-slider input[type="range"]::-webkit-slider-thumb {
     background: #007acc;
 }
 
+wolf-slider[disabled="true"] section.range-slider input,
+wolf-slider[disabled="true"] .numberInput {
+    opacity: 0.4;
+    cursor: not-allowed !important;
+    background: #141414 !important;
+}
+
+wolf-slider[disabled="true"] section.range-slider input::-webkit-slider-thumb {
+    background: #555555 !important;
+    cursor: not-allowed;
+}
+
 section.range-slider {
     position: relative;
     width: 100%;
@@ -392,6 +404,11 @@ span {
     background-color: #1a1a1a;
     color: #eee;
     padding: 8px;
+}
+
+.inputParam *:disabled {
+    opacity: 0.4;
+    cursor: not-allowed !important;
 }
 
 div[style*="border-bottom:1px solid white"] {

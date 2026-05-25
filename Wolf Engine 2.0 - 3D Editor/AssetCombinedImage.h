@@ -10,7 +10,7 @@ class AssetCombinedImage : public AssetInterface, public AssetImageInterface
 {
 public:
     AssetCombinedImage(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& loadingPath, bool needThumbnailsGeneration,
-        AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateAssetInUICallback, AssetManager* assetManager, AssetId parentAssetId);
+        AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback, AssetManager* assetManager, AssetId parentAssetId);
 
     void updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass) override;
     bool isLoaded() const override;

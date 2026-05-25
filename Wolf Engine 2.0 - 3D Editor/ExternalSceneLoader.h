@@ -44,6 +44,7 @@ public:
     struct MaterialData
     {
         TextureSetLoader::TextureSetFileInfoGGX m_textureSetFileInfo;
+        glm::vec3 m_color = glm::vec3(1.0f);
     };
 
     struct InstanceData

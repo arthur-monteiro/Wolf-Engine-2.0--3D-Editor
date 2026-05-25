@@ -41,6 +41,17 @@ const uint8_t* AssetImageInterface::getMipData(uint32_t mipLevel, Wolf::Format f
 	return m_cpuData.at(format).m_mipData[mipLevel].data();
 }
 
+Wolf::Extent3D AssetImageInterface::getExtent(Wolf::Format format) const
+{
+	if (!m_cpuData.contains(format))
+	{
+		Wolf::Debug::sendError("Data requested in not here");
+		return {};
+	}
+
+	return m_cpuData.at(format).m_extent;
+}
+
 void AssetImageInterface::deleteImageData(Wolf::Format format)
 {
 	m_cpuData.erase(format);

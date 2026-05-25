@@ -31,3 +31,8 @@ void ExternalSceneAssetEditor::onFilePathChanged()
 {
     notifySubscribers();
 }
+
+void ExternalSceneAssetEditor::recomputeMaterials()
+{
+    notifySubscribers(NOTIFICATION_FLAG_RECOMPUTE_ALL_MATERIALS_COLOR);
+}

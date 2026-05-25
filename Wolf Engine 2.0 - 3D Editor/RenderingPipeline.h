@@ -43,7 +43,7 @@ public:
 	void frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot, const GameContext& gameContext);
 	void clear();
 
-	void setResourceManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) const;
+	void setAssetManager(const Wolf::ResourceNonOwner<AssetManager>& resourceManager) const;
 
 	bool hasRayTracing() const override { return static_cast<bool>(m_rayTracedWorldDebugPass); };
 	Wolf::ResourceNonOwner<SkyBoxManager> getSkyBoxManager() override;

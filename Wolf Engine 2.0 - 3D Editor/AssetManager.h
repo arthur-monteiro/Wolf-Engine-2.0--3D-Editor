@@ -29,8 +29,7 @@ class ImageFormatter;
 class AssetManager
 {
 public:
-	AssetManager(const std::function<void(const std::string&, const std::string&, const std::string&, AssetId, const std::string&)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
+	AssetManager(const std::function<void(const std::string&)>& evaluateJSScript, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
 		const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
 
@@ -41,6 +40,7 @@ public:
 	void releaseRenderingPipeline();
 
 	Wolf::ResourceNonOwner<Entity> computeAssetEditor(AssetId assetId);
+	void bindUltralightCallbacks(ultralight::JSObject& jsObject);
 	void addScriptCallbacks(sol::state& state);
 
 	AssetId getAssetIdForPath(const std::string& path);
@@ -69,9 +69,11 @@ public:
 	void subscribeToMesh(AssetId assetId, const void* instance, const std::function<void(Notifier::Flags)>& callback) const;
 
 	AssetId addImage(const std::string& loadingPath, AssetId parentAssetId = NO_ASSET);
+	Wolf::ResourceNonOwner<AssetImage> getAssetImage(AssetId assetId) const;
 	bool isImageLoaded(AssetId assetId) const;
 	void requestImageLoading(AssetId assetId, const AssetImageInterface::LoadingRequest& loadingRequest, bool requestImmediateLoading = false);
 	Wolf::ResourceNonOwner<Wolf::Image> getImage(AssetId imageAssetId, Wolf::Format format) const;
+	Wolf::Extent3D getImageExtent(AssetId imageAssetId) const;
 	const uint8_t* getImageData(AssetId imageAssetId, uint32_t mipLevel, Wolf::Format format) const;
 	void deleteImageData(AssetId imageAssetId, Wolf::Format format) const;
 	void releaseImage(AssetId imageAssetId) const;
@@ -95,6 +97,7 @@ public:
 	Wolf::ResourceNonOwner<TextureSetEditor> getTextureSetEditor(AssetId assetId) const;
 
 	AssetId addMaterial(const std::string& loadingPath, AssetId parentAssetId = NO_ASSET);
+	Wolf::ResourceNonOwner<AssetMaterial> getAssetMaterial(AssetId assetId) const;
 	bool isMaterialLoaded(AssetId assetId) const;
 	Wolf::ResourceNonOwner<MaterialEditor> getMaterialEditor(AssetId assetId) const;
 
@@ -107,19 +110,26 @@ private:
 	friend class AssetCombinedImage;
 	friend class AssetExternalScene;
 	friend class AssetTextureSet;
+	friend class AssetInterface;
 
 	[[nodiscard]] AssetId addMesh(ExternalSceneLoader::MeshData& meshData, const std::string& name, AssetId defaultMaterialAssetId, AssetId parentAssetId);
 	[[nodiscard]] AssetId addMeshInternal(const std::string& loadingPath, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId = -1);
 
 	static std::string computeModelFullIdentifier(const std::string& loadingPath);
 	static std::string computeIconPath(const std::string& loadingPath, uint32_t thumbnailsLockedCount);
-	static bool formatIconPath(const std::string& inLoadingPath, std::string& outIconPath);
+	static bool formatIconPath(std::string& inOutIconPath);
 	void releaseAllEditorsFromTransientEntity();
 	void onAssetEditionChanged(Notifier::Flags flags);
 	static bool saveAsset(std::stringstream& outStringStream, Wolf::ResourceNonOwner<AssetInterface> assetInterface);
 
-	std::function<void(const std::string&, const std::string&, const std::string&, AssetId, const std::string&)> m_addAssetToUICallback;
-	std::function<void(const std::string&, const std::string&, AssetId)> m_updateResourceInUICallback;
+	std::function<void(AssetId)> m_onAssetUpdatedCallback;
+	void onAssetUpdated(AssetId assetId);
+
+	template <typename T>
+	void addToJSON(const T& assetList, const std::string& assetType, std::string& outJSON, uint32_t& currentCount, uint32_t offset, uint32_t maxCount, const std::string& search);
+	ultralight::JSValue requestAssetPayloadJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+
+	std::function<void(const std::string&)> m_evaluateJSScript;
 	Wolf::ResourceNonOwner<EditorConfiguration> m_editorConfiguration;
 	std::function<void(const std::string&)> m_isolateMeshCallback;
 	std::function<void(glm::mat4&)> m_removeIsolationAndGetViewMatrixCallback;
@@ -132,7 +142,7 @@ private:
 	Wolf::DynamicResourceUniqueOwnerArray<AssetMesh, 16> m_meshes;
 
 	static constexpr uint32_t IMAGE_ASSET_IDX_OFFSET = MESH_ASSET_IDX_OFFSET + MAX_ASSET_RESOURCE_COUNT;
-	static constexpr uint32_t MAX_IMAGE_ASSET_COUNT = 1000;
+	static constexpr uint32_t MAX_IMAGE_ASSET_COUNT = 4000;
 	Wolf::DynamicResourceUniqueOwnerArray<AssetImage, 16> m_images;
 
 	static constexpr uint32_t COMBINED_IMAGE_ASSET_IDX_OFFSET = IMAGE_ASSET_IDX_OFFSET + MAX_IMAGE_ASSET_COUNT;
@@ -144,11 +154,11 @@ private:
 	Wolf::DynamicResourceUniqueOwnerArray<AssetExternalScene, 2>  m_externalScenes;
 
 	static constexpr uint32_t TEXTURE_SET_ASSET_IDX_OFFSET = EXTERNAL_SCENE_ASSET_IDX_OFFSET + MAX_EXTERNAL_SCENE_ASSET_COUNT;
-	static constexpr uint32_t MAX_TEXTURE_SET_ASSET_COUNT = 1000;
+	static constexpr uint32_t MAX_TEXTURE_SET_ASSET_COUNT = 2000;
 	Wolf::DynamicResourceUniqueOwnerArray<AssetTextureSet, 16>  m_textureSets;
 
 	static constexpr uint32_t MATERIAL_ASSET_IDX_OFFSET = TEXTURE_SET_ASSET_IDX_OFFSET + MAX_TEXTURE_SET_ASSET_COUNT;
-	static constexpr uint32_t MAX_MATERIAL_ASSET_COUNT = 1000;
+	static constexpr uint32_t MAX_MATERIAL_ASSET_COUNT = 2000;
 	Wolf::DynamicResourceUniqueOwnerArray<AssetMaterial, 16>  m_materials;
 
 	static constexpr uint32_t PARTICLE_ASSET_IDX_OFFSET = MATERIAL_ASSET_IDX_OFFSET + MAX_MATERIAL_ASSET_COUNT;
@@ -161,6 +171,8 @@ private:
 	Wolf::ResourceUniqueOwner<Entity> m_transientEditionEntity;
 	AssetId m_currentAssetInEdition = NO_ASSET;
 	uint32_t m_currentAssetNeedRebuildFlags = 0;
+
+	bool m_assetAdded = false;
 
 	static AssetManager* ms_assetManager;
 };

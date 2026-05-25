@@ -180,16 +180,23 @@ function computeInput(param, isLast) {
             htmlToAdd += "<div style='display: inline-block; width: 65%; float: right'>";
         else
             htmlToAdd += "<div style='display: inline-block; width: 70%'>";
+
+        let isDisabledStr = (param.isActivable || param.isReadOnly) ? "disabled='true'" : "disabled='false'";
+
         if (param.type == "UInt")
             htmlToAdd += "<wolf-slider id='uintSlider" + nameForCallback + "' class='" + classForElements + "' max='" + param.max + "' min='" + param.min + "' step='1' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"" + 
-                (param.isActivable || param.isReadOnly ? "disabled='true'" : "") + "></wolf-slider>";
+                isDisabledStr + "></wolf-slider>";
         else if (param.type == "Float")
-            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"></wolf-slider>";
+            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "\" value=\"" + param.value + "\"" +
+                isDisabledStr + "\"></wolf-slider>";
         else {
-            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "X\" value=\"" + param.valueX + "\"></wolf-slider>";
-            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "Y\" value=\"" + param.valueY + "\"></wolf-slider>";
+            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "X\" value=\"" + param.valueX + "\"" +
+                isDisabledStr + "\"></wolf-slider>";
+            htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "Y\" value=\"" + param.valueY + "\"" +
+                isDisabledStr + "\"></wolf-slider>";
             if (param.type == "Vector3")
-                htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "Z\" value=\"" + param.valueZ + "\"></wolf-slider>";
+                htmlToAdd += "<wolf-slider max='" + param.max + "' min='" + param.min + "' step='0.01' oninput=\"change" + nameForCallback + "Z\" value=\"" + param.valueZ + "\"" +
+                    isDisabledStr + "\"></wolf-slider>";
         }
         htmlToAdd += "</div>";
     }

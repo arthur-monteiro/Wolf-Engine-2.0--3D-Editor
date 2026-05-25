@@ -30,6 +30,7 @@ public:
 
 	void setName(const std::string& name) { m_name = name; }
 	void setArrayIndex(uint32_t arrayIdx) { m_arrayIdx = arrayIdx; }
+	void setReadOnly(bool readonly) { m_isReadOnly = readonly; }
 
 	enum class Type { FLOAT, VECTOR2, VECTOR3, VECTOR4, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON, LABEL, ASSET };
 	Type getType() const { return m_type; }
@@ -121,8 +122,9 @@ class EditorParamVector3 : public EditorParamsVector<glm::vec3>
 public:
 	EditorParamVector3(const std::string& name, const std::string& tab, const std::string& category, float min, float max, bool isActivable = false, bool isReadOnly = false)
 		: EditorParamsVector(Type::VECTOR3, name, tab, category, min, max, isActivable, isReadOnly) {}
-	EditorParamVector3(const std::string& name, const std::string& tab, const std::string& category, float min, float max, const std::function<void()>& callbackValueChanged, bool isActivable = false)
-		: EditorParamsVector(Type::VECTOR3, name, tab, category, min, max, callbackValueChanged, isActivable, false) {}
+	EditorParamVector3(const std::string& name, const std::string& tab, const std::string& category, float min, float max, const std::function<void()>& callbackValueChanged, bool isActivable = false,
+		bool isReadOnly = false)
+		: EditorParamsVector(Type::VECTOR3, name, tab, category, min, max, callbackValueChanged, isActivable, isReadOnly) {}
 
 	EditorParamVector3& operator=(const glm::vec3& value) { setValue(value); return *this; }
 	operator glm::vec3& () { return m_value; }

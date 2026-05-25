@@ -20,16 +20,15 @@
 
 AssetManager* AssetManager::ms_assetManager;
 
-AssetManager::AssetManager(const std::function<void(const std::string&, const std::string&, const std::string&, AssetId, const std::string&)>& addAssetToUICallback, const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback,
-                         const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
-                         const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string& loadingPath)>& isolateMeshCallback,
-                         const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU,
-                         const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-	: m_addAssetToUICallback(addAssetToUICallback), m_updateResourceInUICallback(updateResourceInUICallback), m_editorConfiguration(editorConfiguration),
-      m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()), m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback),
-	  m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU), m_bufferPoolInterface(bufferPoolInterface)
+AssetManager::AssetManager(const std::function<void(const std::string&)>& evaluateJSScript, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
+		const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
+		const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+	: m_evaluateJSScript(evaluateJSScript), m_editorConfiguration(editorConfiguration), m_materialsGPUManager(materialsGPUManager), m_thumbnailsGenerationPass(renderingPipeline->getThumbnailsGenerationPass()),
+	  m_isolateMeshCallback(isolateMeshCallback), m_removeIsolationAndGetViewMatrixCallback(removeIsolationAndGetViewMatrixCallback), m_renderingPipeline(renderingPipeline), m_editorPushDataToGPU(editorPushDataToGPU),
+	  m_bufferPoolInterface(bufferPoolInterface)
 {
 	ms_assetManager = this;
+	m_onAssetUpdatedCallback = [this](AssetId assetId) { onAssetUpdated(assetId); };
 }
 
 void AssetManager::updateBeforeFrame()
@@ -110,6 +109,13 @@ void AssetManager::updateBeforeFrame()
 		m_meshes[m_currentAssetInEdition]->onChanged();
 
 		m_currentAssetNeedRebuildFlags = 0;
+	}
+
+	// UI update
+	if (m_assetAdded)
+	{
+		m_evaluateJSScript("AssetBrowser.resetAndRequest()");
+		m_assetAdded = false;
 	}
 }
 
@@ -224,6 +230,11 @@ Wolf::ResourceNonOwner<Entity> AssetManager::computeAssetEditor(AssetId assetId)
 	m_currentAssetInEdition = assetId;
 
 	return m_transientEditionEntity.createNonOwnerResource();
+}
+
+void AssetManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
+{
+	jsObject["requestAssetPayload"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&AssetManager::requestAssetPayloadJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void AssetManager::addScriptCallbacks(sol::state& state)
@@ -640,13 +651,23 @@ AssetId AssetManager::addImage(const std::string& loadingPath, AssetId parentAss
 		assetId = static_cast<uint32_t>(m_images.size()) + IMAGE_ASSET_IDX_OFFSET;
 
 		std::string iconFullPath = computeIconPath(loadingPath, 0);
-		bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+		bool iconFileExists = formatIconPath(iconFullPath);
 
-		m_images.emplace_back(new AssetImage(m_editorPushDataToGPU, loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, parentAssetId));
-		m_addAssetToUICallback(m_images.back()->computeName(), loadingPath, iconFullPath, assetId, "image");
+		m_images.emplace_back(new AssetImage(m_editorPushDataToGPU, loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, parentAssetId));
+		m_assetAdded = true;
 	}
 
 	return assetId;
+}
+
+Wolf::ResourceNonOwner<AssetImage> AssetManager::getAssetImage(AssetId assetId) const
+{
+	if (!isImage(assetId))
+	{
+		Wolf::Debug::sendError("AssetId is not an image");
+	}
+
+	return m_images[assetId - IMAGE_ASSET_IDX_OFFSET].createNonOwnerResource();
 }
 
 bool AssetManager::isImageLoaded(AssetId assetId) const
@@ -766,10 +787,10 @@ AssetId AssetManager::addCombinedImage(const std::string& loadingPath, AssetId p
 		assetId = static_cast<uint32_t>(m_combinedImages.size()) + COMBINED_IMAGE_ASSET_IDX_OFFSET;
 
 		std::string iconFullPath = computeIconPath(loadingPath, 0);
-		bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+		bool iconFileExists = formatIconPath(iconFullPath);
 
-		m_combinedImages.emplace_back(new AssetCombinedImage(m_editorPushDataToGPU, loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, this, parentAssetId));
-		m_addAssetToUICallback(m_combinedImages.back()->computeName(), loadingPath, iconFullPath, assetId, "combinedImage");
+		m_combinedImages.emplace_back(new AssetCombinedImage(m_editorPushDataToGPU, loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, this, parentAssetId));
+		m_assetAdded = true;
 	}
 
 	return assetId;
@@ -836,14 +857,14 @@ AssetId AssetManager::addExternalScene(const std::string& loadingPath)
 	}
 
 	std::string iconFullPath = computeIconPath(loadingPath, 0);
-	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+	bool iconFileExists = formatIconPath(iconFullPath);
 	uint32_t thumbnailsCount = 0;
 	while (iconFileExists)
 	{
 		thumbnailsCount++;
 
 		std::string nextIconFullPath = computeIconPath(loadingPath, thumbnailsCount);
-		iconFileExists = formatIconPath(loadingPath, nextIconFullPath);
+		iconFileExists = formatIconPath(nextIconFullPath);
 	}
 
 	iconFileExists = thumbnailsCount > 0;
@@ -858,9 +879,9 @@ AssetId AssetManager::addExternalScene(const std::string& loadingPath)
 
 	AssetId assetId = static_cast<uint32_t>(m_externalScenes.size()) + EXTERNAL_SCENE_ASSET_IDX_OFFSET;
 
-	AssetExternalScene* newExternalScene = new AssetExternalScene(this, loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, NO_ASSET);
+	AssetExternalScene* newExternalScene = new AssetExternalScene(this, loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, NO_ASSET);
 	m_externalScenes.emplace_back(newExternalScene);
-	m_addAssetToUICallback(m_externalScenes.back()->computeName(), loadingPath, iconFullPath, assetId, "externalScene");
+	m_assetAdded = true;
 
 	return assetId;
 }
@@ -946,10 +967,10 @@ AssetId AssetManager::addTextureSet(const std::string& loadingPath, AssetId pare
 		assetId = static_cast<uint32_t>(m_textureSets.size()) + TEXTURE_SET_ASSET_IDX_OFFSET;
 
 		std::string iconFullPath = computeIconPath(loadingPath, 0);
-		bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+		bool iconFileExists = formatIconPath(iconFullPath);
 
-		m_textureSets.emplace_back(new AssetTextureSet(loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, m_materialsGPUManager, this, parentAssetId));
-		m_addAssetToUICallback(m_textureSets.back()->computeName(), loadingPath, iconFullPath, assetId, "textureSet");
+		m_textureSets.emplace_back(new AssetTextureSet(loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, m_materialsGPUManager, this, parentAssetId));
+		m_assetAdded = true;
 	}
 
 	return assetId;
@@ -989,13 +1010,23 @@ AssetId AssetManager::addMaterial(const std::string& loadingPath, AssetId parent
 		assetId = static_cast<uint32_t>(m_materials.size()) + MATERIAL_ASSET_IDX_OFFSET;
 
 		std::string iconFullPath = computeIconPath(loadingPath, 0);
-		bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+		bool iconFileExists = formatIconPath(iconFullPath);
 
-		m_materials.emplace_back(new AssetMaterial(loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, m_materialsGPUManager, this, parentAssetId));
-		m_addAssetToUICallback(m_materials.back()->computeName(), loadingPath, iconFullPath, assetId, "material");
+		m_materials.emplace_back(new AssetMaterial(loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, m_materialsGPUManager, this, parentAssetId));
+		m_assetAdded = true;
 	}
 
 	return assetId;
+}
+
+Wolf::ResourceNonOwner<AssetMaterial> AssetManager::getAssetMaterial(AssetId assetId) const
+{
+	if (!isMaterial(assetId))
+	{
+		Wolf::Debug::sendCriticalError("AssetId is not a material");
+	}
+
+	return m_materials[assetId - MATERIAL_ASSET_IDX_OFFSET].createNonOwnerResource();
 }
 
 bool AssetManager::isMaterialLoaded(AssetId assetId) const
@@ -1042,10 +1073,10 @@ AssetId AssetManager::addParticle(const std::string& loadingPath)
 		assetId = static_cast<uint32_t>(m_particles.size()) + PARTICLE_ASSET_IDX_OFFSET;
 
 		std::string iconFullPath = computeIconPath(loadingPath, 0);
-		bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+		bool iconFileExists = formatIconPath(iconFullPath);
 
-		m_particles.emplace_back(new AssetParticle(loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, m_materialsGPUManager, this));
-		m_addAssetToUICallback(m_particles.back()->computeName(), loadingPath, iconFullPath, assetId, "particle");
+		m_particles.emplace_back(new AssetParticle(loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, m_materialsGPUManager, this));
+		m_assetAdded = true;
 	}
 
 	return assetId;
@@ -1083,14 +1114,14 @@ AssetId AssetManager::addMeshInternal(const std::string& loadingPath, ExternalSc
 	}
 
 	std::string iconFullPath = computeIconPath(loadingPath, 0);
-	bool iconFileExists = formatIconPath(loadingPath, iconFullPath);
+	bool iconFileExists = formatIconPath(iconFullPath);
 	uint32_t thumbnailsCount = 0;
 	while (iconFileExists)
 	{
 		thumbnailsCount++;
 
 		std::string nextIconFullPath = computeIconPath(loadingPath, thumbnailsCount);
-		iconFileExists = formatIconPath(loadingPath, nextIconFullPath);
+		iconFileExists = formatIconPath(nextIconFullPath);
 	}
 
 	iconFileExists = thumbnailsCount > 0;
@@ -1105,10 +1136,10 @@ AssetId AssetManager::addMeshInternal(const std::string& loadingPath, ExternalSc
 
 	AssetId assetId = static_cast<uint32_t>(m_meshes.size()) + MESH_ASSET_IDX_OFFSET;
 
-	AssetMesh* newMesh = new AssetMesh(this, loadingPath, !iconFileExists, assetId, m_updateResourceInUICallback, m_bufferPoolInterface, meshData, defaultMaterialAssetId, parentAssetId,
+	AssetMesh* newMesh = new AssetMesh(this, loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, m_bufferPoolInterface, meshData, defaultMaterialAssetId, parentAssetId,
 		m_isolateMeshCallback, m_removeIsolationAndGetViewMatrixCallback, m_renderingPipeline, m_editorPushDataToGPU);
 	m_meshes.emplace_back(newMesh);
-	m_addAssetToUICallback(m_meshes.back()->computeName(), loadingPath, iconFullPath, assetId, "mesh");
+	m_assetAdded = true;
 
 	return assetId;
 }
@@ -1141,25 +1172,17 @@ std::string AssetManager::computeIconPath(const std::string& loadingPath, uint32
 	return iconPath;
 }
 
-bool AssetManager::formatIconPath(const std::string& inLoadingPath, std::string& outIconPath)
+bool AssetManager::formatIconPath(std::string& inOutIconPath)
 {
 	bool iconFileExists = false;
-	if (const std::ifstream iconFile(outIconPath.c_str()); iconFile.good())
+	if (const std::ifstream iconFile(inOutIconPath.c_str()); iconFile.good())
 	{
-		outIconPath = outIconPath.substr(3, outIconPath.size()); // remove "UI/"
+		inOutIconPath = inOutIconPath.substr(3, inOutIconPath.size()); // remove "UI/"
 		iconFileExists = true;
 	}
 	else
 	{
-		std::string extension = inLoadingPath.substr(inLoadingPath.find_last_of('.') + 1);
-		if (extension == "dae" || extension == "cube")
-		{
-			outIconPath = "media/assetIcons/no_icon.gif";
-		}
-		else
-		{
-			outIconPath = "media/assetIcons/no_icon.png";
-		}
+		inOutIconPath = "media/assetIcons/no_icon.png";
 	}
 
 	return iconFileExists;
@@ -1226,4 +1249,66 @@ bool AssetManager::saveAsset(std::stringstream& outStringStream, Wolf::ResourceN
 	outAssetFile.close();
 
 	return true;
+}
+
+void AssetManager::onAssetUpdated(AssetId assetId)
+{
+	// TODO
+}
+
+template <typename T>
+void AssetManager::addToJSON(const T& assetList, const std::string& assetType, std::string& outJSON, uint32_t& currentCount, uint32_t offset, uint32_t maxCount, const std::string& search)
+{
+	if (currentCount >= maxCount)
+		return;
+
+	for (size_t i = 0; i < assetList.size(); ++i)
+	{
+		if (currentCount >= offset)
+		{
+			const auto& asset = assetList[i];
+			std::string iconPath = asset->computeIconPath();
+			formatIconPath(iconPath);
+
+			outJSON += R"({ "id": ")" + std::to_string(asset->getAssetId()) +
+					   R"(", "name": ")" + asset->getLoadingPath() +
+					   R"(", "type": ")" + assetType +
+					   R"(", "iconPath": ")" + iconPath + R"(" })";
+			outJSON += ", \n";
+		}
+
+		currentCount++;
+		if (currentCount >= maxCount)
+			return;
+	}
+}
+
+ultralight::JSValue AssetManager::requestAssetPayloadJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string inputJSON = static_cast<ultralight::String>(args[0].ToString()).utf8().data();
+	Wolf::JSONReader::StringReadInfo stringReadInfo{};
+	stringReadInfo.jsonData = inputJSON;
+	Wolf::JSONReader jsonReader(stringReadInfo);
+
+	std::string search = jsonReader.getRoot()->getPropertyString("search");
+	uint32_t offset = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("offset"));
+	uint32_t maxCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("limit")) + offset;
+
+	std::string outJSON = R"({
+	 	"assets": [
+	)";
+
+	uint32_t currentCount = 0;
+	addToJSON(m_externalScenes, "externalScene", outJSON, currentCount, offset, maxCount, search);
+	addToJSON(m_meshes, "mesh", outJSON, currentCount, offset, maxCount, search);
+	addToJSON(m_images, "image", outJSON, currentCount, offset, maxCount, search);
+	addToJSON(m_textureSets, "textureSet", outJSON, currentCount, offset, maxCount, search);
+	addToJSON(m_materials, "material", outJSON, currentCount, offset, maxCount, search);
+	addToJSON(m_particles, "particle", outJSON, currentCount, offset, maxCount, search);
+
+	outJSON = outJSON.substr(0, outJSON.size() - 3);
+
+	outJSON += "]\n}";
+
+	return { outJSON.c_str() };
 }

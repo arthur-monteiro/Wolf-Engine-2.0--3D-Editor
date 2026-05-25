@@ -4,15 +4,19 @@
 #include "EditorConfiguration.h"
 
 
-AssetMesh::AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(const std::string&, const std::string&, AssetId)>& updateAssetInUICallback,
+AssetMesh::AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
 	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId,const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
-: AssetInterface(loadingPath, assetId, updateAssetInUICallback, parentAssetId), m_assetManager(assetManager), m_bufferPoolInterface(bufferPoolInterface), m_staticVertices(meshData.m_staticVertices),
+: AssetInterface(loadingPath, assetId, onAssetUpdateCallback, parentAssetId), m_assetManager(assetManager), m_bufferPoolInterface(bufferPoolInterface), m_staticVertices(meshData.m_staticVertices),
   m_indices(meshData.m_indices), m_skeletonVertices(meshData.m_skeletonVertices), m_animationData(meshData.m_animationData.release()), m_materialAssetId(defaultMaterialAssetId)
 {
 	if (m_staticVertices.empty() && m_skeletonVertices.empty())
 	{
 		Wolf::Debug::sendCriticalError("Can't load a mesh without vertices");
+	}
+	if (m_indices.empty())
+	{
+		Wolf::Debug::sendCriticalError("Can't load a mesh without indices");
 	}
 
 	m_meshLoadingRequested = true;
@@ -296,12 +300,12 @@ void AssetMesh::computeThumbnailGenerationViewMatrix(const Wolf::AABB& aabb)
 
 void AssetMesh::generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
 {
-	std::string iconPath = AssetManager::computeIconPath(m_loadingPath, m_thumbnailCountToMaintain);
+	std::string iconPath = computeIconPath();
 
 	uint32_t materialGPUIdx = m_materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(m_materialAssetId)->getMaterialGPUIdx();
 
 	thumbnailsGenerationPass->addRequestBeforeFrame({ getMesh(), isAnimated() ? Wolf::NullableResourceNonOwner<AnimationData>(getAnimationData()) : Wolf::NullableResourceNonOwner<AnimationData>(), materialGPUIdx, iconPath,
-		[this, iconPath]() { m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId); },
+		[this]() { m_updateAssetInUICallback(m_assetId); },
 			m_thumbnailGenerationViewMatrix });
 }
 

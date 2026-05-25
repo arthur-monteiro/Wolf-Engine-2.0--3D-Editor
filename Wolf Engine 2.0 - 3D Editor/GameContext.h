@@ -23,7 +23,8 @@ struct GameContext
 		GLOBAL_IRRADIANCE = 12,
 		VERTEX_COLOR = 13,
 		VERTEX_NORMAL = 14,
-		LOD_LEVEL = 15
+		LOD_LEVEL = 15,
+		MATERIAL_COLOR = 16
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 

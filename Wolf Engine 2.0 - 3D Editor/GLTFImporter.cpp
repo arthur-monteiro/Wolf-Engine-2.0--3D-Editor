@@ -98,16 +98,24 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                     Wolf::Debug::sendCriticalError("We assume that texture coords stride is 2 floats");
                 }
 
-                const tinygltf::Accessor& tangentAccessor = model.accessors[primitive.attributes.at("TANGENT")];
-                const tinygltf::BufferView& tangentBufferView = model.bufferViews[tangentAccessor.bufferView];
-                const tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
-                const uint32_t tangentByteStride = tangentBufferView.byteStride == 0 ? sizeof(float) * 4 : tangentBufferView.byteStride;
-                if (tangentByteStride != sizeof(float) * 4)
+                bool hasTangents = primitive.attributes.contains("TANGENT");
+                const tinygltf::Accessor* tangentAccessor = nullptr;
+                const tinygltf::BufferView* tangentBufferView = nullptr;
+                const tinygltf::Buffer* tangentBuffer = nullptr;
+
+                if (hasTangents)
                 {
-                    Wolf::Debug::sendCriticalError("We assume that tangent stride is 4 floats");
+                    tangentAccessor = &model.accessors[primitive.attributes.at("TANGENT")];
+                    tangentBufferView = &model.bufferViews[tangentAccessor->bufferView];
+                    tangentBuffer = &model.buffers[tangentBufferView->buffer];
+                    const uint32_t tangentByteStride = tangentBufferView->byteStride == 0 ? sizeof(float) * 4 : tangentBufferView->byteStride;
+                    if (tangentByteStride != sizeof(float) * 4)
+                    {
+                        Wolf::Debug::sendCriticalError("We assume that tangent stride is 4 floats");
+                    }
                 }
 
-                if (normAccessor.count != posAccessor.count || normAccessor.count != texCoordsAccessor.count || normAccessor.count != tangentAccessor.count)
+                if (normAccessor.count != posAccessor.count || normAccessor.count != texCoordsAccessor.count || (tangentAccessor && normAccessor.count != tangentAccessor->count))
                 {
                     Wolf::Debug::sendCriticalError("Error when reading GLTF file");
                 }
@@ -123,8 +131,15 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                     const unsigned char* normData = normBuffer.data.data() + normAccessor.byteOffset + normBufferView.byteOffset;
                     vertex.normal = reinterpret_cast<const glm::vec3*>(normData)[idx];
 
-                    const unsigned char* tangentData = tangentBuffer.data.data() + tangentAccessor.byteOffset + tangentBufferView.byteOffset;
-                    vertex.tangent = reinterpret_cast<const glm::vec4*>(tangentData)[idx];
+                    if (hasTangents)
+                    {
+                        const unsigned char* tangentData = tangentBuffer->data.data() + tangentAccessor->byteOffset + tangentBufferView->byteOffset;
+                        vertex.tangent = reinterpret_cast<const glm::vec4*>(tangentData)[idx];
+                    }
+                    else
+                    {
+                        vertex.tangent = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Fallback default tangent
+                    }
 
                     const unsigned char* texCoordsData = texCoordsBuffer.data.data() + texCoordsAccessor.byteOffset + texCoordsBufferView.byteOffset;
                     vertex.texCoord = reinterpret_cast<const glm::vec2*>(texCoordsData)[idx];
@@ -137,6 +152,11 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                 const tinygltf::Buffer& indexBuffer = model.buffers[indexView.buffer];
                 const unsigned char* rawIndices = &(indexBuffer.data[indexAccessor.byteOffset + indexView.byteOffset]);
 
+                if (indexAccessor.count == 0)
+                {
+                    Wolf::Debug::sendCriticalError("Index count is 0");
+                }
+
                 meshData.m_indices.reserve(indexAccessor.count);
 
                 for (size_t idx = 0; idx < indexAccessor.count; idx++)
@@ -148,6 +168,57 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                     else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
                     {
                         meshData.m_indices.push_back(reinterpret_cast<const uint16_t*>(rawIndices)[idx]);
+                    }
+                }
+
+                if (!hasTangents && meshData.m_indices.size() >= 3)
+                {
+                    for (size_t i = 0; i < meshData.m_indices.size(); i += 3)
+                    {
+                        uint32_t idx0 = meshData.m_indices[i];
+                        uint32_t idx1 = meshData.m_indices[i + 1];
+                        uint32_t idx2 = meshData.m_indices[i + 2];
+
+                        Vertex3D& v0 = meshData.m_staticVertices[idx0];
+                        Vertex3D& v1 = meshData.m_staticVertices[idx1];
+                        Vertex3D& v2 = meshData.m_staticVertices[idx2];
+
+                        glm::vec3 edge1 = v1.pos - v0.pos;
+                        glm::vec3 edge2 = v2.pos - v0.pos;
+
+                        glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
+                        glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
+
+                        float f = (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+                        // Avoid division by zero
+                        float r = (std::abs(f) > 1e-6f) ? 1.0f / f : 1.0f;
+
+                        glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
+
+                        v0.tangent += glm::vec3(tangent);
+                        v1.tangent += glm::vec3(tangent);
+                        v2.tangent += glm::vec3(tangent);
+                    }
+
+                    for (size_t i = 0; i < meshData.m_staticVertices.size(); ++i)
+                    {
+                        Vertex3D& v = meshData.m_staticVertices[i];
+                        glm::vec3 t = v.tangent;
+                        glm::vec3 n = v.normal;
+
+                        glm::vec3 correctedT = t - n * glm::dot(n, t); // Gram-Schmidt
+                        if (glm::length(correctedT) > 1e-6f)
+                        {
+                            correctedT = glm::normalize(correctedT);
+                        }
+                        else
+                        {
+                            // Fallback if tangent aligns with normal
+                            correctedT = glm::vec3(1.0f, 0.0f, 0.0f);
+                        }
+
+
+                        v.tangent = correctedT;
                     }
                 }
             }

@@ -6,6 +6,8 @@
 MaterialEditor::MaterialEditor(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, AssetManager* assetManager)
 	: m_materialsGPUManager(materialsGPUManager), m_assetManager(assetManager)
 {
+	m_overrideColor = false;
+	m_color = glm::vec3(1.0f);
 }
 
 void MaterialEditor::loadParams(Wolf::JSONReader& jsonReader)
@@ -51,9 +53,10 @@ void MaterialEditor::updateBeforeFrame()
 		if (m_materialGPUIdx == DEFAULT_MATERIAL_IDX)
 		{
 			Wolf::MaterialsGPUManager::MaterialInfo materialInfo;
-			materialInfo.textureSetInfos[indexOfTextureSetInMaterial].textureSetIdx = textureSetGPUIdx;
-			materialInfo.textureSetInfos[indexOfTextureSetInMaterial].strength = strength;
-			materialInfo.shadingMode = static_cast<Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode>(static_cast<uint32_t>(m_shadingMode));
+			materialInfo.m_textureSetsInfo[indexOfTextureSetInMaterial].m_textureSetIdx = textureSetGPUIdx;
+			materialInfo.m_textureSetsInfo[indexOfTextureSetInMaterial].m_strength = strength;
+			materialInfo.m_shadingMode = static_cast<Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode>(static_cast<uint32_t>(m_shadingMode));
+			materialInfo.m_color = static_cast<glm::vec3>(m_color);
 
 			m_materialsGPUManager->lockMaterials();
 			m_materialGPUIdx = m_materialsGPUManager->getCurrentMaterialCount();
@@ -79,6 +82,12 @@ void MaterialEditor::updateBeforeFrame()
 	{
 		m_materialsGPUManager->changeMaterialShadingModeBeforeFrame(m_materialGPUIdx, m_shadingMode);
 		m_shadingModeChanged = false;
+	}
+
+	if (m_colorChanged && m_materialGPUIdx != DEFAULT_MATERIAL_IDX)
+	{
+		m_materialsGPUManager->changeMaterialColorBeforeFrame(m_materialGPUIdx, m_color);
+		m_colorChanged = false;
 	}
 }
 
@@ -139,6 +148,43 @@ uint32_t MaterialEditor::TextureSet::getTextureSetIdx() const
 	return NO_TEXTURE_SET_IDX;
 }
 
+glm::vec3 MaterialEditor::TextureSet::computeColor() const
+{
+	if (m_textureSetAssetId != NO_ASSET)
+	{
+		AssetId albedoAssetId = m_assetManager->getTextureSetEditor(m_textureSetAssetId)->getAlbedoAssetId();
+		if (albedoAssetId != NO_ASSET)
+		{
+			AssetImageInterface::LoadingRequest loadingRequest{};
+			loadingRequest.m_canBeVirtualized = false;
+			loadingRequest.m_format = Wolf::Format::R8G8B8A8_UNORM;
+			loadingRequest.m_keepDataMode = AssetImageInterface::KeepDataMode::ONLY_CPU;
+			loadingRequest.m_loadMips = true;
+			m_assetManager->requestImageLoading(albedoAssetId, loadingRequest, true);
+
+			Wolf::ResourceNonOwner<AssetImage> assetImage = m_assetManager->getAssetImage(albedoAssetId);
+			Wolf::Extent3D extent = assetImage->getExtent(loadingRequest.m_format);
+			const uint8_t* data = assetImage->getMipData(0, loadingRequest.m_format);
+			const Wolf::ImageCompression::RGBA8* pixels = reinterpret_cast<const Wolf::ImageCompression::RGBA8*>(data);
+
+			glm::vec3 averageColor(0.0f);
+			uint32_t totalPixels = extent.width * extent.height * extent.depth;
+			for (uint32_t i = 0; i < totalPixels; i++)
+			{
+				glm::vec3 currentPixel(pixels[i].r, pixels[i].g, pixels[i].b);
+				averageColor += (currentPixel - averageColor) / static_cast<float>(i + 1);
+			}
+			averageColor /= 255.0f;
+
+			assetImage->deleteImageData(loadingRequest.m_format);
+
+			return averageColor;
+		}
+	}
+
+	return glm::vec3(1.0f);
+}
+
 void MaterialEditor::TextureSet::onTextureSetAssetChanged()
 {
 	if (static_cast<std::string>(m_textureSetAssetParam) == "")
@@ -161,4 +207,31 @@ void MaterialEditor::onTextureSetAdded()
 
 	uint32_t idx = static_cast<uint32_t>(m_textureSets.size()) - 1;
 	m_textureSets.back().subscribe(this, [this, idx](Flags) { onTextureSetChanged(idx); });
+}
+
+void MaterialEditor::setColor(glm::vec3 color)
+{
+	m_color = color;
+}
+
+void MaterialEditor::recomputeColor()
+{
+	uint32_t textureSetCount = static_cast<uint32_t>(m_textureSets.size());
+	glm::vec3 averageColor(0.0f);
+	for (uint32_t textureSetIdx = 0; textureSetIdx < textureSetCount; ++textureSetIdx)
+	{
+		glm::vec3 textureSetColor = m_textureSets[textureSetIdx].computeColor();
+		averageColor += (textureSetColor - averageColor) / static_cast<float>(textureSetIdx + 1);
+	}
+	m_color = averageColor;
+}
+
+void MaterialEditor::onOverrideColorChanged()
+{
+	m_color.setReadOnly(!m_overrideColor);
+}
+
+void MaterialEditor::onColorChanged()
+{
+	m_colorChanged = true;
 }

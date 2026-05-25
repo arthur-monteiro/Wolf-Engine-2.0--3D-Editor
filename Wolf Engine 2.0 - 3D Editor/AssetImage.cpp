@@ -5,7 +5,7 @@
 #include "ImageFormatter.h"
 
 AssetImage::AssetImage(const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId,
-	const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, AssetId parentAssetId)
+	const std::function<void(AssetId)>& updateResourceInUICallback, AssetId parentAssetId)
 	: AssetInterface(loadingPath, assetId, updateResourceInUICallback, parentAssetId), AssetImageInterface(editorPushDataToGPU, needThumbnailsGeneration)
 {
 	m_editor.reset(new ImageEditor());
@@ -89,7 +89,7 @@ void AssetImage::loadImage(const LoadingRequest& loadingRequest)
 
 			if (generateThumbnail(fullFilePath, iconPath))
 			{
-				m_updateAssetInUICallback(computeName(), iconPath.substr(3, iconPath.size()), m_assetId);
+				m_updateAssetInUICallback(m_assetId);
 			}
 		}
 

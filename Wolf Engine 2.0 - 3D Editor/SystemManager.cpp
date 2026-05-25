@@ -56,12 +56,9 @@ SystemManager::SystemManager()
 	m_editorPushDataToGPU->setUpdateGPUBuffersPass(m_renderer->getUpdateGPUBuffersPass());
 	m_editorPushDataToGPU->setGPUBufferToGPUBufferCopyPass(m_renderer->getGPUBufferToGPUBufferCopyPass());
 
-	m_assetManager.reset(new AssetManager([this](const std::string& assetName, const std::string& assetPath, const std::string& iconPath, AssetId assetId, const std::string& assetType)
+	m_assetManager.reset(new AssetManager([this](const std::string& scriptStr)
 		{
-			m_wolfInstance->evaluateUserInterfaceScript("addAssetToList(\"" + assetName + "\", \"" + assetPath + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\", \"" + assetType + "\");");
-		}, [this](const std::string& resourceName, const std::string& iconPath, AssetId assetId)
-		{
-			m_wolfInstance->evaluateUserInterfaceScript("updateAsset(\"" + resourceName + "\", \"" + iconPath + "\", \"" + std::to_string(assetId) + "\");");
+			m_wolfInstance->evaluateUserInterfaceScript(scriptStr);
 		},
 		m_wolfInstance->getMaterialsManager(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_configuration.createNonOwnerResource(),
 		[this](const std::string& loadingPath) { forceCustomViewForMesh(loadingPath); },
@@ -71,7 +68,13 @@ SystemManager::SystemManager()
 			removeCustomView();
 		},
 		m_editorPushDataToGPU.createNonOwnerResource(), m_bufferPoolInterface));
-	m_renderer->setResourceManager(m_assetManager.createNonOwnerResource());
+	{
+		ultralight::JSObject jsObject;
+		m_wolfInstance->getUserInterfaceJSObject(jsObject);
+		m_assetManager->bindUltralightCallbacks(jsObject);
+	}
+
+	m_renderer->setAssetManager(m_assetManager.createNonOwnerResource());
 
 	m_getEntityFromLoadingPathCallback = [this](const std::string& entityLoadingPath)
 	{
@@ -710,6 +713,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_inModificationGameContext.displayType = GameContext::DisplayType::ALBEDO;
 	else if (displayType == "vertexColor")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::VERTEX_COLOR;
+	else if (displayType == "materialColor")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::MATERIAL_COLOR;
 	else if (displayType == "normal")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::NORMAL;
 	else if (displayType == "vertexNormal")

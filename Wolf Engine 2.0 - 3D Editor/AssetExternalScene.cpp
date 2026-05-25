@@ -3,17 +3,30 @@
 #include "AssetManager.h"
 
 AssetExternalScene::AssetExternalScene(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId,
-	const std::function<void(const std::string&, const std::string&, AssetId)>& updateResourceInUICallback, AssetId parentAssetId)
-: AssetInterface(loadingPath, assetId, updateResourceInUICallback, parentAssetId), m_assetManager(assetManager)
+	const std::function<void(AssetId)>& onAssetUpdateCallback, AssetId parentAssetId)
+: AssetInterface(loadingPath, assetId, onAssetUpdateCallback, parentAssetId), m_assetManager(assetManager)
 {
 	m_loadingRequested = false;
 
 	m_editor.reset(new ExternalSceneAssetEditor());
-	m_editor->subscribe(this, [this](Flags)
+	m_editor->subscribe(this, [this](Flags flags)
 	{
 		if (!m_editor->getLoadingPath().empty())
 		{
 			m_loadingRequested = true;
+		}
+
+		if (flags & ExternalSceneAssetEditor::NOTIFICATION_FLAG_RECOMPUTE_ALL_MATERIALS_COLOR)
+		{
+			Wolf::Debug::sendInfo("Recomputing all materials color");
+
+			for (AssetId assetId : m_materialAssetsId)
+			{
+				Wolf::Debug::sendInfo("Recomputing material color for asset id " + std::to_string(assetId));
+
+				Wolf::ResourceNonOwner<AssetMaterial> assetMaterial = m_assetManager->getAssetMaterial(assetId);
+				assetMaterial->getEditor()->recomputeColor();
+			}
 		}
 	});
 
@@ -58,8 +71,8 @@ void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 	ExternalSceneLoader::loadScene(outputData, sceneLoadingInfo, m_assetManager);
 
 	/* Add materials */
-	std::vector<uint32_t> materialAssetsId;
-	materialAssetsId.reserve(outputData.m_materialsData.size());
+	m_materialAssetsId.clear();
+	m_materialAssetsId.reserve(outputData.m_materialsData.size());
 	for (const ExternalSceneLoader::MaterialData& materialData : outputData.m_materialsData)
 	{
 		const TextureSetLoader::TextureSetFileInfoGGX& textureSetFileInfo = materialData.m_textureSetFileInfo;
@@ -107,9 +120,10 @@ void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 		Wolf::ResourceNonOwner<MaterialEditor> materialEditor = m_assetManager->getMaterialEditor(materialAssetId);
 
 		materialEditor->addTextureSet(sceneLoadingInfo.filename + "_" + materialData.m_textureSetFileInfo.name + "_textureSet", 1.0f);
+		materialEditor->setColor(materialData.m_color);
 		materialEditor->updateBeforeFrame();
 
-		materialAssetsId.push_back(materialAssetId);
+		m_materialAssetsId.push_back(materialAssetId);
 	}
 
 	/* Add meshes */
@@ -123,7 +137,7 @@ void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsG
 			ExternalSceneLoader::InstanceData& instanceData = outputData.m_instancesData[instanceIdx];
 			if (instanceData.m_meshIdx == meshIdx)
 			{
-				materialAssetId = instanceData.m_materialIdx == -1 ? NO_ASSET : materialAssetsId[instanceData.m_materialIdx];
+				materialAssetId = instanceData.m_materialIdx == -1 ? NO_ASSET : m_materialAssetsId[instanceData.m_materialIdx];
 				break;
 			}
 		}

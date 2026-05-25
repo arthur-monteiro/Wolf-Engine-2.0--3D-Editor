@@ -34,6 +34,9 @@ public:
 	uint32_t getTextureSetCount() const { return m_textureSets.size(); }
 	AssetId getTextureSetAssetId(uint32_t textureSetIdx) const { return m_textureSets[textureSetIdx].getAssetId(); }
 
+	void setColor(glm::vec3 color);
+	void recomputeColor();
+
 private:
 	inline static const std::string TAB = "Material";
 	Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager> m_materialsGPUManager;
@@ -65,6 +68,8 @@ private:
 		AssetId getAssetId() const { return m_textureSetAssetId; }
 		float getStrength() const { return m_strength; }
 
+		glm::vec3 computeColor() const;
+
 	private:
 		inline static const std::string DEFAULT_NAME = "New texture set";
 		AssetManager* m_assetManager = nullptr;
@@ -84,10 +89,20 @@ private:
 	void onTextureSetAdded();
 	EditorParamArray<TextureSet> m_textureSets = EditorParamArray<TextureSet>("Texture sets", TAB, "Material", MAX_TEXTURE_SETS, [this] { onTextureSetAdded(); });
 
-	std::array<EditorParamInterface*, 2> m_allParams =
+	EditorParamButton m_recomputeColor = EditorParamButton("Compute color", TAB, "Material", [this]() { recomputeColor(); });
+	void onOverrideColorChanged();
+	EditorParamBool m_overrideColor = EditorParamBool("Override color", TAB, "Material", [this]() { onOverrideColorChanged(); });
+	bool m_colorChanged = false;
+	void onColorChanged();
+	EditorParamVector3 m_color = EditorParamVector3("Color", TAB, "Material", 0.0f, 1.0f, [this]() { onColorChanged(); }, false, true);
+
+	std::array<EditorParamInterface*, 5> m_allParams =
 	{
 		&m_shadingMode,
-		&m_textureSets
+		&m_textureSets,
+		&m_recomputeColor,
+		&m_overrideColor,
+		&m_color
 	};
 
 	uint32_t m_materialGPUIdx = DEFAULT_MATERIAL_IDX;

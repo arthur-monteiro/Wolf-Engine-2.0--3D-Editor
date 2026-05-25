@@ -28,6 +28,7 @@ public:
     std::string getSlicesFolder() { return m_slicesFolder; }
 
     const uint8_t* getMipData(uint32_t mipLevel, Wolf::Format format) const;
+    Wolf::Extent3D getExtent(Wolf::Format format) const;
     void deleteImageData(Wolf::Format format);
     void releaseImages();
 
