@@ -19,7 +19,7 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 	{
 		if (line[line.length() - 1] == '\r')
 		{
-			Wolf::Debug::sendCriticalError("File is read as LF but is encoded as CRLF");
+			Wolf::Debug::sendError("File is read as LF but is encoded as CRLF");
 		}
 
 		if (const size_t pos = line.find('='); pos != std::string::npos)
