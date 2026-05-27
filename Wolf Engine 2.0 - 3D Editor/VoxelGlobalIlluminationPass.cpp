@@ -61,6 +61,7 @@ void VoxelGlobalIlluminationPass::initializeResources(const Wolf::Initialization
     m_rayTracingDescriptorSetLayoutGenerator.addUniformBuffer(Wolf::ShaderStageFlagBits::RAYGEN, 1); // uniform buffer
     m_rayTracingDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::RAYGEN, 2); // noise map
     m_rayTracingDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::RAYGEN, 3); // requests buffer
+    m_rayTracingDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::RAYGEN, 4); // requests buffer copy
     m_rayTracingDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_rayTracingDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
     createVoxelGrid();
@@ -94,6 +95,7 @@ void VoxelGlobalIlluminationPass::record(const Wolf::RecordContext& context)
 
     UniformBufferData uniformBufferData{};
     uniformBufferData.frameIdx = context.m_currentFrameIdx;
+    uniformBufferData.enableMultiBouncing = m_enableMultiBouncing ? 1 : 0;
     m_uniformBuffer->transferCPUMemory(&uniformBufferData, sizeof(UniformBufferData));
 
     DebugUniformBufferData debugUniformBufferData{};
@@ -264,6 +266,7 @@ void VoxelGlobalIlluminationPass::createDescriptorSet()
     descriptorSetGenerator.setUniformBuffer(1, *m_uniformBuffer);
     descriptorSetGenerator.setCombinedImageSampler(2, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
     descriptorSetGenerator.setBuffer(3, *m_requestsBuffer);
+    descriptorSetGenerator.setBuffer(4, *m_requestsBufferCopy);
 
     if (!m_rayTracingDescriptorSet)
         m_rayTracingDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_rayTracingDescriptorSetLayout));

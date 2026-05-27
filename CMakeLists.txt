@@ -8,12 +8,12 @@ file(GLOB SRC
         "Wolf Engine 2.0 - 3D Editor/*.cpp"
 )
 
-#set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
-#FetchContent_Declare(WolfEngineContent
-#        GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-#        GIT_TAG 0231b578f4e68a9ea34937c3f3bdfff642970799
-#        SOURCE_SUBDIR "__skip_subdirectory__")
-#FetchContent_MakeAvailable(WolfEngineContent)
+set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+FetchContent_Declare(WolfEngineContent
+        GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
+        GIT_TAG dc2ebc28552ef4dbafe6bcc77ed92dda885062bc
+        SOURCE_SUBDIR "__skip_subdirectory__")
+FetchContent_MakeAvailable(WolfEngineContent)
 
 # Includes Wolf libs
 include_directories("dependencies/wolfenginecontent-src/Common")
@@ -161,3 +161,12 @@ set_target_properties(WolfEngine_3DEditor
         RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/x64/Release/exe")
 
 #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
+
+if(UNIX AND NOT APPLE)
+    file(WRITE ${CMAKE_BINARY_DIR}/.gdbinit
+            "handle SIG34 nostop noprint pass\n"
+    )
+    file(WRITE ${CMAKE_BINARY_DIR}/.gdbinit_allow
+            "set auto-load safe-path ${CMAKE_BINARY_DIR}\n"
+    )
+endif ()

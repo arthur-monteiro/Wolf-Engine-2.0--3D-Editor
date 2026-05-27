@@ -336,6 +336,18 @@ function computeInput(param, isLast) {
         htmlToAdd += "    class='asset-drop-zone' ";
         htmlToAdd += "    data-callback='change" + nameForCallback + "' ";
         htmlToAdd += "    placeholder='Drop asset here...' />";
+
+        htmlToAdd += "  <button type='button' class='asset-clear-button' title='Clear Asset' ";
+        htmlToAdd += "    onclick='(function() { "
+        + "      let inp = document.getElementById(\"" + inputId + "\"); "
+        + "      if(inp) { "
+        + "        inp.value = \"\"; "
+        + "        change" + nameForCallback + "(\"\"); "
+        + "      }"
+        + "    })()'";
+        htmlToAdd += (param.isReadOnly ? " disabled" : "") + ">";
+        htmlToAdd += "    <img src='media/interfaceIcon/cross.svg' height='12' width='12'/>";
+        htmlToAdd += "  </button>";
         htmlToAdd += "</div>";
     }
 

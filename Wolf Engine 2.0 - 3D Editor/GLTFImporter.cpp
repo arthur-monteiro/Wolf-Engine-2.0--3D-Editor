@@ -169,6 +169,14 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                     {
                         meshData.m_indices.push_back(reinterpret_cast<const uint16_t*>(rawIndices)[idx]);
                     }
+                    else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+                    {
+                        meshData.m_indices.push_back(reinterpret_cast<const uint8_t*>(rawIndices)[idx]);
+                    }
+                    else
+                    {
+                        Wolf::Debug::sendCriticalError("Unsupported index type");
+                    }
                 }
 
                 if (!hasTangents && meshData.m_indices.size() >= 3)

@@ -1257,9 +1257,13 @@ void AssetManager::onAssetUpdated(AssetId assetId)
 }
 
 template <typename T>
-void AssetManager::addToJSON(const T& assetList, const std::string& assetType, std::string& outJSON, uint32_t& currentCount, uint32_t offset, uint32_t maxCount, const std::string& search)
+void AssetManager::addToJSON(const T& assetList, const std::string& assetType, std::string& outJSON, uint32_t& currentCount, uint32_t offset, uint32_t maxCount, const std::string& search,
+	const std::vector<std::string>& filters)
 {
 	if (currentCount >= maxCount)
+		return;
+
+	if (filters.empty() || (filters[0] != "all" && std::find(filters.begin(), filters.end(), assetType) == filters.end()))
 		return;
 
 	for (size_t i = 0; i < assetList.size(); ++i)
@@ -1267,6 +1271,11 @@ void AssetManager::addToJSON(const T& assetList, const std::string& assetType, s
 		if (currentCount >= offset)
 		{
 			const auto& asset = assetList[i];
+
+			std::string name = asset->getLoadingPath();
+			if (!search.empty() && !name.contains(search))
+				continue;
+
 			std::string iconPath = asset->computeIconPath();
 			formatIconPath(iconPath);
 
@@ -1293,18 +1302,19 @@ ultralight::JSValue AssetManager::requestAssetPayloadJSCallback(const ultralight
 	std::string search = jsonReader.getRoot()->getPropertyString("search");
 	uint32_t offset = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("offset"));
 	uint32_t maxCount = static_cast<uint32_t>(jsonReader.getRoot()->getPropertyFloat("limit")) + offset;
+	std::vector<std::string> filters = jsonReader.getRoot()->getPropertyStringArray("type");
 
 	std::string outJSON = R"({
 	 	"assets": [
 	)";
 
 	uint32_t currentCount = 0;
-	addToJSON(m_externalScenes, "externalScene", outJSON, currentCount, offset, maxCount, search);
-	addToJSON(m_meshes, "mesh", outJSON, currentCount, offset, maxCount, search);
-	addToJSON(m_images, "image", outJSON, currentCount, offset, maxCount, search);
-	addToJSON(m_textureSets, "textureSet", outJSON, currentCount, offset, maxCount, search);
-	addToJSON(m_materials, "material", outJSON, currentCount, offset, maxCount, search);
-	addToJSON(m_particles, "particle", outJSON, currentCount, offset, maxCount, search);
+	addToJSON(m_externalScenes, "externalScene", outJSON, currentCount, offset, maxCount, search, filters);
+	addToJSON(m_meshes, "mesh", outJSON, currentCount, offset, maxCount, search, filters);
+	addToJSON(m_images, "image", outJSON, currentCount, offset, maxCount, search, filters);
+	addToJSON(m_textureSets, "textureSet", outJSON, currentCount, offset, maxCount, search, filters);
+	addToJSON(m_materials, "material", outJSON, currentCount, offset, maxCount, search, filters);
+	addToJSON(m_particles, "particle", outJSON, currentCount, offset, maxCount, search, filters);
 
 	outJSON = outJSON.substr(0, outJSON.size() - 3);
 

@@ -420,7 +420,13 @@ void SystemManager::openVRAMTrackingPageJSCallback(const ultralight::JSObject& t
 	std::string outFileName = "reports/GPU_" + m_currentSceneName + "_" + oss.str() + ".json";
 	Wolf::GPUMemoryDebug::dumpJSON(outFileName);
 
+#if defined(_WIN32) || defined(_WIN64)
 	system("start reports/viewer/vramTrackingViewer.html");
+#elif defined(__linux__)
+	system("xdg-open reports/viewer/vramTrackingViewer.html");
+#else
+	Wolf::Debug::sendCriticalError("Unhandled platform");
+#endif
 }
 
 void SystemManager::openSystemRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -441,7 +447,13 @@ void SystemManager::openSystemRAMTrackingPageJSCallback(const ultralight::JSObje
 	std::string outFileName = "reports/CPU_" + m_currentSceneName + "_" + oss.str() + ".json";
 	Wolf::CPUMemoryDebug::dumpJSON(outFileName);
 
+#if defined(_WIN32) || defined(_WIN64)
 	system("start reports/viewer/vramTrackingViewer.html");
+#elif defined(__linux__)
+	system("xdg-open reports/viewer/vramTrackingViewer.html");
+#else
+	Wolf::Debug::sendCriticalError("Unhandled platform");
+#endif
 }
 
 #ifdef _WIN32
@@ -838,7 +850,14 @@ void SystemManager::openUIInBrowserJSCallback(const ultralight::JSObject& thisOb
 	inHTML.close();
 
 	std::filesystem::copy("UI/", "tmp/UI/", std::filesystem::copy_options::recursive);
+
+#if defined(_WIN32) || defined(_WIN64)
 	system("start tmp/UI/UI_dmp.html");
+#elif defined(__linux__)
+	system("xdg-open tmp/UI/UI_dmp.html");
+#else
+	Wolf::Debug::sendCriticalError("Unhandled platform");
+#endif
 }
 
 void SystemManager::takeScreenshotJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)

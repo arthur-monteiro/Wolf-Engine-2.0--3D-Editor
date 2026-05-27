@@ -17,6 +17,11 @@ EditorConfiguration::EditorConfiguration(const std::string& filePath)
 	std::string line;
 	while (std::getline(configFile, line))
 	{
+		if (line[line.length() - 1] == '\r')
+		{
+			Wolf::Debug::sendCriticalError("File is read as LF but is encoded as CRLF");
+		}
+
 		if (const size_t pos = line.find('='); pos != std::string::npos)
 		{
 			std::string token = line.substr(0, pos);

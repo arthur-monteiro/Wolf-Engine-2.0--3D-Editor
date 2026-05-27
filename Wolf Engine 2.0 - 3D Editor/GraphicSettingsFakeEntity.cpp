@@ -139,6 +139,11 @@ void GraphicSettingsFakeEntity::onTrilinarVoxelGIChanged()
     m_renderingPipeline->getForwardPass()->setEnableTrilinearVoxelGI(m_enableTrilinearVoxelGI);
 }
 
+void GraphicSettingsFakeEntity::onMultiBoundingVoxelGIChanged()
+{
+    m_renderingPipeline->getVoxelGIPass()->setEnableMultiBouncing(m_enableMultiBoundingVoxelGI);
+}
+
 void GraphicSettingsFakeEntity::onVoxelGIDebugChanged()
 {
     m_renderingPipeline->getVoxelGIPass()->setEnableDebug(m_enableVoxelGIDebug);

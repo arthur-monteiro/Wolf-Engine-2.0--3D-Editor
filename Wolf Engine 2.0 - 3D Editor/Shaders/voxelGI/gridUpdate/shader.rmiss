@@ -13,10 +13,7 @@ void main()
     if (payload.rayIdx == 0)
     {
         vec3 direction = gl_WorldRayDirectionEXT.xyz;
-
-        float NdotL = max(dot(payload.evaluatedNormal, direction), 0.0);
-        payload.hit = false;
-        payload.radiance = computeSunColor(direction) * NdotL;
+        payload.radiance = computeSunColor(direction);
     }
     else if (payload.rayIdx == 1)
     {

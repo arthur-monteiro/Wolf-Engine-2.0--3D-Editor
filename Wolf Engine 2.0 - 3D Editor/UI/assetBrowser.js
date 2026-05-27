@@ -1,7 +1,7 @@
 
 const AssetBrowser = {
     currentSearch: "",
-    currentTypeFilter: "all",
+    currentTypeFilter: ["all"],
     currentPage: 0,
     maxCountPerPage: 40,
 
@@ -11,7 +11,7 @@ const AssetBrowser = {
             searchInput.addEventListener('input', this.debounce((e) => {
                 this.currentSearch = e.target.value.toLowerCase();
                 this.resetAndRequest();
-            }, 250));
+            }, 50));
         }
     },
 
@@ -50,7 +50,6 @@ const AssetBrowser = {
             return;
         }
 
-        // Use a Document Fragment to eliminate multiple layout-reflow hits
         const fragment = document.createDocumentFragment();
 
         data.assets.forEach(asset => {
@@ -60,20 +59,15 @@ const AssetBrowser = {
             item.setAttribute('draggable', 'true');
             item.setAttribute('data-asset-type', asset.type);
 
-            // Bind native pointer-down drag signals safely
             item.addEventListener('mousedown', (e) => {
-                if (typeof window.onMouseDownAsset === "function") {
-                    window.onMouseDownAsset(e, asset.id);
-                }
+                onMouseDownAsset(e, asset.id);
             });
 
             item.addEventListener('pointerdown', (e) => {
-                if (e.button === 0 && typeof window.startAssetDrag === "function") {
-                    window.startAssetDrag(asset.path);
-                }
+                if (event.button === 0) 
+                    startAssetDrag(asset.name)
             });
 
-            // Structural nodes setup
             const iconDiv = document.createElement('div');
             iconDiv.className = 'assetIcon';
             const img = document.createElement('img');
@@ -82,7 +76,7 @@ const AssetBrowser = {
 
             const nameDiv = document.createElement('div');
             nameDiv.className = 'assetName';
-            nameDiv.textContent = asset.name; // Use textContent to prevent injection issues
+            nameDiv.textContent = asset.name;
 
             item.appendChild(iconDiv);
             item.appendChild(nameDiv);

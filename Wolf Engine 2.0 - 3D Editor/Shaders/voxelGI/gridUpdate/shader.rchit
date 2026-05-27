@@ -57,6 +57,7 @@ void main()
         MaterialInfo materialInfo = fetchMaterial(vertex.texCoords, materialId, TBN, inPayload.hitWorldPos);
         vec3 albedo = materialInfo.materialColor;
         vec3 normal = vertex.normal.xyz;
+        inPayload.hitNormal = normalize(normal);
 
         float NdotL = max(dot(normal, L), 0.0);
 

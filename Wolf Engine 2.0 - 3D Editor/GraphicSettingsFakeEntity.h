@@ -46,6 +46,8 @@ private:
 
     void onTrilinarVoxelGIChanged();
     EditorParamBool m_enableTrilinearVoxelGI = EditorParamBool("Enable trilinear filtering", TAB, "Voxel GI", [this]() { onTrilinarVoxelGIChanged(); });
+    void onMultiBoundingVoxelGIChanged();
+    EditorParamBool m_enableMultiBoundingVoxelGI = EditorParamBool("Enable multi bounding", TAB, "Voxel GI", [this]() { onMultiBoundingVoxelGIChanged(); });
     void onVoxelGIDebugChanged();
     EditorParamBool m_enableVoxelGIDebug = EditorParamBool("Enable voxel GI debug", TAB, "Voxel GI", [this]() { onVoxelGIDebugChanged(); });
     void onProbePositionVoxelGIDebugChanged();
@@ -65,9 +67,10 @@ private:
         &m_csmFar
     };
 
-    std::array<EditorParamInterface*, 3> m_voxelGIParams =
+    std::array<EditorParamInterface*, 4> m_voxelGIParams =
     {
         &m_enableTrilinearVoxelGI,
+        &m_enableMultiBoundingVoxelGI,
         &m_enableVoxelGIDebug,
         &m_probePositionVoxelGIDebug
     };

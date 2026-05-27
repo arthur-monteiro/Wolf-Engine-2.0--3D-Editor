@@ -10,7 +10,6 @@
 #include "AssetMesh.h"
 #include "AssetParticle.h"
 #include "AssetTextureSet.h"
-#include "ComponentInterface.h"
 #include "EditorConfiguration.h"
 #include "ExternalSceneLoader.h"
 #include "MeshAssetEditor.h"
@@ -126,7 +125,8 @@ private:
 	void onAssetUpdated(AssetId assetId);
 
 	template <typename T>
-	void addToJSON(const T& assetList, const std::string& assetType, std::string& outJSON, uint32_t& currentCount, uint32_t offset, uint32_t maxCount, const std::string& search);
+	void addToJSON(const T& assetList, const std::string& assetType, std::string& outJSON, uint32_t& currentCount, uint32_t offset, uint32_t maxCount, const std::string& search,
+		const std::vector<std::string>& filters);
 	ultralight::JSValue requestAssetPayloadJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 
 	std::function<void(const std::string&)> m_evaluateJSScript;

@@ -5,7 +5,7 @@ struct FirstRayPayload
     // First ray
     bool hit;
     vec3 hitWorldPos;
-    vec3 evaluatedNormal;
+    vec3 hitNormal;
     vec3 radiance;
 
     // Second ray

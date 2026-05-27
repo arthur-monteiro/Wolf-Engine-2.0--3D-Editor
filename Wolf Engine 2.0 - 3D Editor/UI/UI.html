@@ -905,16 +905,6 @@
 		document.querySelectorAll('.asset-drop-zone').forEach(el => el.classList.add('drag-active'));
 	}
 
-	function addAssetToList(name, assetPath, iconPath, id, assetType) {
-		let assetInfoDiv = "<div class='assetItem' draggable='true' id='asset_" + id + "' data-asset-type='" + assetType + "' onmousedown=\"onMouseDownAsset(event, '" + id + "');\" "
-			+ "onpointerdown=\"if (event.button === 0) startAssetDrag('" + assetPath + "')\">";
-		assetInfoDiv += "<div class='assetIcon'><img src='" + iconPath + "'/></div>";
-		assetInfoDiv += "<div class='assetName'>" + name + "</div>";
-		assetInfoDiv += "</div>";
-
-		document.getElementById('assetGrid').innerHTML += assetInfoDiv;
-	}
-
 	function updateAsset(name, iconPath, id)
 	{
 		let assetElement = document.getElementById("asset_" + id);
@@ -964,8 +954,16 @@
 			allCheckbox.checked = false;
 		}
 
-		// TODO
+		const activeFilters = Array.from(document.querySelectorAll('.filter-item input:checked')).map(cb => cb.value);
+
+		AssetBrowser.currentTypeFilter = [];
+		activeFilters.forEach(filter => {
+			AssetBrowser.currentTypeFilter.push(filter);
+		});
+
+		AssetBrowser.resetAndRequest();
 	}
+
 
 	function makeID(length) {
 		let result = '';

@@ -16,6 +16,7 @@ public:
     VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
     void setAssetManager(const Wolf::ResourceNonOwner<AssetManager>& assetManager);
+    void setEnableMultiBouncing(bool value) { m_enableMultiBouncing = value; }
     void setEnableDebug(bool value) { m_enableDebug = value; }
     void setDebugPostionFace(uint32_t faceId) { m_debugPositionFaceId = faceId;}
     void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList);
@@ -81,7 +82,8 @@ private:
     struct UniformBufferData
     {
         uint32_t frameIdx;
-        glm::vec3 padding;
+        uint32_t enableMultiBouncing;
+        glm::vec2 padding;
     };
     Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_uniformBuffer;
 
@@ -89,6 +91,8 @@ private:
     static constexpr uint32_t NOISE_TEXTURE_VECTOR_COUNT = 128;
     Wolf::ResourceUniqueOwner<Wolf::Image> m_noiseImage;
     Wolf::ResourceUniqueOwner<Wolf::Sampler> m_noiseSampler;
+
+    bool m_enableMultiBouncing = false;
 
     // Debug
     bool m_enableDebug = false;
