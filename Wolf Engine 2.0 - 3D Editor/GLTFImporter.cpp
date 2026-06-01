@@ -285,8 +285,12 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                     size_t pos = metalnessFilename.find("BaseColor");
                     if (pos != std::string::npos)
                     {
-                        metalnessFilename.replace(pos, 9, "Roughness");
+                        metalnessFilename.replace(pos, 9, "Metalness");
                     }
+                }
+                else if (metalnessFilename.find("Roughness") != std::string::npos)
+                {
+                    metalnessFilename = ""; // Hack for jungle ruins pyramid
                 }
                 else
                 {

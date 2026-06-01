@@ -24,6 +24,13 @@ layout(std430, binding = 4, set = 0) buffer VoxelRequestCopyLayout
     uint values[];
 } voxelRequestCopy;
 
+layout(std430, binding = 5, set = 0) buffer DebugDataLayout
+{
+    uint probeActivatedCount;
+    uint faceActivatedCount;
+} debugData;
+
+
 #include "payloads.glsl"
 layout(location = 0) rayPayloadEXT FirstRayPayload payload;
 
@@ -108,10 +115,20 @@ void main()
     uint requestValueIdx = (6 * voxelIdx) / 32;
     uint firstRequestBitIdx = (6 * voxelIdx) % 32;
 
+    bool hasAtLeastOneFaceActivated = false;
+
     for (uint faceIdx = 0; faceIdx < 6; ++faceIdx)
     {
         if (!checkIfFaceIsRequestedAndReset(requestValueIdx, firstRequestBitIdx, faceIdx))
             continue;
+
+        if (!hasAtLeastOneFaceActivated)
+        {
+            hasAtLeastOneFaceActivated = true;
+            atomicAdd(debugData.probeActivatedCount, 1);
+        }
+
+        atomicAdd(debugData.faceActivatedCount, 1);
 
         vec3 probePos = voxelGrid.values[voxelIdx * 12 + 6 + faceIdx];
 
@@ -138,6 +155,7 @@ void main()
                 continue;
 
             payload.rayIdx = 0;
+            payload.hit = false;
             traceRay(rayFlags, cullMask, 0 /*sbtRecordOffset*/, 2 /*sbtRecordStride*/, 0 /*missIndex*/, probePos.xyz, tmin, direction.xyz, tmax);
 
             vec3 radiance;

@@ -16,6 +16,8 @@ public:
     VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager);
 
     void setAssetManager(const Wolf::ResourceNonOwner<AssetManager>& assetManager);
+    void initDebug(const Wolf::ResourceNonOwner<DebugRenderingManager>& debugRenderingManager);
+
     void setEnableMultiBouncing(bool value) { m_enableMultiBouncing = value; }
     void setEnableDebug(bool value) { m_enableDebug = value; }
     void setDebugPostionFace(uint32_t faceId) { m_debugPositionFaceId = faceId;}
@@ -64,6 +66,15 @@ private:
     Wolf::ResourceUniqueOwner<Wolf::Buffer> m_requestsBuffer;
     Wolf::ResourceUniqueOwner<Wolf::Buffer> m_requestsBufferCopy;
 
+
+    struct DebugDataLayout
+    {
+        uint32_t probeActivatedCount;
+        uint32_t faceActivatedCount;
+    };
+    Wolf::ResourceUniqueOwner<Wolf::Buffer> m_debugDataBuffer;
+    std::vector<Wolf::ResourceUniqueOwner<Wolf::Buffer>> m_debugDataCPUVisibleBuffer;
+
     // Grid update
     Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_rayGenShaderParser;
     Wolf::ResourceUniqueOwner<Wolf::ShaderParser> m_rayMissShaderParser;
@@ -97,8 +108,10 @@ private:
     // Debug
     bool m_enableDebug = false;
     uint32_t m_debugPositionFaceId = 0; // probe center
+    uint32_t m_lastKnownProbeActivatedCount = 0;
+    uint32_t m_lastKnownFaceActivatedCount = 0;
 
-    AssetId m_sphereMeshResourceId = NO_ASSET;
+    AssetId m_probeMeshAssetId = NO_ASSET;
     Wolf::ResourceUniqueOwner<Wolf::PipelineSet> m_debugPipelineSet;
 
     Wolf::DescriptorSetLayoutGenerator m_debugDescriptorSetLayoutGenerator;

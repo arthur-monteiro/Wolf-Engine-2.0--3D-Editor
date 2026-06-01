@@ -12,6 +12,7 @@
 #include <ShaderParser.h>
 
 #include "CommonLayouts.h"
+#include "DebugRenderingManager.h"
 
 VoxelGlobalIlluminationPass::VoxelGlobalIlluminationPass(const Wolf::ResourceNonOwner<UpdateRayTracedWorldPass>& updateRayTracedWorldPass, const Wolf::ResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
 : m_updateRayTracedWorldPass(updateRayTracedWorldPass), m_rayTracedWorldManager(rayTracedWorldManager)
@@ -21,32 +22,38 @@ VoxelGlobalIlluminationPass::VoxelGlobalIlluminationPass(const Wolf::ResourceNon
 void VoxelGlobalIlluminationPass::setAssetManager(const Wolf::ResourceNonOwner<AssetManager>& assetManager)
 {
     m_assetManager = assetManager;
-    // TODO: fix this
-    //m_sphereMeshResourceId = m_resourceManager->addModel("Models/sphere.obj");
+}
+
+void VoxelGlobalIlluminationPass::initDebug(const Wolf::ResourceNonOwner<DebugRenderingManager>& debugRenderingManager)
+{
+    m_probeMeshAssetId = debugRenderingManager->getProbeMeshAssetId();
+    if (m_probeMeshAssetId == NO_ASSET)
+    {
+        Wolf::Debug::sendWarning("Probe asset not set, voxel GI debug won't work");
+    }
 }
 
 void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList)
 {
     if (m_enableDebug)
     {
-        // TODO: fix this
-        // // ReSharper disable once CppDFAUnreachableCode
-        // if (m_sphereMeshResourceId == NO_ASSET || !m_resourceManager->isModelLoaded(m_sphereMeshResourceId))
-        //     return;
-        //
-        // Wolf::DefaultMeshRenderer::InstancedMesh instancedMesh = { { m_resourceManager->getModelDefaultSimplifiedMeshes(m_sphereMeshResourceId)[0].duplicateAs<Wolf::MeshInterface>(),
-        //     m_debugPipelineSet.createConstNonOwnerResource() } };
-        //
-        // if (instancedMesh.m_mesh.m_perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
-        // {
-        //     Wolf::Debug::sendCriticalError("Pipeline can't be overridden for forward pass");
-        //     return;
-        // }
-        //
-        // instancedMesh.m_mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
-        //     m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
-        //
-        // renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
+        // ReSharper disable once CppDFAUnreachableCode
+        if (m_probeMeshAssetId == NO_ASSET)
+            return;
+
+        Wolf::DefaultMeshRenderer::InstancedMesh instancedMesh = { { m_assetManager->getMeshDefaultSimplifiedMeshes(m_probeMeshAssetId)[0].duplicateAs<Wolf::MeshInterface>(),
+            m_debugPipelineSet.createConstNonOwnerResource() } };
+
+        if (instancedMesh.m_mesh.m_perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+        {
+            Wolf::Debug::sendCriticalError("Pipeline can't be overridden for forward pass");
+            return;
+        }
+
+        instancedMesh.m_mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
+            m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
+
+        renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
     }
 }
 
@@ -62,10 +69,18 @@ void VoxelGlobalIlluminationPass::initializeResources(const Wolf::Initialization
     m_rayTracingDescriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::RAYGEN, 2); // noise map
     m_rayTracingDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::RAYGEN, 3); // requests buffer
     m_rayTracingDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::RAYGEN, 4); // requests buffer copy
+    m_rayTracingDescriptorSetLayoutGenerator.addStorageBuffer(Wolf::ShaderStageFlagBits::RAYGEN, 5); // debug buffer
     m_rayTracingDescriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_rayTracingDescriptorSetLayoutGenerator.getDescriptorLayouts()));
 
     createVoxelGrid();
     m_uniformBuffer.reset(new Wolf::UniformBuffer(sizeof(UniformBufferData)));
+    m_debugDataBuffer.reset(Wolf::Buffer::createBuffer(sizeof(DebugDataLayout), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+    for (uint32_t i = 0; i < Wolf::g_configuration->getMaxCachedFrames(); ++i)
+    {
+        m_debugDataCPUVisibleBuffer.emplace_back().reset(Wolf::Buffer::createBuffer(sizeof(DebugDataLayout), VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+    }
     createNoiseImage();
     createPipeline();
     createDescriptorSet();
@@ -93,6 +108,11 @@ void VoxelGlobalIlluminationPass::record(const Wolf::RecordContext& context)
         return;
     }
 
+    const DebugDataLayout* debugDataReadback = static_cast<const DebugDataLayout*>(m_debugDataCPUVisibleBuffer[context.m_currentFrameIdx % m_debugDataCPUVisibleBuffer.size()]->map());
+    m_lastKnownProbeActivatedCount = debugDataReadback->probeActivatedCount;
+    m_lastKnownFaceActivatedCount = debugDataReadback->faceActivatedCount;
+    m_debugDataCPUVisibleBuffer[context.m_currentFrameIdx % m_debugDataCPUVisibleBuffer.size()]->unmap();
+
     UniformBufferData uniformBufferData{};
     uniformBufferData.frameIdx = context.m_currentFrameIdx;
     uniformBufferData.enableMultiBouncing = m_enableMultiBouncing ? 1 : 0;
@@ -106,9 +126,34 @@ void VoxelGlobalIlluminationPass::record(const Wolf::RecordContext& context)
 
     Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::rayTracePassDebugColor, "Voxel GI Pass");
 
-    Wolf::Buffer::BufferCopy bufferCopy{};
-    bufferCopy.size = m_requestsBuffer->getSize();
-    m_requestsBufferCopy->recordTransferGPUMemory(&*m_commandBuffer, *m_requestsBuffer, bufferCopy);
+    {
+        Wolf::Buffer::BufferCopy bufferCopy{};
+        bufferCopy.size = m_requestsBuffer->getSize();
+        m_requestsBufferCopy->recordTransferGPUMemory(&*m_commandBuffer, *m_requestsBuffer, bufferCopy);
+    }
+
+    // Clear debug buffer
+    {
+        Wolf::Buffer::BufferAccess accessBefore{};
+        accessBefore.accessFlags = Wolf::TRANSFER_READ;
+        accessBefore.stage = Wolf::PipelineStage::TRANSFER;
+
+        Wolf::Buffer::BufferAccess accessAfter{};
+        accessAfter.accessFlags = Wolf::TRANSFER_WRITE;
+        accessAfter.stage = Wolf::PipelineStage::TRANSFER;
+
+        m_debugDataBuffer->recordBarrier(&*m_commandBuffer, accessBefore, accessAfter, 0, sizeof(DebugDataLayout));
+
+        m_commandBuffer->fillBuffer(*m_debugDataBuffer, 0, sizeof(DebugDataLayout), 0);
+
+        accessBefore.accessFlags = Wolf::TRANSFER_WRITE;
+        accessBefore.stage = Wolf::PipelineStage::TRANSFER;
+
+        accessAfter.accessFlags = Wolf::SHADER_WRITE | Wolf::SHADER_READ;
+        accessAfter.stage = Wolf::PipelineStage::RAY_TRACING_SHADER;
+
+        m_debugDataBuffer->recordBarrier(&*m_commandBuffer, accessBefore, accessAfter, 0, sizeof(DebugDataLayout));
+    }
 
     m_commandBuffer->bindPipeline(m_pipeline.createConstNonOwnerResource());
     m_commandBuffer->bindDescriptorSet(m_rayTracingDescriptorSet.createConstNonOwnerResource(), 0, *m_pipeline);
@@ -117,6 +162,22 @@ void VoxelGlobalIlluminationPass::record(const Wolf::RecordContext& context)
     m_commandBuffer->bindDescriptorSet(context.m_lightManager->getDescriptorSet().createConstNonOwnerResource(), 3, *m_pipeline);
 
     m_commandBuffer->traceRays(m_shaderBindingTable.createConstNonOwnerResource(), { GRID_SIZE, GRID_SIZE, GRID_SIZE });
+
+    {
+        Wolf::Buffer::BufferAccess accessBefore{};
+        accessBefore.accessFlags = Wolf::SHADER_WRITE;
+        accessBefore.stage = Wolf::PipelineStage::RAY_TRACING_SHADER;
+
+        Wolf::Buffer::BufferAccess accessAfter{};
+        accessAfter.accessFlags = Wolf::TRANSFER_READ;
+        accessAfter.stage = Wolf::PipelineStage::TRANSFER;
+
+        m_debugDataBuffer->recordBarrier(&*m_commandBuffer, accessBefore, accessAfter, 0, sizeof(DebugDataLayout));
+
+        Wolf::Buffer::BufferCopy debugBufferCopy{};
+        debugBufferCopy.size = m_debugDataBuffer->getSize();
+        m_debugDataCPUVisibleBuffer[context.m_currentFrameIdx % m_debugDataCPUVisibleBuffer.size()]->recordTransferGPUMemory(&*m_commandBuffer, *m_debugDataBuffer, debugBufferCopy);
+    }
 
     Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
@@ -267,6 +328,7 @@ void VoxelGlobalIlluminationPass::createDescriptorSet()
     descriptorSetGenerator.setCombinedImageSampler(2, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, m_noiseImage->getDefaultImageView(), *m_noiseSampler);
     descriptorSetGenerator.setBuffer(3, *m_requestsBuffer);
     descriptorSetGenerator.setBuffer(4, *m_requestsBufferCopy);
+    descriptorSetGenerator.setBuffer(5, *m_debugDataBuffer);
 
     if (!m_rayTracingDescriptorSet)
         m_rayTracingDescriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_rayTracingDescriptorSetLayout));

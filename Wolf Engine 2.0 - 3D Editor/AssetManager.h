@@ -86,7 +86,7 @@ public:
 	std::string getCombinedImageSlicesFolder(AssetId combinedImageAssetId) const;
 	Wolf::ResourceNonOwner<CombinedImageEditor> getCombinedImageEditor(AssetId assetId) const;
 
-	AssetId addExternalScene(const std::string& loadingPath);
+	AssetId addExternalScene(const std::string& loadingPath, bool immediateLoading = false);
 	bool isSceneLoaded(AssetId sceneAssetId) const;
 	Wolf::AABB getSceneAABB(AssetId sceneAssetId) const;
 	const std::vector<AssetId>& getSceneModelAssetIds(AssetId sceneAssetId) const;

@@ -551,7 +551,7 @@ std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::getMeshDefaultSimp
 {
 	if (!isMesh(assetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not a mesh");
+		Wolf::Debug::sendCriticalError("AssetId is not a mesh");
 	}
 
 	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getDefaultSimplifiedMeshes();
@@ -561,7 +561,7 @@ std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::getMeshSloppySimpl
 {
 	if (!isMesh(assetId))
 	{
-		Wolf::Debug::sendError("ResourceId is not a mesh");
+		Wolf::Debug::sendCriticalError("AssetId is not a mesh");
 	}
 
 	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getSloppySimplifiedMeshes();
@@ -840,7 +840,7 @@ Wolf::ResourceNonOwner<CombinedImageEditor> AssetManager::getCombinedImageEditor
 	return m_combinedImages[assetId - COMBINED_IMAGE_ASSET_IDX_OFFSET]->getEditor();
 }
 
-AssetId AssetManager::addExternalScene(const std::string& loadingPath)
+AssetId AssetManager::addExternalScene(const std::string& loadingPath, bool immediateLoading)
 {
 	if (m_externalScenes.size() >= MAX_EXTERNAL_SCENE_ASSET_COUNT)
 	{
@@ -882,6 +882,11 @@ AssetId AssetManager::addExternalScene(const std::string& loadingPath)
 	AssetExternalScene* newExternalScene = new AssetExternalScene(this, loadingPath, !iconFileExists, assetId, m_onAssetUpdatedCallback, NO_ASSET);
 	m_externalScenes.emplace_back(newExternalScene);
 	m_assetAdded = true;
+
+	if (immediateLoading)
+	{
+		newExternalScene->updateBeforeFrame(m_materialsGPUManager, m_thumbnailsGenerationPass);
+	}
 
 	return assetId;
 }

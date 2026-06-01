@@ -74,8 +74,6 @@ SystemManager::SystemManager()
 		m_assetManager->bindUltralightCallbacks(jsObject);
 	}
 
-	m_renderer->setAssetManager(m_assetManager.createNonOwnerResource());
-
 	m_getEntityFromLoadingPathCallback = [this](const std::string& entityLoadingPath)
 	{
 		std::vector<Wolf::ResourceUniqueOwner<Entity>>& allEntities = m_entityContainer->getEntities();
@@ -102,9 +100,12 @@ SystemManager::SystemManager()
 		m_loadSceneRequest = m_configuration->getDefaultScene();
 	}
 
-	m_debugRenderingManager.reset(new DebugRenderingManager(m_bufferPoolInterface));
+	m_debugRenderingManager.reset(new DebugRenderingManager(m_bufferPoolInterface, m_assetManager.createNonOwnerResource()));
 	m_drawManager.reset(new DrawManager(m_wolfInstance->getInstanceMeshRenderer(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_bufferPoolInterface));
 	m_editorPhysicsManager.reset(new EditorPhysicsManager(m_wolfInstance->getPhysicsManager()));
+
+	m_renderer->setAssetManager(m_assetManager.createNonOwnerResource());
+	m_renderer->initDebug(m_debugRenderingManager.createNonOwnerResource());
 
 	addFakeEntities();
 }

@@ -9,10 +9,29 @@
 #include <DefaultMeshRenderer.h>
 
 #include "CommonLayouts.h"
+#include "ConfigurationHelper.h"
 #include "EditorConfiguration.h"
 
-DebugRenderingManager::DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface) : m_bufferPoolInterface(bufferPoolInterface)
+DebugRenderingManager::DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<AssetManager>& assetManager) : m_bufferPoolInterface(bufferPoolInterface)
 {
+	std::string probeAssetPath = Wolf::ConfigurationHelper::readInfoFromFile("config/debug.ini", "probeAsset");
+	if (!probeAssetPath.empty())
+	{
+		probeAssetPath = probeAssetPath.substr(1, probeAssetPath.size() - 2); // remove quotes
+		AssetId probeAssetId = assetManager->addExternalScene(probeAssetPath, true);
+		std::vector<AssetId> meshAssetIds = assetManager->getSceneModelAssetIds(probeAssetId);
+		if (meshAssetIds.empty())
+		{
+			Wolf::Debug::sendCriticalError("Probe asset doesn't contain a mesh");
+		}
+		if (meshAssetIds.size() > 1)
+		{
+			Wolf::Debug::sendWarning("Probe asset contains multiple meshes, only the first will be used");
+		}
+
+		m_probeMeshAssetId = meshAssetIds[0];
+	}
+
 	// Lines
 	{
 		m_linesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);

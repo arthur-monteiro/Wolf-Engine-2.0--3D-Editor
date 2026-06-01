@@ -10,6 +10,7 @@
 #include <ResourceNonOwner.h>
 #include <ResourceUniqueOwner.h>
 
+#include "AssetManager.h"
 #include "Entity.h"
 
 namespace Wolf
@@ -49,7 +50,7 @@ public:
 		}
 	};
 
-	DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+	DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
 
 	void clearAll();
 	void clearBeforeFrame();
@@ -66,6 +67,8 @@ public:
 	void addBox(const Wolf::AABB& aabb, const glm::vec3& rotation);
 
 	void addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList);
+
+	AssetId getProbeMeshAssetId() const { return m_probeMeshAssetId; }
 
 private:
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
@@ -145,4 +148,6 @@ private:
 	Wolf::ResourceUniqueOwner<Wolf::UniformBuffer> m_rectanglesUniformBuffer;
 
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::DefaultMeshRenderer::MeshToRender>> m_meshesToRender;
+
+	AssetId m_probeMeshAssetId = NO_ASSET;
 };
