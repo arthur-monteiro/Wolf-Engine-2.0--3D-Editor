@@ -198,7 +198,7 @@ void main()
                     uint faceIdx = getDominantFace(payload.hitNormal);
                     if (isFaceRequested(requestValueIdx, firstRequestBitIdx, faceIdx, voxelIdx))
                     {
-                        radiance += voxelGrid.values[voxelIdx * 12 + faceIdx];
+                        radiance += voxelGrid.values[voxelIdx * 12 + faceIdx] * payload.hitAlbedo;
                     }
                 }
             }

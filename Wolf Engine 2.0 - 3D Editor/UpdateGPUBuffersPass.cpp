@@ -9,7 +9,7 @@
 
 void UpdateGPUBuffersPass::initializeResources(const Wolf::InitializationContext& context)
 {
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::TRANSFER, false));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::TRANSFER, false, "Update GPU buffers"));
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	m_currentRequestsQueues.resize(Wolf::g_configuration->getMaxCachedFrames());
@@ -147,7 +147,7 @@ void UpdateGPUBuffersPass::InternalRequest::recordCopyToImage(const Wolf::Comman
 	m_request.getOutputImage()->recordCopyGPUBuffer(*commandBuffer, *m_stagingBufferPool->getBuffer(m_stagingBufferPoolInstance), bufferImageCopy, m_request.getImageFinalLayout());
 }
 
-void UpdateGPUBuffersPass::addRequestBeforeFrame(const Request& request)
+void UpdateGPUBuffersPass::addRequest(const Request& request)
 {
 	PROFILE_FUNCTION
 
@@ -164,6 +164,8 @@ UpdateGPUBuffersPass::StagingBufferPool::StagingBufferPool(uint32_t poolSize) : 
 
 Wolf::BufferPoolInterface::BufferPoolInstance UpdateGPUBuffersPass::StagingBufferPool::allocate(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize)
 {
+	PROFILE_FUNCTION
+
 	if (requestedSize > m_poolSize)
 	{
 		Wolf::Debug::sendCriticalError("Requested size is too big to fit in staging buffer");
@@ -173,42 +175,46 @@ Wolf::BufferPoolInterface::BufferPoolInstance UpdateGPUBuffersPass::StagingBuffe
 
 	m_mutex.lock();
 
-	r.m_bufferIdx = 0;
-	bool spaceFound = false;
-	while (!spaceFound && r.m_bufferIdx < m_buffers.size())
 	{
-		OwningBuffer& buffer = m_buffers[r.m_bufferIdx];
+		PROFILE_SCOPED("Execution")
 
-		uint32_t allocationOffset = buffer.m_currentAllocatedOffset;
-		buffer.m_currentAllocatedOffset += requestedSize;
-
-		if (buffer.m_currentAllocatedOffset > buffer.m_buffer->getSize())
+		r.m_bufferIdx = 0;
+		bool spaceFound = false;
+		while (!spaceFound && r.m_bufferIdx < m_buffers.size())
 		{
-			if (buffer.m_currentDeletedOffset < requestedSize)
+			OwningBuffer& buffer = m_buffers[r.m_bufferIdx];
+
+			uint32_t allocationOffset = buffer.m_currentAllocatedOffset;
+			buffer.m_currentAllocatedOffset += requestedSize;
+
+			if (buffer.m_currentAllocatedOffset > buffer.m_buffer->getSize())
 			{
-				r.m_bufferIdx++;
-				continue;
+				if (buffer.m_currentDeletedOffset < requestedSize)
+				{
+					r.m_bufferIdx++;
+					continue;
+				}
+
+				allocationOffset = buffer.m_currentAllocatedOffset = 0;
+				buffer.m_currentDeletedOffset = 0;
 			}
+			r.m_bufferOffset = allocationOffset;
+			r.m_bufferSize = requestedSize;
 
-			allocationOffset = buffer.m_currentAllocatedOffset = 0;
-			buffer.m_currentDeletedOffset = 0;
+			spaceFound = true;
 		}
-		r.m_bufferOffset = allocationOffset;
-		r.m_bufferSize = requestedSize;
 
-		spaceFound = true;
+		if (!spaceFound)
+		{
+			r.m_bufferIdx = m_buffers.size();
+			allocateNewBuffer();
+			m_buffers[r.m_bufferIdx].m_currentAllocatedOffset += requestedSize;
+			r.m_bufferOffset = 0;
+			r.m_bufferSize = requestedSize;
+		}
+
+		m_buffers[r.m_bufferIdx].m_activeAllocations++;
 	}
-
-	if (!spaceFound)
-	{
-		r.m_bufferIdx = m_buffers.size();
-		allocateNewBuffer();
-		m_buffers[r.m_bufferIdx].m_currentAllocatedOffset += requestedSize;
-		r.m_bufferOffset = 0;
-		r.m_bufferSize = requestedSize;
-	}
-
-	m_buffers[r.m_bufferIdx].m_activeAllocations++;
 
 	m_mutex.unlock();
 
@@ -241,21 +247,28 @@ void UpdateGPUBuffersPass::StagingBufferPool::deallocate(const BufferPoolInstanc
 
 void UpdateGPUBuffersPass::StagingBufferPool::garbageCollect()
 {
-	m_mutex.lock();
+	PROFILE_FUNCTION
 
-	for (int32_t i = m_buffers.size() - 1; i >= 0; i--)
+	if (m_mutex.try_lock())
 	{
-		OwningBuffer& owningBuffer = m_buffers[i];
-
-		if (owningBuffer.m_activeAllocations == 0)
 		{
-			m_buffers.erase(m_buffers.begin() + i);
-		}
-		else
-			break; // don't delete previous indices as this index will change
-	}
+			PROFILE_SCOPED("Execution")
 
-	m_mutex.unlock();
+			for (int32_t i = m_buffers.size() - 1; i >= 1 /* always keep the first buffer */; i--)
+			{
+				OwningBuffer& owningBuffer = m_buffers[i];
+
+				if (owningBuffer.m_activeAllocations == 0)
+				{
+					m_buffers.erase(m_buffers.begin() + i);
+				}
+				else
+					break; // don't delete previous indices as this index will change
+			}
+		}
+
+		m_mutex.unlock();
+	}
 }
 
 Wolf::ResourceNonOwner<Wolf::Buffer> UpdateGPUBuffersPass::StagingBufferPool::getBuffer(const BufferPoolInstance& bufferPoolInstance)
@@ -265,6 +278,8 @@ Wolf::ResourceNonOwner<Wolf::Buffer> UpdateGPUBuffersPass::StagingBufferPool::ge
 
 void UpdateGPUBuffersPass::StagingBufferPool::allocateNewBuffer()
 {
+	PROFILE_FUNCTION
+
 	OwningBuffer& owningBuffer = m_buffers.emplace_back();
 	owningBuffer.m_buffer.reset(Wolf::Buffer::createBuffer(m_poolSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 	owningBuffer.m_buffer->setName("Staging buffer for data copy (UpdateGPUBuffersPass::StagingBufferPool::m_buffer)");

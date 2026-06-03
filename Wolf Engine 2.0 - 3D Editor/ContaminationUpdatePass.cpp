@@ -7,7 +7,7 @@
 
 void ContaminationUpdatePass::initializeResources(const Wolf::InitializationContext& context)
 {
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false)); // Can't run on compute queue as contamination image ids is on graphic queue
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false, "Contamination update")); // Can't run on compute queue as contamination image ids is on graphic queue
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/contamination/update.comp"));

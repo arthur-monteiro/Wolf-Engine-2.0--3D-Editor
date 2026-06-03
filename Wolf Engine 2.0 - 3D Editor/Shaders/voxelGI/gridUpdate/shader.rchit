@@ -56,6 +56,7 @@ void main()
         mat3 TBN = mat3(1.0);
         MaterialInfo materialInfo = fetchMaterial(vertex.texCoords, materialId, TBN, inPayload.hitWorldPos);
         vec3 albedo = materialInfo.materialColor;
+        inPayload.hitAlbedo = albedo;
         vec3 normal = vertex.normal.xyz;
         inPayload.hitNormal = normalize(normal);
 

@@ -6,6 +6,7 @@
 #include <Image.h>
 #include <DynamicResourceUniqueOwnerArray.h>
 #include <DynamicStableArray.h>
+#include <ProfilerCommon.h>
 #include <ResourceUniqueOwner.h>
 
 #include "BufferPoolInterface.h"
@@ -76,7 +77,7 @@ public:
 		glm::ivec3 m_copySize{};
 		glm::ivec3 m_imageOffset{};
 	};
-	void addRequestBeforeFrame(const Request& request);
+	void addRequest(const Request& request);
 
 private:
 	class StagingBufferPool : public Wolf::BufferPoolInterface
@@ -115,10 +116,16 @@ private:
 		InternalRequest() = default;
 		explicit InternalRequest(const Request& request, const Wolf::ResourceNonOwner<StagingBufferPool>& stagingBufferPool) : m_request(request), m_stagingBufferPool(stagingBufferPool)
 		{
+			PROFILE_FUNCTION
+
 			if (const void* data = m_request.getData())
 			{
 				m_stagingBufferPoolInstance = m_stagingBufferPool->allocate(m_request.getSize(), 0 /* unused */, 0 /* unused */);
-				m_stagingBufferPool->getBuffer(m_stagingBufferPoolInstance)->transferCPUMemory(data, m_request.getSize(), m_stagingBufferPoolInstance.m_bufferOffset);
+
+				{
+					PROFILE_SCOPED("Transfer CPU memory")
+					m_stagingBufferPool->getBuffer(m_stagingBufferPoolInstance)->transferCPUMemory(data, m_request.getSize(), m_stagingBufferPoolInstance.m_bufferOffset);
+				}
 
 				m_mode = Mode::COPY;
 			}

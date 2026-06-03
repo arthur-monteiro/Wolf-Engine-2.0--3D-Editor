@@ -20,7 +20,7 @@ ShadowMaskPassCascadedShadowMapping::ShadowMaskPassCascadedShadowMapping(EditorP
 
 void ShadowMaskPassCascadedShadowMapping::initializeResources(const Wolf::InitializationContext& context)
 {
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false /* isTransient */));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false, "Shadow mask compute (CSM)"));
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;

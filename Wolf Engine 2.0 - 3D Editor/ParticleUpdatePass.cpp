@@ -14,7 +14,7 @@ ParticleUpdatePass::ParticleUpdatePass()
 
 void ParticleUpdatePass::initializeResources(const Wolf::InitializationContext& context)
 {
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false, "Particle update"));
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/update.comp"));
@@ -116,7 +116,7 @@ void ParticleUpdatePass::updateBeforeFrame(const Wolf::Timer& globalTimer, const
 		for (const EmitterDrawInfoUpdate& emitterDrawInfoUpdate : m_emitterDrawInfoUpdates)
 		{
 			UpdateGPUBuffersPass::Request request(&emitterDrawInfoUpdate.data, sizeof(EmitterDrawInfo), m_emitterDrawInfoBuffer.createNonOwnerResource(), emitterDrawInfoUpdate.emitterIdx * sizeof(EmitterDrawInfo));
-			updateGPUBuffersPass->addRequestBeforeFrame(request);
+			updateGPUBuffersPass->addRequest(request);
 		}
 
 		m_emitterDrawInfoUpdates.clear();

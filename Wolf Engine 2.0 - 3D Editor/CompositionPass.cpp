@@ -17,7 +17,7 @@ CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::Resourc
 
 void CompositionPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false, "Composition"));
     createSemaphores(context, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, true);
 
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::STORAGE_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE, 0, 1); // forward result

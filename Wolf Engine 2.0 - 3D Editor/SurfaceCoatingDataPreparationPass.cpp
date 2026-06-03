@@ -12,7 +12,7 @@ SurfaceCoatingDataPreparationPass::SurfaceCoatingDataPreparationPass(const Wolf:
 
 void SurfaceCoatingDataPreparationPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false, "Surface coating data preparation"));
     createSemaphores(context, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, false);
 
     m_descriptorSetLayoutGenerator.addImages(Wolf::DescriptorType::SAMPLED_IMAGE, Wolf::ShaderStageFlagBits::COMPUTE, 0, 1); // input depth

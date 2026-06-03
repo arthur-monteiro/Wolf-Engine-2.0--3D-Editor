@@ -44,7 +44,7 @@ const Wolf::CommandBuffer& CascadeDepthPass::getCommandBuffer(const Wolf::Record
 
 void CascadedShadowMapsPass::initializeResources(const Wolf::InitializationContext& context)
 {
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false, "Cascaded shadow mapping"));
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	for (uint32_t i = 0; i < m_cascadeDepthPasses.size(); ++i)

@@ -6,7 +6,7 @@ UpdateRayTracedWorldPass::UpdateRayTracedWorldPass(const Wolf::ResourceNonOwner<
 
 void UpdateRayTracedWorldPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::COMPUTE, false, "Update ray traced world"));
     createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 }
 

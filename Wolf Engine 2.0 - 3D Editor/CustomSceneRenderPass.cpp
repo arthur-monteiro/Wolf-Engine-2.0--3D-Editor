@@ -11,7 +11,7 @@
 
 void CustomSceneRenderPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false, "Custom scene render pass"));
     createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 }
 

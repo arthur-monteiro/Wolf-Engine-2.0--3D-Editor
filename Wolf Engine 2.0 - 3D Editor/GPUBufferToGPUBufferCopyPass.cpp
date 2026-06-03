@@ -13,7 +13,7 @@ GPUBufferToGPUBufferCopyPass::GPUBufferToGPUBufferCopyPass(const Wolf::ResourceN
 
 void GPUBufferToGPUBufferCopyPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::TRANSFER, false));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::TRANSFER, false, "GPU buffer to GPU buffer copy"));
     createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, true);
 
     m_currentRequestsQueues.resize(Wolf::g_configuration->getMaxCachedFrames());

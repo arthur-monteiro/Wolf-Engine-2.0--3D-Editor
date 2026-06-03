@@ -30,7 +30,7 @@ PathTracingPass::PathTracingPass(EditorParams* editorParams, const Wolf::Resourc
 
 void PathTracingPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::RAY_TRACING, false /* isTransient */));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::RAY_TRACING, false, "Path tracing"));
     createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
     Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
@@ -238,7 +238,7 @@ void PathTracingPass::createImages(const Wolf::InitializationContext& context)
     m_inputImage->setName("Path tracing output (PathTracingPass::m_inputImage)");
     m_inputImage->setImageLayout(Wolf::Image::SampledInFragmentShader(0));
 
-    Wolf::CommandBuffer* commandBuffer = Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, true);
+    Wolf::CommandBuffer* commandBuffer = Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, true, "Path tracing create images");
     commandBuffer->beginCommandBuffer();
 }
 

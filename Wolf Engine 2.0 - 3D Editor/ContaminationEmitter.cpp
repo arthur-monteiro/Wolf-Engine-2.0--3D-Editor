@@ -272,7 +272,7 @@ void ContaminationEmitter::transferInfoToBuffer()
 	}
 
 	UpdateGPUBuffersPass::Request request(&contaminationInfo, sizeof(ContaminationInfo), m_contaminationInfoBuffer.createNonOwnerResource(), 0);
-	m_updateGPUBuffersPass->addRequestBeforeFrame(request);
+	m_updateGPUBuffersPass->addRequest(request);
 
 	m_transferInfoToBufferRequested = false;
 }

@@ -22,7 +22,7 @@ RayTracedShadowsPass::RayTracedShadowsPass(EditorParams* editorParams, const Wol
 
 void RayTracedShadowsPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false, "Ray traced shadows"));
     createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
     /* Ray tracing pass */

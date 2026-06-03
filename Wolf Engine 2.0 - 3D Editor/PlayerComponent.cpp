@@ -398,7 +398,7 @@ void PlayerComponent::buildShootDebugMesh()
 	else
 	{
 		UpdateGPUBuffersPass::Request request(vertices.data(), static_cast<uint32_t>(vertices.size()) * sizeof(vertices[0]), m_shootDebugMesh->getVertexBuffer(), m_shootDebugMesh->getVertexBufferOffset());
-		m_updateGPUBuffersPass->addRequestBeforeFrame(request);
+		m_updateGPUBuffersPass->addRequest(request);
 	}
 
 	m_shootDebugMeshRebuildRequested = false;

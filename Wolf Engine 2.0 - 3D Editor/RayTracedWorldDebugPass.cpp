@@ -21,7 +21,7 @@ RayTracedWorldDebugPass::RayTracedWorldDebugPass(EditorParams* editorParams, con
 
 void RayTracedWorldDebugPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::RAY_TRACING, false /* isTransient */));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::RAY_TRACING, false, "Ray traced debug"));
     createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
     Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;

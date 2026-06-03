@@ -8,7 +8,6 @@
 
 #include "CommonLayouts.h"
 
-
 void PreDepthPass::initializeResources(const Wolf::InitializationContext& context)
 {
 	Wolf::Timer timer("Depth pass initialization");
@@ -16,7 +15,7 @@ void PreDepthPass::initializeResources(const Wolf::InitializationContext& contex
 	m_swapChainWidth = context.swapChainWidth;
 	m_swapChainHeight = context.swapChainHeight;
 
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false, "Pre depth"));
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	DepthPassBase::initializeResources(context);

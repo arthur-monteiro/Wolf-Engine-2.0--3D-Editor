@@ -30,7 +30,7 @@ void EditorGPUDataTransfersManager::pushDataToGPUBuffer(const void* data, uint32
         return;
     }
 
-    m_updateGPUBufferPass->addRequestBeforeFrame({ data, size, outputBuffer, outputOffset });
+    m_updateGPUBufferPass->addRequest({ data, size, outputBuffer, outputOffset });
 }
 
 void EditorGPUDataTransfersManager::fillGPUBuffer(uint32_t fillValue, uint32_t size, const Wolf::ResourceNonOwner<Wolf::Buffer>& outputBuffer, uint32_t outputOffset)
@@ -41,7 +41,7 @@ void EditorGPUDataTransfersManager::fillGPUBuffer(uint32_t fillValue, uint32_t s
         return;
     }
 
-    m_updateGPUBufferPass->addRequestBeforeFrame({ fillValue, size, outputBuffer, outputOffset });
+    m_updateGPUBufferPass->addRequest({ fillValue, size, outputBuffer, outputOffset });
 }
 
 void EditorGPUDataTransfersManager::pushDataToGPUImage(const PushDataToGPUImageInfo& pushDataToGPUImageInfo)
@@ -65,7 +65,7 @@ void EditorGPUDataTransfersManager::pushDataToGPUImage(const PushDataToGPUImageI
         realCopySize = glm::ivec3(imageExtent.width, imageExtent.height, imageExtent.depth);
     }
 
-    m_updateGPUBufferPass->addRequestBeforeFrame({ pushDataToGPUImageInfo.m_pixels, pushDataToGPUImageInfo.m_outputImage, pushDataToGPUImageInfo.m_finalLayout, pushDataToGPUImageInfo.m_mipLevel,
+    m_updateGPUBufferPass->addRequest({ pushDataToGPUImageInfo.m_pixels, pushDataToGPUImageInfo.m_outputImage, pushDataToGPUImageInfo.m_finalLayout, pushDataToGPUImageInfo.m_mipLevel,
         realCopySize, pushDataToGPUImageInfo.m_imageOffset });
 }
 

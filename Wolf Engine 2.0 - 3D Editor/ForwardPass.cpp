@@ -24,7 +24,7 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 	Wolf::Attachment depth = setupDepthAttachment(context);
 
 	m_renderPass.reset(Wolf::RenderPass::createRenderPass({ color, depth }));
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false /* isTransient */));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false, "Forward"));
 	initializeFramesBuffer(context, color, depth);
 
 	createSemaphores(context, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, false);

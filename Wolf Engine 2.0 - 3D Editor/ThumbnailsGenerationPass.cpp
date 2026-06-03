@@ -62,7 +62,7 @@ void ThumbnailsGenerationPass::initializeResources(const Wolf::InitializationCon
 		Wolf::ImageLayout::UNDEFINED });
 
 	m_renderPass.reset(Wolf::RenderPass::createRenderPass({ color, depth }));
-	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false));
+	m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::GRAPHIC, false, "Thumbnail generation"));
 	m_frameBuffer.reset(Wolf::FrameBuffer::createFrameBuffer(*m_renderPass, { color, depth }));
 
 	Wolf::RenderingPipelineCreateInfo pipelineCreateInfo;

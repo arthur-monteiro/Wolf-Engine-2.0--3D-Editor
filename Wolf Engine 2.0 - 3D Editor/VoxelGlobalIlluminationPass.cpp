@@ -59,7 +59,7 @@ void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonO
 
 void VoxelGlobalIlluminationPass::initializeResources(const Wolf::InitializationContext& context)
 {
-    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::RAY_TRACING, false /* isTransient */));
+    m_commandBuffer.reset(Wolf::CommandBuffer::createCommandBuffer(Wolf::QueueType::RAY_TRACING, false, "Voxel GI"));
     createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
     initGridUpdateShaders();

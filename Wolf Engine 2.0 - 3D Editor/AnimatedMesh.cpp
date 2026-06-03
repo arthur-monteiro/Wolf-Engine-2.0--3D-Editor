@@ -152,7 +152,7 @@ void AnimatedMesh::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wolf:
 					boneInfo.transform = glm::mat4(1.0f);
 				}
 			}
-			m_updateGPUBuffersPass->addRequestBeforeFrame({ m_bonesInfoGPU.data(), static_cast<uint32_t>(m_bonesInfoGPU.size() * sizeof(BoneInfoGPU)), m_bonesBuffer.createNonOwnerResource(), 0 });
+			m_updateGPUBuffersPass->addRequest({ m_bonesInfoGPU.data(), static_cast<uint32_t>(m_bonesInfoGPU.size() * sizeof(BoneInfoGPU)), m_bonesBuffer.createNonOwnerResource(), 0 });
 		}
 
 		if (m_updateMaxTimerRequested)

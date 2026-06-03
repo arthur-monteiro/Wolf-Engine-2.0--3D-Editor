@@ -118,7 +118,7 @@ void AssetImage::recomputeThumbnail()
 		loadingRequest.m_format = Wolf::Format::R32G32B32A32_SFLOAT;
 	}
 	loadingRequest.m_loadMips = fileExtension == "cube" ? false : true;
-	loadingRequest.m_canBeVirtualized = true;
+	loadingRequest.m_canBeVirtualized = false;
 
 	requestImageLoading(loadingRequest);
 	m_thumbnailGenerationRequested = true;
