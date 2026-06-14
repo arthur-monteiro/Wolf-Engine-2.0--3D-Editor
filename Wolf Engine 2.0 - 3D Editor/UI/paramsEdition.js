@@ -249,20 +249,28 @@ function computeInput(param, isLast) {
         htmlToAdd += "</div>";
     }
     else if (param.type == "Entity") {
-        var entityDivs = document.getElementById('entityList').getElementsByTagName('div');
+        let entityList = document.getElementById('entityList');
+        let entityItems = entityList ? entityList.querySelectorAll('.entityListItem') : [];
+
         htmlToAdd += param.name + ": <select name='entity' id='entitySelect" + nameForCallback + "' onchange='change" + nameForCallback + "(this.value)'";
-        if (param.isReadOnly)
+        if (param.isReadOnly) {
             htmlToAdd += " disabled";
-        htmlToAdd += "><option value=''>" + param.noEntitySelectedName +  "</option>";
-        for (let i = 0; i < entityDivs.length; i++) {
-            var entityDiv = entityDivs[i];
-
-            let option = entityDiv.innerHTML.split("<")[0];
-            if (option == "Entity" || option == "Fake")
-                continue;
-
-            htmlToAdd += "<option value='" + entityDiv.id + "'" + (param.value == entityDiv.id ? "selected" : "") + ">" + option + "</option>";
         }
+        htmlToAdd += "><option value=''>" + param.noEntitySelectedName + "</option>";
+        
+        entityItems.forEach(item => {
+            let entityId = item.id;
+            let nameSpan = item.querySelector('.entityName');
+            let optionText = nameSpan ? nameSpan.textContent.trim() : "Unknown Entity";
+
+            if (optionText === "Entity" || optionText === "Fake" || !entityId) {
+                return; 
+            }
+
+            let isSelected = (param.value === entityId) ? "selected" : "";
+            htmlToAdd += "<option value='" + entityId + "' " + isSelected + ">" + optionText + "</option>";
+        });
+
         htmlToAdd += "</select>";
     }
     else if (param.type == "Bool") {

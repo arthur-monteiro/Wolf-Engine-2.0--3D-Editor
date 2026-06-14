@@ -15,6 +15,10 @@
 #define TINYGLTF_NO_STB_IMAGE
 #include <tiny_gltf.h>
 
+#include <meshoptimizer.h>
+
+#include "CacheHelper.h"
+
 bool nullLoadImageData(tinygltf::Image* image, const int image_idx, std::string* err, std::string* warn, int req_width, int req_height, const unsigned char* bytes, int size, void* user_data)
 {
     return true;
@@ -32,6 +36,7 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     loader.SetImageLoader(nullLoadImageData, nullptr);
+    loader.SetMaxExternalFileSize(size_t(16) * 1024 * 1024 * 1024);
     std::string err;
     std::string warn;
 
@@ -71,84 +76,245 @@ GLTFImporter::GLTFImporter(ExternalSceneLoader::OutputData& outputData, const Ex
                 ExternalSceneLoader::MeshData& meshData = outputData.m_meshesData.emplace_back();
                 meshData.m_name = (mesh.name.empty() ? "Mesh_" + std::to_string(meshIdx) : mesh.name) + "_prim_" + std::to_string(primitiveIdx);
 
+                bool hasTangents = primitive.attributes.contains("TANGENT");
+
                 const tinygltf::Accessor& posAccessor = model.accessors[primitive.attributes.at("POSITION")];
                 const tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
-                const tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
-                const uint32_t posByteStride = posBufferView.byteStride == 0 ? sizeof(float) * 3 : posBufferView.byteStride;
-                if (posByteStride != sizeof(float) * 3)
+                auto posMeshoptExt = posBufferView.extensions.find("EXT_meshopt_compression");
+                if (posMeshoptExt != posBufferView.extensions.end() && posMeshoptExt->second.IsObject())
                 {
-                    Wolf::Debug::sendCriticalError("We assume that pos stride is 3 floats");
-                }
+                    Wolf::Debug::sendInfo("Positions are compressed");
 
-                const tinygltf::Accessor& normAccessor = model.accessors[primitive.attributes.at("NORMAL")];
-                const tinygltf::BufferView& normBufferView = model.bufferViews[normAccessor.bufferView];
-                const tinygltf::Buffer& normBuffer = model.buffers[normBufferView.buffer];
-                const uint32_t normByteStride = normBufferView.byteStride == 0 ? sizeof(float) * 3 : normBufferView.byteStride;
-                if (normByteStride != sizeof(float) * 3)
-                {
-                    Wolf::Debug::sendCriticalError("We assume that normal stride is 3 floats");
-                }
-
-                const tinygltf::Accessor& texCoordsAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
-                const tinygltf::BufferView& texCoordsBufferView = model.bufferViews[texCoordsAccessor.bufferView];
-                const tinygltf::Buffer& texCoordsBuffer = model.buffers[texCoordsBufferView.buffer];
-                const uint32_t texCoordsByteStride = texCoordsBufferView.byteStride == 0 ? sizeof(float) * 2 : texCoordsBufferView.byteStride;
-                if (texCoordsByteStride != sizeof(float) * 2)
-                {
-                    Wolf::Debug::sendCriticalError("We assume that texture coords stride is 2 floats");
-                }
-
-                bool hasTangents = primitive.attributes.contains("TANGENT");
-                const tinygltf::Accessor* tangentAccessor = nullptr;
-                const tinygltf::BufferView* tangentBufferView = nullptr;
-                const tinygltf::Buffer* tangentBuffer = nullptr;
-
-                if (hasTangents)
-                {
-                    tangentAccessor = &model.accessors[primitive.attributes.at("TANGENT")];
-                    tangentBufferView = &model.bufferViews[tangentAccessor->bufferView];
-                    tangentBuffer = &model.buffers[tangentBufferView->buffer];
-                    const uint32_t tangentByteStride = tangentBufferView->byteStride == 0 ? sizeof(float) * 4 : tangentBufferView->byteStride;
-                    if (tangentByteStride != sizeof(float) * 4)
+                    std::string escapedFilename = sceneLoadingInfo.filename;
+                    for (size_t i = 0; i < escapedFilename.length(); ++i)
                     {
-                        Wolf::Debug::sendCriticalError("We assume that tangent stride is 4 floats");
+                        if (escapedFilename[i] == '/' || escapedFilename[i] == '\\')
+                        {
+                            escapedFilename[i] = '_';
+                        }
                     }
-                }
+                    meshData.m_cachePositionFilename = g_editorConfiguration->getCacheFolderPath() + "/" + escapedFilename + "_positions_" + std::to_string(meshIdx) + ".bin";
 
-                if (normAccessor.count != posAccessor.count || normAccessor.count != texCoordsAccessor.count || (tangentAccessor && normAccessor.count != tangentAccessor->count))
-                {
-                    Wolf::Debug::sendCriticalError("Error when reading GLTF file");
-                }
-
-                meshData.m_staticVertices.reserve(posAccessor.count);
-                for (size_t idx = 0; idx < posAccessor.count; idx++)
-                {
-                    Vertex3D vertex{};
-
-                    const unsigned char* posData = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
-                    vertex.pos = reinterpret_cast<const glm::vec3*>(posData)[idx];
-
-                    const unsigned char* normData = normBuffer.data.data() + normAccessor.byteOffset + normBufferView.byteOffset;
-                    vertex.normal = reinterpret_cast<const glm::vec3*>(normData)[idx];
-
-                    if (hasTangents)
+                    if (!std::filesystem::exists(meshData.m_cachePositionFilename))
                     {
-                        const unsigned char* tangentData = tangentBuffer->data.data() + tangentAccessor->byteOffset + tangentBufferView->byteOffset;
-                        vertex.tangent = reinterpret_cast<const glm::vec4*>(tangentData)[idx];
+                        Wolf::Debug::sendInfo("Non-compressed cache not found, computing it...");
+
+                        const auto& extObject = posMeshoptExt->second.Get<tinygltf::Value::Object>();
+
+                        int meshoptBufferIdx = extObject.at("buffer").Get<int>();
+                        size_t byteOffset    = static_cast<size_t>(extObject.at("byteOffset").Get<double>());
+                        size_t byteLength    = static_cast<size_t>(extObject.at("byteLength").Get<double>());
+                        int byteStride       = extObject.at("byteStride").Get<int>();
+                        int count            = extObject.at("count").Get<int>();
+                        std::string mode     = extObject.at("mode").Get<std::string>();
+
+                        if (byteStride != sizeof(float) * 3 || mode != "ATTRIBUTES")
+                        {
+                            Wolf::Debug::sendCriticalError("Meshopt compression config mismatch or incorrect stride.");
+                        }
+
+                        const tinygltf::Buffer& compressedBuffer = model.buffers[meshoptBufferIdx];
+
+                        const unsigned char* compressedDataPtr = compressedBuffer.data.data() + byteOffset;
+
+                        std::vector<float> decompressedPositions(count * 3);
+
+                        int result = meshopt_decodeVertexBuffer(
+                            decompressedPositions.data(),
+                            count,
+                            byteStride,
+                            compressedDataPtr,
+                            byteLength
+                        );
+
+                        if (result != 0)
+                        {
+                            Wolf::Debug::sendCriticalError("Meshopt decompression failed");
+                        }
+
+                        std::ofstream file(meshData.m_cachePositionFilename, std::ios::binary);
+                        if (!file.is_open())
+                        {
+                            Wolf::Debug::sendCriticalError("Cannot open file for writing");
+                            return;
+                        }
+
+                        CacheHelper::writeVector(file, decompressedPositions);
+
+                        file.close();
                     }
                     else
                     {
-                        vertex.tangent = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Fallback default tangent
+                        Wolf::Debug::sendInfo("Non-compressed cache found");
+                    }
+                }
+                else
+                {
+                    const tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
+                    const uint32_t posByteStride = posBufferView.byteStride == 0 ? sizeof(float) * 3 : posBufferView.byteStride;
+                    if (posByteStride != sizeof(float) * 3)
+                    {
+                        Wolf::Debug::sendCriticalError("We assume that pos stride is 3 floats");
                     }
 
-                    const unsigned char* texCoordsData = texCoordsBuffer.data.data() + texCoordsAccessor.byteOffset + texCoordsBufferView.byteOffset;
-                    vertex.texCoord = reinterpret_cast<const glm::vec2*>(texCoordsData)[idx];
+                    const tinygltf::Accessor& normAccessor = model.accessors[primitive.attributes.at("NORMAL")];
+                    const tinygltf::BufferView& normBufferView = model.bufferViews[normAccessor.bufferView];
+                    const tinygltf::Buffer& normBuffer = model.buffers[normBufferView.buffer];
+                    const uint32_t normByteStride = normBufferView.byteStride == 0 ? sizeof(float) * 3 : normBufferView.byteStride;
+                    if (normByteStride != sizeof(float) * 3)
+                    {
+                        Wolf::Debug::sendCriticalError("We assume that normal stride is 3 floats");
+                    }
 
-                    meshData.m_staticVertices.push_back(vertex);
+                    const tinygltf::Accessor& texCoordsAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+                    const tinygltf::BufferView& texCoordsBufferView = model.bufferViews[texCoordsAccessor.bufferView];
+                    const tinygltf::Buffer& texCoordsBuffer = model.buffers[texCoordsBufferView.buffer];
+                    const uint32_t texCoordsByteStride = texCoordsBufferView.byteStride == 0 ? sizeof(float) * 2 : texCoordsBufferView.byteStride;
+                    if (texCoordsByteStride != sizeof(float) * 2)
+                    {
+                        Wolf::Debug::sendCriticalError("We assume that texture coords stride is 2 floats");
+                    }
+
+                    const tinygltf::Accessor* tangentAccessor = nullptr;
+                    const tinygltf::BufferView* tangentBufferView = nullptr;
+                    const tinygltf::Buffer* tangentBuffer = nullptr;
+
+                    if (hasTangents)
+                    {
+                        tangentAccessor = &model.accessors[primitive.attributes.at("TANGENT")];
+                        tangentBufferView = &model.bufferViews[tangentAccessor->bufferView];
+                        tangentBuffer = &model.buffers[tangentBufferView->buffer];
+                        const uint32_t tangentByteStride = tangentBufferView->byteStride == 0 ? sizeof(float) * 4 : tangentBufferView->byteStride;
+                        if (tangentByteStride != sizeof(float) * 4)
+                        {
+                            Wolf::Debug::sendCriticalError("We assume that tangent stride is 4 floats");
+                        }
+                    }
+
+                    if (normAccessor.count != posAccessor.count || normAccessor.count != texCoordsAccessor.count || (tangentAccessor && normAccessor.count != tangentAccessor->count))
+                    {
+                        Wolf::Debug::sendCriticalError("Error when reading GLTF file");
+                    }
+
+                    meshData.m_staticVertices.reserve(posAccessor.count);
+                    for (size_t idx = 0; idx < posAccessor.count; idx++)
+                    {
+                        Vertex3D vertex{};
+
+                        const unsigned char* posData = posBuffer.data.data() + posAccessor.byteOffset + posBufferView.byteOffset;
+                        vertex.pos = reinterpret_cast<const glm::vec3*>(posData)[idx];
+
+                        const unsigned char* normData = normBuffer.data.data() + normAccessor.byteOffset + normBufferView.byteOffset;
+                        vertex.normal = reinterpret_cast<const glm::vec3*>(normData)[idx];
+
+                        if (hasTangents)
+                        {
+                            const unsigned char* tangentData = tangentBuffer->data.data() + tangentAccessor->byteOffset + tangentBufferView->byteOffset;
+                            vertex.tangent = reinterpret_cast<const glm::vec4*>(tangentData)[idx];
+                        }
+                        else
+                        {
+                            vertex.tangent = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Fallback default tangent
+                        }
+
+                        const unsigned char* texCoordsData = texCoordsBuffer.data.data() + texCoordsAccessor.byteOffset + texCoordsBufferView.byteOffset;
+                        vertex.texCoord = reinterpret_cast<const glm::vec2*>(texCoordsData)[idx];
+
+                        meshData.m_staticVertices.push_back(vertex);
+                    }
                 }
 
                 const tinygltf::Accessor& indexAccessor = model.accessors[indexAccessorIdx];
                 const tinygltf::BufferView& indexView = model.bufferViews[indexAccessor.bufferView];
+                auto indexMeshoptExt = indexView.extensions.find("EXT_meshopt_compression");
+                if (indexMeshoptExt != indexView.extensions.end() && indexMeshoptExt->second.IsObject())
+                {
+                    Wolf::Debug::sendInfo("Indices are compresed");
+
+                    std::string escapedFilename = sceneLoadingInfo.filename;
+                    for (size_t i = 0; i < escapedFilename.length(); ++i)
+                    {
+                        if (escapedFilename[i] == '/' || escapedFilename[i] == '\\')
+                        {
+                            escapedFilename[i] = '_';
+                        }
+                    }
+                    meshData.m_cacheIndicesFilename = g_editorConfiguration->getCacheFolderPath() + "/" + escapedFilename + "_indices_" + std::to_string(meshIdx) + ".bin";
+
+                    if (!std::filesystem::exists(meshData.m_cacheIndicesFilename))
+                    {
+                        Wolf::Debug::sendInfo("Non-compressed cache not found, computing it...");
+
+                        const auto& extObject = indexMeshoptExt->second.Get<tinygltf::Value::Object>();
+
+                        int meshoptBufferIdx = extObject.at("buffer").Get<int>();
+                        size_t byteOffset    = static_cast<size_t>(extObject.at("byteOffset").Get<int64_t>());
+                        size_t byteLength    = static_cast<size_t>(extObject.at("byteLength").Get<int64_t>());
+                        int count            = extObject.at("count").Get<int>();
+                        std::string mode     = extObject.at("mode").Get<std::string>();
+
+                        const tinygltf::Buffer& compressedBuffer = model.buffers[meshoptBufferIdx];
+                        const unsigned char* compressedDataPtr = compressedBuffer.data.data() + byteOffset;
+
+                        std::vector<uint32_t> final32BitIndices(count);
+
+                        if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                        {
+                            Wolf::Debug::sendInfo("Indices are 16 bit, decompressing and widening to 32 bit...");
+
+                            std::vector<uint16_t> temp16BitIndices(count);
+                            int result = meshopt_decodeIndexBuffer(
+                                temp16BitIndices.data(),
+                                count,
+                                sizeof(uint16_t),
+                                compressedDataPtr,
+                                byteLength
+                            );
+
+                            if (result != 0)
+                            {
+                                Wolf::Debug::sendCriticalError("Meshopt 16-bit index decompression failed");
+                            }
+                            for (int i = 0; i < count; ++i)
+                            {
+                                final32BitIndices[i] = static_cast<uint32_t>(temp16BitIndices[i]);
+                            }
+                        }
+                        else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
+                        {
+                            int result = meshopt_decodeIndexBuffer(
+                                final32BitIndices.data(),
+                                count,
+                                sizeof(uint32_t),
+                                compressedDataPtr,
+                                byteLength
+                            );
+
+                            if (result != 0)
+                            {
+                                Wolf::Debug::sendCriticalError("Meshopt 32-bit index decompression failed");
+                            }
+                        }
+
+                        std::ofstream file(meshData.m_cacheIndicesFilename, std::ios::binary);
+                        if (!file.is_open())
+                        {
+                            Wolf::Debug::sendCriticalError("Cannot open file for writing");
+                            return;
+                        }
+
+                        CacheHelper::writeVector(file, final32BitIndices);
+
+                        file.close();
+                    }
+                    else
+                    {
+                        Wolf::Debug::sendInfo("Non-compressed cache found");
+                    }
+
+                    continue;
+                }
+
                 const tinygltf::Buffer& indexBuffer = model.buffers[indexView.buffer];
                 const unsigned char* rawIndices = &(indexBuffer.data[indexAccessor.byteOffset + indexView.byteOffset]);
 
@@ -367,7 +533,7 @@ void GLTFImporter::traverseNodes(ExternalSceneLoader::OutputData& outputData, co
             instanceData.m_transform = globalTransform;
 
             ImportedMeshInfo::MaterialIdentifier materialIdentifier(node.mesh, primitiveIdx);
-            instanceData.m_materialIdx = m_meshesMap[indexAccessorIdx].m_materialsMap[materialIdentifier];
+            instanceData.m_materialIdx = m_meshesMap[indexAccessorIdx].m_materialsMap.contains(materialIdentifier) ? m_meshesMap[indexAccessorIdx].m_materialsMap[materialIdentifier] : -1;
 
             outputData.m_instancesData.push_back(instanceData);
         }

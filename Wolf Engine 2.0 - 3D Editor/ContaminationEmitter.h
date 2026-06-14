@@ -22,7 +22,7 @@ public:
 	ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
 		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager,
-		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager);
 	ContaminationEmitter(const ContaminationEmitter&) = delete;
 	~ContaminationEmitter() override;
 
@@ -56,6 +56,7 @@ private:
 	Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager> m_physicsManager;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
+    Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface> m_pushDataToGPUManager;
 
 	void onMaterialAdded();
 	void onFillSceneWithValueChanged() const;

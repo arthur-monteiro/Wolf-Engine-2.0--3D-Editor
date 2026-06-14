@@ -8,14 +8,21 @@
 #include "GLTFImporter.h"
 #include "OBJImporter.h"
 
-void ExternalSceneLoader::loadScene(OutputData& outputData, const SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager)
+void ExternalSceneLoader::loadScene(OutputData& outputData, const SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager, bool readMeshData)
 {
     std::string binFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename + ".bin");
     if (std::filesystem::exists(binFilename))
     {
-        loadCache(binFilename, outputData, assetManager);
+        loadCache(binFilename, outputData, readMeshData);
+        outputData.m_hasReadMeshData = readMeshData;
         return;
     }
+
+    if (!readMeshData)
+    {
+        Wolf::Debug::sendInfo("readMeshData has been set to false but mesh data will still be read because cache has to be created");
+    }
+    outputData.m_hasReadMeshData = true;
 
     std::string filenameExtension = sceneLoadingInfo.filename.substr(sceneLoadingInfo.filename.find_last_of(".") + 1);
     if (filenameExtension == "gltf")
@@ -73,8 +80,11 @@ void ExternalSceneLoader::loadScene(OutputData& outputData, const SceneLoadingIn
 	// 	}
 	// }
 
-    std::string cacheFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename + ".bin");
-    writeCache(cacheFilename, outputData);
+    if (!outputData.m_meshesData.empty() && !outputData.m_meshesData[0].m_indices.empty())
+    {
+        std::string cacheFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename + ".bin");
+        writeCache(cacheFilename, outputData);
+    }
 }
 
 void ExternalSceneLoader::writeCache(const std::string& filename, const OutputData& data)
@@ -132,7 +142,7 @@ void ExternalSceneLoader::writeCache(const std::string& filename, const OutputDa
     file.close();
 }
 
-void ExternalSceneLoader::loadCache(const std::string& filename, OutputData& outData, AssetManager* assetManager)
+void ExternalSceneLoader::loadCache(const std::string& filename, OutputData& outData, bool readMeshData)
 {
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open())
@@ -148,9 +158,18 @@ void ExternalSceneLoader::loadCache(const std::string& filename, OutputData& out
     for (MeshData& mesh : outData.m_meshesData)
     {
         CacheHelper::readString(file, mesh.m_name);
-        CacheHelper::readVector(file, mesh.m_staticVertices);
-        CacheHelper::readVector(file, mesh.m_skeletonVertices);
-        CacheHelper::readVector(file, mesh.m_indices);
+        if (readMeshData)
+        {
+            CacheHelper::readVector(file, mesh.m_staticVertices);
+            CacheHelper::readVector(file, mesh.m_skeletonVertices);
+            CacheHelper::readVector(file, mesh.m_indices);
+        }
+        else
+        {
+            CacheHelper::skipVector(file, sizeof(Vertex3D));
+            CacheHelper::skipVector(file, sizeof(SkeletonVertex));
+            CacheHelper::skipVector(file, sizeof(uint32_t));
+        }
 
         uint8_t hasAnimationData = 0;
         file.read(reinterpret_cast<char*>(&hasAnimationData), sizeof(hasAnimationData));

@@ -1,24 +1,18 @@
 #include "AssetMesh.h"
 
 #include "AssetManager.h"
+#include "CacheHelper.h"
 #include "EditorConfiguration.h"
 
-
 AssetMesh::AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
-	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId,const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
+	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId,
+	const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
 	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
 : AssetInterface(loadingPath, assetId, onAssetUpdateCallback, parentAssetId), m_assetManager(assetManager), m_bufferPoolInterface(bufferPoolInterface), m_staticVertices(meshData.m_staticVertices),
-  m_indices(meshData.m_indices), m_skeletonVertices(meshData.m_skeletonVertices), m_animationData(meshData.m_animationData.release()), m_materialAssetId(defaultMaterialAssetId)
+  m_indices(meshData.m_indices), m_skeletonVertices(meshData.m_skeletonVertices), m_animationData(meshData.m_animationData.release()), m_materialAssetId(defaultMaterialAssetId),
+  m_pushDataToGPUManager(editorPushDataToGPU.duplicateAs<Wolf::GPUDataTransfersManagerInterface>()), m_positionsCacheFilename(meshData.m_cachePositionFilename),
+m_indicesCacheFilename(meshData.m_cacheIndicesFilename)
 {
-	if (m_staticVertices.empty() && m_skeletonVertices.empty())
-	{
-		Wolf::Debug::sendCriticalError("Can't load a mesh without vertices");
-	}
-	if (m_indices.empty())
-	{
-		Wolf::Debug::sendCriticalError("Can't load a mesh without indices");
-	}
-
 	m_meshLoadingRequested = true;
 	m_thumbnailGenerationRequested = !g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration;
 
@@ -63,11 +57,17 @@ void AssetMesh::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGP
 {
 	if (m_meshLoadingRequested)
 	{
-		loadModel();
+		loadMesh();
 		m_meshLoadingRequested = false;
 	}
 	if (m_thumbnailGenerationRequested)
 	{
+		if (!getLOD(0, 0).m_mesh)
+		{
+			loadLOD(0, 0);
+			notifySubscribers();
+		}
+
 		generateThumbnail(thumbnailsGenerationPass);
 		m_thumbnailGenerationRequested = false;
 	}
@@ -86,14 +86,21 @@ void AssetMesh::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::MaterialsGP
 			m_BLASesToDestroy.erase(m_BLASesToDestroy.begin() + blasToDestroyIdx);
 		}
 	}
+
+	for (int32_t lodInConstructionIdx = m_lodsInConstruction.size() - 1; lodInConstructionIdx >= 0; lodInConstructionIdx--)
+	{
+		if (m_lodsInConstruction[lodInConstructionIdx].m_buildFrameIdx + Wolf::g_configuration->getMaxCachedFrames() < currentFrameIdx)
+		{
+			m_lodsInConstruction.erase(m_lodsInConstruction.begin() + lodInConstructionIdx);
+		}
+	}
 }
 
-void AssetMesh::forceReload(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-	const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
+void AssetMesh::forceReload(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
 {
-	m_meshToKeepInMemory.reset(m_mesh.release());
+	m_meshToKeepInMemory.reset(m_mesh.m_mesh.release());
 
-	loadModel();
+	loadMesh();
 	generateThumbnail(thumbnailsGenerationPass);
 	m_meshLoadingRequested = false;
 }
@@ -116,27 +123,113 @@ void AssetMesh::requestThumbnailReload()
 
 bool AssetMesh::isLoaded() const
 {
-	return static_cast<bool>(m_mesh);
+	return true;
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetMesh::getDefaultSimplifiedMeshes() const
+void AssetMesh::loadLOD(uint32_t lodIdx, uint32_t lodType)
 {
-	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> r;
-	for (uint32_t i = 0; i < m_defaultSimplifiedMeshes.size(); i++)
+	for (uint32_t lodInConstructionIdx = 0; lodInConstructionIdx < m_lodsInConstruction.size(); lodInConstructionIdx++)
 	{
-		r.emplace_back(m_defaultSimplifiedMeshes[i].createNonOwnerResource());
+		if (m_lodsInConstruction[lodInConstructionIdx].m_lod == lodIdx && m_lodsInConstruction[lodInConstructionIdx].m_lodType == lodType)
+		{
+			return;
+		}
 	}
-	return r;
+	m_lodsInConstruction.emplace_back(lodIdx, lodType, Wolf::g_runtimeContext->getCurrentCPUFrameNumber());
+
+	Wolf::ResourceUniqueOwner<MeshFormatter> meshFormatter;
+	loadMeshFormatter(meshFormatter, { lodIdx, lodType});
+
+	VkBufferUsageFlags additionalFlags = 0;
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	}
+
+	if (lodIdx == 0)
+	{
+		if (!meshFormatter->getStaticVertices().empty())
+		{
+			m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getStaticVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else if (!meshFormatter->getSkeletonVertices().empty())
+		{
+			m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getSkeletonVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else
+		{
+			Wolf::Debug::sendCriticalError("No vertex found");
+		}
+	}
+	else
+	{
+		const MeshFormatter::LODInfo& lod = lodType == 0 ? meshFormatter->getDefaultLODInfo()[lodIdx - 1] : meshFormatter->getSloppyLODInfo()[lodIdx - 1];
+
+		Wolf::ResourceUniqueOwner<InternalLOD>& internalLOD = m_defaultSimplifiedMeshes[lodIdx - 1];
+
+		if (!lod.m_staticVertices.empty())
+		{
+			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else if (!lod.m_skeletonVertices.empty())
+		{
+			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else
+		{
+			Wolf::Debug::sendCriticalError("LOD don't have any vertex");
+		}
+	}
 }
 
-std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetMesh::getSloppySimplifiedMeshes() const
+AssetMesh::LOD AssetMesh::getLOD(uint32_t lod, uint32_t lodType, bool ignoreDelayForLODInConstruction)
 {
-	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> r;
-	for (uint32_t i = 0; i < m_sloppySimplifiedMeshes.size(); i++)
+	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh;
+	uint32_t indexCount = 0;
+	std::vector<Wolf::InstanceMeshRenderer::MeshToRender::LOD::Cluster> clusters;
+
+	if (lod == 0)
 	{
-		r.emplace_back(m_sloppySimplifiedMeshes[i].createNonOwnerResource());
+		if (m_mesh.m_mesh)
+			mesh = m_mesh.m_mesh.createNonOwnerResource();
+		indexCount = m_mesh.m_indexCount;
+		clusters = m_mesh.m_clusterRanges;
 	}
-	return r;
+	else if (lodType == 0)
+	{
+		if (m_defaultSimplifiedMeshes[lod - 1]->m_mesh)
+			mesh = m_defaultSimplifiedMeshes[lod - 1]->m_mesh.createNonOwnerResource();
+		indexCount = m_defaultSimplifiedMeshes[lod - 1]->m_indexCount;
+		clusters = m_defaultSimplifiedMeshes[lod - 1]->m_clusterRanges;
+	}
+	else if (lodType == 1)
+	{
+		if (m_sloppySimplifiedMeshes[lod - 1]->m_mesh)
+			mesh = m_sloppySimplifiedMeshes[lod - 1]->m_mesh.createNonOwnerResource();
+		indexCount = m_sloppySimplifiedMeshes[lod - 1]->m_indexCount;
+		clusters = m_sloppySimplifiedMeshes[lod - 1]->m_clusterRanges;
+	}
+	else
+	{
+		Wolf::Debug::sendCriticalError("Unsupported LOD type");
+	}
+
+	if (!ignoreDelayForLODInConstruction)
+	{
+		for (uint32_t lodInConstructionIdx = 0; lodInConstructionIdx < m_lodsInConstruction.size(); lodInConstructionIdx++)
+		{
+			if (m_lodsInConstruction[lodInConstructionIdx].m_lod == lod && m_lodsInConstruction[lodInConstructionIdx].m_lodType == lodType)
+			{
+				mesh = Wolf::NullableResourceNonOwner<Wolf::Mesh>(nullptr);
+			}
+		}
+	}
+
+	return { mesh, indexCount, clusters };
 }
 
 Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetMesh::getBLAS(uint32_t lod, uint32_t lodType)
@@ -164,33 +257,83 @@ MeshFormatter* AssetMesh::computeMeshFormatter()
 	return meshFormatter.release();
 }
 
-void AssetMesh::loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& meshFormatter)
+void AssetMesh::loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& meshFormatter, MeshFormatter::ReadSpecificLODInfo readSpecificLODInfo)
 {
-	meshFormatter.reset(new MeshFormatter(m_loadingPath, m_assetManager));
+	meshFormatter.reset(new MeshFormatter(m_loadingPath, m_assetManager, !Wolf::g_configuration->getUseMeshStreaming(), readSpecificLODInfo));
 	if (!meshFormatter->isMeshesLoaded())
 	{
+		if (m_staticVertices.empty() && m_skeletonVertices.empty() && m_positionsCacheFilename.empty())
+		{
+			Wolf::Debug::sendCriticalError("Can't load a mesh without vertices");
+		}
+		if (m_indices.empty() && m_indicesCacheFilename.empty())
+		{
+			Wolf::Debug::sendCriticalError("Can't load a mesh without indices");
+		}
+
 		LoadedMeshData loadedMeshData{};
 		loadModelFromData(loadedMeshData);
 
 		MeshFormatter::DataInput meshFormatterDataInput{};
 		meshFormatterDataInput.m_fileName = m_loadingPath;
 		meshFormatterDataInput.m_staticVertices = std::move(loadedMeshData.m_staticVertices);
+		if (!m_positionsCacheFilename.empty())
+		{
+			std::ifstream file(m_positionsCacheFilename, std::ios::binary);
+			if (!file.is_open())
+			{
+				Wolf::Debug::sendCriticalError("Cannot open file for reading");
+			}
+
+			std::vector<glm::vec3> positions;
+			CacheHelper::readVector(file, positions);
+
+			file.close();
+
+			meshFormatterDataInput.m_staticVertices.resize(positions.size());
+			for (uint32_t i = 0; i < positions.size(); i++)
+			{
+				meshFormatterDataInput.m_staticVertices[i].pos = positions[i];
+			}
+		}
 		meshFormatterDataInput.m_skeletonVertices = std::move(loadedMeshData.m_skeletonVertices);
 		meshFormatterDataInput.m_indices = std::move(loadedMeshData.m_indices);
+		if (!m_indicesCacheFilename.empty())
+		{
+			std::ifstream file(m_indicesCacheFilename, std::ios::binary);
+			if (!file.is_open())
+			{
+				Wolf::Debug::sendCriticalError("Cannot open file for reading");
+			}
+
+			CacheHelper::readVector(file, meshFormatterDataInput.m_indices);
+
+			file.close();
+		}
 		meshFormatterDataInput.m_generateDefaultLODCount = 16;
 		meshFormatterDataInput.m_generateSloppyLODCount = 16;
 		meshFormatterDataInput.m_animationData = std::move(loadedMeshData.m_animationData);
 		meshFormatter->computeData(meshFormatterDataInput);
+
+		if (Wolf::g_configuration->getUseMeshStreaming())
+		{
+			meshFormatter.reset(nullptr);
+			meshFormatter.reset(new MeshFormatter(m_loadingPath, m_assetManager, !Wolf::g_configuration->getUseMeshStreaming(), readSpecificLODInfo));
+		}
 	}
 }
 
-void AssetMesh::loadModel()
+void AssetMesh::loadMesh()
 {
 	Wolf::Timer timer(std::string(m_loadingPath) + " loading");
 
 	Wolf::ResourceUniqueOwner<MeshFormatter> meshFormatter;
 	loadMeshFormatter(meshFormatter);
 
+	m_boundingBox = meshFormatter->getAABB();
+	m_boundingSphere = meshFormatter->getBoundingSphere();
+
+	m_mesh.m_indexCount = meshFormatter->getIndexCount();
 	VkBufferUsageFlags additionalFlags = 0;
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
@@ -198,13 +341,15 @@ void AssetMesh::loadModel()
 	}
 	if (!meshFormatter->getStaticVertices().empty())
 	{
-		m_mesh.reset(new Wolf::Mesh(meshFormatter->getStaticVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, meshFormatter->getAABB(), meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getStaticVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+			meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 	}
 	else if (!meshFormatter->getSkeletonVertices().empty())
 	{
-		m_mesh.reset(new Wolf::Mesh(meshFormatter->getSkeletonVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, meshFormatter->getAABB(), meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getSkeletonVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+			meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 	}
-	else
+	else if (!Wolf::g_configuration->getUseMeshStreaming())
 	{
 		Wolf::Debug::sendCriticalError("No vertex found");
 	}
@@ -215,38 +360,59 @@ void AssetMesh::loadModel()
 	const std::vector<MeshFormatter::LODInfo>& defaultLODs = meshFormatter->getDefaultLODInfo();
 	const std::vector<MeshFormatter::LODInfo>& sloppyLODs = meshFormatter->getSloppyLODInfo();
 
-	for (const MeshFormatter::LODInfo& lod : defaultLODs)
+	bool foundWorstDefaultLOD = true;
+	for (uint32_t lodIdx = 0; lodIdx < defaultLODs.size(); ++lodIdx)
 	{
-		if (!meshFormatter->getStaticVertices().empty())
+		const MeshFormatter::LODInfo& lod = defaultLODs[lodIdx];
+
+		Wolf::ResourceUniqueOwner<InternalLOD>& internalLOD = m_defaultSimplifiedMeshes.emplace_back(new InternalLOD());
+		internalLOD->m_indexCount = lod.m_indexCount;
+		if (!lod.m_staticVertices.empty())
 		{
-			m_defaultSimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter->getAABB(),
+			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 		}
-		else
+		else if (!lod.m_skeletonVertices.empty())
 		{
-			m_defaultSimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter->getAABB(),
+			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else if (!Wolf::g_configuration->getUseMeshStreaming() || lodIdx == defaultLODs.size() - 1)
+		{
+			foundWorstDefaultLOD = false;
 		}
 
 		MeshAssetEditor::AddLODInfo addLodInfo{};
 		addLodInfo.m_materialIdx = m_materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(m_materialAssetId)->getMaterialGPUIdx();
-		addLodInfo.m_mesh = m_defaultSimplifiedMeshes.back().createNonOwnerResource();
+		addLodInfo.m_indexCount = m_defaultSimplifiedMeshes.back()->m_indexCount;
+		if (m_defaultSimplifiedMeshes.back()->m_mesh)
+		{
+			addLodInfo.m_mesh = m_defaultSimplifiedMeshes.back()->m_mesh.createNonOwnerResource();
+		}
 		addLodInfo.m_lodType = 0;
 		addLodInfo.m_error = lod.m_error;
 		m_meshAssetEditor->addLOD(addLodInfo);
 	}
 
-	for (const MeshFormatter::LODInfo& lod : sloppyLODs)
+	for (uint32_t lodIdx = 0; lodIdx < sloppyLODs.size(); ++lodIdx)
 	{
-		if (!meshFormatter->getStaticVertices().empty())
+		const MeshFormatter::LODInfo& lod = sloppyLODs[lodIdx];
+
+		Wolf::ResourceUniqueOwner<InternalLOD>& internalLOD = m_sloppySimplifiedMeshes.emplace_back(new InternalLOD());
+		internalLOD->m_indexCount = lod.m_indexCount;
+		if (!lod.m_staticVertices.empty())
 		{
-			m_sloppySimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter->getAABB(),
+			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 		}
-		else
+		else if (!lod.m_skeletonVertices.empty())
 		{
-			m_sloppySimplifiedMeshes.emplace_back(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, meshFormatter->getAABB(),
+			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+		}
+		else if (!Wolf::g_configuration->getUseMeshStreaming() || (lodIdx == sloppyLODs.size() - 1 && !foundWorstDefaultLOD))
+		{
+			Wolf::Debug::sendCriticalError("Worst default LOD or sloppy LOD must be valid");
 		}
 	}
 
@@ -258,17 +424,6 @@ void AssetMesh::loadModel()
 			uint32_t lodCount = lodType == 0 ? m_defaultSimplifiedMeshes.size() : m_sloppySimplifiedMeshes.size();
 			m_bottomLevelAccelerationStructures[lodType].resize(lodCount + 1);
 		}
-	}
-
-	m_defaultLODsInfo = defaultLODs;
-	for (MeshFormatter::LODInfo& lod : m_defaultLODsInfo)
-	{
-		lod.m_indices.clear();
-	}
-	m_sloppyLODsInfo = defaultLODs;
-	for (MeshFormatter::LODInfo& lod : m_sloppyLODsInfo)
-	{
-		lod.m_indices.clear();
 	}
 
 	m_loadedBLAS = { static_cast<uint32_t>(-1), static_cast<uint32_t>(-1) };
@@ -300,11 +455,16 @@ void AssetMesh::computeThumbnailGenerationViewMatrix(const Wolf::AABB& aabb)
 
 void AssetMesh::generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass)
 {
+	if (Wolf::g_configuration->getUseMeshStreaming())
+	{
+		Wolf::Debug::sendError("Can't create mesh thumbnail when mesh streaming is activated");
+	}
+
 	std::string iconPath = computeIconPath();
 
 	uint32_t materialGPUIdx = m_materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(m_materialAssetId)->getMaterialGPUIdx();
 
-	thumbnailsGenerationPass->addRequestBeforeFrame({ getMesh(), isAnimated() ? Wolf::NullableResourceNonOwner<AnimationData>(getAnimationData()) : Wolf::NullableResourceNonOwner<AnimationData>(), materialGPUIdx, iconPath,
+	thumbnailsGenerationPass->addRequestBeforeFrame({ m_mesh.m_mesh.createNonOwnerResource(), isAnimated() ? Wolf::NullableResourceNonOwner<AnimationData>(getAnimationData()) : Wolf::NullableResourceNonOwner<AnimationData>(), materialGPUIdx, iconPath,
 		[this]() { m_updateAssetInUICallback(m_assetId); },
 			m_thumbnailGenerationViewMatrix });
 }
@@ -338,16 +498,16 @@ void AssetMesh::ensureBLASIsLoaded(uint32_t lod, uint32_t lodType)
 
 void AssetMesh::buildBLAS(uint32_t lod, uint32_t lodType, const std::string& filename)
 {
-	const Wolf::ResourceUniqueOwner<Wolf::Mesh>* mesh = &m_mesh;
+	const Wolf::ResourceUniqueOwner<Wolf::Mesh>* mesh = &m_mesh.m_mesh;
 	if (lod > 0)
 	{
 		if (lodType == 0)
 		{
-			mesh = &m_defaultSimplifiedMeshes[lod - 1];
+			mesh = &m_defaultSimplifiedMeshes[lod - 1]->m_mesh;
 		}
 		else
 		{
-			mesh = &m_sloppySimplifiedMeshes[lod - 1];
+			mesh = &m_sloppySimplifiedMeshes[lod - 1]->m_mesh;
 		}
 	}
 

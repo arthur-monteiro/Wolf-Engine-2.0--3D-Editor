@@ -13,7 +13,7 @@ void UpdateGPUBuffersPass::initializeResources(const Wolf::InitializationContext
 	createSemaphores(context, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, false);
 
 	m_currentRequestsQueues.resize(Wolf::g_configuration->getMaxCachedFrames());
-	m_stagingBufferPool.reset(new StagingBufferPool(268'435'456));
+	m_stagingBufferPool.reset(new StagingBufferPool(536'870'912));
 }
 
 void UpdateGPUBuffersPass::resize(const Wolf::InitializationContext& context)

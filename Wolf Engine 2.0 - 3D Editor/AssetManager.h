@@ -54,12 +54,8 @@ public:
 	static bool isParticle(AssetId assetId);
 
 	bool isMeshLoaded(AssetId assetId) const;
-	Wolf::ResourceNonOwner<Wolf::Mesh> getMesh(AssetId assetId) const;
+	Wolf::ResourceNonOwner<AssetMesh> getMeshAsset(AssetId assetId) const;
 	bool isMeshAnimated(AssetId assetId) const;
-	const std::vector<MeshFormatter::LODInfo>& getMeshDefaultLODInfo(AssetId assetId) const;
-	const std::vector<MeshFormatter::LODInfo>& getMeshSloppyLODInfo(AssetId assetId) const;
-	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> getMeshDefaultSimplifiedMeshes(AssetId assetId) const;
-	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> getMeshSloppySimplifiedMeshes(AssetId assetId) const;
 	Wolf::ResourceNonOwner<AnimationData> getAnimationData(AssetId assetId) const;
 	Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> getBLAS(AssetId assetId, uint32_t lod, uint32_t lodType);
 	std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>>& getPhysicsShapes(AssetId modelAssetId) const;
@@ -138,7 +134,7 @@ private:
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
 	static constexpr uint32_t MESH_ASSET_IDX_OFFSET = 0;
-	static constexpr uint32_t MAX_ASSET_RESOURCE_COUNT = 1000;
+	static constexpr uint32_t MAX_ASSET_RESOURCE_COUNT = 5000;
 	Wolf::DynamicResourceUniqueOwnerArray<AssetMesh, 16> m_meshes;
 
 	static constexpr uint32_t IMAGE_ASSET_IDX_OFFSET = MESH_ASSET_IDX_OFFSET + MAX_ASSET_RESOURCE_COUNT;

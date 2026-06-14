@@ -34,6 +34,11 @@ void TextureSetEditor::updateBeforeFrame()
 
 		m_textureChanged = false;
 	}
+	else if (m_scaleChanged)
+	{
+		m_materialGPUManager->changeScaleBeforeFrame(m_textureSetIdx, getScale());
+		m_scaleChanged = false;
+	}
 }
 
 void TextureSetEditor::loadParams(Wolf::JSONReader& jsonReader)
@@ -188,7 +193,7 @@ Wolf::MaterialsGPUManager::TextureSetInfo TextureSetEditor::computeTextureSetInf
 			r.slicesFolders[2] = m_assetManager->getCombinedImageSlicesFolder(assetId);
 		}
 
-		r.scale = glm::vec3(static_cast<glm::vec2>(m_textureCoordsScale), 1.0f);
+		r.scale = getScale();
 	}
 	else if (m_shadingMode == static_cast<uint32_t>(Wolf::MaterialsGPUManager::MaterialInfo::ShadingMode::SixWaysLighting))
 	{
@@ -210,6 +215,8 @@ Wolf::MaterialsGPUManager::TextureSetInfo TextureSetEditor::computeTextureSetInf
 		TextureSetLoader textureSetLoader(materialFileInfo, m_assetManager);
 		r.images[0] = m_assetManager->getImage(textureSetLoader.getImageAssetId(0), Wolf::Format::R8G8B8A8_UNORM);
 	}
+
+	r.samplingMode = getSamplingMode();
 
 	return r;
 }
@@ -284,12 +291,37 @@ void TextureSetEditor::onAlphaAssetChanged()
 
 void TextureSetEditor::onSamplingModeChanged()
 {
+
+}
+
+Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode TextureSetEditor::getSamplingMode() const
+{
+	if (m_samplingMode == 0)
+	{
+		return Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TEXTURE_COORDS;
+	}
+	else
+	{
+		return Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode::TRIPLANAR;
+	}
+}
+
+glm::vec3 TextureSetEditor::getScale() const
+{
+	if (m_samplingMode == 0)
+	{
+		return glm::vec3(static_cast<glm::vec2>(m_textureCoordsScale), 1.0f);
+	}
+	else
+		return m_triplanarScale;
 }
 
 void TextureSetEditor::onTextureCoordsScaleChanged()
 {
+	m_scaleChanged = true;
 }
 
 void TextureSetEditor::onTriplanarScaleChanged()
 {
+	m_scaleChanged = true;
 }

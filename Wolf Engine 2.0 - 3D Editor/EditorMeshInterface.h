@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Buffer.h>
-#include <DescriptorSet.h>
 #include <DescriptorSetLayout.h>
 #include <DescriptorSetLayoutGenerator.h>
 #include <LazyInitSharedResource.h>
@@ -36,7 +34,8 @@ public:
 	glm::vec3 getPosition() const { return m_translationParam; }
 	glm::mat3 computeRotationMatrix() const;
 	void setPosition(const glm::vec3& newPosition) { m_translationParam = newPosition; }
-	void setRotation(const glm::quat& newRotation) { m_rotationQuaternionParam = glm::vec4(newRotation.x, newRotation.y, newRotation.z, newRotation.w); }
+	void setRotationQuat(const glm::quat& newRotation) { m_rotationQuaternionParam = glm::vec4(newRotation.x, newRotation.y, newRotation.z, newRotation.w); }
+	void setRotationEuler(const glm::vec3& newRotation) { m_rotationParam = newRotation; }
 	void setScale(const glm::vec3& newScale) { m_scaleParam = newScale; }
 
 	void activateParams() override;

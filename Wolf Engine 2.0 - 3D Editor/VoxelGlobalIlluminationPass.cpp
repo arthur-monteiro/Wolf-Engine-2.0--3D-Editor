@@ -35,26 +35,27 @@ void VoxelGlobalIlluminationPass::initDebug(const Wolf::ResourceNonOwner<DebugRe
 
 void VoxelGlobalIlluminationPass::addMeshesToRenderList(const Wolf::ResourceNonOwner<Wolf::DefaultMeshRenderer>& renderMeshList)
 {
-    if (m_enableDebug)
-    {
-        // ReSharper disable once CppDFAUnreachableCode
-        if (m_probeMeshAssetId == NO_ASSET)
-            return;
-
-        Wolf::DefaultMeshRenderer::InstancedMesh instancedMesh = { { m_assetManager->getMeshDefaultSimplifiedMeshes(m_probeMeshAssetId)[0].duplicateAs<Wolf::MeshInterface>(),
-            m_debugPipelineSet.createConstNonOwnerResource() } };
-
-        if (instancedMesh.m_mesh.m_perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
-        {
-            Wolf::Debug::sendCriticalError("Pipeline can't be overridden for forward pass");
-            return;
-        }
-
-        instancedMesh.m_mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
-            m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
-
-        renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
-    }
+    // TODO: fix this (again :p)
+    // if (m_enableDebug)
+    // {
+    //     // ReSharper disable once CppDFAUnreachableCode
+    //     if (m_probeMeshAssetId == NO_ASSET)
+    //         return;
+    //
+    //     Wolf::DefaultMeshRenderer::InstancedMesh instancedMesh = { { m_assetManager->getMeshDefaultSimplifiedMeshes(m_probeMeshAssetId)[0].duplicateAs<Wolf::MeshInterface>(),
+    //         m_debugPipelineSet.createConstNonOwnerResource() } };
+    //
+    //     if (instancedMesh.m_mesh.m_perPipelineDescriptorSets.size() <= CommonPipelineIndices::PIPELINE_IDX_FORWARD)
+    //     {
+    //         Wolf::Debug::sendCriticalError("Pipeline can't be overridden for forward pass");
+    //         return;
+    //     }
+    //
+    //     instancedMesh.m_mesh.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(Wolf::DescriptorSetBindInfo(m_debugDescriptorSet.createConstNonOwnerResource(),
+    //         m_debugDescriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_MESH_DEBUG));
+    //
+    //     renderMeshList->addTransientInstancedMesh(instancedMesh, GRID_SIZE * GRID_SIZE * GRID_SIZE);
+    // }
 }
 
 void VoxelGlobalIlluminationPass::initializeResources(const Wolf::InitializationContext& context)

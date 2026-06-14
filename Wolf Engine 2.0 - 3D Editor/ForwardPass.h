@@ -26,16 +26,18 @@ public:
 	ForwardPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<const ContaminationUpdatePass>& contaminationUpdatePass, const Wolf::ResourceNonOwner<const ParticleUpdatePass>& particlesUpdatePass,
 		const Wolf::ResourceNonOwner<PreDepthPass>& preDepthPass, const Wolf::NullableResourceNonOwner<RayTracedWorldDebugPass>& rayTracedWorldDebugPass,
 		const Wolf::NullableResourceNonOwner<PathTracingPass>& pathTracingPass, const Wolf::ResourceNonOwner<ComputeSkyCubeMapPass>& computeSkyCubeMapPass, const Wolf::ResourceNonOwner<SkyBoxManager>& skyBoxManager,
-		const Wolf::NullableResourceNonOwner<GlobalIrradiancePassInterface>& globalIrradiancePass, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+		const Wolf::NullableResourceNonOwner<GlobalIrradiancePassInterface>& globalIrradiancePass)
 	: m_editorParams(editorParams), m_contaminationUpdatePass(contaminationUpdatePass), m_particlesUpdatePass(particlesUpdatePass), m_preDepthPass(preDepthPass),
-	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass), m_pathTracingPass(pathTracingPass), m_computeSkyCubeMapPass(computeSkyCubeMapPass), m_skyBoxManager(skyBoxManager), m_globalIrradiancePass(globalIrradiancePass),
-	  m_bufferPoolInterface(bufferPoolInterface)
+	  m_rayTracedWorldDebugPass(rayTracedWorldDebugPass), m_pathTracingPass(pathTracingPass), m_computeSkyCubeMapPass(computeSkyCubeMapPass), m_skyBoxManager(skyBoxManager),
+	  m_globalIrradiancePass(globalIrradiancePass)
 	{}
 
 	void initializeResources(const Wolf::InitializationContext& context) override;
 	void resize(const Wolf::InitializationContext& context) override;
 	void record(const Wolf::RecordContext& context) override;
 	void submit(const Wolf::SubmitContext& context) override;
+
+	void initializeResources(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager);
 
 	Wolf::Image& getOutput() { return *m_outputImage; }
 	Wolf::Viewport getRenderViewport() const { return m_editorParams->getRenderViewport(); }
@@ -101,6 +103,5 @@ private:
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> m_computeSkyCubeMapPass;
 	Wolf::ResourceNonOwner<SkyBoxManager> m_skyBoxManager;
 	Wolf::ResourceNonOwner<GlobalIrradiancePassInterface> m_globalIrradiancePass;
-	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 };
 

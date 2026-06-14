@@ -14,10 +14,11 @@
 #include "UpdateGPUBuffersPass.h"
 
 ContaminationEmitter::ContaminationEmitter(const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager,
-                                           const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
-                                           const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-	: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
-      m_physicsManager(physicsManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface)
+	const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration, const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,
+	const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
+	const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager)
+: m_materialGPUManager(materialsGPUManager), m_editorConfiguration(editorConfiguration), m_contaminationUpdatePass(renderingPipeline->getContaminationUpdatePass()), m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
+  m_physicsManager(physicsManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface), m_pushDataToGPUManager(pushDataToGPUManager)
 {
 	Wolf::CreateImageInfo createImageInfo{};
 	createImageInfo.extent = { CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE, CONTAMINATION_IDS_IMAGE_SIZE };
@@ -258,7 +259,7 @@ void ContaminationEmitter::buildDebugMesh()
 		indices.push_back(i);
 	}
 
-	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
+	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface, m_pushDataToGPUManager));
 
 	m_debugMeshRebuildRequested = false;
 }

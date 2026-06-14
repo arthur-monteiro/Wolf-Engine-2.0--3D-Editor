@@ -110,7 +110,11 @@ private:
 	// Sampling common
 	void onSamplingModeChanged();
 	bool m_changeSamplingModeRequested = false;
+	Wolf::MaterialsGPUManager::TextureSetInfo::SamplingMode getSamplingMode() const;
 	EditorParamEnum m_samplingMode = EditorParamEnum({ "Mesh texture coordinates", "Triplanar" }, "Sampling mode", TAB, "Sampling", [this]() { onSamplingModeChanged(); });
+
+	bool m_scaleChanged = false;
+	glm::vec3 getScale() const;
 
 	// Mesh texture coordinates
 	void onTextureCoordsScaleChanged();

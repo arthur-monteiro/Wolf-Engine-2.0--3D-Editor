@@ -5,7 +5,8 @@
 ComponentInstancier::ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
 		const Wolf::ResourceNonOwner<AssetManager>& assetManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
-		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback)
+		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager,
+		const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback)
 	: m_materialsGPUManager(materialsGPUManager),
       m_renderingPipeline(renderingPipeline),
 	  m_getEntityFromLoadingPathCallback(getEntityFromLoadingPathCallback),
@@ -14,7 +15,8 @@ ComponentInstancier::ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::Mate
       m_physicsManager(physicsManager),
 	  m_entityContainer(entityContainer),
 	  m_bufferPoolInterface(bufferPoolInterface),
-	  m_createEntityCallback(createEntityCallback)
+	  m_createEntityCallback(createEntityCallback),
+      m_pushDataToGPUManager(pushDataToGPUManager)
 {
 }
 

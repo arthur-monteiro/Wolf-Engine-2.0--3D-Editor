@@ -75,7 +75,7 @@ void AssetManager::updateBeforeFrame()
 	{
 		if (m_currentAssetNeedRebuildFlags & static_cast<uint32_t>(MeshAssetEditor::ResourceEditorNotificationFlagBits::MESH))
 		{
-			m_meshes[m_currentAssetInEdition]->forceReload(m_materialsGPUManager, m_thumbnailsGenerationPass);
+			m_meshes[m_currentAssetInEdition]->forceReload(m_thumbnailsGenerationPass);
 		}
 		if (m_currentAssetNeedRebuildFlags & static_cast<uint32_t>(MeshAssetEditor::ResourceEditorNotificationFlagBits::PHYSICS))
 		{
@@ -507,14 +507,14 @@ bool AssetManager::isMeshLoaded(AssetId assetId) const
 	return assetId != NO_ASSET && m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->isLoaded();
 }
 
-Wolf::ResourceNonOwner<Wolf::Mesh> AssetManager::getMesh(AssetId assetId) const
+Wolf::ResourceNonOwner<AssetMesh> AssetManager::getMeshAsset(AssetId assetId) const
 {
 	if (!isMesh(assetId))
 	{
 		Wolf::Debug::sendError("AssetId is not a mesh");
 	}
 
-	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getMesh();
+	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET].createNonOwnerResource();
 }
 
 bool AssetManager::isMeshAnimated(AssetId assetId) const
@@ -525,46 +525,6 @@ bool AssetManager::isMeshAnimated(AssetId assetId) const
 	}
 
 	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->isAnimated();
-}
-
-const std::vector<MeshFormatter::LODInfo>& AssetManager::getMeshDefaultLODInfo(AssetId assetId) const
-{
-	if (!isMesh(assetId))
-	{
-		Wolf::Debug::sendError("AssetId is not a mesh");
-	}
-
-	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getDefaultLODInfo();
-}
-
-const std::vector<MeshFormatter::LODInfo>& AssetManager::getMeshSloppyLODInfo(AssetId assetId) const
-{
-	if (!isMesh(assetId))
-	{
-		Wolf::Debug::sendError("AssetId is not a mesh");
-	}
-
-	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getSloppyLODInfo();
-}
-
-std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::getMeshDefaultSimplifiedMeshes(AssetId assetId) const
-{
-	if (!isMesh(assetId))
-	{
-		Wolf::Debug::sendCriticalError("AssetId is not a mesh");
-	}
-
-	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getDefaultSimplifiedMeshes();
-}
-
-std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> AssetManager::getMeshSloppySimplifiedMeshes(AssetId assetId) const
-{
-	if (!isMesh(assetId))
-	{
-		Wolf::Debug::sendCriticalError("AssetId is not a mesh");
-	}
-
-	return m_meshes[assetId - MESH_ASSET_IDX_OFFSET]->getSloppySimplifiedMeshes();
 }
 
 Wolf::ResourceNonOwner<AnimationData> AssetManager::getAnimationData(AssetId assetId) const
@@ -1106,7 +1066,7 @@ AssetId AssetManager::addMeshInternal(const std::string& loadingPath, ExternalSc
 {
 	if (m_meshes.size() >= MAX_ASSET_RESOURCE_COUNT)
 	{
-		Wolf::Debug::sendError("Maximum mesh resources reached");
+		Wolf::Debug::sendCriticalError("Maximum mesh resources reached");
 		return NO_ASSET;
 	}
 

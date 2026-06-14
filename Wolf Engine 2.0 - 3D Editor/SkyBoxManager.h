@@ -36,8 +36,9 @@ public:
         }
     };
 
-    SkyBoxManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+    SkyBoxManager();
 
+    void initializeResources(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager);
     void updateBeforeFrame(Wolf::WolfEngine* wolfInstance, const Wolf::ResourceNonOwner<ComputeSkyCubeMapPass>& skyCubeMapPass);
 
     void drawSkyBox(const Wolf::CommandBuffer& commandBuffer, const Wolf::RenderPass& renderPass, const Wolf::RecordContext& context);

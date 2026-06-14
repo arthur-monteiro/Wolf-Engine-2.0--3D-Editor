@@ -24,7 +24,9 @@ struct GameContext
 		VERTEX_COLOR = 13,
 		VERTEX_NORMAL = 14,
 		LOD_LEVEL = 15,
-		MATERIAL_COLOR = 16
+		MATERIAL_COLOR = 16,
+		DRAW_ID = 17,
+		TRIANGLES_ID = 18
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 

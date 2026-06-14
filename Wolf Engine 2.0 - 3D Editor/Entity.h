@@ -6,8 +6,6 @@
 #include <DynamicResourceUniqueOwnerArray.h>
 
 #include "BoundingSphere.h"
-#include "ComponentInterface.h"
-#include "DrawManager.h"
 #include "EditorLightInterface.h"
 #include "EditorTypes.h"
 #include "GameContext.h"

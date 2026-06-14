@@ -148,97 +148,248 @@ void MeshFormatter::createLODs(std::vector<T>& vertices, uint32_t generateDefaul
     processLOD(generateSloppyLODCount, true, m_sloppySimplifiedLODs);
 }
 
-MeshFormatter::MeshFormatter(const std::string& filename, AssetManager* assetManager) : m_assetManager(assetManager)
+MeshFormatter::MeshFormatter(const std::string& filename, AssetManager* assetManager, bool readLODData, ReadSpecificLODInfo readSpecificLOD) : m_assetManager(assetManager)
 {
-	std::string escapedFilename = filename;
-	for (size_t i = 0; i < escapedFilename.length(); ++i)
-	{
-		if (escapedFilename[i] == '/' || escapedFilename[i] == '\\')
-		{
-			escapedFilename[i] = '_';
-		}
-	}
-	m_cacheFilename = g_editorConfiguration->getCacheFolderPath() + "/" + escapedFilename + ".bin";
+	m_cacheFolder = computeCacheFolder(filename);
+	std::string meshInfoFilepath = m_cacheFolder + "meshInfo.bin";
 
-	if (std::filesystem::exists(m_cacheFilename))
+	if (std::filesystem::exists(meshInfoFilepath))
 	{
-		std::ifstream input(m_cacheFilename, std::ios::in | std::ios::binary);
+		std::ifstream meshInfoInputFile(meshInfoFilepath, std::ios::in | std::ios::binary);
 
 		uint64_t hash;
-		input.read(reinterpret_cast<char*>(&hash), sizeof(hash));
+		meshInfoInputFile.read(reinterpret_cast<char*>(&hash), sizeof(hash));
 		if (hash != Wolf::HASH_MESH_FORMATTER_CPP)
 		{
 			Wolf::Debug::sendInfo("Cache found but hash is incorrect");
 			return;
 		}
 
-		input.read(reinterpret_cast<char*>(&m_isMeshCentered), sizeof(m_isMeshCentered));
-		input.read(reinterpret_cast<char*>(&m_aabb), sizeof(m_aabb));
-		input.read(reinterpret_cast<char*>(&m_boundingSphere), sizeof(m_boundingSphere));
+		meshInfoInputFile.read(reinterpret_cast<char*>(&m_isMeshCentered), sizeof(m_isMeshCentered));
+		meshInfoInputFile.read(reinterpret_cast<char*>(&m_aabb), sizeof(m_aabb));
+		meshInfoInputFile.read(reinterpret_cast<char*>(&m_boundingSphere), sizeof(m_boundingSphere));
 
-		CacheHelper::readVector(input, m_staticVertices);
-		CacheHelper::readVector(input, m_skeletonVertices);
-		CacheHelper::readVector(input, m_indices);
+		meshInfoInputFile.read(reinterpret_cast<char*>(&m_indexCount), sizeof(uint32_t));
 
-		auto readLODStorage = [&](std::vector<LODInfo>& lods)
+		uint32_t defaultLODCount;
+		meshInfoInputFile.read(reinterpret_cast<char*>(&defaultLODCount), sizeof(uint32_t));
+
+		std::vector<uint32_t> indexCountPerDefaultLOD;
+		CacheHelper::readVector(meshInfoInputFile, indexCountPerDefaultLOD);
+
+		uint32_t sloppyLODCount;
+		meshInfoInputFile.read(reinterpret_cast<char*>(&sloppyLODCount), sizeof(uint32_t));
+
+		std::vector<uint32_t> indexCountPerSloppyLOD;
+		CacheHelper::readVector(meshInfoInputFile, indexCountPerSloppyLOD);
+
+		meshInfoInputFile.close();
+
+		auto decompressAndReadBuffers = [&](std::ifstream& inputFile, std::vector<Vertex3D>& staticVertices, std::vector<SkeletonVertex>& skeletonVertices, std::vector<uint32_t>& indices)
 		{
-			size_t count;
-			input.read(reinterpret_cast<char*>(&count), sizeof(count));
+		    {
+		    	size_t vertexCount = 0;
+		    	inputFile.read(reinterpret_cast<char*>(&vertexCount), sizeof(vertexCount));
+
+		        std::vector<unsigned char> compressedVertices;
+		        CacheHelper::readVector(inputFile, compressedVertices);
+
+		        staticVertices.resize(vertexCount);
+		        int result = meshopt_decodeVertexBuffer(
+		            staticVertices.data(),
+		            vertexCount,
+		            sizeof(Vertex3D),
+		            compressedVertices.data(),
+		            compressedVertices.size()
+		        );
+
+		        if (result != 0)
+		        {
+		            Wolf::Debug::sendCriticalError("Failed to decompress vertex buffer");
+		        }
+		    }
+
+		    {
+		    	size_t vertexCount = 0;
+		    	inputFile.read(reinterpret_cast<char*>(&vertexCount), sizeof(vertexCount));
+
+		        std::vector<unsigned char> compressedVertices;
+		        CacheHelper::readVector(inputFile, compressedVertices);
+
+		        skeletonVertices.resize(vertexCount);
+		        int result = meshopt_decodeVertexBuffer(
+		            skeletonVertices.data(),
+		            vertexCount,
+		            sizeof(SkeletonVertex),
+		            compressedVertices.data(),
+		            compressedVertices.size()
+		        );
+
+		        if (result != 0)
+		        {
+		        	Wolf::Debug::sendCriticalError("Failed to decompress vertex buffer");
+		        }
+		    }
+
+		    {
+		    	size_t indexCount = 0;
+		    	inputFile.read(reinterpret_cast<char*>(&indexCount), sizeof(indexCount));
+
+		        std::vector<unsigned char> compressedIndices;
+		        CacheHelper::readVector(inputFile, compressedIndices);
+
+		        indices.resize(indexCount);
+		        int result = meshopt_decodeIndexBuffer(
+		            indices.data(),
+		            indexCount,
+		            sizeof(uint32_t),
+		            compressedIndices.data(),
+		            compressedIndices.size()
+		        );
+
+		        if (result != 0)
+		        {
+		        	Wolf::Debug::sendCriticalError("Failed to decompress index buffer");
+		        }
+		    }
+		};
+
+		if (readLODData || defaultLODCount == 0 || readSpecificLOD.m_lod == 0)
+		{
+			std::string bestLODCacheFilepath = m_cacheFolder + "lod0.bin";
+			std::ifstream bestLODCacheFile(bestLODCacheFilepath, std::ios::in | std::ios::binary);
+
+			if (!bestLODCacheFile.good())
+			{
+				Wolf::Debug::sendCriticalError("Failed to open lod cache");
+			}
+
+			decompressAndReadBuffers(bestLODCacheFile, m_staticVertices, m_skeletonVertices, m_indices);
+
+			bestLODCacheFile.close();
+
+			if (m_indexCount != m_indices.size())
+			{
+				Wolf::Debug::sendCriticalError("Index count mismatch");
+			}
+		}
+
+		bool worstLODToUseIsLastDefault = false;
+		auto readLODStorage = [&](std::vector<LODInfo>& lods, uint32_t lodType, const std::string& prefix)
+		{
+			uint32_t count = 0;
+			if (lodType == 0)
+				count = indexCountPerDefaultLOD.size();
+			else if (lodType == 1)
+				count = indexCountPerSloppyLOD.size();
+			else
+				Wolf::Debug::sendCriticalError("Unsupported LOD type");
+
 			for (size_t i = 0; i < count; ++i)
 			{
-				float error;
-				uint32_t indexCount;
-				input.read(reinterpret_cast<char*>(&error), sizeof(error));
-				input.read(reinterpret_cast<char*>(&indexCount), sizeof(indexCount));
+				uint32_t indexCount = 0;
+				if (lodType == 0)
+					indexCount = indexCountPerDefaultLOD[i];
+				else if (lodType == 1)
+					indexCount = indexCountPerSloppyLOD[i];
+				else
+					Wolf::Debug::sendCriticalError("Unsupported LOD type");
 
-				// Create a dummy LOD and then fill its vectors
-				lods.emplace_back(error, indexCount, std::vector<Vertex3D>{}, std::vector<uint32_t>{});
-				CacheHelper::readVector(input, lods.back().m_staticVertices);
-				CacheHelper::readVector(input, lods.back().m_skeletonVertices);
-				CacheHelper::readVector(input, lods.back().m_indices);
+				bool readThisLOD = readLODData;
+				if (readSpecificLOD.m_lod - 1 == i && readSpecificLOD.m_lodType == lodType)
+					readThisLOD = true;
+				if (readSpecificLOD.m_lod == -1 && i == count - 1)
+				{
+					if (lodType == 0 && indexCount < 1024)
+					{
+						worstLODToUseIsLastDefault = true;
+						readThisLOD = true;
+					}
+					else if (lodType == 1 && !worstLODToUseIsLastDefault)
+					{
+						readThisLOD = true;
+					}
+				}
+
+				lods.emplace_back(-1, indexCount, std::vector<Vertex3D>{}, std::vector<uint32_t>{});
+
+				if (readThisLOD)
+				{
+					std::string lodCacheFilepath = m_cacheFolder + prefix + "_lod" + std::to_string(i) + ".bin";
+					std::ifstream lodCacheFile(lodCacheFilepath, std::ios::in | std::ios::binary);
+
+					if (!lodCacheFile.good())
+					{
+						Wolf::Debug::sendCriticalError("Failed to open lod cache");
+					}
+
+					float error;
+					lodCacheFile.read(reinterpret_cast<char*>(&error), sizeof(error));
+					decompressAndReadBuffers(lodCacheFile, lods.back().m_staticVertices, lods.back().m_skeletonVertices, lods.back().m_indices);
+
+					lodCacheFile.close();
+				}
 			}
 		};
 
-		readLODStorage(m_defaultSimplifiedLODs);
-		readLODStorage(m_sloppySimplifiedLODs);
+		readLODStorage(m_defaultSimplifiedLODs, 0, "default");
+		readLODStorage(m_sloppySimplifiedLODs, 1, "sloppy");
 
 		size_t textureSetCount = 0;
-		input.read(reinterpret_cast<char*>(&textureSetCount), sizeof(textureSetCount));
+		meshInfoInputFile.read(reinterpret_cast<char*>(&textureSetCount), sizeof(textureSetCount));
 		std::vector<TextureSetLoader::TextureSetFileInfoGGX> textureSetsFileInfo(textureSetCount);
 
 		for (TextureSetLoader::TextureSetFileInfoGGX& textureSetInfo : textureSetsFileInfo)
 		{
 			auto& [name, albedo, normal, roughness, metalness, ao, anisoStrength] = textureSetInfo;
-			CacheHelper::readString(input, name);
-			CacheHelper::readString(input, albedo);
-			CacheHelper::readString(input, normal);
-			CacheHelper::readString(input, roughness);
-			CacheHelper::readString(input, metalness);
-			CacheHelper::readString(input, ao);
-			CacheHelper::readString(input, anisoStrength);
+			CacheHelper::readString(meshInfoInputFile, name);
+			CacheHelper::readString(meshInfoInputFile, albedo);
+			CacheHelper::readString(meshInfoInputFile, normal);
+			CacheHelper::readString(meshInfoInputFile, roughness);
+			CacheHelper::readString(meshInfoInputFile, metalness);
+			CacheHelper::readString(meshInfoInputFile, ao);
+			CacheHelper::readString(meshInfoInputFile, anisoStrength);
 		}
 
 		bool hasAnimationData = false;
-		input.read(reinterpret_cast<char*>(&hasAnimationData), sizeof(hasAnimationData));
+		meshInfoInputFile.read(reinterpret_cast<char*>(&hasAnimationData), sizeof(hasAnimationData));
 
 		if (hasAnimationData)
 		{
 			m_animationData.reset(new AnimationData());
 
-			input.read(reinterpret_cast<char*>(&m_animationData->m_boneCount), sizeof(uint32_t));
+			meshInfoInputFile.read(reinterpret_cast<char*>(&m_animationData->m_boneCount), sizeof(uint32_t));
 
 			uint32_t rootCount = 0;
-			input.read(reinterpret_cast<char*>(&rootCount), sizeof(uint32_t));
+			meshInfoInputFile.read(reinterpret_cast<char*>(&rootCount), sizeof(uint32_t));
 
 			m_animationData->m_rootBones.resize(rootCount);
 			for (uint32_t i = 0; i < rootCount; ++i)
 			{
-				readBoneFromCache(m_animationData->m_rootBones[i], input);
+				readBoneFromCache(m_animationData->m_rootBones[i], meshInfoInputFile);
 			}
 		}
 
 		m_meshLoaded = true;
 	}
+}
+
+bool MeshFormatter::doesValidCacheExist(const std::string& filename)
+{
+	std::string cacheFilename = computeCacheFolder(filename);
+	if (std::filesystem::exists(cacheFilename))
+	{
+		std::ifstream input(cacheFilename, std::ios::in | std::ios::binary);
+
+		uint64_t hash;
+		input.read(reinterpret_cast<char*>(&hash), sizeof(hash));
+		if (hash != Wolf::HASH_MESH_FORMATTER_CPP)
+		{
+			return false;
+		}
+		return true;
+	}
+	return false;
 }
 
 void MeshFormatter::computeData(const DataInput& input)
@@ -260,63 +411,171 @@ void MeshFormatter::computeData(const DataInput& input)
 		Wolf::Debug::sendCriticalError("No vertex provided");
 	}
 
+	m_indexCount = m_indices.size();
+
 	if (input.m_animationData)
 	{
 		m_animationData.reset(new AnimationData());
 		*m_animationData = *input.m_animationData;
 	}
 
-	std::ofstream outCacheFile(m_cacheFilename, std::ios::binary);
-	if (!outCacheFile.is_open())
+	if (!std::filesystem::is_directory(m_cacheFolder) || !std::filesystem::exists(m_cacheFolder))
+	{
+		std::filesystem::create_directory(m_cacheFolder);
+	}
+
+	std::string meshInfoFilepath = m_cacheFolder + "meshInfo.bin";
+	std::ofstream outMeshInfoFile(meshInfoFilepath, std::ios::binary);
+	if (!outMeshInfoFile.is_open())
 	{
 		Wolf::Debug::sendCriticalError("Can't open cache file for writing");
 	}
 
 	uint64_t hash = Wolf::HASH_MESH_FORMATTER_CPP;
-	outCacheFile.write(reinterpret_cast<char*>(&hash), sizeof(hash));
+	outMeshInfoFile.write(reinterpret_cast<char*>(&hash), sizeof(hash));
 
-	outCacheFile.write(reinterpret_cast<const char*>(&m_isMeshCentered), sizeof(m_isMeshCentered));
-	outCacheFile.write(reinterpret_cast<const char*>(&m_aabb), sizeof(m_aabb));
-	outCacheFile.write(reinterpret_cast<const char*>(&m_boundingSphere), sizeof(m_boundingSphere));
+	outMeshInfoFile.write(reinterpret_cast<const char*>(&m_isMeshCentered), sizeof(m_isMeshCentered));
+	outMeshInfoFile.write(reinterpret_cast<const char*>(&m_aabb), sizeof(m_aabb));
+	outMeshInfoFile.write(reinterpret_cast<const char*>(&m_boundingSphere), sizeof(m_boundingSphere));
 
-	CacheHelper::writeVector(outCacheFile, m_staticVertices);
-	CacheHelper::writeVector(outCacheFile, m_skeletonVertices);
-	CacheHelper::writeVector(outCacheFile, m_indices);
+	outMeshInfoFile.write(reinterpret_cast<const char*>(&m_indexCount), sizeof(uint32_t));
 
-	auto writeLODStorage = [&](const std::vector<LODInfo>& lods)
+	uint32_t defaultLODCount = m_defaultSimplifiedLODs.size();
+	outMeshInfoFile.write(reinterpret_cast<const char*>(&defaultLODCount), sizeof(uint32_t));
+
+	std::vector<uint32_t> indexCountPerDefaultLOD(defaultLODCount);
+	for (uint32_t i = 0; i < defaultLODCount; ++i)
 	{
-		size_t count = lods.size();
-		outCacheFile.write(reinterpret_cast<const char*>(&count), sizeof(count));
-		for (const LODInfo& lod : lods)
+		indexCountPerDefaultLOD[i] = m_defaultSimplifiedLODs[i].m_indexCount;
+	}
+	CacheHelper::writeVector(outMeshInfoFile, indexCountPerDefaultLOD);
+
+	uint32_t sloppyLODCount = m_sloppySimplifiedLODs.size();
+	outMeshInfoFile.write(reinterpret_cast<const char*>(&sloppyLODCount), sizeof(uint32_t));
+
+	std::vector<uint32_t> indexCountPerSloppyLOD(sloppyLODCount);
+	for (uint32_t i = 0; i < sloppyLODCount; ++i)
+	{
+		indexCountPerSloppyLOD[i] = m_sloppySimplifiedLODs[i].m_indexCount;
+	}
+	CacheHelper::writeVector(outMeshInfoFile, indexCountPerSloppyLOD);
+
+	outMeshInfoFile.close();
+
+	auto writeBuffers = [this](std::ofstream& outFile, const std::vector<Vertex3D>& staticVertices, const std::vector<SkeletonVertex>& skeletonVertices, const std::vector<uint32_t>& indices)
+	{
 		{
-			outCacheFile.write(reinterpret_cast<const char*>(&lod.m_error), sizeof(lod.m_error));
-			outCacheFile.write(reinterpret_cast<const char*>(&lod.m_indexCount), sizeof(lod.m_indexCount));
-			CacheHelper::writeVector(outCacheFile, lod.m_staticVertices);
-			CacheHelper::writeVector(outCacheFile, lod.m_skeletonVertices);
-			CacheHelper::writeVector(outCacheFile, lod.m_indices);
+			size_t vertexCount = staticVertices.size();
+			outFile.write(reinterpret_cast<const char*>(&vertexCount), sizeof(vertexCount));
+
+			size_t maxCompressedSize = meshopt_encodeVertexBufferBound(staticVertices.size(), sizeof(Vertex3D));
+			std::vector<unsigned char> compressedVertices(maxCompressedSize);
+
+			size_t compressedVerticesSize = meshopt_encodeVertexBuffer(compressedVertices.data(), compressedVertices.size(), staticVertices.data(), staticVertices.size(),
+				sizeof(Vertex3D));
+			compressedVertices.resize(compressedVerticesSize);
+			CacheHelper::writeVector(outFile, compressedVertices);
+		}
+
+		{
+			size_t vertexCount = skeletonVertices.size();
+			outFile.write(reinterpret_cast<const char*>(&vertexCount), sizeof(vertexCount));
+
+			size_t maxCompressedSize = meshopt_encodeVertexBufferBound(skeletonVertices.size(), sizeof(SkeletonVertex));
+			std::vector<unsigned char> compressedVertices(maxCompressedSize);
+
+			size_t compressedVerticesSize = meshopt_encodeVertexBuffer(compressedVertices.data(), compressedVertices.size(), skeletonVertices.data(), skeletonVertices.size(),
+				sizeof(SkeletonVertex));
+			compressedVertices.resize(compressedVerticesSize);
+			CacheHelper::writeVector(outFile, compressedVertices);
+		}
+
+		{
+			size_t indexCount = indices.size();
+			outFile.write(reinterpret_cast<const char*>(&indexCount), sizeof(indexCount));
+
+			size_t maxCompressedSize = meshopt_encodeIndexBufferBound(indices.size(), std::max(staticVertices.size(), skeletonVertices.size()));
+			std::vector<unsigned char> compressedIndices(maxCompressedSize);
+
+			size_t compressedIndicesSize = meshopt_encodeIndexBuffer(compressedIndices.data(), compressedIndices.size(), indices.data(), indices.size());
+			compressedIndices.resize(compressedIndicesSize);
+			CacheHelper::writeVector(outFile, compressedIndices);
 		}
 	};
 
-	writeLODStorage(m_defaultSimplifiedLODs);
-	writeLODStorage(m_sloppySimplifiedLODs);
+	std::string bestLODFilepath = m_cacheFolder + "lod0.bin";
+	std::ofstream bestLODCacheFile(bestLODFilepath, std::ios::binary);
+	if (!bestLODCacheFile.is_open())
+	{
+		Wolf::Debug::sendCriticalError("Can't open cache file for writing");
+	}
+
+	writeBuffers(bestLODCacheFile, m_staticVertices, m_skeletonVertices, m_indices);
+
+	bestLODCacheFile.close();
+
+	auto writeLODStorage = [&](const std::vector<LODInfo>& lods, const std::string& prefix)
+	{
+		for (uint32_t lodIndex = 0; lodIndex < lods.size(); ++lodIndex)
+		{
+			const LODInfo& lod = lods[lodIndex];
+
+			std::string lodFilepath = m_cacheFolder + prefix + "_lod" + std::to_string(lodIndex) + ".bin";
+			std::ofstream lodCacheFile(lodFilepath, std::ios::binary);
+			if (!lodCacheFile.is_open())
+			{
+				Wolf::Debug::sendCriticalError("Can't open cache file for writing");
+			}
+
+			lodCacheFile.write(reinterpret_cast<const char*>(&lod.m_error), sizeof(lod.m_error));
+			writeBuffers(lodCacheFile, lod.m_staticVertices, lod.m_skeletonVertices, lod.m_indices);
+
+			lodCacheFile.close();
+		}
+	};
+
+	writeLODStorage(m_defaultSimplifiedLODs, "default");
+	writeLODStorage(m_sloppySimplifiedLODs, "sloppy");
 
 	// Animation data
 	{
+		std::string animationCacheFilepath = m_cacheFolder + "animationData.bin";
+		std::ofstream animationCacheFile(animationCacheFilepath, std::ios::binary);
+		if (!animationCacheFile.is_open())
+		{
+			Wolf::Debug::sendCriticalError("Can't open cache file for writing");
+		}
+
 		bool hasAnimationData = static_cast<bool>(m_animationData);
-		outCacheFile.write(reinterpret_cast<const char*>(&hasAnimationData), sizeof(hasAnimationData));
+		animationCacheFile.write(reinterpret_cast<const char*>(&hasAnimationData), sizeof(hasAnimationData));
 
 		if (hasAnimationData)
 		{
-			outCacheFile.write(reinterpret_cast<const char*>(&m_animationData->m_boneCount), sizeof(m_animationData->m_boneCount));
+			animationCacheFile.write(reinterpret_cast<const char*>(&m_animationData->m_boneCount), sizeof(m_animationData->m_boneCount));
 			uint32_t rootBoneCount = static_cast<uint32_t>(m_animationData->m_rootBones.size());
-			outCacheFile.write(reinterpret_cast<const char*>(&rootBoneCount), sizeof(rootBoneCount));
+			animationCacheFile.write(reinterpret_cast<const char*>(&rootBoneCount), sizeof(rootBoneCount));
 
 			for (const AnimationData::Bone& root : m_animationData->m_rootBones)
 			{
-				writeBoneToCache(root, outCacheFile);
+				writeBoneToCache(root, animationCacheFile);
 			}
 		}
+
+		animationCacheFile.close();
 	}
+}
+
+std::string MeshFormatter::computeCacheFolder(const std::string& filename)
+{
+	std::string escapedFilename = filename;
+	for (size_t i = 0; i < escapedFilename.length(); ++i)
+	{
+		if (escapedFilename[i] == '/' || escapedFilename[i] == '\\')
+		{
+			escapedFilename[i] = '_';
+		}
+	}
+	return  g_editorConfiguration->getCacheFolderPath() + "/" + escapedFilename + "/";
 }
 
 void MeshFormatter::writeBoneToCache(const AnimationData::Bone& bone, std::ofstream& file)

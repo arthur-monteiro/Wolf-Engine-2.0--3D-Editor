@@ -9,8 +9,9 @@
 #include "glm/gtx/quaternion.hpp"
 
 SkyLight::SkyLight(const Wolf::ResourceNonOwner<AssetManager>& assetManager,
-	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-: m_assetManager(assetManager), m_renderingPipeline(renderingPipeline), m_bufferPoolInterface(bufferPoolInterface)
+	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
+	const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager)
+: m_assetManager(assetManager), m_renderingPipeline(renderingPipeline), m_bufferPoolInterface(bufferPoolInterface), m_pushDataToGPUManager(pushDataToGPUManager)
 {
 	m_color = glm::vec3(1.0f, 1.0f, 1.0f);
 }
@@ -277,7 +278,7 @@ void SkyLight::buildDebugMesh()
 		indices.push_back(i);
 	}
 
-	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
+	m_newDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface, m_pushDataToGPUManager));
 
 	m_debugMeshRebuildRequested = false;
 }

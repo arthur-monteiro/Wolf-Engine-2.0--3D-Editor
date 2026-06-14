@@ -17,7 +17,8 @@ public:
 	std::string getId() const override { return ID; }
 
 	PlayerComponent(std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
-		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
+		const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -40,6 +41,7 @@ private:
 	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
+	Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface> m_pushDataToGPUManager;
 
 	EditorParamFloat m_speed = EditorParamFloat("Speed", TAB, "Movement", 1.0f, 10.0f);
 
@@ -57,6 +59,7 @@ private:
 	void onGasCylinderChanged();
 	bool m_needCheckForNewLinkedEntities = false;
 	EditorParamString m_gasCylinderParam = EditorParamString("Gas cylinder", TAB, "Gas cylinder", [this]() { onGasCylinderChanged(); }, EditorParamString::ParamStringType::ENTITY);
+	bool m_bonesOptionsPopulated = false;
 	EditorParamEnum m_gasCylinderTopBone = EditorParamEnum({}, "Top bone", TAB, "Gas cylinder");
 	EditorParamVector3 m_gasCylinderTopBoneOffset = EditorParamVector3("Top bone offset", TAB, "Gas cylinder", -1.0f, 1.0f);
 	EditorParamEnum m_gasCylinderBottomBone = EditorParamEnum({}, "Bottom bone", TAB, "Gas cylinder");

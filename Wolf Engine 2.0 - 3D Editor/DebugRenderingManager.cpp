@@ -12,7 +12,8 @@
 #include "ConfigurationHelper.h"
 #include "EditorConfiguration.h"
 
-DebugRenderingManager::DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<AssetManager>& assetManager) : m_bufferPoolInterface(bufferPoolInterface)
+DebugRenderingManager::DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager,
+	const Wolf::ResourceNonOwner<AssetManager>& assetManager) : m_bufferPoolInterface(bufferPoolInterface), m_pushDataToGPUManager(pushDataToGPUManager)
 {
 	std::string probeAssetPath = Wolf::ConfigurationHelper::readInfoFromFile("config/debug.ini", "probeAsset");
 	if (!probeAssetPath.empty())
@@ -131,8 +132,8 @@ DebugRenderingManager::DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::
 			2, 3, 6, 7
 		};
 
-		m_cubeLineMesh.reset(new Wolf::Mesh(cubeVertices, cubeLineIndices, m_bufferPoolInterface));
-		m_cubeQuadMesh.reset(new Wolf::Mesh(cubeVertices, cubeQuadIndices, m_bufferPoolInterface));
+		m_cubeLineMesh.reset(new Wolf::Mesh(cubeVertices, cubeLineIndices, m_bufferPoolInterface, m_pushDataToGPUManager));
+		m_cubeQuadMesh.reset(new Wolf::Mesh(cubeVertices, cubeQuadIndices, m_bufferPoolInterface, m_pushDataToGPUManager));
 	}
 
 	// Spheres
@@ -157,7 +158,7 @@ DebugRenderingManager::DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::
 			0, 3, 2
 		};
 
-		m_rectangleMesh.reset(new Wolf::Mesh(rectangleVertices, rectangleIndices, m_bufferPoolInterface));
+		m_rectangleMesh.reset(new Wolf::Mesh(rectangleVertices, rectangleIndices, m_bufferPoolInterface, m_pushDataToGPUManager));
 
 		m_rectanglesDescriptorSetLayoutGenerator.reset(new Wolf::DescriptorSetLayoutGenerator);
 		m_rectanglesDescriptorSetLayoutGenerator->addUniformBuffer(Wolf::ShaderStageFlagBits::VERTEX, 0);

@@ -5,9 +5,7 @@
 #include <DescriptorSet.h>
 #include <DescriptorSetLayout.h>
 #include <DescriptorSetLayoutGenerator.h>
-#include <FrameBuffer.h>
 #include <Mesh.h>
-#include <RenderPass.h>
 #include <ResourceUniqueOwner.h>
 #include <Sampler.h>
 #include <ShaderParser.h>
@@ -17,12 +15,14 @@
 class CompositionPass : public Wolf::CommandRecordBase
 {
 public:
-    CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+    CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
     void record(const Wolf::RecordContext& context) override;
     void submit(const Wolf::SubmitContext& context) override;
+
+    void initializeResources(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager);
 
     void clear();
 
@@ -39,7 +39,6 @@ private:
 
     EditorParams* m_editorParams;
     Wolf::ResourceNonOwner<ForwardPass> m_forwardPass;
-    Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 
     Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;

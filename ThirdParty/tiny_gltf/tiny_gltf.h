@@ -261,7 +261,8 @@ class Value {
   Value() = default;
 
   explicit Value(bool b) : type_(BOOL_TYPE) { boolean_value_ = b; }
-  explicit Value(int i) : type_(INT_TYPE) {
+  explicit Value(int64_t i) : type_(INT_TYPE) {
+    int64_value_ = i;
     int_value_ = i;
     real_value_ = i;
   }
@@ -382,6 +383,7 @@ class Value {
   int type_ = NULL_TYPE;
 
   int int_value_ = 0;
+  int64_t int64_value_ = 0;
   double real_value_ = 0.0;
   std::string string_value_;
   std::vector<unsigned char> binary_value_;
@@ -406,6 +408,7 @@ class Value {
 TINYGLTF_VALUE_GET(bool, boolean_value_)
 TINYGLTF_VALUE_GET(double, real_value_)
 TINYGLTF_VALUE_GET(int, int_value_)
+TINYGLTF_VALUE_GET(int64_t, int64_value_)
 TINYGLTF_VALUE_GET(std::string, string_value_)
 TINYGLTF_VALUE_GET(std::vector<unsigned char>, binary_value_)
 TINYGLTF_VALUE_GET(Value::Array, array_value_)
@@ -3739,7 +3742,7 @@ static bool ParseJsonAsValue(Value *ret, const detail::json &o) {
       break;
     case detail::json::value_t::number_integer:
     case detail::json::value_t::number_unsigned:
-      val = Value(static_cast<int>(o.get<int64_t>()));
+      val = Value(o.get<int64_t>());
       break;
     case detail::json::value_t::number_float:
       val = Value(o.get<double>());

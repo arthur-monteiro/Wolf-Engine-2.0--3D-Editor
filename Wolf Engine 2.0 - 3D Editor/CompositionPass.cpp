@@ -10,8 +10,8 @@
 #include "GameContext.h"
 #include "Vertex2DTextured.h"
 
-CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-: m_editorParams(editorParams), m_forwardPass(forwardPass), m_bufferPoolInterface(bufferPoolInterface)
+CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass)
+  : m_editorParams(editorParams), m_forwardPass(forwardPass)
 {
 }
 
@@ -58,24 +58,6 @@ void CompositionPass::initializeResources(const Wolf::InitializationContext& con
 
     m_swapChainImages = context.swapChainImages;
     m_uiImage = context.userInterfaceImage;
-    updateDescriptorSets();
-
-    // Load fullscreen rect
-    const std::vector<Vertex2DTextured> vertices =
-    {
-        { glm::vec2(-1.0f, -1.0f), glm::vec2(0.0f, 0.0f) }, // top left
-        { glm::vec2(1.0f, -1.0f), glm::vec2(1.0f, 0.0f) }, // top right
-        { glm::vec2(-1.0f, 1.0f), glm::vec2(0.0f, 1.0f) }, // bot left
-        { glm::vec2(1.0f, 1.0f),glm::vec2(1.0f, 1.0f) } // bot right
-    };
-
-    const std::vector<uint32_t> indices =
-    {
-        0, 2, 1,
-        2, 3, 1
-    };
-
-    m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
 
     Wolf::ShaderParser::ShaderCodeToAdd shaderCodeToAdd;
     switch (context.swapChainColorSpace)
@@ -96,6 +78,7 @@ void CompositionPass::initializeResources(const Wolf::InitializationContext& con
     switch (context.swapChainImages[0]->getFormat())
     {
         case Wolf::Format::R8G8B8A8_UNORM:
+        case Wolf::Format::B8G8R8A8_UNORM:
             shaderCodeToAdd.codeString += "#define OUTPUT_FORMAT rgba8\n";
             break;
         case Wolf::Format::R16G16B16A16_SFLOAT:
@@ -106,6 +89,8 @@ void CompositionPass::initializeResources(const Wolf::InitializationContext& con
     }
     m_computeShaderParser.reset(new Wolf::ShaderParser("Shaders/composition/shader.comp", {}, -1, -1, -1,
                                                        Wolf::ShaderParser::MaterialFetchProcedure(), shaderCodeToAdd));
+
+    updateDescriptorSets();
     createPipeline();
 }
 
@@ -179,6 +164,26 @@ void CompositionPass::submit(const Wolf::SubmitContext& context)
         context.graphicAPIManager->waitIdle();
         createPipeline();
     }
+}
+
+void CompositionPass::initializeResources(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager)
+{
+    // Load fullscreen rect
+    const std::vector<Vertex2DTextured> vertices =
+    {
+        { glm::vec2(-1.0f, -1.0f), glm::vec2(0.0f, 0.0f) }, // top left
+        { glm::vec2(1.0f, -1.0f), glm::vec2(1.0f, 0.0f) }, // top right
+        { glm::vec2(-1.0f, 1.0f), glm::vec2(0.0f, 1.0f) }, // bot left
+        { glm::vec2(1.0f, 1.0f),glm::vec2(1.0f, 1.0f) } // bot right
+    };
+
+    const std::vector<uint32_t> indices =
+    {
+        0, 2, 1,
+        2, 3, 1
+    };
+
+    m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices, bufferPoolInterface, pushDataToGPUManager));
 }
 
 void CompositionPass::clear()

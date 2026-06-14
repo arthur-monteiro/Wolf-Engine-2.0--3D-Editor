@@ -54,6 +54,7 @@ public:
 	struct AddLODInfo
 	{
 		Wolf::NullableResourceNonOwner<Wolf::Mesh> m_mesh;
+		uint32_t m_indexCount;
 		Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> m_blas;
 		uint32_t m_materialIdx;
 

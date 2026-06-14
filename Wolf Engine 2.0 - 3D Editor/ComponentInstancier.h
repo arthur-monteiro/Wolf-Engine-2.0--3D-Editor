@@ -31,7 +31,8 @@ public:
 	ComponentInstancier(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 		const std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)>& getEntityFromLoadingPathCallback,const Wolf::ResourceNonOwner<EditorConfiguration>& editorConfiguration,
 		const Wolf::ResourceNonOwner<AssetManager>& assetManager, const Wolf::ResourceNonOwner<Wolf::Physics::PhysicsManager>& physicsManager, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
-		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback);
+		const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager,
+		const std::function<Entity*(ComponentInterface*, const std::string&)>& createEntityCallback);
 
 	ComponentInterface* instanciateComponent(const std::string& componentId) const;
 
@@ -47,6 +48,7 @@ private:
 	Wolf::ResourceNonOwner<EntityContainer> m_entityContainer;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 	std::function<Entity*(ComponentInterface*, const std::string&)> m_createEntityCallback;
+	Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface> m_pushDataToGPUManager;
 
 	struct ComponentInfo
 	{
@@ -73,7 +75,7 @@ private:
 			[this]()
 			{
 				return static_cast<ComponentInterface*>(new ContaminationEmitter(m_renderingPipeline, m_materialsGPUManager, m_editorConfiguration, m_getEntityFromLoadingPathCallback,
-					m_physicsManager, m_bufferPoolInterface));
+					m_physicsManager, m_bufferPoolInterface, m_pushDataToGPUManager));
 			}
 		},
 		ComponentInfo
@@ -91,7 +93,8 @@ private:
 			PlayerComponent::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback, m_entityContainer, m_renderingPipeline, m_bufferPoolInterface));
+				return static_cast<ComponentInterface*>(new PlayerComponent(m_getEntityFromLoadingPathCallback, m_entityContainer, m_renderingPipeline, m_bufferPoolInterface,
+					m_pushDataToGPUManager));
 			}
 		},
 		ComponentInfo
@@ -118,7 +121,7 @@ private:
 			SkyLight::ID,
 			[this]()
 			{
-				return static_cast<ComponentInterface*>(new SkyLight(m_assetManager, m_renderingPipeline, m_bufferPoolInterface));
+				return static_cast<ComponentInterface*>(new SkyLight(m_assetManager, m_renderingPipeline, m_bufferPoolInterface, m_pushDataToGPUManager));
 			}
 		},
 		ComponentInfo

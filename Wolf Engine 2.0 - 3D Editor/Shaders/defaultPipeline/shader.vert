@@ -13,6 +13,8 @@ layout(location = 6) out vec3 outWorldSpaceNormal;
 layout(location = 7) out vec3 outWorldSpacePos;
 layout(location = 8) out uint outEntityId;
 layout(location = 9) out uint outLOD;
+layout(location = 10) out uint outDrawId;
+layout(location = 11) out uint outTriangleId;
  
 out gl_PerVertex
 {
@@ -47,4 +49,6 @@ void main()
 	outWorldSpacePos =  (transform * vec4(inPosition, 1.0)).xyz;
 	outEntityId = getCustomData();
 	outLOD = getLOD();
+	outDrawId = gl_DrawID;
+	outTriangleId = uint(gl_VertexIndex / 3);
 } 

@@ -172,22 +172,22 @@ bool AnimatedMesh::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& out
 	if (m_hideModel == true)
 		return true;
 
-	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
-	meshToRenderInfo.m_lods.emplace_back(m_assetManager->getMesh(m_meshAssetId).duplicateAs<Wolf::MeshInterface>(), 10'000.0f);
+	DrawManager::DrawMeshInfo drawMeshInfo = { m_meshAssetId, Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(nullptr),
+		m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
 	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
-	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
-	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].emplace_back(descriptorSetBindInfo);
+	drawMeshInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].emplace_back(descriptorSetBindInfo);
+	drawMeshInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].emplace_back(descriptorSetBindInfo);
 
 	descriptorSetBindInfo.setBindingSlot(6);
-	meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(descriptorSetBindInfo);
+	drawMeshInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].emplace_back(descriptorSetBindInfo);
 
-	InstanceData instanceData{};
-	instanceData.transform = m_transform;
-	instanceData.materialIdx = m_materialGPUIdx;
-	instanceData.entityIdx = m_entity->getIdx();
+	InstanceData& instanceData = drawMeshInfo.m_instanceData;
+	instanceData.m_transform = m_transform;
+	instanceData.m_materialIdx = m_materialGPUIdx;
+	instanceData.m_entityIdx = m_entity->getIdx();
 
-	outList.push_back({meshToRenderInfo, instanceData});
+	outList.push_back(std::move(drawMeshInfo));
 
 	return true;
 }
@@ -233,7 +233,7 @@ void AnimatedMesh::addParamsToJSON(std::string& outJSON, uint32_t tabCount)
 Wolf::AABB AnimatedMesh::getAABB() const
 {
 	if (m_assetManager->isMeshLoaded(m_meshAssetId))
-		return m_assetManager->getMesh(m_meshAssetId)->getAABB() * m_transform;
+		return m_assetManager->getMeshAsset(m_meshAssetId)->getBoundingBox() * m_transform;
 
 	return Wolf::AABB();
 }
@@ -241,7 +241,7 @@ Wolf::AABB AnimatedMesh::getAABB() const
 Wolf::BoundingSphere AnimatedMesh::getBoundingSphere() const
 {
 	if (m_assetManager->isMeshLoaded(m_meshAssetId))
-		return m_assetManager->getMesh(m_meshAssetId)->getBoundingSphere() * m_transform;
+		return m_assetManager->getMeshAsset(m_meshAssetId)->getBoundingSphere() * m_transform;
 
 	return Wolf::BoundingSphere();
 }

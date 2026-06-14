@@ -42,7 +42,7 @@ void AssetExternalScene::updateBeforeFrame(const Wolf::ResourceNonOwner<Wolf::Ma
 {
 	if (m_loadingRequested)
 	{
-		loadScene(materialsGPUManager);
+		loadScene();
 		m_loadingRequested = false;
 	}
 	if (m_thumbnailGenerationRequested)
@@ -62,13 +62,35 @@ const Wolf::AABB& AssetExternalScene::getAABB()
 	return m_aabb;
 }
 
-void AssetExternalScene::loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager)
+void AssetExternalScene::loadScene()
 {
 	ExternalSceneLoader::SceneLoadingInfo sceneLoadingInfo;
 	sceneLoadingInfo.filename = m_editor->getLoadingPath();
 
 	ExternalSceneLoader::OutputData outputData{};
-	ExternalSceneLoader::loadScene(outputData, sceneLoadingInfo, m_assetManager);
+	ExternalSceneLoader::loadScene(outputData, sceneLoadingInfo, m_assetManager, false);
+
+	if (!outputData.m_hasReadMeshData)
+	{
+		bool needsMeshData = false;
+		for (uint32_t meshIdx = 0; meshIdx < outputData.m_meshesData.size(); meshIdx++)
+		{
+			ExternalSceneLoader::MeshData& meshData = outputData.m_meshesData[meshIdx];
+			bool validCacheExists = MeshFormatter::doesValidCacheExist(sceneLoadingInfo.filename + "_mesh_" + meshData.m_name + "_" + std::to_string(meshIdx));
+			if (!validCacheExists)
+			{
+				needsMeshData = true;
+				break;
+			}
+		}
+
+		if (needsMeshData)
+		{
+			Wolf::Debug::sendInfo("Scene " + sceneLoadingInfo.filename + " will be loaded with mesh data because at least one mesh don't have valid cache");
+			ExternalSceneLoader::loadScene(outputData, sceneLoadingInfo, m_assetManager, true);
+		}
+	}
+
 
 	/* Add materials */
 	m_materialAssetsId.clear();

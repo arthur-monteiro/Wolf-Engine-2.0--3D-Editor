@@ -13,7 +13,8 @@ public:
 	std::string getId() const override { return ID; }
 
 	SkyLight(const Wolf::ResourceNonOwner<AssetManager>& assetManager,
-		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface);
+		const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
+		const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager);
 
 	void loadParams(Wolf::JSONReader& jsonReader) override;
 	void activateParams() override;
@@ -40,6 +41,7 @@ private:
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	Wolf::ResourceNonOwner<RenderingPipelineInterface> m_renderingPipeline;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
+	Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface> m_pushDataToGPUManager;
 
 	std::vector<std::string> LIGHT_TYPE_STRING_LIST = { "Realtime", "Baked" };
 	static constexpr uint32_t LIGHT_TYPE_REALTIME_COMPUTE = 0;

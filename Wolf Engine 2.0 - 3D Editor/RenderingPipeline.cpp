@@ -2,10 +2,9 @@
 
 #include <ProfilerCommon.h>
 
-RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager,
-	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, EditorParams* editorParams, const Wolf::NullableResourceNonOwner<RayTracedWorldManager>& rayTracedWorldManager)
 {
-	m_skyBoxManager.reset(new SkyBoxManager(bufferPoolInterface));
+	m_skyBoxManager.reset(new SkyBoxManager());
 	m_noiseManager.reset(new GPUNoiseManager());
 
 	if (rayTracedWorldManager)
@@ -93,10 +92,10 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 	}
 	m_forwardPass.reset(new ForwardPass(editorParams, m_contaminationUpdatePass.createConstNonOwnerResource(), m_particleUpdatePass.createConstNonOwnerResource(), 
 		m_preDepthPass.createNonOwnerResource(), rayTracedWorldDebugPass, pathTracingPass,
-		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource(), globalIrradiancePassInterface, bufferPoolInterface));
+		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource(), globalIrradiancePassInterface));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource(), bufferPoolInterface));
+	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_compositionPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
@@ -104,6 +103,13 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 
 	m_gpuBufferToGpuBufferCopyPass.reset(new GPUBufferToGPUBufferCopyPass(m_compositionPass.createConstNonOwnerResource(), m_drawIdsPass.createConstNonOwnerResource()));
 	wolfInstance->initializePass(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+}
+
+void RenderingPipeline::initializeResources(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager) const
+{
+	m_skyBoxManager->initializeResources(bufferPoolInterface, pushDataToGPUManager);
+	m_forwardPass->initializeResources(bufferPoolInterface, pushDataToGPUManager);
+	m_compositionPass->initializeResources(bufferPoolInterface, pushDataToGPUManager);
 }
 
 void RenderingPipeline::update(Wolf::WolfEngine* wolfInstance)

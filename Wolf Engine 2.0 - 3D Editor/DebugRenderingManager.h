@@ -50,7 +50,8 @@ public:
 		}
 	};
 
-	DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
+	DebugRenderingManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager,
+		const Wolf::ResourceNonOwner<AssetManager>& assetManager);
 
 	void clearAll();
 	void clearBeforeFrame();
@@ -72,6 +73,7 @@ public:
 
 private:
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
+	Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface> m_pushDataToGPUManager;
 
 	void clearForQueueIdx(uint32_t queueIndex);
 

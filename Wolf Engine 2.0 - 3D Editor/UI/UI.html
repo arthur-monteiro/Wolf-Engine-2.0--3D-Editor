@@ -348,6 +348,8 @@
 						<option value="metalness">Metalness</option>
 						<option value="matAO">Material AO</option>
 						<option value="anisoStrength">Anisotropy strength</option>
+						<option value="drawId">Draw ID</option>
+						<option value="trianglesId">Triangle ID</option>
 						<option value="lighting">Lighting</option>
 						<option value="entityIdx">Entity index</option>
 						<option value="rayTracedWorldDebugAlbedo">Ray traced world debug: albedo</option>
@@ -402,6 +404,20 @@
 				</div>
 			</div>
 			<div class="inputParam">
+				<span>Instance mesh renderer: </span>
+				<div style="gap: 4px;">
+					<div class="performance-stat">
+						Unique triangle registered count: <span id="uniqueTriangleRegisteredCount" class="stat-value">0</span>
+					</div>
+					<div class="performance-stat">
+						Total triangle registered count: <span id="totalTriangleRegisteredCount" class="stat-value">0</span>
+					</div>
+					<div class="performance-stat">
+						Triangle draw count: <span id="triangleDrawCount" class="stat-value">0</span>
+					</div>
+				</div>
+			</div>
+			<div class="inputParam">
 			<span>Tracing :</span>
 			<div> 
 				<button class="actionButton" onclick="openVRAMTrackingPage()">
@@ -447,6 +463,9 @@
 		document.getElementById('frameRate').innerHTML = getFrameRate();
 		document.getElementById('vramAllocated').innerHTML = getVRAMAllocated();
 		document.getElementById('vramRequested').innerHTML = getVRAMRequested();
+		document.getElementById('uniqueTriangleRegisteredCount').innerHTML = Number(getUniqueTriangleRegisteredCount()).toLocaleString('en-GB');
+		document.getElementById('totalTriangleRegisteredCount').innerHTML = Number(getTotalTriangleRegisteredCount()).toLocaleString('en-GB');
+		//document.getElementById('triangleDrawCount').innerHTML = getTriangleDrawCount();
 
 		setTimeout(()=> {
 			updateStats();
@@ -756,7 +775,7 @@
 
 		const item = document.createElement('div');
 		item.className = 'entityListItem';
-		item.id = safeId;
+		item.id = cleanPath;
 		
 		item.onmousedown = function(event) {
 			onMouseDownEntity(event, name); 

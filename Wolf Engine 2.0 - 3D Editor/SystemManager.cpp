@@ -56,6 +56,8 @@ SystemManager::SystemManager()
 	m_editorPushDataToGPU->setUpdateGPUBuffersPass(m_renderer->getUpdateGPUBuffersPass());
 	m_editorPushDataToGPU->setGPUBufferToGPUBufferCopyPass(m_renderer->getGPUBufferToGPUBufferCopyPass());
 
+	m_renderer->initializeResources(m_bufferPoolInterface, m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>());
+
 	m_assetManager.reset(new AssetManager([this](const std::string& scriptStr)
 		{
 			m_wolfInstance->evaluateUserInterfaceScript(scriptStr);
@@ -93,6 +95,7 @@ SystemManager::SystemManager()
 		m_wolfInstance->getPhysicsManager(),
 		m_entityContainer.createNonOwnerResource(),
 		m_bufferPoolInterface,
+		m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>(),
 		[this](ComponentInterface* componentInterface, const std::string& filepath) { return addEntity(filepath, componentInterface->getEntity()->getLoadingPath()); }));
 	
 	if (!m_configuration->getDefaultScene().empty())
@@ -100,8 +103,10 @@ SystemManager::SystemManager()
 		m_loadSceneRequest = m_configuration->getDefaultScene();
 	}
 
-	m_debugRenderingManager.reset(new DebugRenderingManager(m_bufferPoolInterface, m_assetManager.createNonOwnerResource()));
-	m_drawManager.reset(new DrawManager(m_wolfInstance->getInstanceMeshRenderer(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_bufferPoolInterface));
+	m_debugRenderingManager.reset(new DebugRenderingManager(m_bufferPoolInterface, m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>(),
+		m_assetManager.createNonOwnerResource()));
+	m_drawManager.reset(new DrawManager(m_wolfInstance->getInstanceMeshRenderer(), m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), m_bufferPoolInterface,
+		m_assetManager.createNonOwnerResource()));
 	m_editorPhysicsManager.reset(new EditorPhysicsManager(m_wolfInstance->getPhysicsManager()));
 
 	m_renderer->setAssetManager(m_assetManager.createNonOwnerResource());
@@ -188,8 +193,10 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_minimumPoolSize = 512;
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
+	constexpr uint32_t INDEX_BUFFER_SIZE = 536'870'912;
+
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_itemSize = sizeof(uint32_t); // Skybox + full screen quads + debug + mesh indices if no ray tracing
-	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_minimumPoolSize = g_editorConfiguration->getEnableRayTracing() ? 1024 : 268'435'456;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_minimumPoolSize = g_editorConfiguration->getEnableRayTracing() ? 1024 : INDEX_BUFFER_SIZE;
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[2].m_itemSize = sizeof(Vertex2DTextured); // Full screen quad
@@ -216,7 +223,7 @@ void SystemManager::createWolfInstance()
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
 		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_itemSize = sizeof(uint32_t); // Mesh indices
-		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_minimumPoolSize = 268'435'456;
+		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_minimumPoolSize = INDEX_BUFFER_SIZE;
 		wolfInstanceCreateInfo.m_meshBufferPoolSizes[6].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalMeshFlags;
 	}
 
@@ -241,7 +248,7 @@ void SystemManager::createRenderer()
 	{
 		rayTracedWorldManager = m_rayTracedWorldManager.createNonOwnerResource();
 	}
-	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), rayTracedWorldManager, m_bufferPoolInterface));
+	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), rayTracedWorldManager));
 
 	m_renderer->getSkyBoxManager()->setOnCubeMapChangedCallback([this](Wolf::ResourceUniqueOwner<Wolf::Image>& image) { m_wolfInstance->getLightManager()->setSkyCubeMap(image.createNonOwnerResource()); });
 	m_wolfInstance->getLightManager()->setSkyCubeMap(m_renderer->getSkyBoxManager()->getCubeMapImage().createNonOwnerResource());
@@ -308,6 +315,8 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["getFrameRate"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getFrameRateJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getVRAMAllocated"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMAllocatedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getVRAMRequested"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMRequestedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getUniqueTriangleRegisteredCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getUniqueTriangleRegisteredCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getTotalTriangleRegisteredCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalTriangleRegisteredCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["openVRAMTrackingPage"] = std::bind(&SystemManager::openVRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openSystemRAMTrackingPage"] = std::bind(&SystemManager::openSystemRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["addEntity"] = std::bind(&SystemManager::addEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -401,6 +410,18 @@ ultralight::JSValue SystemManager::getVRAMRequestedJSCallback(const ultralight::
 {
 	const std::string vramUsedStr = std::to_string(Wolf::GPUMemoryDebug::getTotalMemoryRequested() / (static_cast<uint64_t>(1024u) * 1024u)) + " MB";
 	return { vramUsedStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getUniqueTriangleRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string triangleCountStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getUniqueTriangleRegisteredCount());
+	return { triangleCountStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getTotalTriangleRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string triangleCountStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getTotalTriangleRegisteredCount());
+	return { triangleCountStr.c_str() };
 }
 
 void SystemManager::openVRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -710,6 +731,10 @@ void SystemManager::createAssetJSCallback(const ultralight::JSObject& thisObject
 	{
 		m_assetManager->addParticle(assetPath);
 	}
+	else if (assetType == "contaminationMaterial")
+	{
+		Wolf::Debug::sendCriticalError("TODO");
+	}
 	else
 	{
 		Wolf::Debug::sendError("Unhandled asset type");
@@ -740,6 +765,10 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_inModificationGameContext.displayType = GameContext::DisplayType::MAT_AO;
 	else if (displayType == "anisoStrength")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::ANISO_STRENGTH;
+	else if (displayType == "drawId")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::DRAW_ID;
+	else if (displayType == "trianglesId")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::TRIANGLES_ID;
 	else if (displayType == "lighting")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::LIGHTING;
 	else if (displayType == "entityIdx")
@@ -1092,6 +1121,7 @@ void SystemManager::updateBeforeFrame()
 	m_renderer->update(m_wolfInstance.get());
 
 	m_drawManager->activateCameras(m_wolfInstance->getCameraList());
+	m_wolfInstance->addStreamingJob([this]() { m_drawManager->updateStreaming();});
 
 	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
 	Wolf::ResourceNonOwner<EditorPhysicsManager> editorPhysicsManager= m_editorPhysicsManager.createNonOwnerResource();

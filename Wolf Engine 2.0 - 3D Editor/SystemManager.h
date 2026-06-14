@@ -50,6 +50,8 @@ private:
 	ultralight::JSValue getFrameRateJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getVRAMAllocatedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getVRAMRequestedJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue getUniqueTriangleRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue getTotalTriangleRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openVRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openSystemRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue pickFileJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);

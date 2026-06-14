@@ -10,9 +10,10 @@
 #include "UpdateGPUBuffersPass.h"
 
 PlayerComponent::PlayerComponent(std::function<Wolf::NullableResourceNonOwner<Entity>(const std::string&)> getEntityFromLoadingPathCallback, const Wolf::ResourceNonOwner<EntityContainer>& entityContainer,
-	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface,
+	const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager)
 	: m_getEntityFromLoadingPathCallback(std::move(getEntityFromLoadingPathCallback)), m_entityContainer(entityContainer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()),
-      m_bufferPoolInterface(bufferPoolInterface)
+      m_bufferPoolInterface(bufferPoolInterface), m_pushDataToGPUManager(pushDataToGPUManager)
 {
 }
 
@@ -209,6 +210,11 @@ void PlayerComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, const Wo
 
 		m_gasCylinderComponent->setLinkPositions(topBonePosition + topBoneOffset, botBonePosition + botBoneOffset);
 	}
+
+	if (!m_bonesOptionsPopulated)
+	{
+		updateAnimatedModel();
+	}
 }
 
 void PlayerComponent::addDebugInfo(DebugRenderingManager& debugRenderingManager)
@@ -258,6 +264,11 @@ void PlayerComponent::updateAnimatedModel()
 		}
 		m_gasCylinderTopBone.setOptions(boneNames);
 		m_gasCylinderBottomBone.setOptions(boneNames);
+
+		if (!boneNamesAndIndices.empty())
+		{
+			m_bonesOptionsPopulated = true;
+		}
 	}
 }
 
@@ -301,14 +312,21 @@ void PlayerComponent::onGasCylinderChanged()
 		}
 		m_gasCylinderComponent = Wolf::NullableResourceNonOwner<GasCylinderComponent>();
 	}
-	else if (Wolf::NullableResourceNonOwner<GasCylinderComponent> gasCylinder = m_getEntityFromLoadingPathCallback(m_gasCylinderParam)->getComponent<GasCylinderComponent>())
-	{
-		m_gasCylinderComponent = gasCylinder;
-	}
 	else
 	{
-		Wolf::Debug::sendError("Entity linked to player component doesn't have a gas cylinder component");
-		m_gasCylinderComponent = Wolf::NullableResourceNonOwner<GasCylinderComponent>();
+		Wolf::NullableResourceNonOwner<Entity> gasCylinderEntity = m_getEntityFromLoadingPathCallback(m_gasCylinderParam);
+		if (gasCylinderEntity)
+		{
+			if (Wolf::NullableResourceNonOwner<GasCylinderComponent> gasCylinder = gasCylinderEntity->getComponent<GasCylinderComponent>())
+			{
+				m_gasCylinderComponent = gasCylinder;
+			}
+		}
+		else
+		{
+			Wolf::Debug::sendError("Entity linked to player component doesn't have a gas cylinder component");
+			m_gasCylinderComponent = Wolf::NullableResourceNonOwner<GasCylinderComponent>();
+		}
 	}
 }
 
@@ -393,7 +411,7 @@ void PlayerComponent::buildShootDebugMesh()
 
 	if (!m_shootDebugMesh)
 	{
-		m_shootDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
+		m_shootDebugMesh.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface, m_pushDataToGPUManager));
 	}
 	else
 	{

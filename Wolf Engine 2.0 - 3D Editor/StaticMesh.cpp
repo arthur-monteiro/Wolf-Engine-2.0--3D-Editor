@@ -112,27 +112,12 @@ bool StaticMesh::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outLi
 	if (!m_assetManager->isMeshLoaded(m_meshAssetId))
 		return false;
 
-	float radius = m_assetManager->getMesh(m_meshAssetId)->getBoundingSphere().getRadius();
-	constexpr float quality = 1.0f;
-
-	std::vector<Wolf::ResourceNonOwner<Wolf::Mesh>> defaultLODs = m_assetManager->getMeshDefaultSimplifiedMeshes(m_meshAssetId);
-
-	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
-	meshToRenderInfo.m_lods.emplace_back(m_assetManager->getMesh(m_meshAssetId).duplicateAs<Wolf::MeshInterface>(),
-		defaultLODs.empty() ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, m_assetManager->getMesh(m_meshAssetId)->getIndexCount(), quality));
-
-	for (uint32_t lod = 0; lod < defaultLODs.size(); ++lod)
-	{
-		float lodDistance = lod == defaultLODs.size() - 1 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, defaultLODs[lod]->getIndexCount(), quality);
-		meshToRenderInfo.m_lods.emplace_back(defaultLODs[lod].duplicateAs<Wolf::MeshInterface>(), lodDistance);
-	}
-
 	InstanceData instanceData{};
-	instanceData.transform = m_transform;
-	AssetId materialAssetId = m_assetManager->getDefaultMeshMaterialAssetId(m_meshAssetId);
-	instanceData.materialIdx = materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(materialAssetId)->getMaterialGPUIdx();
-	instanceData.entityIdx = m_entity->getIdx();
-	outList.push_back({ meshToRenderInfo, instanceData});
+	instanceData.m_transform = m_transform;
+	AssetId materialAssetId = m_materialAssetId != NO_ASSET ? m_materialAssetId : m_assetManager->getDefaultMeshMaterialAssetId(m_meshAssetId);
+	instanceData.m_materialIdx = materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(materialAssetId)->getMaterialGPUIdx();
+	instanceData.m_entityIdx = m_entity->getIdx();
+	outList.push_back({ m_meshAssetId, Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), m_defaultPipelineSet->getResource().createConstNonOwnerResource(), {}, instanceData});
 
 	return true;
 }
@@ -147,24 +132,16 @@ bool StaticMesh::getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager
 	AssetId materialAssetId = m_assetManager->getDefaultMeshMaterialAssetId(m_meshAssetId);
 	uint32_t materialGPUIdx = materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(materialAssetId)->getMaterialGPUIdx();
 
-	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_assetManager->getBLAS(m_meshAssetId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform,
-		materialGPUIdx, m_assetManager->getMesh(m_meshAssetId) };
-
-	if (m_rayTracedWorldLOD > 0)
+	Wolf::ResourceNonOwner<AssetMesh> meshAsset = m_assetManager->getMeshAsset(m_meshAssetId);
+	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh;
+	if (mesh = meshAsset->getLOD(m_rayTracedWorldLOD, m_rayTracedWorldLODType).m_mesh; !mesh)
 	{
-		if (m_rayTracedWorldLODType == 0) // Default
-		{
-			instanceInfo.m_mesh = m_assetManager->getMeshDefaultSimplifiedMeshes(m_meshAssetId)[m_rayTracedWorldLOD - 1];
-		}
-		else if (m_rayTracedWorldLODType == 1) // Sloppy
-		{
-			instanceInfo.m_mesh = m_assetManager->getMeshSloppySimplifiedMeshes(m_meshAssetId)[m_rayTracedWorldLOD - 1];
-		}
-		else
-		{
-			Wolf::Debug::sendCriticalError("Unhandled LOD type");
-		}
+		meshAsset->loadLOD(m_rayTracedWorldLOD, m_rayTracedWorldLODType);
+		return false;
 	}
+
+	RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo instanceInfo { m_assetManager->getBLAS(m_meshAssetId, m_rayTracedWorldLOD, m_rayTracedWorldLODType), m_transform,
+		materialGPUIdx, mesh};
 
 	instanceInfos.push_back(instanceInfo);
 
@@ -220,7 +197,7 @@ void StaticMesh::setInfoFromParent(AssetId modelAssetId)
 Wolf::AABB StaticMesh::getAABB() const
 {
 	if (m_assetManager->isMeshLoaded(m_meshAssetId))
-		return m_assetManager->getMesh(m_meshAssetId)->getAABB() * m_transform;
+		return m_assetManager->getMeshAsset(m_meshAssetId)->getBoundingBox() * m_transform;
 
 	return Wolf::AABB();
 }
@@ -228,7 +205,7 @@ Wolf::AABB StaticMesh::getAABB() const
 Wolf::BoundingSphere StaticMesh::getBoundingSphere() const
 {
 	if (m_assetManager->isMeshLoaded(m_meshAssetId))
-		return m_assetManager->getMesh(m_meshAssetId)->getBoundingSphere() * m_transform;
+		return m_assetManager->getMeshAsset(m_meshAssetId)->getBoundingSphere() * m_transform;
 
 	return Wolf::BoundingSphere();
 }
@@ -254,26 +231,43 @@ void StaticMesh::onMeshAssetChanged()
 	notifySubscribers();
 }
 
+void StaticMesh::onMaterialAssetChanged()
+{
+	if (static_cast<std::string>(m_materialAssetParam) == "")
+		return;
+
+	AssetId materialAssetId = m_assetManager->getAssetIdForPath(m_materialAssetParam);
+	if (!m_assetManager->isMaterial(materialAssetId))
+	{
+		Wolf::Debug::sendWarning("Asset is not a material");
+		m_meshAssetParam = "";
+	}
+
+	m_materialAssetId = materialAssetId;
+	notifySubscribers();
+}
+
 void StaticMesh::onRayTracedWorldLODTypeChanged()
 {
-	if (m_assetManager->isMeshLoaded(m_meshAssetId))
-	{
-		uint32_t maxLOD;
-		if (m_rayTracedWorldLODType == 0) // Default
-		{
-			maxLOD = m_assetManager->getMeshDefaultSimplifiedMeshes(m_meshAssetId).size();
-		}
-		else if (m_rayTracedWorldLODType == 1) // Sloppy
-		{
-			maxLOD = m_assetManager->getMeshSloppySimplifiedMeshes(m_meshAssetId).size();
-		}
-		else
-		{
-			Wolf::Debug::sendCriticalError("Unhandled draw LOD type");
-			maxLOD = 0;
-		}
-
-		m_rayTracedWorldLOD.setMax(maxLOD);
-	}
-	notifySubscribers();
+	// TODO: fix this
+	// if (m_assetManager->isMeshLoaded(m_meshAssetId))
+	// {
+	// 	uint32_t maxLOD;
+	// 	if (m_rayTracedWorldLODType == 0) // Default
+	// 	{
+	// 		maxLOD = m_assetManager->getMeshDefaultSimplifiedMeshes(m_meshAssetId).size();
+	// 	}
+	// 	else if (m_rayTracedWorldLODType == 1) // Sloppy
+	// 	{
+	// 		maxLOD = m_assetManager->getMeshSloppySimplifiedMeshes(m_meshAssetId).size();
+	// 	}
+	// 	else
+	// 	{
+	// 		Wolf::Debug::sendCriticalError("Unhandled draw LOD type");
+	// 		maxLOD = 0;
+	// 	}
+	//
+	// 	m_rayTracedWorldLOD.setMax(maxLOD);
+	// }
+	// notifySubscribers();
 }

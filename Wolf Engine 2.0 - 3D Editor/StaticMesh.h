@@ -39,11 +39,15 @@ private:
 	inline static const std::string TAB = "Mesh";
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 	AssetId m_meshAssetId = NO_ASSET;
+	AssetId m_materialAssetId = NO_ASSET;
 
 	bool m_isWaitingForMeshLoading = false;
 
 	void onMeshAssetChanged();
 	EditorParamString m_meshAssetParam = EditorParamString("Mesh", TAB, "Loading", [this] { onMeshAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
+
+	void onMaterialAssetChanged();
+	EditorParamString m_materialAssetParam = EditorParamString("Material", TAB, "Loading", [this] { onMaterialAssetChanged(); }, EditorParamString::ParamStringType::ASSET);
 
 	EditorParamEnum m_drawLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for draw", TAB, "Quality", [this]() { notifySubscribers(); });
 
@@ -51,9 +55,10 @@ private:
 	EditorParamEnum m_rayTracedWorldLODType = EditorParamEnum({ "Default", "Sloppy" }, "LOD type for ray traced world", TAB, "Quality", [this]() { onRayTracedWorldLODTypeChanged(); });
 	EditorParamUInt m_rayTracedWorldLOD = EditorParamUInt("LOD for ray traced world", TAB, "Quality", 0, 0, [this]() { notifySubscribers(); });
 
-	std::array<EditorParamInterface*, 4> m_alwaysVisibleEditorParams =
+	std::array<EditorParamInterface*, 5> m_alwaysVisibleEditorParams =
 	{
 		&m_meshAssetParam,
+		&m_materialAssetParam,
 		&m_drawLODType,
 		&m_rayTracedWorldLODType,
 		&m_rayTracedWorldLOD

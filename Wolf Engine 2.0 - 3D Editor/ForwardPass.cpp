@@ -61,26 +61,6 @@ void ForwardPass::initializeResources(const Wolf::InitializationContext& context
 		m_particlesVertexShaderParser.reset(new Wolf::ShaderParser("Shaders/particles/render.vert", {}, 1));
 	}
 
-	// Full screen rect resources
-	{
-		// Load fullscreen rect
-		const std::vector<Vertex2DTextured> vertices =
-		{
-			{ glm::vec2(-1.0f, -1.0f), glm::vec2(0.0f, 0.0f) }, // top left
-			{ glm::vec2(1.0f, -1.0f), glm::vec2(1.0f, 0.0f) }, // top right
-			{ glm::vec2(-1.0f, 1.0f), glm::vec2(0.0f, 1.0f) }, // bot left
-			{ glm::vec2(1.0f, 1.0f),glm::vec2(1.0f, 1.0f) } // bot right
-		};
-
-		const std::vector<uint32_t> indices =
-		{
-			0, 2, 1,
-			2, 3, 1
-		};
-
-		m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices, m_bufferPoolInterface));
-	}
-
 	m_renderWidth = context.swapChainWidth;
 	m_renderHeight = context.swapChainHeight;
 	createPipelines();
@@ -228,6 +208,29 @@ void ForwardPass::submit(const Wolf::SubmitContext& context)
 	{
 		context.graphicAPIManager->waitIdle();
 		createPipelines();
+	}
+}
+
+void ForwardPass::initializeResources(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager)
+{
+	// Full screen rect resources
+	{
+		// Load fullscreen rect
+		const std::vector<Vertex2DTextured> vertices =
+		{
+			{ glm::vec2(-1.0f, -1.0f), glm::vec2(0.0f, 0.0f) }, // top left
+			{ glm::vec2(1.0f, -1.0f), glm::vec2(1.0f, 0.0f) }, // top right
+			{ glm::vec2(-1.0f, 1.0f), glm::vec2(0.0f, 1.0f) }, // bot left
+			{ glm::vec2(1.0f, 1.0f),glm::vec2(1.0f, 1.0f) } // bot right
+		};
+
+		const std::vector<uint32_t> indices =
+		{
+			0, 2, 1,
+			2, 3, 1
+		};
+
+		m_fullscreenRect.reset(new Wolf::Mesh(vertices, indices, bufferPoolInterface, pushDataToGPUManager));
 	}
 }
 

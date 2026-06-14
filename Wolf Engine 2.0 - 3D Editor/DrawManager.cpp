@@ -1,13 +1,14 @@
 #include "DrawManager.h"
 
-#include <DynamicResourceUniqueOwnerArray.h>
-
+#include "AssetManager.h"
 #include "CameraList.h"
 #include "CommonLayouts.h"
 #include "UpdateGPUBuffersPass.h"
 
-DrawManager::DrawManager(const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
-	: m_instanceMeshRenderer(instanceMeshRenderer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface)
+DrawManager::DrawManager(const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
+	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<AssetManager>& assetManager)
+	: m_instanceMeshRenderer(instanceMeshRenderer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface),
+      m_assetManager(assetManager)
 {
 
 }
@@ -29,7 +30,7 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 
 	for (const DrawMeshInfo& meshToDraw : meshesToRender)
 	{
-		const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender = meshToDraw.meshToRender;
+		Wolf::InstanceMeshRenderer::MeshToRender meshToRender = computeMeshToRender(meshToDraw.m_meshAssetId, meshToDraw.m_pipelineSet, meshToDraw.m_perPipelineDescriptorSets);
 
 		bool meshFound = false;
 		for (uint32_t i = 0; i < m_meshesRegistered.size(); ++i)
@@ -39,8 +40,8 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 			if (instancedMeshRegistered->isSame(meshToRender))
 			{
 				meshFound = true;
-				uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.materialIdx,
-					meshToDraw.instanceData.entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
+				uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.m_instanceData.m_transform, meshToDraw.m_instanceData.m_materialIdx,
+					meshToDraw.m_instanceData.m_entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
 
 				m_infoByEntities[entity].push_back({ i, instanceIdx });
 
@@ -50,10 +51,11 @@ void DrawManager::addMeshesToDraw(const std::vector<DrawMeshInfo>& meshesToRende
 
 		if (!meshFound)
 		{
-			Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered.emplace_back(new InstancedMeshRegistered(meshToRender, m_instanceMeshRenderer));
+			Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered.emplace_back(new InstancedMeshRegistered(meshToRender, meshToDraw.m_meshAssetId,
+				m_instanceMeshRenderer));
 
-			uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.instanceData.transform, meshToDraw.instanceData.materialIdx,
-					meshToDraw.instanceData.entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
+			uint32_t instanceIdx = m_instanceMeshRenderer->addInstance(instancedMeshRegistered->getMeshIdx(), meshToDraw.m_instanceData.m_transform, meshToDraw.m_instanceData.m_materialIdx,
+					meshToDraw.m_instanceData.m_entityIdx, meshToRender.m_pipelineSet, meshToRender.m_perPipelineDescriptorSets);
 
 			m_infoByEntities[entity].push_back({ static_cast<uint32_t>(m_meshesRegistered.size()) - 1, instanceIdx });
 		}
@@ -152,13 +154,121 @@ void DrawManager::activateCameras(const Wolf::CameraList& cameraList) const
 	}
 }
 
-DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer)
-	: m_mesh(meshToRender.m_lods[0].m_mesh)
+void DrawManager::updateStreaming()
 {
+	if (Wolf::g_configuration->getUseMeshStreaming())
+	{
+		std::vector<Wolf::InstanceMeshRenderer::Feedback> streamingFeedbacks;
+		m_instanceMeshRenderer->swapFeedbacks(streamingFeedbacks);
+
+		for (uint32_t i = 0; i < std::min(static_cast<uint32_t>(streamingFeedbacks.size()), 4u); i++)
+		{
+			Wolf::InstanceMeshRenderer::Feedback streamingFeedback = streamingFeedbacks[i];
+
+			for (uint32_t registeredMeshIdx = 0; registeredMeshIdx < m_meshesRegistered.size(); registeredMeshIdx++)
+			{
+				if (m_meshesRegistered[registeredMeshIdx]->getMeshIdx() == streamingFeedback.m_meshIdx)
+				{
+					m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lod, m_instanceMeshRenderer, m_assetManager);
+					break;
+				}
+			}
+		}
+	}
+}
+
+Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetId meshAssetId, const Wolf::ResourceNonOwner<const Wolf::PipelineSet>& pipelineSet,
+                                                                          const std::array<std::vector<Wolf::DescriptorSetBindInfo>, Wolf::PipelineSet::MAX_PIPELINE_COUNT>& perPipelineDescriptorSets) const
+{
+	Wolf::ResourceNonOwner<AssetMesh> meshAsset = m_assetManager->getMeshAsset(meshAssetId);
+
+	float radius = meshAsset->getBoundingSphere().getRadius();
+	constexpr float quality = 1.0f;
+
+	uint32_t lodCount = meshAsset->getDefaultSimplifiedLODCount();
+
+	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { pipelineSet };
+	meshToRenderInfo.m_boundingSphere = meshAsset->getBoundingSphere();
+
+	AssetMesh::LOD bestLOD = meshAsset->getLOD(0, 0);
+	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh = bestLOD.m_mesh;
+	Wolf::InstanceMeshRenderer::MeshToRender::LOD& addedLOD = meshToRenderInfo.m_lods.emplace_back(mesh ? mesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(),
+		lodCount == 0 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, bestLOD.m_indexCount, quality), bestLOD.m_indexCount, bestLOD.m_clusters);
+
+	if (lodCount == 0 && !mesh)
+	{
+		Wolf::Debug::sendCriticalError("Mesh must be valid if there is no LOD (as mesh becomes the lowest LOD)");
+	}
+
+	bool foundWorstDefaultLOD = true;
+	for (uint32_t lodIdx = 0; lodIdx < lodCount; ++lodIdx)
+	{
+		AssetMesh::LOD lod = meshAsset->getLOD(lodIdx + 1, 0);
+
+		float lodDistance = lodIdx == lodCount - 1 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, lod.m_indexCount, quality);
+
+		Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
+		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount,
+			lod.m_clusters);
+
+		if (lodIdx == lodCount - 1 && !lodMesh)
+		{
+			foundWorstDefaultLOD = false;
+		}
+	}
+
+	if (!foundWorstDefaultLOD)
+	{
+		uint32_t sloppyLODCount = meshAsset->getSloppySimplifiedLODCount();
+
+		AssetMesh::LOD lod = meshAsset->getLOD(sloppyLODCount, 1);
+
+		float lodDistance = 10'000.0f;
+
+		Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
+		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount,
+			lod.m_clusters);
+
+		if (!lodMesh)
+		{
+			Wolf::Debug::sendCriticalError("Lowest LOD must be valid");
+		}
+	}
+
+	meshToRenderInfo.m_perPipelineDescriptorSets = perPipelineDescriptorSets;
+
+	return meshToRenderInfo;
+}
+
+DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender, AssetId meshAssetId,
+	const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer)
+	: m_meshAssetId(meshAssetId), m_lowLODMesh(meshToRender.m_lods.back().m_mesh)
+{
+	if (!m_lowLODMesh)
+	{
+		Wolf::Debug::sendCriticalError("Lowest LOD must be valid");
+	}
 	m_meshIdx = instanceMeshRenderer->registerMesh(meshToRender);
+}
+
+void DrawManager::InstancedMeshRegistered::requestLoadingForLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer,
+	const Wolf::ResourceNonOwner<AssetManager>& assetManager)
+{
+    Wolf::ResourceNonOwner<AssetMesh> meshAsset = assetManager->getMeshAsset(m_meshAssetId);
+	if (!meshAsset->getLOD(lod, 0).m_mesh)
+	{
+		meshAsset->loadLOD(lod, 0);
+	}
+
+	Wolf::InstanceMeshRenderer::MeshToRender::LOD lodInfo{};
+	AssetMesh::LOD lodData = meshAsset->getLOD(lod, 0, true);
+	lodInfo.m_mesh = lodData.m_mesh.duplicateAs<Wolf::MeshInterface>();
+	lodInfo.m_clusters = lodData.m_clusters;
+
+	instanceMeshRenderer->registerLODData(m_meshIdx, lod, lodInfo);
 }
 
 bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const
 {
-	return m_mesh == otherMeshToRender.m_lods[0].m_mesh;
+	return m_lowLODMesh == otherMeshToRender.m_lods.back().m_mesh;
 }

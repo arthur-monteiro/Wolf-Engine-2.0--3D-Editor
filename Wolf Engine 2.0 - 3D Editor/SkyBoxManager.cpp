@@ -7,7 +7,22 @@
 #include "CommonLayouts.h"
 #include "ComputeSkyCubeMapPass.h"
 
-SkyBoxManager::SkyBoxManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface)
+SkyBoxManager::SkyBoxManager()
+{
+    m_vertexShaderParser.reset(new Wolf::ShaderParser("Shaders/drawSkyBox/shader.vert", {}, 1));
+    m_fragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/drawSkyBox/shader.frag"));
+
+    m_descriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::FRAGMENT, 0); // in cube map
+    m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
+
+    m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
+
+    createCubeMap();
+    m_sampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1.0f, VK_FILTER_LINEAR));
+    updateDescriptorSet();
+}
+
+void SkyBoxManager::initializeResources(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<Wolf::GPUDataTransfersManagerInterface>& pushDataToGPUManager)
 {
     const std::vector<VertexOnlyPosition> cubeVertices =
     {
@@ -51,19 +66,7 @@ SkyBoxManager::SkyBoxManager(const Wolf::ResourceNonOwner<Wolf::BufferPoolInterf
         5, 7, 6
     };
 
-    m_cubeMesh.reset(new Wolf::Mesh(cubeVertices, cubeIndices, bufferPoolInterface));
-
-    m_vertexShaderParser.reset(new Wolf::ShaderParser("Shaders/drawSkyBox/shader.vert", {}, 1));
-    m_fragmentShaderParser.reset(new Wolf::ShaderParser("Shaders/drawSkyBox/shader.frag"));
-
-    m_descriptorSetLayoutGenerator.addCombinedImageSampler(Wolf::ShaderStageFlagBits::FRAGMENT, 0); // in cube map
-    m_descriptorSetLayout.reset(Wolf::DescriptorSetLayout::createDescriptorSetLayout(m_descriptorSetLayoutGenerator.getDescriptorLayouts()));
-
-    m_descriptorSet.reset(Wolf::DescriptorSet::createDescriptorSet(*m_descriptorSetLayout));
-
-    createCubeMap();
-    m_sampler.reset(Wolf::Sampler::createSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT, 1.0f, VK_FILTER_LINEAR));
-    updateDescriptorSet();
+    m_cubeMesh.reset(new Wolf::Mesh(cubeVertices, cubeIndices, bufferPoolInterface, pushDataToGPUManager));
 }
 
 void SkyBoxManager::updateBeforeFrame(Wolf::WolfEngine* wolfInstance, const Wolf::ResourceNonOwner<ComputeSkyCubeMapPass>& skyCubeMapPass)

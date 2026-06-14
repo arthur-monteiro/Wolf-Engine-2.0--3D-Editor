@@ -192,7 +192,7 @@ void MeshAssetEditor::addLOD(const AddLODInfo& addLodInfo)
 	//lodInfo.setBottomLevelAccelerationStructure(addLodInfo.m_blas);
 	lodInfo.setLODIndexAndType(addLodInfo.m_lodIdx, addLodInfo.m_lodType);
 	lodInfo.setError(addLodInfo.m_error);
-	lodInfo.setIndexCount(addLodInfo.m_mesh->getIndexCount());
+	lodInfo.setIndexCount(addLodInfo.m_indexCount);
 	lodInfo.setName("LOD " + std::to_string(addLodInfo.m_lodIdx));
 }
 

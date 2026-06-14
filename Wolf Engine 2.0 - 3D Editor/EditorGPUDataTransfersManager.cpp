@@ -30,6 +30,11 @@ void EditorGPUDataTransfersManager::pushDataToGPUBuffer(const void* data, uint32
         return;
     }
 
+    if (!data)
+    {
+        Wolf::Debug::sendCriticalError("Data is nullptr");
+    }
+
     m_updateGPUBufferPass->addRequest({ data, size, outputBuffer, outputOffset });
 }
 

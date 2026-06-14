@@ -100,13 +100,13 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
         			{
         				staticModelComponent->setPosition(translation);
         				staticModelComponent->setScale(scale);
-        				staticModelComponent->setRotation(glm::conjugate(rotation));
+        				staticModelComponent->setRotationQuat(glm::conjugate(rotation));
         			}
         			else
         			{
         				animatedModelComponent->setPosition(translation);
         				animatedModelComponent->setScale(scale);
-        				animatedModelComponent->setRotation(glm::conjugate(rotation));
+        				animatedModelComponent->setRotationQuat(glm::conjugate(rotation));
         			}
         		}
         		else

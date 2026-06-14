@@ -297,7 +297,7 @@ void Entity::setRotation(const glm::vec3& newRotation) const
 {
 	if (m_meshComponent)
 	{
-		m_meshComponent->setRotation(newRotation);
+		m_meshComponent->setRotationEuler(newRotation);
 		return;
 	}
 

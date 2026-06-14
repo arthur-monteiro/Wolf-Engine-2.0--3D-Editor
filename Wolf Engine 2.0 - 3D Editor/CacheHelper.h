@@ -32,6 +32,14 @@ namespace CacheHelper
         }
     }
 
+    static void skipVector(std::ifstream& file, uint32_t sizeOfElement)
+    {
+        uint32_t size = 0;
+        file.read(reinterpret_cast<char*>(&size), sizeof(uint32_t));
+
+        file.seekg(sizeOfElement * size, std::ios::cur);
+    }
+
     static void readString(std::ifstream& file, std::string& str)
     {
         uint32_t size = 0;

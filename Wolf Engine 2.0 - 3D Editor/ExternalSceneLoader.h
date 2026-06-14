@@ -39,6 +39,10 @@ public:
 
         Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
         std::vector<Wolf::ResourceUniqueOwner<Wolf::Physics::Shape>> m_physicsShapes;
+
+        // In case of very large files (Zorah), positions are stored in a file rather than RAM
+        std::string m_cachePositionFilename;
+        std::string m_cacheIndicesFilename;
     };
 
     struct MaterialData
@@ -56,17 +60,18 @@ public:
 
     struct OutputData
     {
+        bool m_hasReadMeshData;
         std::vector<MeshData> m_meshesData;
         std::vector<MaterialData> m_materialsData;
         std::vector<InstanceData> m_instancesData;
     };
 
-    static void loadScene(OutputData& outputData, const SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager);
+    static void loadScene(OutputData& outputData, const SceneLoadingInfo& sceneLoadingInfo, AssetManager* assetManager, bool readMeshData);
 
     static void writeCache(const std::string& filename, const OutputData& data);
 
 private:
-    static void loadCache(const std::string& filename, OutputData& outData, AssetManager* assetManager);
+    static void loadCache(const std::string& filename, OutputData& outData, bool readMeshData);
     static void writeBoneToCache(std::ofstream& file, const AnimationData::Bone& bone);
     static void readBoneFromCache(std::ifstream& file, AnimationData::Bone& bone);
 };

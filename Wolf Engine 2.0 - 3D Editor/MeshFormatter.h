@@ -7,6 +7,7 @@
 #include <MaterialsGPUManager.h>
 
 #include "DAEImporter.h"
+#include "InstanceMeshRenderer.h"
 #include "TextureSetLoader.h"
 #include "Vertex3D.h"
 
@@ -15,8 +16,17 @@ class AssetManager;
 class MeshFormatter
 {
 public:
-    MeshFormatter(const std::string& filename, AssetManager* assetManager);
+    static constexpr uint32_t MESHLET_MAX_VERTICES = 128;
+    static constexpr uint32_t MESHLET_MAX_PRIMITIVES = 256;
 
+    struct ReadSpecificLODInfo
+    {
+        uint32_t m_lod = -1;
+        uint32_t m_lodType = -1;
+    };
+    MeshFormatter(const std::string& filename, AssetManager* assetManager, bool readLODData, ReadSpecificLODInfo readSpecificLOD);
+
+    static bool doesValidCacheExist(const std::string& filename);
     bool isMeshesLoaded() const { return m_meshLoaded; }
 
     struct DataInput
@@ -34,6 +44,7 @@ public:
     };
     void computeData(const DataInput& input);
 
+    uint32_t getIndexCount() const { return m_indexCount; }
     const std::vector<Vertex3D>& getStaticVertices() { return m_staticVertices; }
     const std::vector<SkeletonVertex>& getSkeletonVertices() { return m_skeletonVertices; }
     const std::vector<uint32_t>& getIndices() { return m_indices; }
@@ -65,6 +76,8 @@ public:
 private:
     AssetManager* m_assetManager = nullptr;
 
+    static std::string computeCacheFolder(const std::string& filename);
+
     template <typename T>
     void optimizeMeshData(std::vector<T>& outputVertices, std::vector<uint32_t>& outputIndices, const std::vector<T>& inputVertices, const std::vector<uint32_t>& inputIndices);
 
@@ -77,11 +90,12 @@ private:
     static void writeBoneToCache(const AnimationData::Bone& bone, std::ofstream& file);
     static void readBoneFromCache(AnimationData::Bone& bone, std::ifstream& file);
 
-    std::string m_cacheFilename;
+    std::string m_cacheFolder;
     bool m_meshLoaded = false;
 
     std::vector<Vertex3D> m_staticVertices;
     std::vector<SkeletonVertex> m_skeletonVertices;
+    uint32_t m_indexCount;
     std::vector<uint32_t> m_indices;
 
     bool m_isMeshCentered;

@@ -312,28 +312,28 @@ void SurfaceCoatingEmitterComponent::addDebugInfo(DebugRenderingManager& debugRe
 
 bool SurfaceCoatingEmitterComponent::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList)
 {
-    Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
-    meshToRenderInfo.m_lods.emplace_back(m_mesh.createNonOwnerResource<Wolf::MeshInterface>());
+    DrawManager::DrawMeshInfo drawMeshInfo = { NO_ASSET, m_mesh.createNonOwnerResource<Wolf::MeshInterface>(),
+        m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
     Wolf::DescriptorSetBindInfo descriptorSetBindInfoNoLighting(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_PASS_INFO);
-    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].push_back(descriptorSetBindInfoNoLighting);
-    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].push_back(descriptorSetBindInfoNoLighting);
-    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS].push_back(descriptorSetBindInfoNoLighting);
+    drawMeshInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH].push_back(descriptorSetBindInfoNoLighting);
+    drawMeshInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_SHADOW_MAP].push_back(descriptorSetBindInfoNoLighting);
+    drawMeshInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS].push_back(descriptorSetBindInfoNoLighting);
 
     Wolf::DescriptorSetBindInfo descriptorSetBindInfoLighting(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout.createConstNonOwnerResource(), DescriptorSetSlots::DESCRIPTOR_SET_SLOT_COUNT);
-    meshToRenderInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(descriptorSetBindInfoLighting);
+    drawMeshInfo.m_perPipelineDescriptorSets[CommonPipelineIndices::PIPELINE_IDX_FORWARD].push_back(descriptorSetBindInfoLighting);
 
-    InstanceData instanceData{};
+    InstanceData& instanceData = drawMeshInfo.m_instanceData;
 
     Wolf::AABB aabb = computeRangeAABB();
     glm::mat4 transform(1.0f);
     transform = glm::translate(transform, aabb.getCenter());
     transform = glm::scale(transform, aabb.getSize());
-    instanceData.transform = transform;
+    instanceData.m_transform = transform;
 
-    instanceData.materialIdx = 0; // TODO
-    instanceData.entityIdx = m_entity->getIdx();
-    outList.push_back({ meshToRenderInfo, instanceData });
+    instanceData.m_materialIdx = 0; // TODO
+    instanceData.m_entityIdx = m_entity->getIdx();
+    outList.push_back(drawMeshInfo);
 
     return true;
 }

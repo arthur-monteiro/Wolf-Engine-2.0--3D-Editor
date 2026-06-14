@@ -27,7 +27,7 @@ public:
     Wolf::ResourceNonOwner<ExternalSceneAssetEditor> getEditor() const { return m_editor.createNonOwnerResource(); }
 
 private:
-    void loadScene(const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialsGPUManager);
+    void loadScene();
     void generateThumbnail(const Wolf::ResourceNonOwner<ThumbnailsGenerationPass>& thumbnailsGenerationPass);
 
     Wolf::ResourceUniqueOwner<ExternalSceneAssetEditor> m_editor;
