@@ -224,7 +224,7 @@ AssetMesh::LOD AssetMesh::getLOD(uint32_t lod, uint32_t lodType, bool ignoreDela
 		{
 			if (m_lodsInConstruction[lodInConstructionIdx].m_lod == lod && m_lodsInConstruction[lodInConstructionIdx].m_lodType == lodType)
 			{
-				mesh = Wolf::NullableResourceNonOwner<Wolf::Mesh>(nullptr);
+				mesh = Wolf::NullableResourceNonOwner<Wolf::Mesh>();
 			}
 		}
 	}

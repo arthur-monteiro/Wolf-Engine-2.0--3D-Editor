@@ -172,7 +172,7 @@ bool AnimatedMesh::getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& out
 	if (m_hideModel == true)
 		return true;
 
-	DrawManager::DrawMeshInfo drawMeshInfo = { m_meshAssetId, Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(nullptr),
+	DrawManager::DrawMeshInfo drawMeshInfo = { m_meshAssetId, Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(),
 		m_defaultPipelineSet->getResource().createConstNonOwnerResource() };
 
 	Wolf::DescriptorSetBindInfo descriptorSetBindInfo(m_descriptorSet.createConstNonOwnerResource(), m_descriptorSetLayout->getResource().createConstNonOwnerResource(), 1);
