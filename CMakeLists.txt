@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG 2ea9196158f59766599f5c2f01e78b0e91df0025
+        GIT_TAG c4730f67b3588553e4d1d741f3cf425b26f43d57
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 

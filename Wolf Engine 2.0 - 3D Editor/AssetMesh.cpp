@@ -309,6 +309,8 @@ void AssetMesh::loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& mesh
 			CacheHelper::readVector(file, meshFormatterDataInput.m_indices);
 
 			file.close();
+
+			computeNormals(meshFormatterDataInput.m_staticVertices, meshFormatterDataInput.m_indices);
 		}
 		meshFormatterDataInput.m_generateDefaultLODCount = 16;
 		meshFormatterDataInput.m_generateSloppyLODCount = 16;

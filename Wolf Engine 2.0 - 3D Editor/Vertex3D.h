@@ -52,6 +52,47 @@ struct Vertex3D
 	}
 };
 
+inline void computeNormals(std::vector<Vertex3D>& vertices, const std::vector<uint32_t>& indices)
+{
+	for (Vertex3D& vertex : vertices)
+	{
+		vertex.normal = glm::vec3(0.0f);
+	}
+
+	for (size_t i = 0; i < indices.size(); i += 3)
+	{
+		const uint32_t i0 = indices[i];
+		const uint32_t i1 = indices[i + 1];
+		const uint32_t i2 = indices[i + 2];
+
+		const glm::vec3& p0 = vertices[i0].pos;
+		const glm::vec3& p1 = vertices[i1].pos;
+		const glm::vec3& p2 = vertices[i2].pos;
+
+		glm::vec3 edge1 = p1 - p0;
+		glm::vec3 edge2 = p2 - p0;
+
+		glm::vec3 faceNormal = glm::cross(edge1, edge2);
+
+		vertices[i0].normal += faceNormal;
+		vertices[i1].normal += faceNormal;
+		vertices[i2].normal += faceNormal;
+	}
+
+	for (Vertex3D& vertex : vertices)
+	{
+		if (glm::length(vertex.normal) > 0.0f)
+		{
+			vertex.normal = glm::normalize(vertex.normal);
+		}
+		else
+		{
+			Wolf::Debug::sendWarning("No contribution to the normal, the vertex may not be used");
+			vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+		}
+	}
+}
+
 namespace std
 {
 	template<> struct hash<Vertex3D>
