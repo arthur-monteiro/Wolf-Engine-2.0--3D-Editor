@@ -18,33 +18,35 @@ void MeshFormatter::optimizeMeshData(std::vector<T>& outputVertices, std::vector
 	Wolf::Debug::sendInfo("Optimizing mesh...");
 	Wolf::Debug::sendInfo("Input contains " + std::to_string(inputIndices.size()) + " indices and " + std::to_string(inputVertices.size()) + " vertices");
 
+	// TODO: fix this: it removes parts of sponza tiles
 	// Remove triangles with collinear points
-	{
-		std::vector<uint32_t> cleanIndices;
-		cleanIndices.reserve(inputIndices.size());
-
-		for (size_t i = 0; i < inputIndices.size(); i += 3)
-		{
-			uint32_t i0 = inputIndices[i];
-			uint32_t i1 = inputIndices[i + 1];
-			uint32_t i2 = inputIndices[i + 2];
-
-			// 1. Skip if any indices duplicate within the same triangle (e.g. 0, 5, 0)
-			if (i0 == i1 || i1 == i2 || i0 == i2) continue;
-
-			const glm::vec3& p0 = inputVertices[i0].pos;
-			const glm::vec3& p1 = inputVertices[i1].pos;
-			const glm::vec3& p2 = inputVertices[i2].pos;
-
-			if (arePointsCollinear(p0, p1, p2)) continue;
-
-			cleanIndices.push_back(i0);
-			cleanIndices.push_back(i1);
-			cleanIndices.push_back(i2);
-		}
-
-		outputIndices = std::move(cleanIndices);
-	}
+	// {
+	// 	std::vector<uint32_t> cleanIndices;
+	// 	cleanIndices.reserve(inputIndices.size());
+	//
+	// 	for (size_t i = 0; i < inputIndices.size(); i += 3)
+	// 	{
+	// 		uint32_t i0 = inputIndices[i];
+	// 		uint32_t i1 = inputIndices[i + 1];
+	// 		uint32_t i2 = inputIndices[i + 2];
+	//
+	// 		// 1. Skip if any indices duplicate within the same triangle (e.g. 0, 5, 0)
+	// 		if (i0 == i1 || i1 == i2 || i0 == i2) continue;
+	//
+	// 		const glm::vec3& p0 = inputVertices[i0].pos;
+	// 		const glm::vec3& p1 = inputVertices[i1].pos;
+	// 		const glm::vec3& p2 = inputVertices[i2].pos;
+	//
+	// 		if (arePointsCollinear(p0, p1, p2)) continue;
+	//
+	// 		cleanIndices.push_back(i0);
+	// 		cleanIndices.push_back(i1);
+	// 		cleanIndices.push_back(i2);
+	// 	}
+	//
+	// 	outputIndices = std::move(cleanIndices);
+	// }
+	outputIndices = inputIndices;
 
 	std::vector<unsigned int> remap(inputVertices.size()); // temporary remap table
 	size_t meshOptVertexCount = meshopt_generateVertexRemap(&remap[0], outputIndices.data(), outputIndices.size(),
