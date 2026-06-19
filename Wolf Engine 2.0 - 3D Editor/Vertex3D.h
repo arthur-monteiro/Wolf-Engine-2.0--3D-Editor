@@ -74,9 +74,16 @@ inline void computeNormals(std::vector<Vertex3D>& vertices, const std::vector<ui
 
 		glm::vec3 faceNormal = glm::cross(edge1, edge2);
 
-		vertices[i0].normal += faceNormal;
-		vertices[i1].normal += faceNormal;
-		vertices[i2].normal += faceNormal;
+		if (glm::length(faceNormal) > 0)
+		{
+			vertices[i0].normal += faceNormal;
+			vertices[i1].normal += faceNormal;
+			vertices[i2].normal += faceNormal;
+		}
+		else
+		{
+			Wolf::Debug::sendWarning("Face normal is wrong, are points collinear?");
+		}
 	}
 
 	for (Vertex3D& vertex : vertices)

@@ -85,6 +85,8 @@ private:
 	public:
 		StagingBufferPool(uint32_t poolSize);
 
+		bool hasEnoughSpace(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize) override;
+
 		[[nodiscard]] BufferPoolInstance allocate(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize) override;
 		void deallocate(const BufferPoolInstance& bufferPoolInstance) override;
 

@@ -162,6 +162,11 @@ UpdateGPUBuffersPass::StagingBufferPool::StagingBufferPool(uint32_t poolSize) : 
 	allocateNewBuffer();
 }
 
+bool UpdateGPUBuffersPass::StagingBufferPool::hasEnoughSpace(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize)
+{
+	return requestedSize <= m_poolSize;
+}
+
 Wolf::BufferPoolInterface::BufferPoolInstance UpdateGPUBuffersPass::StagingBufferPool::allocate(uint32_t requestedSize, Wolf::Buffer::BufferUsageFlags usageFlags, uint32_t itemSize)
 {
 	PROFILE_FUNCTION

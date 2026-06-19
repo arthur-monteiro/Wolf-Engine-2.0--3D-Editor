@@ -169,7 +169,86 @@ void DrawManager::updateStreaming()
 			{
 				if (m_meshesRegistered[registeredMeshIdx]->getMeshIdx() == streamingFeedback.m_meshIdx)
 				{
-					m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lod, m_instanceMeshRenderer, m_assetManager);
+					InstancedMeshRegistered::MemoryAllocated registeredMeshMemoryAllocated = m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lod, m_instanceMeshRenderer, m_assetManager);
+					if (registeredMeshMemoryAllocated.m_vertexBufferSize < 0 || registeredMeshMemoryAllocated.m_indexBufferSize < 0) // failed to load, we need to free some space
+					{
+						std::vector<uint32_t>& pool = registeredMeshMemoryAllocated.m_vertexBufferSize < registeredMeshMemoryAllocated.m_indexBufferSize ? m_loadedMeshSortedIdxVertexBufferSize : m_loadedMeshSortedIdxIndexBufferSize;
+
+						for (uint32_t loadedMeshSortedByVertexBufferSizeIdx = 0; loadedMeshSortedByVertexBufferSizeIdx < pool.size(); loadedMeshSortedByVertexBufferSizeIdx++)
+						{
+							const LoadedMesh& loadedMesh = m_loadedMeshes[pool[loadedMeshSortedByVertexBufferSizeIdx]];
+							Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& registeredMesh = m_meshesRegistered[loadedMesh.m_registeredMeshIdx];
+							if (m_instanceMeshRenderer->getLastUsedFrameIdx(registeredMesh->getMeshIdx(), loadedMesh.m_lod) < Wolf::g_runtimeContext->getCurrentCPUFrameNumber() - 10)
+							{
+								registeredMesh->unloadLOD(loadedMesh.m_lod, m_instanceMeshRenderer, m_assetManager);
+
+								auto matchesCriteria = [&](uint32_t idx)
+								{
+									if (idx >= m_loadedMeshes.size())
+										return false;
+
+									return m_loadedMeshes[idx].m_registeredMeshIdx == loadedMesh.m_registeredMeshIdx && m_loadedMeshes[idx].m_lod == loadedMesh.m_lod;
+								};
+
+								size_t sizeBefore = m_loadedMeshSortedIdxVertexBufferSize.size();
+								std::erase_if(m_loadedMeshSortedIdxVertexBufferSize, matchesCriteria);
+								if (sizeBefore - 1 != m_loadedMeshSortedIdxVertexBufferSize.size())
+									Wolf::Debug::sendCriticalError("Didn't delete exactly 1");
+								std::erase_if(m_loadedMeshSortedIdxIndexBufferSize, matchesCriteria);
+
+								registeredMeshMemoryAllocated.m_vertexBufferSize += loadedMesh.m_vertexBufferSize;
+								registeredMeshMemoryAllocated.m_indexBufferSize += loadedMesh.m_indexBufferSize;
+
+								if (registeredMeshMemoryAllocated.m_vertexBufferSize >= 0 && registeredMeshMemoryAllocated.m_indexBufferSize >= 0)
+									break;
+							}
+						}
+
+						if (registeredMeshMemoryAllocated.m_vertexBufferSize < 0 && registeredMeshMemoryAllocated.m_indexBufferSize < 0)
+						{
+							Wolf::Debug::sendError("Couldn't free enough space?"); // note that because of holes it could be enough actually
+						}
+						else
+						{
+							registeredMeshMemoryAllocated = m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lod, m_instanceMeshRenderer, m_assetManager);
+							if (registeredMeshMemoryAllocated.m_vertexBufferSize < 0 || registeredMeshMemoryAllocated.m_indexBufferSize < 0)
+							{
+								Wolf::Debug::sendError("Failed to allocate memory, better luck next time?");
+							}
+						}
+					}
+
+					if (registeredMeshMemoryAllocated.m_indexBufferSize > 0)
+					{
+						m_loadedMeshes.emplace_back(registeredMeshIdx, streamingFeedback.m_lod, registeredMeshMemoryAllocated.m_vertexBufferSize, registeredMeshMemoryAllocated.m_indexBufferSize);
+						uint32_t addedLoadedMeshIdx = m_loadedMeshes.size() - 1;
+
+						for (uint32_t t : m_loadedMeshSortedIdxVertexBufferSize)
+						{
+							if (m_loadedMeshes[t].m_registeredMeshIdx == m_loadedMeshes.back().m_registeredMeshIdx && m_loadedMeshes[t].m_lod == m_loadedMeshes.back().m_lod)
+							{
+								Wolf::Debug::sendCriticalError("Mesh already loaded");
+							}
+						}
+
+						auto vertexIt = std::ranges::upper_bound(m_loadedMeshSortedIdxVertexBufferSize,
+						    registeredMeshMemoryAllocated.m_vertexBufferSize,
+						    [&](uint32_t value, uint32_t idx)
+							{
+								return value > m_loadedMeshes[idx].m_vertexBufferSize;
+						    }
+						);
+						m_loadedMeshSortedIdxVertexBufferSize.insert(vertexIt, addedLoadedMeshIdx);
+
+						auto indexIt = std::ranges::upper_bound(m_loadedMeshSortedIdxIndexBufferSize,
+						    registeredMeshMemoryAllocated.m_indexBufferSize,
+							[&](uint32_t value, uint32_t idx)
+							{
+								return value > m_loadedMeshes[idx].m_indexBufferSize;
+						    }
+						);
+						m_loadedMeshSortedIdxIndexBufferSize.insert(indexIt, addedLoadedMeshIdx);
+					}
 					break;
 				}
 			}
@@ -251,13 +330,24 @@ DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::Instan
 	m_meshIdx = instanceMeshRenderer->registerMesh(meshToRender);
 }
 
-void DrawManager::InstancedMeshRegistered::requestLoadingForLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer,
-	const Wolf::ResourceNonOwner<AssetManager>& assetManager)
+DrawManager::InstancedMeshRegistered::MemoryAllocated DrawManager::InstancedMeshRegistered::requestLoadingForLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer,
+	const Wolf::ResourceNonOwner<AssetManager>& assetManager) const
 {
     Wolf::ResourceNonOwner<AssetMesh> meshAsset = assetManager->getMeshAsset(m_meshAssetId);
-	if (!meshAsset->getLOD(lod, 0).m_mesh)
+	bool meshWasAlreadyLoaded = meshAsset->getLOD(lod, 0).m_mesh;
+
+	if (!meshWasAlreadyLoaded)
 	{
-		meshAsset->loadLOD(lod, 0);
+		AssetMesh::LoadLODResult loadResult = meshAsset->loadLOD(lod, 0);
+
+		if (loadResult.m_result == AssetMesh::LoadLODResult::Result::FAILED)
+		{
+			return MemoryAllocated{ -static_cast<int32_t>(loadResult.m_requiredSpaceForVertexBuffer), -static_cast<int32_t>(loadResult.m_requiredSpaceForIndexBuffer) };
+		}
+		else if (loadResult.m_result == AssetMesh::LoadLODResult::Result::ALREADY_IN_CONSTRUCTION)
+		{
+			return MemoryAllocated{ 0, 0 };
+		}
 	}
 
 	Wolf::InstanceMeshRenderer::MeshToRender::LOD lodInfo{};
@@ -266,6 +356,27 @@ void DrawManager::InstancedMeshRegistered::requestLoadingForLOD(uint32_t lod, co
 	lodInfo.m_clusters = lodData.m_clusters;
 
 	instanceMeshRenderer->registerLODData(m_meshIdx, lod, lodInfo);
+
+	if (meshWasAlreadyLoaded)
+	{
+		return MemoryAllocated{ 0, 0 };
+	}
+
+	size_t indexBufferAllocatedSize = static_cast<size_t>(lodInfo.m_mesh->getIndexCount()) * sizeof(uint32_t);
+	size_t vertexBufferAllocatedSize = static_cast<size_t>(lodInfo.m_mesh->getVertexCount()) * static_cast<size_t>(lodInfo.m_mesh->getVertexSize());
+
+	if (indexBufferAllocatedSize > std::numeric_limits<int32_t>::max() || vertexBufferAllocatedSize > std::numeric_limits<int32_t>::max())
+		Wolf::Debug::sendCriticalError("Index buffer or vertex buffer size too big to fit in int32");
+
+	return MemoryAllocated{ static_cast<int32_t>(indexBufferAllocatedSize), static_cast<int32_t>(vertexBufferAllocatedSize) };
+}
+
+void DrawManager::InstancedMeshRegistered::unloadLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager)
+{
+	Wolf::ResourceNonOwner<AssetMesh> meshAsset = assetManager->getMeshAsset(m_meshAssetId);
+	meshAsset->unloadLOD(lod, 0);
+
+	instanceMeshRenderer->unregisterLODData(m_meshIdx, lod);
 }
 
 bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const

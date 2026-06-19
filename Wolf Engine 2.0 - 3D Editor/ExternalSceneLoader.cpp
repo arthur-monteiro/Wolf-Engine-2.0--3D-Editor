@@ -80,11 +80,8 @@ void ExternalSceneLoader::loadScene(OutputData& outputData, const SceneLoadingIn
 	// 	}
 	// }
 
-    if (!outputData.m_meshesData.empty() && !outputData.m_meshesData[0].m_indices.empty())
-    {
-        std::string cacheFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename + ".bin");
-        writeCache(cacheFilename, outputData);
-    }
+    std::string cacheFilename = g_editorConfiguration->computeFullPathFromLocalPath(sceneLoadingInfo.filename + ".bin");
+    writeCache(cacheFilename, outputData);
 }
 
 void ExternalSceneLoader::writeCache(const std::string& filename, const OutputData& data)
@@ -105,6 +102,9 @@ void ExternalSceneLoader::writeCache(const std::string& filename, const OutputDa
         CacheHelper::writeVector(file, mesh.m_staticVertices);
         CacheHelper::writeVector(file, mesh.m_skeletonVertices);
         CacheHelper::writeVector(file, mesh.m_indices);
+
+        CacheHelper::writeString(file, mesh.m_cachePositionFilename);
+        CacheHelper::writeString(file, mesh.m_cacheIndicesFilename);
 
         uint8_t hasAnimationData = static_cast<bool>(mesh.m_animationData);
         file.write(reinterpret_cast<const char*>(&hasAnimationData), sizeof(hasAnimationData));
@@ -170,6 +170,9 @@ void ExternalSceneLoader::loadCache(const std::string& filename, OutputData& out
             CacheHelper::skipVector(file, sizeof(SkeletonVertex));
             CacheHelper::skipVector(file, sizeof(uint32_t));
         }
+
+        CacheHelper::readString(file, mesh.m_cachePositionFilename);
+        CacheHelper::readString(file, mesh.m_cacheIndicesFilename);
 
         uint8_t hasAnimationData = 0;
         file.read(reinterpret_cast<char*>(&hasAnimationData), sizeof(hasAnimationData));

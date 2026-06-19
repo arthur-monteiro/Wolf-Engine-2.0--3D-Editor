@@ -3,6 +3,7 @@
 #include "AssetManager.h"
 #include "CacheHelper.h"
 #include "EditorConfiguration.h"
+#include "MathsUtilsEditor.h"
 
 AssetMesh::AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
 	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId,
@@ -126,13 +127,13 @@ bool AssetMesh::isLoaded() const
 	return true;
 }
 
-void AssetMesh::loadLOD(uint32_t lodIdx, uint32_t lodType)
+AssetMesh::LoadLODResult AssetMesh::loadLOD(uint32_t lodIdx, uint32_t lodType)
 {
 	for (uint32_t lodInConstructionIdx = 0; lodInConstructionIdx < m_lodsInConstruction.size(); lodInConstructionIdx++)
 	{
 		if (m_lodsInConstruction[lodInConstructionIdx].m_lod == lodIdx && m_lodsInConstruction[lodInConstructionIdx].m_lodType == lodType)
 		{
-			return;
+			return { LoadLODResult::Result::ALREADY_IN_CONSTRUCTION };
 		}
 	}
 	m_lodsInConstruction.emplace_back(lodIdx, lodType, Wolf::g_runtimeContext->getCurrentCPUFrameNumber());
@@ -146,10 +147,32 @@ void AssetMesh::loadLOD(uint32_t lodIdx, uint32_t lodType)
 		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
 
+	LoadLODResult result { LoadLODResult::Result::REQUESTED };
+
 	if (lodIdx == 0)
 	{
 		if (!meshFormatter->getStaticVertices().empty())
 		{
+			uint32_t requestedSizeForIndices = meshFormatter->getIndices().size() * sizeof(uint32_t);
+			uint32_t requestedSizeForVertices = meshFormatter->getStaticVertices().size() * sizeof(Vertex3D);
+
+			if (!m_bufferPoolInterface->hasEnoughSpace(requestedSizeForIndices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags, sizeof(uint32_t)))
+			{
+				result.m_result = LoadLODResult::Result::FAILED;
+				result.m_requiredSpaceForIndexBuffer = requestedSizeForIndices;
+			}
+
+			if (!m_bufferPoolInterface->hasEnoughSpace(requestedSizeForVertices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalFlags, sizeof(Vertex3D)))
+			{
+				result.m_result = LoadLODResult::Result::FAILED;
+				result.m_requiredSpaceForVertexBuffer = requestedSizeForVertices;
+			}
+
+			if (result.m_result == LoadLODResult::Result::FAILED)
+			{
+				return result;
+			}
+
 			m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getStaticVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 		}
@@ -171,6 +194,26 @@ void AssetMesh::loadLOD(uint32_t lodIdx, uint32_t lodType)
 
 		if (!lod.m_staticVertices.empty())
 		{
+			uint32_t requestedSizeForIndices = lod.m_indices.size() * sizeof(uint32_t);
+			uint32_t requestedSizeForVertices = lod.m_staticVertices.size() * sizeof(Vertex3D);
+
+			if (!m_bufferPoolInterface->hasEnoughSpace(requestedSizeForIndices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | additionalFlags, sizeof(uint32_t)))
+			{
+				result.m_result = LoadLODResult::Result::FAILED;
+				result.m_requiredSpaceForIndexBuffer = requestedSizeForIndices;
+			}
+
+			if (!m_bufferPoolInterface->hasEnoughSpace(requestedSizeForVertices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalFlags, sizeof(Vertex3D)))
+			{
+				result.m_result = LoadLODResult::Result::FAILED;
+				result.m_requiredSpaceForVertexBuffer = requestedSizeForVertices;
+			}
+
+			if (result.m_result == LoadLODResult::Result::FAILED)
+			{
+				return result;
+			}
+
 			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 		}
@@ -182,6 +225,35 @@ void AssetMesh::loadLOD(uint32_t lodIdx, uint32_t lodType)
 		else
 		{
 			Wolf::Debug::sendCriticalError("LOD don't have any vertex");
+		}
+	}
+
+	return result;
+}
+
+void AssetMesh::unloadLOD(uint32_t lodIdx, uint32_t lodType)
+{
+	if (lodIdx == 0)
+	{
+		m_mesh.m_mesh.reset(nullptr);
+	}
+	else
+	{
+		if (lodType == 0)
+		{
+			m_defaultSimplifiedMeshes[lodIdx - 1]->m_mesh.reset(nullptr);
+		}
+		else
+		{
+			m_sloppySimplifiedMeshes[lodIdx - 1]->m_mesh.reset(nullptr);
+		}
+	}
+
+	for (int32_t lodInConstructionIdx = m_lodsInConstruction.size() - 1; lodInConstructionIdx >= 0; lodInConstructionIdx--)
+	{
+		if (m_lodsInConstruction[lodInConstructionIdx].m_lod == lodIdx && m_lodsInConstruction[lodInConstructionIdx].m_lodType == lodType)
+		{
+			m_lodsInConstruction.erase(m_lodsInConstruction.begin() + lodInConstructionIdx);
 		}
 	}
 }
@@ -295,6 +367,8 @@ void AssetMesh::loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& mesh
 			{
 				meshFormatterDataInput.m_staticVertices[i].pos = positions[i];
 			}
+
+			meshFormatterDataInput.m_recomputeNormals = true;
 		}
 		meshFormatterDataInput.m_skeletonVertices = std::move(loadedMeshData.m_skeletonVertices);
 		meshFormatterDataInput.m_indices = std::move(loadedMeshData.m_indices);
@@ -309,8 +383,6 @@ void AssetMesh::loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& mesh
 			CacheHelper::readVector(file, meshFormatterDataInput.m_indices);
 
 			file.close();
-
-			computeNormals(meshFormatterDataInput.m_staticVertices, meshFormatterDataInput.m_indices);
 		}
 		meshFormatterDataInput.m_generateDefaultLODCount = 16;
 		meshFormatterDataInput.m_generateSloppyLODCount = 16;

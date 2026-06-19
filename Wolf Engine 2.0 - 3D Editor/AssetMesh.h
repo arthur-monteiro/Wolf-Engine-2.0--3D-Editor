@@ -22,7 +22,18 @@ public:
 	void getEditors(std::vector<Wolf::ResourceNonOwner<ComponentInterface>>& outEditors) const override { outEditors.push_back(m_meshAssetEditor.createNonOwnerResource<ComponentInterface>()); }
 
 	bool isLoaded() const override;
-	void loadLOD(uint32_t lodIdx, uint32_t lodType);
+
+	struct LoadLODResult
+	{
+		enum class Result { ALREADY_IN_CONSTRUCTION, REQUESTED, FAILED };
+		Result m_result;
+
+		// In case of failure
+		uint32_t m_requiredSpaceForIndexBuffer = 0;
+		uint32_t m_requiredSpaceForVertexBuffer = 0;
+	};
+	LoadLODResult loadLOD(uint32_t lodIdx, uint32_t lodType);
+	void unloadLOD(uint32_t lodIdx, uint32_t lodType);
 
 	uint32_t getDefaultSimplifiedLODCount() const { return m_defaultSimplifiedMeshes.size(); }
 	uint32_t getSloppySimplifiedLODCount() const { return m_sloppySimplifiedMeshes.size(); }

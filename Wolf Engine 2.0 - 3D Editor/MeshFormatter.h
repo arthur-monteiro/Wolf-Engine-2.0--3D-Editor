@@ -40,6 +40,8 @@ public:
         uint32_t m_generateDefaultLODCount = 1;
         uint32_t m_generateSloppyLODCount = 1;
 
+        bool m_recomputeNormals = false;
+
         Wolf::ResourceUniqueOwner<AnimationData> m_animationData;
     };
     void computeData(const DataInput& input);

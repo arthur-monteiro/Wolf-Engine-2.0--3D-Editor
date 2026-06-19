@@ -193,7 +193,8 @@ void SystemManager::createWolfInstance()
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_minimumPoolSize = 512;
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[0].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-	constexpr uint32_t INDEX_BUFFER_SIZE = 536'870'912;
+	constexpr uint32_t INDEX_BUFFER_SIZE = 1'073'741'824;
+	constexpr uint32_t VERTEX_BUFFER_SIZE = 2'147'483'648;
 
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_itemSize = sizeof(uint32_t); // Skybox + full screen quads + debug + mesh indices if no ray tracing
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[1].m_minimumPoolSize = g_editorConfiguration->getEnableRayTracing() ? 1024 : INDEX_BUFFER_SIZE;
@@ -213,7 +214,7 @@ void SystemManager::createWolfInstance()
 		additionalMeshFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_itemSize = sizeof(Vertex3D); // Mesh vertices
-	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_minimumPoolSize = 1'073'741'824;
+	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_minimumPoolSize = VERTEX_BUFFER_SIZE;
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[4].m_bufferUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | additionalMeshFlags;
 
 	wolfInstanceCreateInfo.m_meshBufferPoolSizes[5].m_itemSize = sizeof(SkeletonVertex); // Animated mesh vertices

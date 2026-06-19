@@ -34,10 +34,18 @@ enableRayTracing=1
 
 ## Scenes
 
+### Zorah (WIP)
+Loads and display the Zorah scene containing around 1.8 billion unique triangles and 2.1 billion instanced triangles.
+
+<p align="center">
+  <img src="./Screenshots/zorah/combined.png" width="1080"/>
+</p>
+
+
 ### [Snowy sponza (WIP)](snowy_sponza_README.md)
 
 <p align="center">
-  <img src="./Screenshots/snowySponza/scene.gif"  width="1080"/>
+  <img src="./Screenshots/snowySponza/scene.gif" width="1080"/>
 </p>
 
 ## Features
@@ -55,6 +63,20 @@ Shadows computed using ray tracing (1 ray per pixel). Left: cascaded shadow mapp
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="./Screenshots/shadows/rt1.png" width="350" alt="Ray tracing" />
 </p>
+
+### Memory profiling
+In the editor you can see have a quick view with some statistics (1st screenshot). Clicking on "Export VRAM tracking" creates a JSON file you can open with `reports/viewer/vramTrackingViewer.html` where you can have a better view on memory allocated.
+<p align="center">
+  <img src="./Screenshots/memoryProfiling/quick_view.png" width="350" alt="Quick view" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/memoryProfiling/web_0.png" width="350" alt="Web view 0" />
+</p>
+<p align="center">
+  <img src="./Screenshots/memoryProfiling/web_1.png" width="350" alt="Web view 1" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Screenshots/memoryProfiling/web_2.png" width="350" alt="Web view 2" />
+</p>
+
 
 ### [Real-time voxel-based global illumination](voxelGI_README.md) 
 Realtime capture of indirect lighting and sky lighting.

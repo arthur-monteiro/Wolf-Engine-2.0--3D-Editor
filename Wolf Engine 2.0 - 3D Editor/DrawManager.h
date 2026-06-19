@@ -58,7 +58,14 @@ private:
 	public:
 		InstancedMeshRegistered(const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender, AssetId meshAssetId, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer);
 
-		void requestLoadingForLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
+		// Returns memory size allocated, negative if failed to load
+		struct MemoryAllocated
+		{
+			int32_t m_vertexBufferSize;
+			int32_t m_indexBufferSize;
+		};
+		[[nodiscard]] MemoryAllocated requestLoadingForLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager) const;
+		void unloadLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
 
 		uint32_t getMeshIdx() const { return m_meshIdx; }
 
@@ -82,5 +89,19 @@ private:
 	Entity* m_isolatedEntity = nullptr;
 
 	std::mutex m_meshMutex;
+
+	// Streaming
+	struct LoadedMesh
+	{
+		uint32_t m_registeredMeshIdx;
+		uint32_t m_lod;
+
+		uint32_t m_vertexBufferSize;
+		uint32_t m_indexBufferSize;
+	};
+	std::vector<LoadedMesh> m_loadedMeshes;
+
+	std::vector<uint32_t> m_loadedMeshSortedIdxVertexBufferSize;
+	std::vector<uint32_t> m_loadedMeshSortedIdxIndexBufferSize;
 };
 

@@ -89,3 +89,20 @@ void computeTransformFromTwoPoints(const glm::vec3& p0, const glm::vec3& p1, glm
 	glm::mat4 t = glm::translate(glm::mat4(1.0f), p0);*/
 	//outTransform = t * glm::mat4(glm::transpose(rz * rx));
 }
+
+bool arePointsCollinear(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2)
+{
+	glm::vec3 e1 = p1 - p0;
+	glm::vec3 e2 = p2 - p0;
+
+	float lenSq1 = glm::dot(e1, e1);
+	float lenSq2 = glm::dot(e2, e2);
+
+	if (lenSq1 < 1e-12f || lenSq2 < 1e-12f) return true;
+
+	glm::vec3 e1Norm = e1 / std::sqrt(lenSq1);
+	glm::vec3 e2Norm = e2 / std::sqrt(lenSq2);
+
+	float cosTheta = glm::dot(e1Norm, e2Norm);
+	return std::abs(cosTheta) > 0.999f;
+}

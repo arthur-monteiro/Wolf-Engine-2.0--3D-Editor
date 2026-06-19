@@ -10,17 +10,47 @@
 #include "CacheHelper.h"
 #include "CodeFileHashes.h"
 #include "EditorConfiguration.h"
+#include "MathsUtilsEditor.h"
 
 template <typename T>
 void MeshFormatter::optimizeMeshData(std::vector<T>& outputVertices, std::vector<uint32_t>& outputIndices, const std::vector<T>& inputVertices, const std::vector<uint32_t>& inputIndices)
 {
 	Wolf::Debug::sendInfo("Optimizing mesh...");
+	Wolf::Debug::sendInfo("Input contains " + std::to_string(inputIndices.size()) + " indices and " + std::to_string(inputVertices.size()) + " vertices");
+
+	// Remove triangles with collinear points
+	{
+		std::vector<uint32_t> cleanIndices;
+		cleanIndices.reserve(inputIndices.size());
+
+		for (size_t i = 0; i < inputIndices.size(); i += 3)
+		{
+			uint32_t i0 = inputIndices[i];
+			uint32_t i1 = inputIndices[i + 1];
+			uint32_t i2 = inputIndices[i + 2];
+
+			// 1. Skip if any indices duplicate within the same triangle (e.g. 0, 5, 0)
+			if (i0 == i1 || i1 == i2 || i0 == i2) continue;
+
+			const glm::vec3& p0 = inputVertices[i0].pos;
+			const glm::vec3& p1 = inputVertices[i1].pos;
+			const glm::vec3& p2 = inputVertices[i2].pos;
+
+			if (arePointsCollinear(p0, p1, p2)) continue;
+
+			cleanIndices.push_back(i0);
+			cleanIndices.push_back(i1);
+			cleanIndices.push_back(i2);
+		}
+
+		outputIndices = std::move(cleanIndices);
+	}
 
 	std::vector<unsigned int> remap(inputVertices.size()); // temporary remap table
-	size_t meshOptVertexCount = meshopt_generateVertexRemap(&remap[0], inputIndices.data(), inputIndices.size(),
+	size_t meshOptVertexCount = meshopt_generateVertexRemap(&remap[0], outputIndices.data(), outputIndices.size(),
 		inputVertices.data(), inputVertices.size(), sizeof(T));
-	std::vector<uint32_t> newIndices(inputIndices.size());
-	meshopt_remapIndexBuffer(newIndices.data(), inputIndices.data(), inputIndices.size(), &remap[0]);
+	std::vector<uint32_t> newIndices(outputIndices.size());
+	meshopt_remapIndexBuffer(newIndices.data(), outputIndices.data(), outputIndices.size(), &remap[0]);
 	std::vector<T> newVertices(meshOptVertexCount);
 	meshopt_remapVertexBuffer(newVertices.data(), inputVertices.data(), inputVertices.size(), sizeof(T), &remap[0]);
 
@@ -28,6 +58,8 @@ void MeshFormatter::optimizeMeshData(std::vector<T>& outputVertices, std::vector
 	outputIndices = std::move(newIndices);
 
 	meshopt_optimizeVertexCache(outputIndices.data(), outputIndices.data(), outputIndices.size(), outputVertices.size());
+
+	Wolf::Debug::sendInfo("Output contains " + std::to_string(outputIndices.size()) + " indices and " + std::to_string(outputVertices.size()) + " vertices");
 }
 
 template <typename T>
@@ -397,6 +429,10 @@ void MeshFormatter::computeData(const DataInput& input)
 	if (!input.m_staticVertices.empty())
 	{
 		optimizeMeshData(m_staticVertices, m_indices, input.m_staticVertices, input.m_indices);
+		if (input.m_recomputeNormals)
+		{
+			computeNormals(m_staticVertices, m_indices);
+		}
 		computeMeshInfo(m_staticVertices, input.m_fileName);
 		createLODs(m_staticVertices, input.m_generateDefaultLODCount, input.m_generateSloppyLODCount);
 	}
