@@ -159,6 +159,7 @@ void SystemManager::run()
 	m_wolfInstance->waitIdle();
 
 	m_editorPushDataToGPU->clear();
+	m_wolfInstance->getInstanceMeshRenderer()->releaseCameraInfo(CommonCameraIndices::CAMERA_IDX_MAIN);
 	m_renderer->clear();
 	m_wolfInstance->getDefaultMeshRenderer()->clear();
 	m_wolfInstance->getInstanceMeshRenderer()->clear();
