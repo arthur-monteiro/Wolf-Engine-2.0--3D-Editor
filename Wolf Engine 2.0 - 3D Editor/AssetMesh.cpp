@@ -17,6 +17,12 @@ m_indicesCacheFilename(meshData.m_cacheIndicesFilename)
 	m_meshLoadingRequested = true;
 	m_thumbnailGenerationRequested = !g_editorConfiguration->getDisableThumbnailGeneration() && needThumbnailsGeneration;
 
+	if (m_thumbnailGenerationRequested && Wolf::g_configuration->getUseMeshStreaming())
+	{
+		Wolf::Debug::sendWarning("Can't create mesh thumbnail when mesh streaming is activated");
+		m_thumbnailGenerationRequested = false;
+	}
+
 	m_meshAssetEditor.reset(new MeshAssetEditor(loadingPath, isolateMeshCallback, removeIsolationAndGetViewMatrixCallback,
 		[this](const glm::mat4& viewMatrix) { requestThumbnailReload(viewMatrix); }, renderingPipeline, editorPushDataToGPU));
 

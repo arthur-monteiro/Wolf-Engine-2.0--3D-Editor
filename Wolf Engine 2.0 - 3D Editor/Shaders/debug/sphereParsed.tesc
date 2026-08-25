@@ -2,7 +2,6 @@
 #define GLSL
 
 
-
 layout(binding = 0, set = 0) uniform UniformBufferCamera
 {
 	mat4 view;
@@ -24,6 +23,8 @@ layout(binding = 0, set = 0) uniform UniformBufferCamera
 	uint  extentWidth;
 
 	vec4 frustumPlanes[6]; // left, right, bottom, top, near, far
+
+	vec4 viewport; // x, y, width, height
 } ubCamera;
 
 mat4 getViewMatrix()
@@ -89,6 +90,11 @@ uint getScreenWidth()
 vec4 getFrustumPlane(uint idx)
 {
 	return ubCamera.frustumPlanes[idx];
+}
+
+vec4 getViewport()
+{
+	return ubCamera.viewport;
 }
 layout (vertices = 4) out;
 

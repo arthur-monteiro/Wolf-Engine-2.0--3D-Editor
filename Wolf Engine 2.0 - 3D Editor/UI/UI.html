@@ -413,6 +413,9 @@
 						Total triangle registered count: <span id="totalTriangleRegisteredCount" class="stat-value">0</span>
 					</div>
 					<div class="performance-stat">
+						Instances draw count: <span id="instanceDrawCount" class="stat-value">0</span>
+					</div>
+					<div class="performance-stat">
 						Triangle draw count: <span id="triangleDrawCount" class="stat-value">0</span>
 					</div>
 				</div>
@@ -465,7 +468,8 @@
 		document.getElementById('vramRequested').innerHTML = getVRAMRequested();
 		document.getElementById('uniqueTriangleRegisteredCount').innerHTML = Number(getUniqueTriangleRegisteredCount()).toLocaleString('en-GB');
 		document.getElementById('totalTriangleRegisteredCount').innerHTML = Number(getTotalTriangleRegisteredCount()).toLocaleString('en-GB');
-		//document.getElementById('triangleDrawCount').innerHTML = getTriangleDrawCount();
+		document.getElementById('instanceDrawCount').innerHTML = Number(getTotalInstanceRenderedCount()).toLocaleString('en-GB');
+		document.getElementById('triangleDrawCount').innerHTML = Number(getTotalTriangleRenderedCount()).toLocaleString('en-GB');
 
 		setTimeout(()=> {
 			updateStats();

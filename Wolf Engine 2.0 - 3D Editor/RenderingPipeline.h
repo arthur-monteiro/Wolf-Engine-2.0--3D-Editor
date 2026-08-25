@@ -13,6 +13,7 @@
 #include "ForwardPass.h"
 #include "GPUBufferToGPUBufferCopyPass.h"
 #include "GPUNoiseManager.h"
+#include "HierarchicalZBufferBuildingPass.h"
 #include "ParticleUpdatePass.h"
 #include "PathTracingPass.h"
 #include "PreDepthPass.h"
@@ -59,9 +60,11 @@ public:
 	Wolf::NullableResourceNonOwner<ComputeVertexDataPass> getComputeVertexDataPass() override;
 	Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() override;
 	Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() override;
+	Wolf::ResourceNonOwner<HierarchicalZBufferBuildingPass> getHierarchicalZBufferBuildingPass() override;
 	Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() override;
 	Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() override;
 	Wolf::ResourceNonOwner<ForwardPass> getForwardPass() override;
+	Wolf::ResourceNonOwner<DrawIdsPass> getDrawIdsPass() override;
 	Wolf::Viewport getRenderViewport() const override;
 	void requestPixelId(uint32_t posX, uint32_t posY, const DrawIdsPass::PixelRequestCallback& callback) const;
 
@@ -87,6 +90,7 @@ private:
 	Wolf::ResourceUniqueOwner<VoxelGlobalIlluminationPass> m_voxelGIPass;
 	Wolf::ResourceUniqueOwner<PathTracingPass> m_pathTracingPass;
 	Wolf::ResourceUniqueOwner<ForwardPass> m_forwardPass;
+	Wolf::ResourceUniqueOwner<HierarchicalZBufferBuildingPass> m_hzbBuildingPass;
 	Wolf::ResourceUniqueOwner<CompositionPass> m_compositionPass;
 	Wolf::ResourceUniqueOwner<DrawIdsPass> m_drawIdsPass;
 	Wolf::ResourceUniqueOwner<GPUBufferToGPUBufferCopyPass> m_gpuBufferToGpuBufferCopyPass;

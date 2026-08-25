@@ -3,11 +3,12 @@
 #include "AssetManager.h"
 #include "CameraList.h"
 #include "CommonLayouts.h"
+#include "DrawIdsPass.h"
 #include "UpdateGPUBuffersPass.h"
 
 DrawManager::DrawManager(const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline,
 	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, const Wolf::ResourceNonOwner<AssetManager>& assetManager)
-	: m_instanceMeshRenderer(instanceMeshRenderer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_bufferPoolInterface(bufferPoolInterface),
+	: m_instanceMeshRenderer(instanceMeshRenderer), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass()), m_drawIdsPass(renderingPipeline->getDrawIdsPass()), m_bufferPoolInterface(bufferPoolInterface),
       m_assetManager(assetManager)
 {
 
@@ -133,7 +134,10 @@ void DrawManager::activateCameras(const Wolf::CameraList& cameraList) const
 {
 	m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_PRE_DEPTH);
 	m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_FORWARD);
-	m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS); // TODO: only enable if picking this frame
+	if (m_drawIdsPass->isEnabledThisFrame())
+	{
+		m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
+	}
 
 	uint32_t cameraCount = cameraList.getCurrentCameras().size();
 
@@ -268,6 +272,7 @@ Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetI
 
 	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { pipelineSet };
 	meshToRenderInfo.m_boundingSphere = meshAsset->getBoundingSphere();
+	meshToRenderInfo.m_AABB = meshAsset->getBoundingBox();
 
 	AssetMesh::LOD bestLOD = meshAsset->getLOD(0, 0);
 	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh = bestLOD.m_mesh;

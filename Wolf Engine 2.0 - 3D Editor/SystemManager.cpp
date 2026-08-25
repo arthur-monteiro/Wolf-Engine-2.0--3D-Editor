@@ -57,6 +57,7 @@ SystemManager::SystemManager()
 	m_editorPushDataToGPU->setGPUBufferToGPUBufferCopyPass(m_renderer->getGPUBufferToGPUBufferCopyPass());
 
 	m_renderer->initializeResources(m_bufferPoolInterface, m_editorPushDataToGPU.createNonOwnerResource<Wolf::GPUDataTransfersManagerInterface>());
+	m_wolfInstance->getInstanceMeshRenderer()->registerCameraInfo(CommonCameraIndices::CAMERA_IDX_MAIN, m_renderer->getHierarchicalZBufferBuildingPass()->getOutputImage());
 
 	m_assetManager.reset(new AssetManager([this](const std::string& scriptStr)
 		{
@@ -318,6 +319,8 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["getVRAMRequested"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getVRAMRequestedJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getUniqueTriangleRegisteredCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getUniqueTriangleRegisteredCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getTotalTriangleRegisteredCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalTriangleRegisteredCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getTotalInstanceRenderedCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalInstanceRenderedCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getTotalTriangleRenderedCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalTriangleRenderedCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["openVRAMTrackingPage"] = std::bind(&SystemManager::openVRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openSystemRAMTrackingPage"] = std::bind(&SystemManager::openSystemRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["addEntity"] = std::bind(&SystemManager::addEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -422,6 +425,18 @@ ultralight::JSValue SystemManager::getUniqueTriangleRegisteredCountJSCallback(co
 ultralight::JSValue SystemManager::getTotalTriangleRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
 {
 	const std::string triangleCountStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getTotalTriangleRegisteredCount());
+	return { triangleCountStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getTotalInstanceRenderedCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string instanceCountStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getInstanceRenderedCount());
+	return { instanceCountStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getTotalTriangleRenderedCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string triangleCountStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getTriangleRenderedCount());
 	return { triangleCountStr.c_str() };
 }
 
@@ -1118,6 +1133,28 @@ void SystemManager::updateBeforeFrame()
 
 	m_wolfInstance->getCameraList().addCameraForThisFrame(m_camera.get(), CommonCameraIndices::CAMERA_IDX_MAIN);
 	m_camera->setAspect(m_editorParams->getAspect());
+	m_camera->setViewport(m_editorParams->getRenderViewport());
+
+	Wolf::ResourceNonOwner<Wolf::InputHandler> inputHandler = m_wolfInstance->getInputHandler();
+
+	// Select object by click
+	if (m_entitySelectionRequested && inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
+	{
+		float currentMousePosX, currentMousePosY;
+		inputHandler->getMousePosition(currentMousePosX, currentMousePosY);
+		m_renderer->requestPixelId(static_cast<uint32_t>(currentMousePosX), static_cast<uint32_t>(currentMousePosY), [this](uint32_t entityIdx)
+		{
+			if (entityIdx != -1)
+			{
+				m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_entityContainer->getEntities()[entityIdx].createNonOwnerResource()));
+				updateUISelectedEntity();
+			}
+
+			m_wolfInstance->evaluateUserInterfaceScript("finishEntitySelection();");
+		});
+
+		m_entitySelectionRequested = false;
+	}
 
 	m_renderer->update(m_wolfInstance.get());
 
@@ -1126,7 +1163,6 @@ void SystemManager::updateBeforeFrame()
 
 	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
 	Wolf::ResourceNonOwner<EditorPhysicsManager> editorPhysicsManager= m_editorPhysicsManager.createNonOwnerResource();
-	Wolf::ResourceNonOwner<Wolf::InputHandler> inputHandler = m_wolfInstance->getInputHandler();
 	const Wolf::Timer& globalTimer = m_wolfInstance->getGlobalTimer();
 
 	// Window drag
@@ -1206,25 +1242,6 @@ void SystemManager::updateBeforeFrame()
 	{
 		m_isCameraLocked = !m_isCameraLocked;
 		m_camera->setLocked(m_isCameraLocked);
-	}
-
-	// Select object by click
-	if (m_entitySelectionRequested && inputHandler->mouseButtonPressedThisFrame(GLFW_MOUSE_BUTTON_LEFT))
-	{
-		float currentMousePosX, currentMousePosY;
-		inputHandler->getMousePosition(currentMousePosX, currentMousePosY);
-		m_renderer->requestPixelId(static_cast<uint32_t>(currentMousePosX), static_cast<uint32_t>(currentMousePosY), [this](uint32_t entityIdx)
-		{
-			if (entityIdx != -1)
-			{
-				m_selectedEntity.reset(new Wolf::ResourceNonOwner<Entity>(m_entityContainer->getEntities()[entityIdx].createNonOwnerResource()));
-				updateUISelectedEntity();
-			}
-
-			m_wolfInstance->evaluateUserInterfaceScript("finishEntitySelection();");
-		});
-
-		m_entitySelectionRequested = false;
 	}
 
 	const glm::vec3 cameraPosition = m_camera->getPosition();

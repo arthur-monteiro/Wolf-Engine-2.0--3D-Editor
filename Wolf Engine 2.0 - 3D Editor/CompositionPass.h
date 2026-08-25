@@ -11,11 +11,12 @@
 #include <ShaderParser.h>
 
 #include "ForwardPass.h"
+#include "HierarchicalZBufferBuildingPass.h"
 
 class CompositionPass : public Wolf::CommandRecordBase
 {
 public:
-    CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass);
+    CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<HierarchicalZBufferBuildingPass>& hzbBuildingPass);
 
     void initializeResources(const Wolf::InitializationContext& context) override;
     void resize(const Wolf::InitializationContext& context) override;
@@ -39,6 +40,7 @@ private:
 
     EditorParams* m_editorParams;
     Wolf::ResourceNonOwner<ForwardPass> m_forwardPass;
+    Wolf::ResourceNonOwner<HierarchicalZBufferBuildingPass> m_hzbBuildingPass;
 
     Wolf::DescriptorSetLayoutGenerator m_descriptorSetLayoutGenerator;
     Wolf::ResourceUniqueOwner<Wolf::DescriptorSetLayout> m_descriptorSetLayout;

@@ -9,7 +9,9 @@ class CompositionPass;
 class ComputeSkyCubeMapPass;
 class ComputeVertexDataPass;
 class ContaminationUpdatePass;
+class DrawIdsPass;
 class ForwardPass;
+class HierarchicalZBufferBuildingPass;
 class ParticleUpdatePass;
 class SkyBoxManager;
 class SurfaceCoatingDataPreparationPass;
@@ -33,9 +35,11 @@ public:
 	virtual Wolf::NullableResourceNonOwner<ComputeVertexDataPass> getComputeVertexDataPass() = 0;
 	virtual Wolf::ResourceNonOwner<ComputeSkyCubeMapPass> getComputeSkyCubeMapPass() = 0;
 	virtual Wolf::ResourceNonOwner<CascadedShadowMapsPass> getCascadedShadowMapsPass() = 0;
+	virtual Wolf::ResourceNonOwner<HierarchicalZBufferBuildingPass> getHierarchicalZBufferBuildingPass() = 0;
 	virtual Wolf::ResourceNonOwner<CompositionPass> getCompositionPass() = 0;
 	virtual Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> getVoxelGIPass() = 0;
 	virtual Wolf::ResourceNonOwner<ForwardPass> getForwardPass() = 0;
+	virtual Wolf::ResourceNonOwner<DrawIdsPass> getDrawIdsPass() = 0;
 	[[nodiscard]] virtual Wolf::Viewport getRenderViewport() const = 0;
 };
 

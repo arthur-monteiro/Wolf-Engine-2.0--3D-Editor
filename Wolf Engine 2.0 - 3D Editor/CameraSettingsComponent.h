@@ -27,8 +27,25 @@ private:
 
     EditorParamFloat m_exposure = EditorParamFloat("Exposure", TAB, "Graphics", -10.0f, 10.0f);
 
+    EditorParamBool m_overrideCamera = EditorParamBool("Override camera", TAB, "Camera", false);
+
+    // Camera overriden
+    void onCameraTypeChanged();
+    EditorParamEnum m_cameraType = EditorParamEnum({ "FPS", "Orthographic" }, "Type", TAB, "Camera", [this]() { onCameraTypeChanged(); });
+    EditorParamVector3 m_cameraPosition = EditorParamVector3("Position", TAB, "Camera", -10.0f, 10.0f);
+    EditorParamVector3 m_cameraTarget = EditorParamVector3("Target", TAB, "Camera", -10.0f, 10.0f);
+
+    // FPS camera
+    EditorParamFloat m_cameraAspect = EditorParamFloat("Aspect", TAB, "Camera", 0.0f, 2.0f);
+
+    // Orthographic camera
+    EditorParamFloat m_cameraRadius = EditorParamFloat("Radius", TAB, "Camera", 0.0f, 10.0f);
+    EditorParamFloat m_cameraHeightFromCenter = EditorParamFloat("Height from center", TAB, "Camera", -10.0f, 10.0f);
+
     std::array<EditorParamInterface*, 1> m_editorParams =
     {
         &m_exposure
     };
+
+    Wolf::ResourceUniqueOwner<Wolf::CameraInterface> m_customCamera;
 };

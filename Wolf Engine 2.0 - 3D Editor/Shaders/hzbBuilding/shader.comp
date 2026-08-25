@@ -1,0 +1,156 @@
+#extension GL_KHR_shader_subgroup_quad : enable
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0) uniform sampler2D inputDepth;
+layout(binding = 1, r32f) uniform image2D outMip[12];
+
+layout(binding = 2) buffer CounterBuffer
+{
+    uint globalWorkgroupCounter[];
+};
+
+layout(push_constant) uniform PushConstants
+{
+    uvec2 srcDimensions;
+    uint numMips;
+    uint workgroupSlice;
+
+    vec4 viewport; // x, y, width, height
+} pc;
+
+shared float s_DepthMips[16 * 16];
+shared uint s_WorkgroupIndex;
+
+float fetchDepthViewport(ivec2 coord, ivec2 vpMin, ivec2 vpMax)
+{
+    if (coord.x >= vpMin.x && coord.x < vpMax.x &&
+        coord.y >= vpMin.y && coord.y < vpMax.y)
+    {
+        return texelFetch(inputDepth, coord, 0).r;
+    }
+    return 1.0;
+}
+
+void main()
+{
+    uvec2 localID = uvec2(gl_LocalInvocationID.x % 16, gl_LocalInvocationID.x / 16);
+    uvec2 groupID = gl_WorkGroupID.xy;
+
+    ivec2 vpMin = ivec2(pc.viewport.xy);
+    ivec2 vpMax = vpMin + ivec2(pc.viewport.zw);
+
+    // -------------------------------------------------------------------------
+    // Initial Load: Fetch 2x2 texels from MIP 0 and reduce to MIP 1
+    // -------------------------------------------------------------------------
+    ivec2 globalCoord = ivec2(groupID * 32 + localID * 2);
+
+    vec4 d;
+    d.x = fetchDepthViewport(globalCoord + ivec2(0, 0), vpMin, vpMax);
+    d.y = fetchDepthViewport(globalCoord + ivec2(1, 0), vpMin, vpMax);
+    d.z = fetchDepthViewport(globalCoord + ivec2(0, 1), vpMin, vpMax);
+    d.w = fetchDepthViewport(globalCoord + ivec2(1, 1), vpMin, vpMax);
+
+    float currentDepth = min(min(d.x, d.y), min(d.z, d.w));
+
+    ivec2 writeCoord = ivec2(groupID * 16 + localID);
+    if (pc.numMips > 0)
+    {
+        imageStore(outMip[0], writeCoord, vec4(currentDepth));
+    }
+
+    // -------------------------------------------------------------------------
+    // Loop Phase: Downsample MIP 1 through MIP 5 using Shared Memory
+    // -------------------------------------------------------------------------
+    uint threadIndex = gl_LocalInvocationID.x;
+    s_DepthMips[threadIndex] = currentDepth;
+    memoryBarrierShared();
+    barrier();
+
+    uint currentExtent = 16;
+    uint currentMip = 1;
+
+    while (currentMip < min(pc.numMips, 5u))
+    {
+        uint halfExtent = currentExtent / 2;
+        uint numActiveThreads = halfExtent * halfExtent;
+
+        if (threadIndex < numActiveThreads)
+        {
+            uvec2 quadCoord = uvec2(threadIndex % halfExtent, threadIndex / halfExtent);
+            uint srcIdx = (quadCoord.y * 2) * currentExtent + (quadCoord.x * 2);
+
+            // Fetch 2x2 tile from LDS
+            float v0 = s_DepthMips[srcIdx];
+            float v1 = s_DepthMips[srcIdx + 1];
+            float v2 = s_DepthMips[srcIdx + currentExtent];
+            float v3 = s_DepthMips[srcIdx + currentExtent + 1];
+
+            currentDepth = min(min(v0, v1), min(v2, v3));
+
+            ivec2 mipCoord = ivec2(groupID * halfExtent + quadCoord);
+            imageStore(outMip[currentMip], mipCoord, vec4(currentDepth));
+        }
+
+        memoryBarrierShared();
+        barrier();
+
+        if (threadIndex < numActiveThreads)
+        {
+            s_DepthMips[threadIndex] = currentDepth;
+        }
+
+        memoryBarrierShared();
+        barrier();
+
+        currentExtent = halfExtent;
+        currentMip++;
+    }
+
+    // -------------------------------------------------------------------------
+    // Global Pass: Handled by the final completing workgroup for MIP 5+
+    // -------------------------------------------------------------------------
+    if (pc.numMips <= 5)
+    {
+        return;
+    }
+
+    if (threadIndex == 0)
+    {
+        s_WorkgroupIndex = atomicAdd(globalWorkgroupCounter[pc.workgroupSlice], 1);
+    }
+
+    memoryBarrierShared();
+    barrier();
+
+    uint totalWorkgroups = ((pc.srcDimensions.x + 31) / 32) * ((pc.srcDimensions.y + 31) / 32);
+
+    if (s_WorkgroupIndex == totalWorkgroups - 1)
+    {
+        if (threadIndex == 0)
+        {
+            globalWorkgroupCounter[pc.workgroupSlice] = 0;
+
+            for (uint mip = 5; mip < pc.numMips; ++mip)
+            {
+                ivec2 srcSize = ivec2(max(uvec2(1), pc.srcDimensions >> mip));
+                ivec2 dstSize = ivec2(max(uvec2(1), pc.srcDimensions >> (mip + 1)));
+
+                for (int y = 0; y < dstSize.y; ++y)
+                {
+                    for (int x = 0; x < dstSize.x; ++x)
+                    {
+                        ivec2 srcCoord = ivec2(x * 2, y * 2);
+                        vec4 v;
+                        v.x = imageLoad(outMip[mip - 1], clamp(srcCoord + ivec2(0, 0), ivec2(0), srcSize - 1)).r;
+                        v.y = imageLoad(outMip[mip - 1], clamp(srcCoord + ivec2(1, 0), ivec2(0), srcSize - 1)).r;
+                        v.z = imageLoad(outMip[mip - 1], clamp(srcCoord + ivec2(0, 1), ivec2(0), srcSize - 1)).r;
+                        v.w = imageLoad(outMip[mip - 1], clamp(srcCoord + ivec2(1, 1), ivec2(0), srcSize - 1)).r;
+
+                        imageStore(outMip[mip], ivec2(x, y), vec4(min(min(v.x, v.y), min(v.z, v.w))));
+                    }
+                }
+            }
+        }
+    }
+}

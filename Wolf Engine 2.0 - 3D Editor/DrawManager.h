@@ -46,6 +46,7 @@ public:
 private:
 	Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer> m_instanceMeshRenderer;
 	Wolf::ResourceNonOwner<UpdateGPUBuffersPass> m_updateGPUBuffersPass;
+	Wolf::ResourceNonOwner<DrawIdsPass> m_drawIdsPass;
 	Wolf::ResourceNonOwner<Wolf::BufferPoolInterface> m_bufferPoolInterface;
 	Wolf::ResourceNonOwner<AssetManager> m_assetManager;
 

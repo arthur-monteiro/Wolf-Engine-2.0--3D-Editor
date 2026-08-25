@@ -95,7 +95,10 @@ RenderingPipeline::RenderingPipeline(const Wolf::WolfEngine* wolfInstance, Edito
 		m_computeSkyCubeMapPass.createNonOwnerResource(), m_skyBoxManager.createNonOwnerResource(), globalIrradiancePassInterface));
 	wolfInstance->initializePass(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
-	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource()));
+	m_hzbBuildingPass.reset(new HierarchicalZBufferBuildingPass(m_preDepthPass.createNonOwnerResource(), m_forwardPass.createNonOwnerResource(), editorParams));
+	wolfInstance->initializePass(m_hzbBuildingPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+
+	m_compositionPass.reset(new CompositionPass(editorParams, m_forwardPass.createNonOwnerResource(), m_hzbBuildingPass.createNonOwnerResource()));
 	wolfInstance->initializePass(m_compositionPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 
 	m_drawIdsPass.reset(new DrawIdsPass(editorParams, m_preDepthPass.createNonOwnerResource(), m_forwardPass.createConstNonOwnerResource()));
@@ -183,6 +186,7 @@ void RenderingPipeline::frame(Wolf::WolfEngine* wolfInstance, bool doScreenShot,
 		passes.push_back(m_voxelGIPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	}
 	passes.push_back(m_forwardPass.createNonOwnerResource<Wolf::CommandRecordBase>());
+	passes.push_back(m_hzbBuildingPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_compositionPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_drawIdsPass.createNonOwnerResource<Wolf::CommandRecordBase>());
 	passes.push_back(m_gpuBufferToGpuBufferCopyPass.createNonOwnerResource<Wolf::CommandRecordBase>());
@@ -300,6 +304,11 @@ Wolf::ResourceNonOwner<CascadedShadowMapsPass> RenderingPipeline::getCascadedSha
 	return m_cascadedShadowMapsPass.createNonOwnerResource();
 }
 
+Wolf::ResourceNonOwner<HierarchicalZBufferBuildingPass> RenderingPipeline::getHierarchicalZBufferBuildingPass()
+{
+	return m_hzbBuildingPass.createNonOwnerResource();
+}
+
 Wolf::ResourceNonOwner<CompositionPass> RenderingPipeline::getCompositionPass()
 {
 	return m_compositionPass.createNonOwnerResource();
@@ -313,6 +322,11 @@ Wolf::ResourceNonOwner<VoxelGlobalIlluminationPass> RenderingPipeline::getVoxelG
 Wolf::ResourceNonOwner<ForwardPass> RenderingPipeline::getForwardPass()
 {
 	return m_forwardPass.createNonOwnerResource();
+}
+
+Wolf::ResourceNonOwner<DrawIdsPass> RenderingPipeline::getDrawIdsPass()
+{
+	return m_drawIdsPass.createNonOwnerResource();
 }
 
 Wolf::Viewport RenderingPipeline::getRenderViewport() const

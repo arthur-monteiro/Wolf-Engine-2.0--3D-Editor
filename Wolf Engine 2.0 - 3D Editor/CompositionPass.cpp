@@ -10,8 +10,8 @@
 #include "GameContext.h"
 #include "Vertex2DTextured.h"
 
-CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass)
-  : m_editorParams(editorParams), m_forwardPass(forwardPass)
+CompositionPass::CompositionPass(EditorParams* editorParams, const Wolf::ResourceNonOwner<ForwardPass>& forwardPass, const Wolf::ResourceNonOwner<HierarchicalZBufferBuildingPass>& hzbBuildingPass)
+  : m_editorParams(editorParams), m_forwardPass(forwardPass), m_hzbBuildingPass(hzbBuildingPass)
 {
 }
 
@@ -151,7 +151,7 @@ void CompositionPass::record(const Wolf::RecordContext& context)
 
 void CompositionPass::submit(const Wolf::SubmitContext& context)
 {
-    std::vector<const Wolf::Semaphore*> waitSemaphores{ context.swapChainImageAvailableSemaphore, m_forwardPass->getSemaphore(context.swapChainImageIndex) };
+    std::vector<const Wolf::Semaphore*> waitSemaphores{ context.swapChainImageAvailableSemaphore, m_forwardPass->getSemaphore(context.swapChainImageIndex), m_hzbBuildingPass->getSemaphore(context.swapChainImageIndex) };
     if (context.userInterfaceImageAvailableSemaphore)
         waitSemaphores.push_back(context.userInterfaceImageAvailableSemaphore);
 

@@ -2,8 +2,7 @@
 
 #include "AssetId.h"
 #include "ComponentInterface.h"
-#include "EditorConfiguration.h"
-#include "EditorTypesTemplated.h"
+#include "DrawManager.h"
 #include "EditorTypes.h"
 
 class AssetManager;

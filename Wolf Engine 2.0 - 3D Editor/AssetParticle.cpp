@@ -1,5 +1,7 @@
 #include "AssetParticle.h"
 
+#include "EditorConfiguration.h"
+
 AssetParticle::AssetParticle(const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
     const Wolf::ResourceNonOwner<Wolf::MaterialsGPUManager>& materialGPUManager, AssetManager* assetManager)
 : AssetInterface(loadingPath, assetId, onAssetUpdateCallback, NO_ASSET)

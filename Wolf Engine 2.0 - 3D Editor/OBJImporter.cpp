@@ -116,13 +116,27 @@ OBJImporter::OBJImporter(ExternalSceneLoader::OutputData& outputData, const Exte
                     glm::vec2 deltaUV1 = tempTriangle[1].texCoord - tempTriangle[0].texCoord;
                     glm::vec2 deltaUV2 = tempTriangle[2].texCoord - tempTriangle[0].texCoord;
 
-                    float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+                    float denominator = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
+                    glm::vec3 tangent(1.0f, 0.0f, 0.0f);
 
-                    glm::vec3 tangent;
-                    tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-                    tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-                    tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-                    tangent = normalize(tangent);
+                    if (std::abs(denominator) > 1e-6f)
+                    {
+                        float f = 1.0f / denominator;
+
+                        tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+                        tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+                        tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+                        float lenSq = glm::dot(tangent, tangent);
+                        if (lenSq > 1e-6f)
+                        {
+                            tangent = tangent / std::sqrt(lenSq);
+                        }
+                        else
+                        {
+                            tangent = glm::vec3(1.0f, 0.0f, 0.0f);
+                        }
+                    }
 
                     for (int32_t j(static_cast<int32_t>(i) - 1); j >= static_cast<int32_t>(i - 3); --j)
                         geometry.m_vertices[geometry.m_indices[j]].tangent = tangent;

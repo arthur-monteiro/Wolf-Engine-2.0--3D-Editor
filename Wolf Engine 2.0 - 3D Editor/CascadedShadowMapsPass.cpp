@@ -137,6 +137,9 @@ void CascadedShadowMapsPass::submit(const Wolf::SubmitContext& context)
 
 void CascadedShadowMapsPass::addCamerasForThisFrame(Wolf::CameraList& cameraList) const
 {
+	if (!m_wasEnabledThisFrame)
+		return;
+
 	for (const std::unique_ptr<CascadeDepthPass>& cascade : m_cascadeDepthPasses)
 	{
 		cascade->addCameraForThisFrame(cameraList);

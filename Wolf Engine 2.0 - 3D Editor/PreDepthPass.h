@@ -31,11 +31,13 @@ private:
 	uint32_t getHeight() override { return m_swapChainHeight; }
 	Wolf::Format getFormat() override { return Wolf::Format::D32_SFLOAT; }
 
-	Wolf::ImageUsageFlags getAdditionalUsages() override { return Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_SRC; }
+	Wolf::ImageUsageFlags getAdditionalUsages() override { return Wolf::ImageUsageFlagBits::SAMPLED | Wolf::ImageUsageFlagBits::TRANSFER_SRC | Wolf::ImageUsageFlagBits::TRANSFER_DST; }
 	Wolf::ImageLayout getFinalLayout() override { return Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL; }
 
 	void recordDraws(const Wolf::RecordContext& context) override;
 	const Wolf::CommandBuffer& getCommandBuffer(const Wolf::RecordContext& context) override;
+	Wolf::AttachmentLoadOp getAttachmentLoadOp() override { return Wolf::AttachmentLoadOp::LOAD; }
+	Wolf::Viewport getViewport() override;
 
 	EditorParams* m_editorParams;
 

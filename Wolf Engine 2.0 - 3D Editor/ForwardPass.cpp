@@ -163,6 +163,10 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 
 	m_commandBuffer->endRenderPass();
 
+	Wolf::Image::TransitionLayoutInfo depthTransitionInfo = { Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		0, MAX_MIP_COUNT, 0, 1, Wolf::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+	m_preDepthPass->getOutput()->transitionImageLayout(*m_commandBuffer, depthTransitionInfo);
+
 	Wolf::DebugMarker::endRegion(m_commandBuffer.get());
 
 	m_commandBuffer->endCommandBuffer();

@@ -20,6 +20,9 @@ void PreDepthPass::initializeResources(const Wolf::InitializationContext& contex
 
 	DepthPassBase::initializeResources(context);
 	m_depthImage->setName("Pre depth pass output (PreDepthPass::m_depthImage)");
+
+	m_depthImage->setImageLayout({ Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		0, 1, 0, 1, Wolf::ImageLayout::UNDEFINED });
 }
 
 void PreDepthPass::resize(const Wolf::InitializationContext& context)
@@ -37,6 +40,17 @@ void PreDepthPass::record(const Wolf::RecordContext& context)
 	m_commandBuffer->beginCommandBuffer();
 
 	Wolf::DebugMarker::beginRegion(m_commandBuffer.get(), Wolf::DebugMarker::renderPassDebugColor, "PreDepth pass");
+
+	m_depthImage->transitionImageLayout(*m_commandBuffer, { Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0, 1, 0, 1, Wolf::ImageLayout::SHADER_READ_ONLY_OPTIMAL });
+
+	VkImageSubresourceRange range{};
+	range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	range.baseMipLevel = 0;
+	range.levelCount = 1;
+	range.baseArrayLayer = 0;
+	range.layerCount = 1;
+	m_commandBuffer->clearDepthStencilImage(*m_depthImage, Wolf::ImageLayout::TRANSFER_DST_OPTIMAL, 1.0f, range);
 
 	DepthPassBase::record(context);
 
@@ -77,4 +91,9 @@ void PreDepthPass::recordDraws(const Wolf::RecordContext& context)
 const Wolf::CommandBuffer& PreDepthPass::getCommandBuffer(const Wolf::RecordContext& context)
 {
 	return *m_commandBuffer;
+}
+
+Wolf::Viewport PreDepthPass::getViewport()
+{
+	return m_editorParams->getRenderViewport();
 }

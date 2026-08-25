@@ -193,7 +193,7 @@ MeshFormatter::MeshFormatter(const std::string& filename, AssetManager* assetMan
 
 		uint64_t hash;
 		meshInfoInputFile.read(reinterpret_cast<char*>(&hash), sizeof(hash));
-		if (hash != Wolf::HASH_MESH_FORMATTER_CPP)
+		if (hash != Wolf::HASH_MESH_FORMATTER_CPP)	
 		{
 			Wolf::Debug::sendInfo("Cache found but hash is incorrect");
 			return;
