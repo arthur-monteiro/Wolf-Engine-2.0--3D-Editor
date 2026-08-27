@@ -27,7 +27,7 @@ public:
     MeshFormatter(const std::string& filename, AssetManager* assetManager, bool readLODData, ReadSpecificLODInfo readSpecificLOD);
 
     static bool doesValidCacheExist(const std::string& filename);
-    bool isMeshesLoaded() const { return m_meshLoaded; }
+    bool isMeshLoaded() const { return m_meshLoaded; }
 
     struct DataInput
     {

@@ -268,28 +268,24 @@ AssetMesh::LOD AssetMesh::getLOD(uint32_t lod, uint32_t lodType, bool ignoreDela
 {
 	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh;
 	uint32_t indexCount = 0;
-	std::vector<Wolf::InstanceMeshRenderer::MeshToRender::LOD::Cluster> clusters;
 
 	if (lod == 0)
 	{
 		if (m_mesh.m_mesh)
 			mesh = m_mesh.m_mesh.createNonOwnerResource();
 		indexCount = m_mesh.m_indexCount;
-		clusters = m_mesh.m_clusterRanges;
 	}
 	else if (lodType == 0)
 	{
 		if (m_defaultSimplifiedMeshes[lod - 1]->m_mesh)
 			mesh = m_defaultSimplifiedMeshes[lod - 1]->m_mesh.createNonOwnerResource();
 		indexCount = m_defaultSimplifiedMeshes[lod - 1]->m_indexCount;
-		clusters = m_defaultSimplifiedMeshes[lod - 1]->m_clusterRanges;
 	}
 	else if (lodType == 1)
 	{
 		if (m_sloppySimplifiedMeshes[lod - 1]->m_mesh)
 			mesh = m_sloppySimplifiedMeshes[lod - 1]->m_mesh.createNonOwnerResource();
 		indexCount = m_sloppySimplifiedMeshes[lod - 1]->m_indexCount;
-		clusters = m_sloppySimplifiedMeshes[lod - 1]->m_clusterRanges;
 	}
 	else
 	{
@@ -307,7 +303,7 @@ AssetMesh::LOD AssetMesh::getLOD(uint32_t lod, uint32_t lodType, bool ignoreDela
 		}
 	}
 
-	return { mesh, indexCount, clusters };
+	return { mesh, indexCount };
 }
 
 Wolf::NullableResourceNonOwner<Wolf::BottomLevelAccelerationStructure> AssetMesh::getBLAS(uint32_t lod, uint32_t lodType)
@@ -338,7 +334,7 @@ MeshFormatter* AssetMesh::computeMeshFormatter()
 void AssetMesh::loadMeshFormatter(Wolf::ResourceUniqueOwner<MeshFormatter>& meshFormatter, MeshFormatter::ReadSpecificLODInfo readSpecificLODInfo)
 {
 	meshFormatter.reset(new MeshFormatter(m_loadingPath, m_assetManager, !Wolf::g_configuration->getUseMeshStreaming(), readSpecificLODInfo));
-	if (!meshFormatter->isMeshesLoaded())
+	if (!meshFormatter->isMeshLoaded())
 	{
 		if (m_staticVertices.empty() && m_skeletonVertices.empty() && m_positionsCacheFilename.empty())
 		{

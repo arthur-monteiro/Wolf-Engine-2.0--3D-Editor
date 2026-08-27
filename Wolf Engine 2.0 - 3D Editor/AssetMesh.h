@@ -41,8 +41,6 @@ public:
 	{
 		Wolf::NullableResourceNonOwner<Wolf::Mesh> m_mesh;
 		uint32_t m_indexCount;
-
-		std::vector<Wolf::InstanceMeshRenderer::MeshToRender::LOD::Cluster> m_clusters;
 	};
 	LOD getLOD(uint32_t lod, uint32_t lodType, bool ignoreDelayForLODInConstruction = false);
 
@@ -99,8 +97,6 @@ private:
 	{
 		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
 		uint32_t m_indexCount;
-
-		std::vector<Wolf::InstanceMeshRenderer::MeshToRender::LOD::Cluster> m_clusterRanges;
 	};
 	InternalLOD m_mesh;
 	Wolf::DynamicResourceUniqueOwnerArray<InternalLOD, 16> m_defaultSimplifiedMeshes;

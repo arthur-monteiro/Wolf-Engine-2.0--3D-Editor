@@ -139,6 +139,7 @@ void DrawManager::activateCameras(const Wolf::CameraList& cameraList) const
 		m_instanceMeshRenderer->activateCameraForThisFrame(CommonCameraIndices::CAMERA_IDX_MAIN, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
 	}
 
+	// TODO: don't rely on camera count
 	uint32_t cameraCount = cameraList.getCurrentCameras().size();
 
 	for (uint32_t cameraPipelineIdx = CommonCameraIndices::CAMERA_IDX_SHADOW_CASCADE_0; cameraPipelineIdx <= CommonCameraIndices::CAMERA_IDX_SHADOW_CASCADE_3; cameraPipelineIdx++)
@@ -277,7 +278,7 @@ Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetI
 	AssetMesh::LOD bestLOD = meshAsset->getLOD(0, 0);
 	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh = bestLOD.m_mesh;
 	Wolf::InstanceMeshRenderer::MeshToRender::LOD& addedLOD = meshToRenderInfo.m_lods.emplace_back(mesh ? mesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(),
-		lodCount == 0 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, bestLOD.m_indexCount, quality), bestLOD.m_indexCount, bestLOD.m_clusters);
+		lodCount == 0 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, bestLOD.m_indexCount, quality), bestLOD.m_indexCount);
 
 	if (lodCount == 0 && !mesh)
 	{
@@ -292,8 +293,7 @@ Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetI
 		float lodDistance = lodIdx == lodCount - 1 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, lod.m_indexCount, quality);
 
 		Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
-		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount,
-			lod.m_clusters);
+		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount);
 
 		if (lodIdx == lodCount - 1 && !lodMesh)
 		{
@@ -310,8 +310,7 @@ Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetI
 		float lodDistance = 10'000.0f;
 
 		Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
-		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount,
-			lod.m_clusters);
+		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount);
 
 		if (!lodMesh)
 		{
@@ -358,7 +357,6 @@ DrawManager::InstancedMeshRegistered::MemoryAllocated DrawManager::InstancedMesh
 	Wolf::InstanceMeshRenderer::MeshToRender::LOD lodInfo{};
 	AssetMesh::LOD lodData = meshAsset->getLOD(lod, 0, true);
 	lodInfo.m_mesh = lodData.m_mesh.duplicateAs<Wolf::MeshInterface>();
-	lodInfo.m_clusters = lodData.m_clusters;
 
 	instanceMeshRenderer->registerLODData(m_meshIdx, lod, lodInfo);
 
