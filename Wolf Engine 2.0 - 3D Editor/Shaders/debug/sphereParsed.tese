@@ -2,6 +2,7 @@
 #define GLSL
 
 
+
 layout(binding = 0, set = 0) uniform UniformBufferCamera
 {
 	mat4 view;
@@ -19,8 +20,8 @@ layout(binding = 0, set = 0) uniform UniformBufferCamera
 
 	float near;
 	float far;
-	uint  frameIndex;
-	uint  extentWidth;
+	uint frameIndex;
+	uint extentWidth;
 
 	vec4 frustumPlanes[6]; // left, right, bottom, top, near, far
 
@@ -95,6 +96,11 @@ vec4 getFrustumPlane(uint idx)
 vec4 getViewport()
 {
 	return ubCamera.viewport;
+}
+
+float computeProjectionFactor()
+{
+    return 0.5 * getViewport().w * abs(ubCamera.projection[1][1]);
 }
 layout(quads, equal_spacing, ccw) in;
 

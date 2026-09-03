@@ -72,6 +72,26 @@ public:
     const std::vector<LODInfo>& getDefaultLODInfo() { return m_defaultSimplifiedLODs; }
     const std::vector<LODInfo>& getSloppyLODInfo() { return m_sloppySimplifiedLODs; }
 
+    struct Meshlet
+    {
+        std::vector<Vertex3D> m_staticVertices;
+        std::vector<uint8_t> m_indices;
+
+        Wolf::AABB m_aabb;
+        Wolf::BoundingSphere m_boundingSphere;
+        Wolf::BoundingSphere m_groupBoundingSphere;
+        Wolf::BoundingSphere m_parentGroupBoundingSphere;
+
+        int8_t m_coneAxis[3];
+        int8_t m_coneCutoff;
+
+        std::vector<uint32_t> m_parentMeshletIndices;
+
+        float m_lodError = 0.0f;
+        float m_parentLodError = 1e30f;
+    };
+    const std::vector<Meshlet>& getMeshlets() { return m_meshlets; }
+
     const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& getTextureSetsInfo() const { return m_textureSetsInfo; }
     const Wolf::ResourceUniqueOwner<AnimationData>& getAnimationData() const { return m_animationData; }
 
@@ -79,6 +99,12 @@ private:
     AssetManager* m_assetManager = nullptr;
 
     static std::string computeCacheFolder(const std::string& filename);
+    void readLODs(bool readLODData, ReadSpecificLODInfo readSpecificLOD, uint32_t defaultLODCount, const std::vector<uint32_t>& indexCountPerDefaultLOD,
+        const std::vector<uint32_t>& indexCountPerSloppyLOD);
+    void buildMeshletHierarchy();
+    void computeMeshlets(const std::vector<Vertex3D>& vertices, const std::vector<uint32_t>& indices, std::vector<uint32_t>& outMeshletIndices, float currentLodError,
+        const Wolf::BoundingSphere& groupBoundingSphere);
+    void readMeshlets();
 
     template <typename T>
     void optimizeMeshData(std::vector<T>& outputVertices, std::vector<uint32_t>& outputIndices, const std::vector<T>& inputVertices, const std::vector<uint32_t>& inputIndices);
@@ -99,6 +125,16 @@ private:
     std::vector<SkeletonVertex> m_skeletonVertices;
     uint32_t m_indexCount;
     std::vector<uint32_t> m_indices;
+
+    // Meshlets
+    std::vector<Meshlet> m_meshlets;
+
+    struct MeshletGroup
+    {
+        std::vector<uint32_t> m_meshletIndices;
+    };
+    std::vector<MeshletGroup> computeMeshletGroups(const std::vector<uint32_t>& meshlets, uint32_t targetGroupSize);
+    void computeMeshletsForGroup(const MeshletGroup& group, std::vector<uint32_t>& outMeshletIndices, bool isRootGroup);
 
     bool m_isMeshCentered;
     Wolf::AABB m_aabb;

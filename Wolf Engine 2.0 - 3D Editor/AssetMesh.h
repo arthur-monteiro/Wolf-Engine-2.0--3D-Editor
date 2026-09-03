@@ -44,6 +44,21 @@ public:
 	};
 	LOD getLOD(uint32_t lod, uint32_t lodType, bool ignoreDelayForLODInConstruction = false);
 
+	struct Meshlet
+	{
+		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
+		Wolf::BoundingSphere m_boundingSphere;
+		Wolf::BoundingSphere m_groupBoundingSphere;
+		Wolf::BoundingSphere m_parentGroupBoundingSphere;
+
+		int8_t m_coneAxis[3];
+		int8_t m_coneCutoff;
+
+		float m_lodError;
+		float m_parentLodError;
+	};
+	const Wolf::DynamicResourceUniqueOwnerArray<Meshlet, 128>& getMeshlets() { return m_meshlets; }
+
 	bool isCentered() const { return m_isCentered; }
 	bool isAnimated() const { return static_cast<bool>(m_animationData);}
 	Wolf::ResourceNonOwner<AnimationData> getAnimationData() const { return m_animationData.createNonOwnerResource(); }
@@ -101,6 +116,8 @@ private:
 	InternalLOD m_mesh;
 	Wolf::DynamicResourceUniqueOwnerArray<InternalLOD, 16> m_defaultSimplifiedMeshes;
 	Wolf::DynamicResourceUniqueOwnerArray<InternalLOD, 16> m_sloppySimplifiedMeshes;
+
+	Wolf::DynamicResourceUniqueOwnerArray<Meshlet, 128> m_meshlets;
 
 	struct LODInConstruction
 	{

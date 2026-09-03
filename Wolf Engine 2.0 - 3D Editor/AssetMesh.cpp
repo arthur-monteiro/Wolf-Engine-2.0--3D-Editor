@@ -266,6 +266,11 @@ void AssetMesh::unloadLOD(uint32_t lodIdx, uint32_t lodType)
 
 AssetMesh::LOD AssetMesh::getLOD(uint32_t lod, uint32_t lodType, bool ignoreDelayForLODInConstruction)
 {
+	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	{
+		Wolf::Debug::sendCriticalError("We shouldn't get LOD if using meshlets");
+	}
+
 	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh;
 	uint32_t indexCount = 0;
 
@@ -409,86 +414,121 @@ void AssetMesh::loadMesh()
 	m_boundingBox = meshFormatter->getAABB();
 	m_boundingSphere = meshFormatter->getBoundingSphere();
 
-	m_mesh.m_indexCount = meshFormatter->getIndexCount();
 	VkBufferUsageFlags additionalFlags = 0;
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
 		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
-	if (!meshFormatter->getStaticVertices().empty())
-	{
-		m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getStaticVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
-			meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
-	}
-	else if (!meshFormatter->getSkeletonVertices().empty())
-	{
-		m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getSkeletonVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
-			meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
-	}
-	else if (!Wolf::g_configuration->getUseMeshStreaming())
-	{
-		Wolf::Debug::sendCriticalError("No vertex found");
-	}
 
-	m_meshAssetEditor->setIsCentered(meshFormatter->isMeshCentered());
-
-	// LODs
-	const std::vector<MeshFormatter::LODInfo>& defaultLODs = meshFormatter->getDefaultLODInfo();
-	const std::vector<MeshFormatter::LODInfo>& sloppyLODs = meshFormatter->getSloppyLODInfo();
-
-	bool foundWorstDefaultLOD = true;
-	for (uint32_t lodIdx = 0; lodIdx < defaultLODs.size(); ++lodIdx)
+	if (Wolf::g_configuration->getUseMeshletHierarchy())
 	{
-		const MeshFormatter::LODInfo& lod = defaultLODs[lodIdx];
+		const std::vector<MeshFormatter::Meshlet>& meshlets = meshFormatter->getMeshlets();
 
-		Wolf::ResourceUniqueOwner<InternalLOD>& internalLOD = m_defaultSimplifiedMeshes.emplace_back(new InternalLOD());
-		internalLOD->m_indexCount = lod.m_indexCount;
-		if (!lod.m_staticVertices.empty())
+		for (uint32_t meshletIdx = 0; meshletIdx < meshlets.size(); ++meshletIdx)
 		{
-			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+			const MeshFormatter::Meshlet& meshlet = meshlets[meshletIdx];
+
+			const std::vector<uint8_t>& indices = meshlet.m_indices;
+			std::vector<uint32_t> indices32bits;
+			indices32bits.reserve(indices.size());
+			for (uint8_t idx : indices)
+			{
+				indices32bits.push_back(idx);
+			}
+
+			Wolf::ResourceUniqueOwner<Meshlet>& newMeshlet = m_meshlets.emplace_back(new Meshlet());
+			newMeshlet->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			newMeshlet->m_boundingSphere = meshlet.m_boundingSphere;
+			newMeshlet->m_groupBoundingSphere = meshlet.m_groupBoundingSphere;
+			newMeshlet->m_parentGroupBoundingSphere = meshlet.m_parentGroupBoundingSphere;
+			newMeshlet->m_lodError = meshlet.m_lodError;
+			newMeshlet->m_parentLodError = meshlet.m_parentLodError;
+			newMeshlet->m_coneAxis[0] = meshlet.m_coneAxis[0];
+			newMeshlet->m_coneAxis[1] = meshlet.m_coneAxis[1];
+			newMeshlet->m_coneAxis[2] = meshlet.m_coneAxis[2];
+			newMeshlet->m_coneCutoff = meshlet.m_coneCutoff;
+		}
+	}
+	else
+	{
+		m_mesh.m_indexCount = meshFormatter->getIndexCount();
+
+		if (!meshFormatter->getStaticVertices().empty())
+		{
+			m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getStaticVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 		}
-		else if (!lod.m_skeletonVertices.empty())
+		else if (!meshFormatter->getSkeletonVertices().empty())
 		{
-			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+			m_mesh.m_mesh.reset(new Wolf::Mesh(meshFormatter->getSkeletonVertices(), meshFormatter->getIndices(), m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
 				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
 		}
-		else if (!Wolf::g_configuration->getUseMeshStreaming() || lodIdx == defaultLODs.size() - 1)
+		else if (!Wolf::g_configuration->getUseMeshStreaming())
 		{
-			foundWorstDefaultLOD = false;
+			Wolf::Debug::sendCriticalError("No vertex found");
 		}
 
-		MeshAssetEditor::AddLODInfo addLodInfo{};
-		addLodInfo.m_materialIdx = m_materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(m_materialAssetId)->getMaterialGPUIdx();
-		addLodInfo.m_indexCount = m_defaultSimplifiedMeshes.back()->m_indexCount;
-		if (m_defaultSimplifiedMeshes.back()->m_mesh)
-		{
-			addLodInfo.m_mesh = m_defaultSimplifiedMeshes.back()->m_mesh.createNonOwnerResource();
-		}
-		addLodInfo.m_lodType = 0;
-		addLodInfo.m_error = lod.m_error;
-		m_meshAssetEditor->addLOD(addLodInfo);
-	}
+		m_meshAssetEditor->setIsCentered(meshFormatter->isMeshCentered());
 
-	for (uint32_t lodIdx = 0; lodIdx < sloppyLODs.size(); ++lodIdx)
-	{
-		const MeshFormatter::LODInfo& lod = sloppyLODs[lodIdx];
+		// LODs
+		const std::vector<MeshFormatter::LODInfo>& defaultLODs = meshFormatter->getDefaultLODInfo();
+		const std::vector<MeshFormatter::LODInfo>& sloppyLODs = meshFormatter->getSloppyLODInfo();
 
-		Wolf::ResourceUniqueOwner<InternalLOD>& internalLOD = m_sloppySimplifiedMeshes.emplace_back(new InternalLOD());
-		internalLOD->m_indexCount = lod.m_indexCount;
-		if (!lod.m_staticVertices.empty())
+		bool foundWorstDefaultLOD = true;
+		for (uint32_t lodIdx = 0; lodIdx < defaultLODs.size(); ++lodIdx)
 		{
-			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
-				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			const MeshFormatter::LODInfo& lod = defaultLODs[lodIdx];
+
+			Wolf::ResourceUniqueOwner<InternalLOD>& internalLOD = m_defaultSimplifiedMeshes.emplace_back(new InternalLOD());
+			internalLOD->m_indexCount = lod.m_indexCount;
+			if (!lod.m_staticVertices.empty())
+			{
+				internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+					meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			}
+			else if (!lod.m_skeletonVertices.empty())
+			{
+				internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+					meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			}
+			else if (!Wolf::g_configuration->getUseMeshStreaming() || lodIdx == defaultLODs.size() - 1)
+			{
+				foundWorstDefaultLOD = false;
+			}
+
+			MeshAssetEditor::AddLODInfo addLodInfo{};
+			addLodInfo.m_materialIdx = m_materialAssetId == NO_ASSET ? 0 : m_assetManager->getMaterialEditor(m_materialAssetId)->getMaterialGPUIdx();
+			addLodInfo.m_indexCount = m_defaultSimplifiedMeshes.back()->m_indexCount;
+			if (m_defaultSimplifiedMeshes.back()->m_mesh)
+			{
+				addLodInfo.m_mesh = m_defaultSimplifiedMeshes.back()->m_mesh.createNonOwnerResource();
+			}
+			addLodInfo.m_lodType = 0;
+			addLodInfo.m_error = lod.m_error;
+			m_meshAssetEditor->addLOD(addLodInfo);
 		}
-		else if (!lod.m_skeletonVertices.empty())
+
+		for (uint32_t lodIdx = 0; lodIdx < sloppyLODs.size(); ++lodIdx)
 		{
-			internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
-				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
-		}
-		else if (!Wolf::g_configuration->getUseMeshStreaming() || (lodIdx == sloppyLODs.size() - 1 && !foundWorstDefaultLOD))
-		{
-			Wolf::Debug::sendCriticalError("Worst default LOD or sloppy LOD must be valid");
+			const MeshFormatter::LODInfo& lod = sloppyLODs[lodIdx];
+
+			Wolf::ResourceUniqueOwner<InternalLOD>& internalLOD = m_sloppySimplifiedMeshes.emplace_back(new InternalLOD());
+			internalLOD->m_indexCount = lod.m_indexCount;
+			if (!lod.m_staticVertices.empty())
+			{
+				internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_staticVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+					meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			}
+			else if (!lod.m_skeletonVertices.empty())
+			{
+				internalLOD->m_mesh.reset(new Wolf::Mesh(lod.m_skeletonVertices, lod.m_indices, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+					meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			}
+			else if (!Wolf::g_configuration->getUseMeshStreaming() || (lodIdx == sloppyLODs.size() - 1 && !foundWorstDefaultLOD))
+			{
+				Wolf::Debug::sendCriticalError("Worst default LOD or sloppy LOD must be valid");
+			}
 		}
 	}
 

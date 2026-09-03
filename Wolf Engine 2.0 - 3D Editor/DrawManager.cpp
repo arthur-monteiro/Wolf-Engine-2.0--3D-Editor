@@ -262,75 +262,113 @@ void DrawManager::updateStreaming()
 }
 
 Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetId meshAssetId, const Wolf::ResourceNonOwner<const Wolf::PipelineSet>& pipelineSet,
-                                                                          const std::array<std::vector<Wolf::DescriptorSetBindInfo>, Wolf::PipelineSet::MAX_PIPELINE_COUNT>& perPipelineDescriptorSets) const
+	const std::array<std::vector<Wolf::DescriptorSetBindInfo>, Wolf::PipelineSet::MAX_PIPELINE_COUNT>& perPipelineDescriptorSets) const
 {
 	Wolf::ResourceNonOwner<AssetMesh> meshAsset = m_assetManager->getMeshAsset(meshAssetId);
-
-	float radius = meshAsset->getBoundingSphere().getRadius();
-	constexpr float quality = 1.0f;
-
-	uint32_t lodCount = meshAsset->getDefaultSimplifiedLODCount();
 
 	Wolf::InstanceMeshRenderer::MeshToRender meshToRenderInfo = { pipelineSet };
 	meshToRenderInfo.m_boundingSphere = meshAsset->getBoundingSphere();
 	meshToRenderInfo.m_AABB = meshAsset->getBoundingBox();
-
-	AssetMesh::LOD bestLOD = meshAsset->getLOD(0, 0);
-	Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh = bestLOD.m_mesh;
-	Wolf::InstanceMeshRenderer::MeshToRender::LOD& addedLOD = meshToRenderInfo.m_lods.emplace_back(mesh ? mesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(),
-		lodCount == 0 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, bestLOD.m_indexCount, quality), bestLOD.m_indexCount);
-
-	if (lodCount == 0 && !mesh)
-	{
-		Wolf::Debug::sendCriticalError("Mesh must be valid if there is no LOD (as mesh becomes the lowest LOD)");
-	}
-
-	bool foundWorstDefaultLOD = true;
-	for (uint32_t lodIdx = 0; lodIdx < lodCount; ++lodIdx)
-	{
-		AssetMesh::LOD lod = meshAsset->getLOD(lodIdx + 1, 0);
-
-		float lodDistance = lodIdx == lodCount - 1 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, lod.m_indexCount, quality);
-
-		Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
-		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount);
-
-		if (lodIdx == lodCount - 1 && !lodMesh)
-		{
-			foundWorstDefaultLOD = false;
-		}
-	}
-
-	if (!foundWorstDefaultLOD)
-	{
-		uint32_t sloppyLODCount = meshAsset->getSloppySimplifiedLODCount();
-
-		AssetMesh::LOD lod = meshAsset->getLOD(sloppyLODCount, 1);
-
-		float lodDistance = 10'000.0f;
-
-		Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
-		meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount);
-
-		if (!lodMesh)
-		{
-			Wolf::Debug::sendCriticalError("Lowest LOD must be valid");
-		}
-	}
-
 	meshToRenderInfo.m_perPipelineDescriptorSets = perPipelineDescriptorSets;
+
+	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	{
+		const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::Meshlet, 128>& meshlets = meshAsset->getMeshlets();
+
+		meshToRenderInfo.m_meshlets.resize(meshlets.size());
+		for (uint32_t i = 0; i < meshlets.size(); ++i)
+		{
+			meshToRenderInfo.m_meshlets[i].m_mesh = meshlets[i]->m_mesh.createNonOwnerResource<Wolf::MeshInterface>();
+			meshToRenderInfo.m_meshlets[i].m_boundingSphere = meshlets[i]->m_boundingSphere;
+			meshToRenderInfo.m_meshlets[i].m_groupBoundingSphere = meshlets[i]->m_groupBoundingSphere;
+			meshToRenderInfo.m_meshlets[i].m_parentGroupBoundingSphere = meshlets[i]->m_parentGroupBoundingSphere;
+			meshToRenderInfo.m_meshlets[i].m_lodError = meshlets[i]->m_lodError;
+			meshToRenderInfo.m_meshlets[i].m_parentLodError = meshlets[i]->m_parentLodError;
+			meshToRenderInfo.m_meshlets[i].m_coneAxis[0] = meshlets[i]->m_coneAxis[0];
+			meshToRenderInfo.m_meshlets[i].m_coneAxis[1] = meshlets[i]->m_coneAxis[1];
+			meshToRenderInfo.m_meshlets[i].m_coneAxis[2] = meshlets[i]->m_coneAxis[2];
+			meshToRenderInfo.m_meshlets[i].m_coneCutoff = meshlets[i]->m_coneCutoff;
+		}
+	}
+	else
+	{
+		float radius = meshAsset->getBoundingSphere().getRadius();
+		constexpr float quality = 1.0f;
+
+		uint32_t lodCount = meshAsset->getDefaultSimplifiedLODCount();
+
+		AssetMesh::LOD bestLOD = meshAsset->getLOD(0, 0);
+		Wolf::NullableResourceNonOwner<Wolf::Mesh> mesh = bestLOD.m_mesh;
+		meshToRenderInfo.m_lods.emplace_back(mesh ? mesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(),
+			lodCount == 0 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, bestLOD.m_indexCount, quality), bestLOD.m_indexCount);
+
+		if (lodCount == 0 && !mesh)
+		{
+			Wolf::Debug::sendCriticalError("Mesh must be valid if there is no LOD (as mesh becomes the lowest LOD)");
+		}
+
+		bool foundWorstDefaultLOD = true;
+		for (uint32_t lodIdx = 0; lodIdx < lodCount; ++lodIdx)
+		{
+			AssetMesh::LOD lod = meshAsset->getLOD(lodIdx + 1, 0);
+
+			float lodDistance = lodIdx == lodCount - 1 ? 10'000.0f : Wolf::InstanceMeshRenderer::computeLODDistance(radius, lod.m_indexCount, quality);
+
+			Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
+			meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount);
+
+			if (lodIdx == lodCount - 1 && !lodMesh)
+			{
+				foundWorstDefaultLOD = false;
+			}
+		}
+
+		if (!foundWorstDefaultLOD)
+		{
+			uint32_t sloppyLODCount = meshAsset->getSloppySimplifiedLODCount();
+
+			AssetMesh::LOD lod = meshAsset->getLOD(sloppyLODCount, 1);
+
+			float lodDistance = 10'000.0f;
+
+			Wolf::NullableResourceNonOwner<Wolf::Mesh> lodMesh = lod.m_mesh;
+			meshToRenderInfo.m_lods.emplace_back(lodMesh ? lodMesh.duplicateAs<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(), lodDistance, lod.m_indexCount);
+
+			if (!lodMesh)
+			{
+				Wolf::Debug::sendCriticalError("Lowest LOD must be valid");
+			}
+		}
+
+	}
 
 	return meshToRenderInfo;
 }
 
 DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::InstanceMeshRenderer::MeshToRender& meshToRender, AssetId meshAssetId,
 	const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer)
-	: m_meshAssetId(meshAssetId), m_lowLODMesh(meshToRender.m_lods.back().m_mesh)
+	: m_meshAssetId(meshAssetId)
 {
-	if (!m_lowLODMesh)
+	if (Wolf::g_configuration->getUseMeshletHierarchy())
 	{
-		Wolf::Debug::sendCriticalError("Lowest LOD must be valid");
+		m_lowLODMesh = meshToRender.m_meshlets.back().m_mesh;
+
+		if (meshToRender.m_meshlets.empty())
+		{
+			Wolf::Debug::sendCriticalError("No meshlet found");
+		}
 	}
+	else
+	{
+		m_lowLODMesh = meshToRender.m_lods.back().m_mesh;
+
+		if (!m_lowLODMesh)
+		{
+			Wolf::Debug::sendCriticalError("Lowest LOD must be valid");
+		}
+	}
+
+
 	m_meshIdx = instanceMeshRenderer->registerMesh(meshToRender);
 }
 
@@ -384,5 +422,13 @@ void DrawManager::InstancedMeshRegistered::unloadLOD(uint32_t lod, const Wolf::R
 
 bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const
 {
-	return m_lowLODMesh == otherMeshToRender.m_lods.back().m_mesh;
+	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	{
+		return m_lowLODMesh == otherMeshToRender.m_meshlets.back().m_mesh;
+	}
+	else
+	{
+		return m_lowLODMesh == otherMeshToRender.m_lods.back().m_mesh;
+	}
+
 }

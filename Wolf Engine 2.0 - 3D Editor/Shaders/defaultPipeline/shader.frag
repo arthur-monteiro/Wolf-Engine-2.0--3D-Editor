@@ -9,7 +9,6 @@ layout (location = 7) in vec3 inWorldSpacePos;
 layout (location = 8) flat in uint inEntityId;
 layout (location = 9) flat in uint inLOD;
 layout (location = 10) flat in uint inDrawId;
-layout (location = 11) flat in uint inTriangleId;
 
 layout (location = 0) out vec4 outColor;
 
@@ -138,7 +137,7 @@ void main()
     else if (ubDisplay.displayType == DISPLAY_TYPE_DRAW_ID)
         outColor = vec4(computeColorFromUint(inDrawId), 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_TRIANGLES_ID)
-        outColor = vec4(computeColorFromUint(inTriangleId), 1.0);
+        outColor = vec4(computeColorFromUint(uint(gl_PrimitiveID)), 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_LIGHTING)
         outColor = computeLighting(materialInfo);
     else if (ubDisplay.displayType == DISPLAY_TYPE_ENTITY_IDX)
