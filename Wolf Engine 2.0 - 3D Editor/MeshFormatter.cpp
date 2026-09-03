@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <meshoptimizer.h>
+#include <ranges>
 
 #include <ConfigurationHelper.h>
 
