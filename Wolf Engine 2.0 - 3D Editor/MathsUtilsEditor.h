@@ -7,4 +7,3 @@ void computeRectanglePointsFromScaleRotationOffset(const glm::vec2& scale, const
 void computeTransform(const glm::vec3& scale, const glm::vec3& rotation, const glm::vec3& offset, glm::mat4& outTransform);
 // p0 = (0, 0 ,0) and p1 = (0, y > 0, 0) gives an identity matrix
 void computeTransformFromTwoPoints(const glm::vec3& p0, const glm::vec3& p1, glm::vec3& outTranslation, glm::vec3& outRotation);
-bool arePointsCollinear(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2);

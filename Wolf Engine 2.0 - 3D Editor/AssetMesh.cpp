@@ -266,7 +266,7 @@ void AssetMesh::unloadLOD(uint32_t lodIdx, uint32_t lodType)
 
 AssetMesh::LOD AssetMesh::getLOD(uint32_t lod, uint32_t lodType, bool ignoreDelayForLODInConstruction)
 {
-	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	if (Wolf::g_configuration->getUseMeshlets())
 	{
 		Wolf::Debug::sendCriticalError("We shouldn't get LOD if using meshlets");
 	}
@@ -420,7 +420,7 @@ void AssetMesh::loadMesh()
 		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
 
-	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	if (Wolf::g_configuration->getUseMeshlets())
 	{
 		const std::vector<MeshFormatter::Meshlet>& meshlets = meshFormatter->getMeshlets();
 

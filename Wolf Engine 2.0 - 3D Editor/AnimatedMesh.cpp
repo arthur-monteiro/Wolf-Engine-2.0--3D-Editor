@@ -13,6 +13,11 @@
 AnimatedMesh::AnimatedMesh(const Wolf::ResourceNonOwner<AssetManager>& resourceManager,	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline)
 : m_assetManager(resourceManager), m_updateGPUBuffersPass(renderingPipeline->getUpdateGPUBuffersPass())
 {
+	if (Wolf::g_configuration->getUseMeshlets())
+	{
+		Wolf::Debug::sendCriticalError("Animated mesh are not yet supported with meshlets");
+	}
+
 	m_defaultPipelineSet.reset(new Wolf::LazyInitSharedResource<Wolf::PipelineSet, AnimatedMesh>([](Wolf::ResourceUniqueOwner<Wolf::PipelineSet>& pipelineSet)
 		{
 			pipelineSet.reset(new Wolf::PipelineSet);

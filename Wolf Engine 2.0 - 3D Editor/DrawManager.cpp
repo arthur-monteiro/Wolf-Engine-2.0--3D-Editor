@@ -271,7 +271,7 @@ Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetI
 	meshToRenderInfo.m_AABB = meshAsset->getBoundingBox();
 	meshToRenderInfo.m_perPipelineDescriptorSets = perPipelineDescriptorSets;
 
-	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	if (Wolf::g_configuration->getUseMeshlets())
 	{
 		const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::Meshlet, 128>& meshlets = meshAsset->getMeshlets();
 
@@ -349,7 +349,7 @@ DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::Instan
 	const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer)
 	: m_meshAssetId(meshAssetId)
 {
-	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	if (Wolf::g_configuration->getUseMeshlets())
 	{
 		m_lowLODMesh = meshToRender.m_meshlets.back().m_mesh;
 
@@ -422,7 +422,7 @@ void DrawManager::InstancedMeshRegistered::unloadLOD(uint32_t lod, const Wolf::R
 
 bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const
 {
-	if (Wolf::g_configuration->getUseMeshletHierarchy())
+	if (Wolf::g_configuration->getUseMeshlets())
 	{
 		return m_lowLODMesh == otherMeshToRender.m_meshlets.back().m_mesh;
 	}
