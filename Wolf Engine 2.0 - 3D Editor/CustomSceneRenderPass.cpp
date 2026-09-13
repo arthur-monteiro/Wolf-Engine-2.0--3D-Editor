@@ -108,7 +108,7 @@ void CustomSceneRenderPass::Request::recordCommands(const Wolf::CommandBuffer* c
     descriptorSetBindInfos.emplace_back(descriptorSetBindInfo, 0);
 
     std::vector<Wolf::PipelineSet::ShaderCodeToAddForStage> shadersCodeToAdd(1);
-    shadersCodeToAdd[0].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
+    shadersCodeToAdd[0].stages = Wolf::ShaderStageFlagBits::FRAGMENT;
 
     for (uint32_t i = 0; i < m_outputs.size(); ++i)
     {

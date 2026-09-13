@@ -68,4 +68,5 @@ private:
 	std::array<float, CASCADE_COUNT> m_cascadeSplits{};
 
 	bool m_wasEnabledThisFrame = false;
+	bool m_needToBeEnabled = false;
 };

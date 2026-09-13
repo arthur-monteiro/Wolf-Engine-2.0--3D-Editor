@@ -119,7 +119,7 @@ void ForwardPass::record(const Wolf::RecordContext& context)
 		descriptorSetBindInfos.emplace_back(m_globalIrradiancePass->getDescriptorSetToBind(), AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO);
 
 		std::vector<Wolf::PipelineSet::ShaderCodeToAddForStage> shadersCodeToAdd(1);
-		shadersCodeToAdd[0].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
+		shadersCodeToAdd[0].stages = Wolf::ShaderStageFlagBits::FRAGMENT;
 		m_globalIrradiancePass->addShaderCode(shadersCodeToAdd[0].shaderCodeToAdd, DescriptorSetSlots::DESCRIPTOR_SET_SLOT_GLOBAL_IRRADIANCE_INFO);
 		shadersCodeToAdd[0].requiredMask = AdditionalDescriptorSetsMaskBits::GLOBAL_IRRADIANCE_SHADOW_MASK_INFO;
 

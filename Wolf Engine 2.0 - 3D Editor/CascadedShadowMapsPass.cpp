@@ -69,9 +69,17 @@ void CascadedShadowMapsPass::record(const Wolf::RecordContext& context)
 	uint32_t sunLightCount = context.m_lightManager->getSunLightCount();
 	if (sunLightCount == 0)
 	{
+		m_wasEnabledThisFrame = m_needToBeEnabled = false;
+		return;
+	}
+
+	if (!context.m_cameraList->getCamera(CommonCameraIndices::CAMERA_IDX_SHADOW_CASCADE_0))
+	{
+		m_needToBeEnabled = true;
 		m_wasEnabledThisFrame = false;
 		return;
 	}
+
 	m_wasEnabledThisFrame = true;
 	if (sunLightCount > 1)
 		Wolf::Debug::sendError("CSM doesn't support more than 1 sun");
@@ -137,7 +145,7 @@ void CascadedShadowMapsPass::submit(const Wolf::SubmitContext& context)
 
 void CascadedShadowMapsPass::addCamerasForThisFrame(Wolf::CameraList& cameraList) const
 {
-	if (!m_wasEnabledThisFrame)
+	if (!m_needToBeEnabled)
 		return;
 
 	for (const std::unique_ptr<CascadeDepthPass>& cascade : m_cascadeDepthPasses)

@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG 3c4f870d1b12b484cd2417de850d56a9795f10e6
+        GIT_TAG 72a9740f2cfe9b8014f151c652256317f9f25137
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -115,7 +115,6 @@ elseif(UNIX AND NOT APPLE)
             ${MESHOPTIMIZER_LIB_PATH}/libmeshoptimizer.a
             lua_static
 
-            # The system dependencies found by PkgConfig
             ${GTK3_LIBRARIES}
             ${CAIRO_LIBRARIES}
             ${PANGO_LIBRARIES}

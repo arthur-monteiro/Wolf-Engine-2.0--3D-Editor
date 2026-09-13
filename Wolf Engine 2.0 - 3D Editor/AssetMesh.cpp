@@ -152,6 +152,10 @@ AssetMesh::LoadLODResult AssetMesh::loadLOD(uint32_t lodIdx, uint32_t lodType)
 	{
 		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
+	else if (Wolf::g_configuration->getUseMeshlets())
+	{
+		additionalFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	}
 
 	LoadLODResult result { LoadLODResult::Result::REQUESTED };
 
@@ -414,10 +418,10 @@ void AssetMesh::loadMesh()
 	m_boundingBox = meshFormatter->getAABB();
 	m_boundingSphere = meshFormatter->getBoundingSphere();
 
-	VkBufferUsageFlags additionalFlags = 0;
+	VkBufferUsageFlags additionalFlags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	if (g_editorConfiguration->getEnableRayTracing())
 	{
-		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 	}
 
 	if (Wolf::g_configuration->getUseMeshlets())

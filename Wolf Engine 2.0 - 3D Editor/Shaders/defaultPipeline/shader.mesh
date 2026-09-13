@@ -1,0 +1,82 @@
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_nonuniform_qualifier : enable
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(triangles, max_vertices = 64, max_primitives = 126) out;
+
+#define MAX_TASK_MESHLETS 64
+struct TaskPayload 
+{
+    uint meshletIndices[MAX_TASK_MESHLETS];
+    uint instanceIdx;
+};
+taskPayloadSharedEXT TaskPayload payload;
+
+layout(location = 0) out vec3 outViewPos[];
+layout(location = 1) out vec2 outTexCoord[];
+layout(location = 2) out flat uint outMaterialIdx[];
+layout(location = 3) out mat3 outTBN[];
+layout(location = 6) out vec3 outWorldSpaceNormal[];
+layout(location = 7) out vec3 outWorldSpacePos[];
+layout(location = 8) out flat uint outEntityId[];
+layout(location = 9) out flat uint outLOD[];
+layout(location = 10) out flat uint outDrawId[];
+
+void main() 
+{
+    uint threadIdx = gl_LocalInvocationID.x;
+    
+    uint meshletListIndex = gl_WorkGroupID.x; 
+    uint meshletIdx = payload.meshletIndices[meshletListIndex];
+    uint instanceIdx = payload.instanceIdx;
+
+    CullingInstanceInfo cullingInstanceInfo = cullingInstancesInfo[instanceIdx];
+    MeshletInfo mInfo = meshletsInfo[meshletIdx];
+
+    SetMeshOutputsEXT(mInfo.vertexCount, mInfo.indexCount / 3);
+
+    mat4 transform = cullingInstanceInfo.transform;
+    mat3 usedModelMatrix = transpose(inverse(mat3(transform)));
+
+    for (uint i = threadIdx; i < mInfo.vertexCount; i += gl_WorkGroupSize.x) 
+    {
+        Vertex vert = vertices[mInfo.vertexOffset + i];
+        vec3 pos = vec3(vert.px, vert.py, vert.pz);
+        vec3 normal = vec3(vert.nx, vert.ny, vert.nz);
+        vec3 tangent = vec3(vert.tx, vert.ty, vert.tz);
+        vec2 texCoords = vec2(vert.u, vert.v);
+
+        vec4 worldPos = transform * vec4(pos, 1.0);
+        vec4 viewPos = getViewMatrix() * worldPos;
+
+        vec3 n = normalize(usedModelMatrix * normal);
+        vec3 t = normalize(usedModelMatrix * tangent);
+        t = normalize(t - dot(t, n) * n);
+        vec3 b = normalize(cross(t, n));
+
+        gl_MeshVerticesEXT[i].gl_Position = getProjectionMatrix() * viewPos;
+        
+        outViewPos[i]          = viewPos.xyz;
+        outTexCoord[i]         = texCoords;
+        outMaterialIdx[i]      = cullingInstanceInfo.materialIdx;
+        outTBN[i]              = transpose(mat3(t, b, n));
+        outWorldSpaceNormal[i] = normalize(normal);
+        outWorldSpacePos[i]    = worldPos.xyz;
+        outEntityId[i]         = cullingInstanceInfo.customData;
+        outLOD[i]              = 0;
+        outDrawId[i]           = meshletIdx;
+    }
+
+    for (uint i = threadIdx; i < mInfo.indexCount / 3; i += gl_WorkGroupSize.x) 
+    {
+        uint baseIdx = mInfo.indexOffset + (i * 3u);
+
+        uvec3 primitiveIndices = uvec3(
+            indices[baseIdx + 0u],
+            indices[baseIdx + 1u],
+            indices[baseIdx + 2u]
+        );
+
+        gl_PrimitiveTriangleIndicesEXT[i] = primitiveIndices;
+    }
+}
