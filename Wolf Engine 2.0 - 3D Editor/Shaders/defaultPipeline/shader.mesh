@@ -4,14 +4,6 @@
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 126) out;
 
-#define MAX_TASK_MESHLETS 64
-struct TaskPayload 
-{
-    uint meshletIndices[MAX_TASK_MESHLETS];
-    uint instanceIdx;
-};
-taskPayloadSharedEXT TaskPayload payload;
-
 layout(location = 0) out vec3 outViewPos[];
 layout(location = 1) out vec2 outTexCoord[];
 layout(location = 2) out flat uint outMaterialIdx[];
@@ -26,21 +18,24 @@ void main()
 {
     uint threadIdx = gl_LocalInvocationID.x;
     
-    uint meshletListIndex = gl_WorkGroupID.x; 
-    uint meshletIdx = payload.meshletIndices[meshletListIndex];
-    uint instanceIdx = payload.instanceIdx;
+    uint meshletListIndex = gl_WorkGroupID.x;
+    MeshletInstanceData meshletInstanceData = meshletInstancesDataBuffer.meshletInstancesData[meshletListIndex]; 
+    uint vertexCount = meshletInstanceData.vertexCount;
+    uint vertexOffset = meshletInstanceData.vertexOffset;
+    uint indexCount = meshletInstanceData.indexCount;
+    uint indexOffset = meshletInstanceData.indexOffset;
+    uint instanceIdx = meshletInstanceData.instanceIdx;
 
     CullingInstanceInfo cullingInstanceInfo = cullingInstancesInfo[instanceIdx];
-    MeshletInfo mInfo = meshletsInfo[meshletIdx];
 
-    SetMeshOutputsEXT(mInfo.vertexCount, mInfo.indexCount / 3);
+    SetMeshOutputsEXT(vertexCount, indexCount / 3);
 
     mat4 transform = cullingInstanceInfo.transform;
     mat3 usedModelMatrix = transpose(inverse(mat3(transform)));
 
-    for (uint i = threadIdx; i < mInfo.vertexCount; i += gl_WorkGroupSize.x) 
+    for (uint i = threadIdx; i < vertexCount; i += gl_WorkGroupSize.x) 
     {
-        Vertex vert = vertices[mInfo.vertexOffset + i];
+        Vertex vert = vertices[vertexOffset + i];
         vec3 pos = vec3(vert.px, vert.py, vert.pz);
         vec3 normal = vec3(vert.nx, vert.ny, vert.nz);
         vec3 tangent = vec3(vert.tx, vert.ty, vert.tz);
@@ -64,12 +59,12 @@ void main()
         outWorldSpacePos[i]    = worldPos.xyz;
         outEntityId[i]         = cullingInstanceInfo.customData;
         outLOD[i]              = 0;
-        outDrawId[i]           = meshletIdx;
+        outDrawId[i]           = vertexOffset;
     }
 
-    for (uint i = threadIdx; i < mInfo.indexCount / 3; i += gl_WorkGroupSize.x) 
+    for (uint i = threadIdx; i < indexCount / 3; i += gl_WorkGroupSize.x) 
     {
-        uint baseIdx = mInfo.indexOffset + (i * 3u);
+        uint baseIdx = indexOffset + (i * 3u);
 
         uvec3 primitiveIndices = uvec3(
             indices[baseIdx + 0u],

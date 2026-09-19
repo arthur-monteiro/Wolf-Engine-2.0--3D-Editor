@@ -20,13 +20,10 @@ StaticMesh::StaticMesh(const Wolf::ResourceNonOwner<AssetManager>& assetManager)
 			/* Pre Depth */
 			if (Wolf::g_configuration->getUseMeshlets())
 			{
-				pipelineInfo.shaderInfos.resize(2);
+				pipelineInfo.shaderInfos.resize(1);
 
-				pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/defaultPipeline/shader.task";
-				pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::TASK;
-
-				pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.mesh";
-				pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::MESH;
+				pipelineInfo.shaderInfos[0].shaderFilename = "Shaders/defaultPipeline/shader.mesh";
+				pipelineInfo.shaderInfos[0].stage = Wolf::ShaderStageFlagBits::MESH;
 			}
 			else
 			{
@@ -63,9 +60,9 @@ StaticMesh::StaticMesh(const Wolf::ResourceNonOwner<AssetManager>& assetManager)
 			/* Forward */
 			if (Wolf::g_configuration->getUseMeshlets())
 			{
-				pipelineInfo.shaderInfos.resize(3);
-				pipelineInfo.shaderInfos[2].shaderFilename = "Shaders/defaultPipeline/shader.frag";
-				pipelineInfo.shaderInfos[2].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
+				pipelineInfo.shaderInfos.resize(2);
+				pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/shader.frag";
+				pipelineInfo.shaderInfos[1].stage = Wolf::ShaderStageFlagBits::FRAGMENT;
 			}
 			else
 			{
@@ -89,7 +86,7 @@ StaticMesh::StaticMesh(const Wolf::ResourceNonOwner<AssetManager>& assetManager)
 			// Output Ids
 			pipelineInfo.materialsDescriptorSlot = -1;
 			pipelineInfo.lightDescriptorSlot = -1;
-			pipelineInfo.shaderInfos[Wolf::g_configuration->getUseMeshlets() ? 2 : 1].shaderFilename = "Shaders/defaultPipeline/outputIds.frag";
+			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/outputIds.frag";
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_OUTPUT_IDS);
 
 			// Custom depth
@@ -98,7 +95,7 @@ StaticMesh::StaticMesh(const Wolf::ResourceNonOwner<AssetManager>& assetManager)
 			pipelineInfo.dynamicStates.clear();
 			pipelineInfo.enableDepthWrite = true;
 			pipelineInfo.depthCompareOp = Wolf::CompareOp::GREATER_OR_EQUAL;
-			pipelineInfo.shaderInfos[Wolf::g_configuration->getUseMeshlets() ? 2 : 1].shaderFilename = "Shaders/defaultPipeline/customRender.frag";
+			pipelineInfo.shaderInfos[1].shaderFilename = "Shaders/defaultPipeline/customRender.frag";
 			pipelineSet->addPipeline(pipelineInfo, CommonPipelineIndices::PIPELINE_IDX_CUSTOM_RENDER);
 		}));
 }
