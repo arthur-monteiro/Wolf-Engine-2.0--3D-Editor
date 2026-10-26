@@ -446,7 +446,7 @@ Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetI
 		for (uint32_t i = 0; i < meshlets.size(); ++i)
 		{
 
-			meshToRenderInfo.m_meshlets[i].m_mesh = meshlets[i]->m_mesh ? meshlets[i]->m_mesh.createNonOwnerResource<Wolf::MeshInterface>() : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>();
+			meshToRenderInfo.m_meshlets[i].m_mesh = meshlets[i]->m_mesh ? Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(meshlets[i]->m_mesh.createNonOwnerResource<Wolf::MeshInterface>()) : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>();
 			meshToRenderInfo.m_meshlets[i].m_boundingSphere = meshlets[i]->m_boundingSphere;
 			meshToRenderInfo.m_meshlets[i].m_groupIdxAsParent = meshlets[i]->m_groupIdxAsParent;
 			meshToRenderInfo.m_meshlets[i].m_groupIdxAsChild = meshlets[i]->m_groupIdxAsChild;
