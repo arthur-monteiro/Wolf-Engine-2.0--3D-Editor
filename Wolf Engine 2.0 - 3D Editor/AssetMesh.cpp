@@ -1,14 +1,16 @@
 #include "AssetMesh.h"
 
+#include <ProfilerCommon.h>
+
 #include "AssetManager.h"
 #include "CacheHelper.h"
 #include "EditorConfiguration.h"
 #include "MathsUtilsEditor.h"
 
 AssetMesh::AssetMesh(AssetManager* assetManager, const std::string& loadingPath, bool needThumbnailsGeneration, AssetId assetId, const std::function<void(AssetId)>& onAssetUpdateCallback,
-	const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId,
-	const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
-	const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
+                     const Wolf::ResourceNonOwner<Wolf::BufferPoolInterface>& bufferPoolInterface, ExternalSceneLoader::MeshData& meshData, AssetId defaultMaterialAssetId, AssetId parentAssetId,
+                     const std::function<void(const std::string&)>& isolateMeshCallback, const std::function<void(glm::mat4&)>& removeIsolationAndGetViewMatrixCallback,
+                     const Wolf::ResourceNonOwner<RenderingPipelineInterface>& renderingPipeline, const Wolf::ResourceNonOwner<EditorGPUDataTransfersManager>& editorPushDataToGPU)
 : AssetInterface(loadingPath, assetId, onAssetUpdateCallback, parentAssetId), m_assetManager(assetManager), m_bufferPoolInterface(bufferPoolInterface), m_staticVertices(meshData.m_staticVertices),
   m_indices(meshData.m_indices), m_skeletonVertices(meshData.m_skeletonVertices), m_animationData(meshData.m_animationData.release()), m_materialAssetId(defaultMaterialAssetId),
   m_pushDataToGPUManager(editorPushDataToGPU.duplicateAs<Wolf::GPUDataTransfersManagerInterface>()), m_positionsCacheFilename(meshData.m_cachePositionFilename),
@@ -268,6 +270,34 @@ void AssetMesh::unloadLOD(uint32_t lodIdx, uint32_t lodType)
 	}
 }
 
+void AssetMesh::loadMeshlet(uint32_t meshletIdx)
+{
+	PROFILE_FUNCTION
+
+	if (m_meshlets[meshletIdx]->m_mesh)
+		return;
+
+	MeshFormatter::Meshlet meshlet;
+	MeshFormatter::readMeshlet(meshlet, meshletIdx, true, MeshFormatter::computeCacheFolder(m_loadingPath));
+
+	const std::vector<uint8_t>& indices = meshlet.m_indices;
+	std::vector<uint32_t> indices32bits;
+	indices32bits.reserve(indices.size());
+	for (uint8_t idx : indices)
+	{
+		indices32bits.push_back(idx);
+	}
+
+	VkBufferUsageFlags additionalFlags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	if (g_editorConfiguration->getEnableRayTracing())
+	{
+		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+	}
+
+	m_meshlets[meshletIdx]->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, Wolf::AABB(),
+		Wolf::BoundingSphere(), additionalFlags, additionalFlags));
+}
+
 AssetMesh::LOD AssetMesh::getLOD(uint32_t lod, uint32_t lodType, bool ignoreDelayForLODInConstruction)
 {
 	if (Wolf::g_configuration->getUseMeshlets())
@@ -427,6 +457,7 @@ void AssetMesh::loadMesh()
 	if (Wolf::g_configuration->getUseMeshlets())
 	{
 		const std::vector<MeshFormatter::Meshlet>& meshlets = meshFormatter->getMeshlets();
+		const std::vector<MeshFormatter::MeshletGroup>& meshletGroups = meshFormatter->getMeshletGroups();
 
 		for (uint32_t meshletIdx = 0; meshletIdx < meshlets.size(); ++meshletIdx)
 		{
@@ -441,10 +472,14 @@ void AssetMesh::loadMesh()
 			}
 
 			Wolf::ResourceUniqueOwner<Meshlet>& newMeshlet = m_meshlets.emplace_back(new Meshlet());
-			newMeshlet->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
-				meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			if (!meshlet.m_staticVertices.empty())
+			{
+				newMeshlet->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+					meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+			}
 			newMeshlet->m_boundingSphere = meshlet.m_boundingSphere;
-			newMeshlet->m_groupBoundingSphere = meshlet.m_groupBoundingSphere;
+			newMeshlet->m_groupIdxAsParent = meshlet.m_groupIdxAsParent;
+			newMeshlet->m_groupIdxAsChild = meshlet.m_groupIdxAsChild;
 			newMeshlet->m_parentGroupBoundingSphere = meshlet.m_parentGroupBoundingSphere;
 			newMeshlet->m_lodError = meshlet.m_lodError;
 			newMeshlet->m_parentLodError = meshlet.m_parentLodError;
@@ -452,6 +487,17 @@ void AssetMesh::loadMesh()
 			newMeshlet->m_coneAxis[1] = meshlet.m_coneAxis[1];
 			newMeshlet->m_coneAxis[2] = meshlet.m_coneAxis[2];
 			newMeshlet->m_coneCutoff = meshlet.m_coneCutoff;
+		}
+
+		for (uint32_t meshletGroupIdx = 0; meshletGroupIdx < meshletGroups.size(); ++meshletGroupIdx)
+		{
+			const MeshFormatter::MeshletGroup& meshletGroup = meshletGroups[meshletGroupIdx];
+
+			Wolf::ResourceUniqueOwner<MeshletGroup>& newMeshletGroup = m_meshletGroups.emplace_back(new MeshletGroup());
+			newMeshletGroup->m_boundingSphere = meshletGroup.m_boundingSphere;
+			newMeshletGroup->m_childrenMeshletIndices = meshletGroup.m_childrenMeshletIndices;
+			newMeshletGroup->m_parentMeshletIndices = meshletGroup.m_parentMeshletIndices;
+			newMeshletGroup->m_hierarchyLevel = meshletGroup.m_hierarchyLevel;
 		}
 	}
 	else

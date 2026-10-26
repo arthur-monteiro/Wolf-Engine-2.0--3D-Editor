@@ -13,6 +13,8 @@ layout(location = 7) out vec3 outWorldSpacePos[];
 layout(location = 8) out flat uint outEntityId[];
 layout(location = 9) out flat uint outLOD[];
 layout(location = 10) out flat uint outDrawId[];
+layout(location = 11) out flat uint outMeshletGroupId[];
+layout(location = 12) out flat uint outTriangleId[];
 
 void main() 
 {
@@ -25,6 +27,8 @@ void main()
     uint indexCount = meshletInstanceData.indexCount;
     uint indexOffset = meshletInstanceData.indexOffset;
     uint instanceIdx = meshletInstanceData.instanceIdx;
+    uint meshletIdx = meshletInstanceData.meshletIdx;
+    uint groupMeshletIdx = meshletInstanceData.groupMeshletIdx;
 
     CullingInstanceInfo cullingInstanceInfo = cullingInstancesInfo[instanceIdx];
 
@@ -58,8 +62,10 @@ void main()
         outWorldSpaceNormal[i] = normalize(normal);
         outWorldSpacePos[i]    = worldPos.xyz;
         outEntityId[i]         = cullingInstanceInfo.customData;
-        outLOD[i]              = 0;
+        outLOD[i]              = meshletIdx;
         outDrawId[i]           = vertexOffset;
+        outMeshletGroupId[i]   = groupMeshletIdx;
+        outTriangleId[i]       = vertexOffset + i;
     }
 
     for (uint i = threadIdx; i < indexCount / 3; i += gl_WorkGroupSize.x) 

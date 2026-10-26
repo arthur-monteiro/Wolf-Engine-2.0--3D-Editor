@@ -1,5 +1,7 @@
 #include "GraphicSettingsFakeEntity.h"
 
+#include <Configuration.h>
+
 #include "ComputeSkyCubeMapPass.h"
 #include "EditorParamsHelper.h"
 #include "SystemManager.h"
@@ -102,6 +104,14 @@ void GraphicSettingsFakeEntity::forAllVisibleParams(const std::function<void(Edi
             callback(editorParam, inOutString);
         }
     }
+
+    if (Wolf::g_configuration->getUseMeshlets())
+    {
+        for (EditorParamInterface* editorParam : m_meshletParams)
+        {
+            callback(editorParam, inOutString);
+        }
+    }
 }
 
 GameContext::ShadowTechnique GraphicSettingsFakeEntity::computeShadowTechnique() const
@@ -152,4 +162,24 @@ void GraphicSettingsFakeEntity::onVoxelGIDebugChanged()
 void GraphicSettingsFakeEntity::onProbePositionVoxelGIDebugChanged()
 {
     m_renderingPipeline->getVoxelGIPass()->setDebugPostionFace(m_probePositionVoxelGIDebug);
+}
+
+void GraphicSettingsFakeEntity::onMeshletHierarchyLevelChanged()
+{
+    m_systemManager->getWolfInstance()->getInstanceMeshRenderer()->debugDrawMeshletHierarchyLevel(m_meshletHierarchyLevel.isEnabled() ? m_meshletHierarchyLevel : -1);
+}
+
+void GraphicSettingsFakeEntity::onMeshletGroupIdxChanged()
+{
+    m_systemManager->getWolfInstance()->getInstanceMeshRenderer()->debugMeshletDrawGroupIdx(m_meshletGroupIdx.isEnabled() ? m_meshletGroupIdx : -1);
+}
+
+void GraphicSettingsFakeEntity::onUseParentGroupChanged()
+{
+    m_systemManager->getWolfInstance()->getInstanceMeshRenderer()->debugMeshletUseParentGroup(m_useParentGroup);
+}
+
+void GraphicSettingsFakeEntity::onOnlyDrawMeshletIdxChanged()
+{
+    m_systemManager->getWolfInstance()->getInstanceMeshRenderer()->debugMeshletOnlyDrawMeshletIdx(m_onlyDrawMeshletIdx.isEnabled() ? m_onlyDrawMeshletIdx : -1);
 }

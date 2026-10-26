@@ -68,7 +68,10 @@ private:
 		[[nodiscard]] MemoryAllocated requestLoadingForLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager) const;
 		void unloadLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager);
 
+		uint32_t requestLoadingForMeshlet(uint32_t meshletIdx, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager) const;
+
 		uint32_t getMeshIdx() const { return m_meshIdx; }
+		AssetId getMeshAssetId() const { return m_meshAssetId; }
 
 		bool isSame(const Wolf::InstanceMeshRenderer::MeshToRender& otherMeshToRender) const;
 
@@ -76,6 +79,7 @@ private:
 		AssetId m_meshAssetId = NO_ASSET;
 		Wolf::NullableResourceNonOwner<Wolf::MeshInterface> m_lowLODMesh;
 		uint32_t m_meshIdx = -1;
+		uint32_t m_firstMeshletIdx = -1;
 	};
 	Wolf::DynamicResourceUniqueOwnerArray<InstancedMeshRegistered, 64> m_meshesRegistered;
 

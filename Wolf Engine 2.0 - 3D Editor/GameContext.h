@@ -26,7 +26,8 @@ struct GameContext
 		LOD_LEVEL = 15,
 		MATERIAL_COLOR = 16,
 		DRAW_ID = 17,
-		TRIANGLES_ID = 18
+		TRIANGLES_ID = 18,
+		MESHLET_GROUP = 19
 	};
 	DisplayType displayType = DisplayType::ALBEDO;
 

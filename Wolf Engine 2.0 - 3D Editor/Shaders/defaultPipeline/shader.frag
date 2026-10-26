@@ -9,6 +9,8 @@ layout (location = 7) in vec3 inWorldSpacePos;
 layout (location = 8) flat in uint inEntityId;
 layout (location = 9) flat in uint inLOD;
 layout (location = 10) flat in uint inDrawId;
+layout (location = 11) flat in uint inMeshletGroupId;
+layout (location = 12) flat in uint inTriangleId;
 
 layout (location = 0) out vec4 outColor;
 
@@ -137,7 +139,7 @@ void main()
     else if (ubDisplay.displayType == DISPLAY_TYPE_DRAW_ID)
         outColor = vec4(computeColorFromUint(inDrawId), 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_TRIANGLES_ID)
-        outColor = vec4(computeColorFromUint(uint(gl_PrimitiveID)), 1.0);
+        outColor = vec4(computeColorFromUint(inTriangleId), 1.0);
     else if (ubDisplay.displayType == DISPLAY_TYPE_LIGHTING)
         outColor = computeLighting(materialInfo);
     else if (ubDisplay.displayType == DISPLAY_TYPE_ENTITY_IDX)
@@ -159,6 +161,46 @@ void main()
     else if (ubDisplay.displayType == DISPLAY_TYPE_MATERIAL_COLOR)
     {
         outColor = vec4(materialInfo.materialColor.rgb, 1.0);
+    }
+    else if (ubDisplay.displayType == DISPLAY_TYPE_MESHLET_GROUP)
+    {
+        uint shape = inLOD % 4;
+        vec3 baseColor = computeColorFromUint(inMeshletGroupId);
+        vec4 finalColor = vec4(baseColor, 1.0);
+
+        switch (shape) {
+            case 0u:
+                // Style 0: Solid color / Standard fill
+                break;
+
+            case 1u: {
+                // Style 1: Diagonal lines / Stripes
+                float stripe = mod(gl_FragCoord.x + gl_FragCoord.y, 16.0);
+                if (stripe < 8.0) {
+                    finalColor.rgb *= 0.7;
+                }
+                break;
+            }
+
+            case 2u: {
+                // Style 2: Checkerboard pattern
+                vec2 grid = floor(gl_FragCoord.xy / 12.0);
+                float checker = mod(grid.x + grid.y, 2.0);
+                finalColor.rgb = mix(baseColor, vec3(1.0), checker * 0.4);
+                break;
+            }
+
+            case 3u: {
+                // Style 3: Dot / Grid pattern or inverted highlight
+                vec2 dist = abs(fract(gl_FragCoord.xy / 16.0) - 0.5);
+                if (max(dist.x, dist.y) < 0.25) {
+                    finalColor.rgb = vec3(1.0) - baseColor;
+                }
+                break;
+            }
+}
+
+outColor = finalColor;
     }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);

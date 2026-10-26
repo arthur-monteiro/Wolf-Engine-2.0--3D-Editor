@@ -55,6 +55,16 @@ private:
     EditorParamEnum m_probePositionVoxelGIDebug = EditorParamEnum({ "Center", "+X", "-X", "+Y", "-Y", "+Z", "-Z" }, "Use probe position from face", TAB, "Voxel GI",
         [this]() { onProbePositionVoxelGIDebugChanged(); });
 
+    void onMeshletHierarchyLevelChanged();
+    EditorParamUInt m_meshletHierarchyLevel = EditorParamUInt("Hierarchy level debug", TAB, "Meshlets", 0, 64, [this]() { onMeshletHierarchyLevelChanged(); }, EditorParamUInt::ParamUIntType::NUMBER, true);
+    void onMeshletGroupIdxChanged();
+    EditorParamUInt m_meshletGroupIdx = EditorParamUInt("Group index debug", TAB, "Meshlets", 0, 2048, [this]() { onMeshletGroupIdxChanged(); }, EditorParamUInt::ParamUIntType::NUMBER, true);
+    void onUseParentGroupChanged();
+    EditorParamBool m_useParentGroup = EditorParamBool("Use parent group", TAB, "Meshlets", [this]() { onUseParentGroupChanged(); });
+    void onOnlyDrawMeshletIdxChanged();
+    EditorParamUInt m_onlyDrawMeshletIdx = EditorParamUInt("Only draw meshlet idx", TAB, "Meshlets", 0, 2048, [this]() { onOnlyDrawMeshletIdxChanged(); }, EditorParamUInt::ParamUIntType::NUMBER, true);
+
+
     std::array<EditorParamInterface*, 3> m_alwaysVisibleParams =
     {
         &m_skyCubeMapResolution,
@@ -73,5 +83,13 @@ private:
         &m_enableMultiBoundingVoxelGI,
         &m_enableVoxelGIDebug,
         &m_probePositionVoxelGIDebug
+    };
+
+    std::array<EditorParamInterface*, 4> m_meshletParams =
+    {
+        &m_meshletHierarchyLevel,
+        &m_meshletGroupIdx,
+        &m_useParentGroup,
+        &m_onlyDrawMeshletIdx
     };
 };

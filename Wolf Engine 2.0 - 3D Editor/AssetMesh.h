@@ -35,6 +35,8 @@ public:
 	LoadLODResult loadLOD(uint32_t lodIdx, uint32_t lodType);
 	void unloadLOD(uint32_t lodIdx, uint32_t lodType);
 
+	void loadMeshlet(uint32_t meshletIdx);
+
 	uint32_t getDefaultSimplifiedLODCount() const { return m_defaultSimplifiedMeshes.size(); }
 	uint32_t getSloppySimplifiedLODCount() const { return m_sloppySimplifiedMeshes.size(); }
 	struct LOD
@@ -48,8 +50,10 @@ public:
 	{
 		Wolf::ResourceUniqueOwner<Wolf::Mesh> m_mesh;
 		Wolf::BoundingSphere m_boundingSphere;
-		Wolf::BoundingSphere m_groupBoundingSphere;
 		Wolf::BoundingSphere m_parentGroupBoundingSphere;
+
+		uint32_t m_groupIdxAsParent;
+		uint32_t m_groupIdxAsChild;
 
 		int8_t m_coneAxis[3];
 		int8_t m_coneCutoff;
@@ -58,6 +62,15 @@ public:
 		float m_parentLodError;
 	};
 	const Wolf::DynamicResourceUniqueOwnerArray<Meshlet, 128>& getMeshlets() { return m_meshlets; }
+
+	struct MeshletGroup
+	{
+		Wolf::BoundingSphere m_boundingSphere;
+		std::array<uint32_t, 4> m_childrenMeshletIndices;
+		std::array<uint32_t, 4> m_parentMeshletIndices;
+		uint32_t m_hierarchyLevel;
+	};
+	const Wolf::DynamicResourceUniqueOwnerArray<MeshletGroup, 128>& getMeshletGroups() { return m_meshletGroups; }
 
 	bool isCentered() const { return m_isCentered; }
 	bool isAnimated() const { return static_cast<bool>(m_animationData);}
@@ -118,6 +131,7 @@ private:
 	Wolf::DynamicResourceUniqueOwnerArray<InternalLOD, 16> m_sloppySimplifiedMeshes;
 
 	Wolf::DynamicResourceUniqueOwnerArray<Meshlet, 128> m_meshlets;
+	Wolf::DynamicResourceUniqueOwnerArray<MeshletGroup, 128> m_meshletGroups;
 
 	struct LODInConstruction
 	{

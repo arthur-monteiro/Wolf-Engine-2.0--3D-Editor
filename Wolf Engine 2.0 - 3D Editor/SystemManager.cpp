@@ -140,7 +140,7 @@ void SystemManager::run()
 		updateBeforeFrame();
 
 		const uint32_t contextId = Wolf::g_runtimeContext->getCurrentCPUFrameNumber() % Wolf::g_configuration->getMaxCachedFrames();
-		m_renderer->frame(m_wolfInstance.get(), doScreenShot, m_gameContexts[contextId]);
+		m_renderer->frame(&*m_wolfInstance, doScreenShot, m_gameContexts[contextId]);
 
 		/* Update FPS counter */
 		const auto currentTime = std::chrono::steady_clock::now();
@@ -251,7 +251,7 @@ void SystemManager::createWolfInstance()
 	}
 	m_wolfInstance->setGameContexts(contextPtrs);
 
-	EditorParamInterface::setGlobalWolfInstance(m_wolfInstance.get());
+	EditorParamInterface::setGlobalWolfInstance(&*m_wolfInstance);
 }
 
 void SystemManager::createRenderer()
@@ -261,7 +261,7 @@ void SystemManager::createRenderer()
 	{
 		rayTracedWorldManager = m_rayTracedWorldManager.createNonOwnerResource();
 	}
-	m_renderer.reset(new RenderingPipeline(m_wolfInstance.get(), m_editorParams.get(), rayTracedWorldManager));
+	m_renderer.reset(new RenderingPipeline(&*m_wolfInstance, m_editorParams.get(), rayTracedWorldManager));
 
 	m_renderer->getSkyBoxManager()->setOnCubeMapChangedCallback([this](Wolf::ResourceUniqueOwner<Wolf::Image>& image) { m_wolfInstance->getLightManager()->setSkyCubeMap(image.createNonOwnerResource()); });
 	m_wolfInstance->getLightManager()->setSkyCubeMap(m_renderer->getSkyBoxManager()->getCubeMapImage().createNonOwnerResource());
@@ -796,6 +796,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_inModificationGameContext.displayType = GameContext::DisplayType::DRAW_ID;
 	else if (displayType == "trianglesId")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::TRIANGLES_ID;
+	else if (displayType == "meshletGroup")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::MESHLET_GROUP;
 	else if (displayType == "lighting")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::LIGHTING;
 	else if (displayType == "entityIdx")
@@ -1167,10 +1169,10 @@ void SystemManager::updateBeforeFrame()
 		m_entitySelectionRequested = false;
 	}
 
-	m_renderer->update(m_wolfInstance.get());
+	m_renderer->update(&*m_wolfInstance);
 
 	m_drawManager->activateCameras(m_wolfInstance->getCameraList());
-	m_wolfInstance->addStreamingJob([this]() { m_drawManager->updateStreaming();});
+	m_wolfInstance->addStreamingJob([this]() { m_drawManager->updateStreaming(); });
 
 	Wolf::ResourceNonOwner<DrawManager> drawManager = m_drawManager.createNonOwnerResource();
 	Wolf::ResourceNonOwner<EditorPhysicsManager> editorPhysicsManager= m_editorPhysicsManager.createNonOwnerResource();

@@ -20,7 +20,8 @@ public:
 	SystemManager();
 	void run();
 
-	GameContext& getInModificationGameContext() { return m_inModificationGameContext; }
+	[[nodiscard]] GameContext& getInModificationGameContext() { return m_inModificationGameContext; }
+	[[nodiscard]] Wolf::ResourceNonOwner<Wolf::WolfEngine> getWolfInstance() const { return m_wolfInstance.createNonOwnerResource(); }
 
 private:
 	static constexpr uint32_t THREAD_COUNT_BEFORE_FRAME = 6;
@@ -96,7 +97,7 @@ private:
 	void updateUISelectedEntity() const;
 
 	Wolf::ResourceUniqueOwner<EditorGPUDataTransfersManager> m_editorPushDataToGPU; // Needs to be deleted after wolf instance
-	std::unique_ptr<Wolf::WolfEngine> m_wolfInstance;
+	Wolf::ResourceUniqueOwner<Wolf::WolfEngine> m_wolfInstance;
 	Wolf::ResourceUniqueOwner<RayTracedWorldManager> m_rayTracedWorldManager; // Needs to be deleted after renderer
 	Wolf::ResourceUniqueOwner<EditorConfiguration> m_configuration; // Needs to be deleted after asset manager
 	Wolf::ResourceUniqueOwner<AssetManager> m_assetManager; // Needs to be deleted after renderer
