@@ -11,7 +11,7 @@ file(GLOB SRC
 set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
 FetchContent_Declare(WolfEngineContent
         GIT_REPOSITORY https://github.com/arthur-monteiro/WolfEngine-2.0
-        GIT_TAG fa3ca9aa5004f0a74b4019039b3946434d954e77
+        GIT_TAG e16caf34c6c29e7ef6c725b854a5aac0297d9470
         SOURCE_SUBDIR "__skip_subdirectory__")
 FetchContent_MakeAvailable(WolfEngineContent)
 
@@ -49,6 +49,7 @@ include_directories("dependencies/wolfenginecontent-src/ThirdParty/meshoptimizer
 include_directories("GifEncoder/egif")
 include_directories("ThirdParty/tiny_gltf")
 include_directories("ThirdParty/sol")
+include_directories("ThirdParty/curl/include")
 
 link_directories("dependencies/wolfenginecontent-src/x64/Debug/lib")
 link_directories("dependencies/wolfenginecontent-src/ThirdParty/vulkan/Lib")
@@ -61,6 +62,23 @@ add_subdirectory("GifEncoder")
 add_subdirectory("BrowseToFile")
 add_subdirectory("dependencies/wolfenginecontent-src")
 add_subdirectory("ThirdParty/Lua")
+
+set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "" FORCE)
+set(BUILD_MISC_DOCS OFF CACHE BOOL "" FORCE)
+set(ENABLE_CURL_MANUAL OFF CACHE BOOL "" FORCE)
+
+set(CURL_DISABLE_LDAP ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_LDAPS ON CACHE BOOL "" FORCE)
+set(CURL_USE_LIBPSL OFF CACHE BOOL "" FORCE)
+set(CURL_USE_LIBSSH2 OFF CACHE BOOL "" FORCE)
+set(CURL_USE_LIBSSH OFF CACHE BOOL "" FORCE)
+set(CURL_USE_GSSAPI OFF CACHE BOOL "" FORCE)
+
+add_subdirectory("ThirdParty/curl")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -96,6 +114,7 @@ if(WIN32)
     target_link_libraries(WolfEngine_3DEditor PRIVATE WolfEngine.lib)
     target_link_libraries(WolfEngine_3DEditor PRIVATE GifEncoder.lib)
     target_link_libraries(WolfEngine_3DEditor PRIVATE lua_static)
+    target_link_libraries(WolfEngine_3DEditor PRIVATE CURL::libcurl)
 elseif(UNIX AND NOT APPLE)
     set(WOLF_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/wolfenginecontent-src/x64/Debug/lib")
     set(ULTRALIGHT_LIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/wolfenginecontent-src/ThirdParty/UltraLight/linux/bin")
@@ -114,6 +133,7 @@ elseif(UNIX AND NOT APPLE)
             ${CMAKE_CURRENT_SOURCE_DIR}/x64/Debug/lib/libGifEncoder.a
             ${MESHOPTIMIZER_LIB_PATH}/libmeshoptimizer.a
             lua_static
+            CURL::libcurl
 
             ${GTK3_LIBRARIES}
             ${CAIRO_LIBRARIES}

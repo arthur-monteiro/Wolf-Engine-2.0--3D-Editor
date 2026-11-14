@@ -80,30 +80,44 @@ public:
 
         Wolf::AABB m_aabb;
         Wolf::BoundingSphere m_boundingSphere;
-        uint32_t m_groupIdxAsParent = -1;
-        uint32_t m_groupIdxAsChild = -1;
+        uint32_t m_groupIdAsParent = -1;
+        uint32_t m_groupIdAsChild = -1;
         Wolf::BoundingSphere m_parentGroupBoundingSphere;
 
         int8_t m_coneAxis[3];
         int8_t m_coneCutoff;
 
-        std::vector<uint32_t> m_parentMeshletIndices;
-
         float m_lodError = 0.0f;
         float m_parentLodError = 1e30f;
     };
-    const std::vector<Meshlet>& getMeshlets() { return m_meshlets; }
-
     struct MeshletGroup
     {
         Wolf::BoundingSphere m_boundingSphere;
         std::array<uint32_t, 4> m_childrenMeshletIndices;
-        std::array<uint32_t, 4> m_parentMeshletIndices;
-
         uint32_t m_hierarchyLevel;
+
+        struct ParentMeshlet
+        {
+            uint32_t m_clusterIdx = -1;
+            uint32_t m_meshletIdx = -1;
+        };
+        std::array<ParentMeshlet, 4> m_parentMeshlets{};
     };
-    const std::vector<MeshletGroup>& getMeshletGroups() { return m_meshletGroups; }
-    static void readMeshlet(Meshlet& outMeshlet, uint32_t meshletIdx, bool readMeshData, const std::string& cacheFolder);
+
+    static void readMeshletData(std::vector<Vertex3D>& outStaticVertices, std::vector<uint8_t>& outIndices, uint32_t clusterIdx, uint32_t meshletIdx, const std::string& cacheFolder);
+
+    struct Cluster
+    {
+        std::vector<Meshlet> m_meshlets;
+        std::vector<MeshletGroup> m_meshletGroups;
+
+    private:
+        std::vector<uint32_t> m_globalMeshletIndices;
+        std::vector<uint32_t> m_globalMeshletGroupIndices;
+
+        friend class MeshFormatter;
+    };
+    const std::vector<Cluster>& getClusters() const { return m_clusters; }
 
     const std::vector<Wolf::MaterialsGPUManager::TextureSetInfo>& getTextureSetsInfo() const { return m_textureSetsInfo; }
     const Wolf::ResourceUniqueOwner<AnimationData>& getAnimationData() const { return m_animationData; }
@@ -115,7 +129,13 @@ private:
         const std::vector<uint32_t>& indexCountPerSloppyLOD);
     void buildMeshletHierarchy();
     void computeMeshlets(const std::vector<Vertex3D>& vertices, const std::vector<uint32_t>& indices, std::vector<uint32_t>& outMeshletIndices, float currentLodError);
-    void readMeshlets(bool readMeshData);
+    void buildClusters(int32_t lastHierarchyLevel);
+    void readClusters(uint32_t clusterCount, bool readMeshData);
+    void populateClusterData(Cluster& cluster, bool includeWorstLevelMeshlets);
+    static void writeMeshlet(std::ofstream& file, const Meshlet& meshlet);
+    static void readMeshlet(std::ifstream& file, Meshlet& outMeshlet);
+    static void writeMeshletGroup(std::ofstream& file, const MeshletGroup& meshletGroup);
+    static void readMeshletGroup(std::ifstream& file, MeshletGroup& outMeshletGroup);
 
     template <typename T>
     void optimizeMeshData(std::vector<T>& outputVertices, std::vector<uint32_t>& outputIndices, const std::vector<T>& inputVertices, const std::vector<uint32_t>& inputIndices);
@@ -140,6 +160,7 @@ private:
     // Meshlets
     std::vector<Meshlet> m_meshlets;
     std::vector<MeshletGroup> m_meshletGroups;
+    std::vector<Cluster> m_clusters;
 
     struct MeshletGroupInternal
     {
@@ -147,7 +168,7 @@ private:
     };
     std::vector<MeshletGroupInternal> computeMeshletGroups(const std::vector<uint32_t>& meshlets, uint32_t targetGroupSize);
     Wolf::BoundingSphere computeMeshletsForGroup(const MeshletGroupInternal& group, std::vector<uint32_t>& outMeshletIndices, bool isRootGroup);
-    uint32_t computeMeshletCount(const std::vector<Vertex3D>& vertices, const std::vector<uint32_t>& indices);
+    static uint32_t computeMeshletCount(const std::vector<Vertex3D>& vertices, const std::vector<uint32_t>& indices);
 
     bool m_isMeshCentered;
     Wolf::AABB m_aabb;

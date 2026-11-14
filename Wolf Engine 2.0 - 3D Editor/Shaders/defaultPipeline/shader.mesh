@@ -15,6 +15,7 @@ layout(location = 9) out flat uint outLOD[];
 layout(location = 10) out flat uint outDrawId[];
 layout(location = 11) out flat uint outMeshletGroupId[];
 layout(location = 12) out flat uint outTriangleId[];
+layout(location = 13) out flat uint outMeshletClusterId[];
 
 void main() 
 {
@@ -29,6 +30,7 @@ void main()
     uint instanceIdx = meshletInstanceData.instanceIdx;
     uint meshletIdx = meshletInstanceData.meshletIdx;
     uint groupMeshletIdx = meshletInstanceData.groupMeshletIdx;
+    uint meshletClusterIdx = meshletInstanceData.clusterIdx;
 
     CullingInstanceInfo cullingInstanceInfo = cullingInstancesInfo[instanceIdx];
 
@@ -66,6 +68,7 @@ void main()
         outDrawId[i]           = vertexOffset;
         outMeshletGroupId[i]   = groupMeshletIdx;
         outTriangleId[i]       = vertexOffset + i;
+        outMeshletClusterId[i] = meshletClusterIdx;
     }
 
     for (uint i = threadIdx; i < indexCount / 3; i += gl_WorkGroupSize.x) 

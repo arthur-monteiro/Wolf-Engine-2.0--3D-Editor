@@ -22,6 +22,11 @@ public:
 
 	[[nodiscard]] GameContext& getInModificationGameContext() { return m_inModificationGameContext; }
 	[[nodiscard]] Wolf::ResourceNonOwner<Wolf::WolfEngine> getWolfInstance() const { return m_wolfInstance.createNonOwnerResource(); }
+	[[nodiscard]] Wolf::ResourceNonOwner<AssetManager> getAssetManager() const { return m_assetManager.createNonOwnerResource(); }
+	[[nodiscard]] Wolf::ResourceNonOwner<ComponentInstancier> getComponentInstancier() const { return m_componentInstancier.createNonOwnerResource(); }
+
+	Entity* addEntity(const std::string& filePath, const std::string& parentFilePath = "", bool immediate = false);
+	Wolf::NullableResourceNonOwner<Entity> getEntityFromLoadingPath(const std::string& loadingPath);
 
 private:
 	static constexpr uint32_t THREAD_COUNT_BEFORE_FRAME = 6;
@@ -30,7 +35,6 @@ private:
 	void updateBeforeFrame();
 
 	void loadScene();
-	Entity* addEntity(const std::string& filePath, const std::string& parentFilePath = "");
 	void duplicateEntity(const Wolf::ResourceNonOwner<Entity>& entityToDuplicate, const std::string& filePath);
 	void addComponent(const std::string& componentId);
 
@@ -55,6 +59,8 @@ private:
 	ultralight::JSValue getTotalTriangleRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getTotalInstanceRenderedCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue getTotalTriangleRenderedCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue getMeshletRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
+	ultralight::JSValue getTotalMeshletRenderedCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openVRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	void openSystemRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);
 	ultralight::JSValue pickFileJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args);

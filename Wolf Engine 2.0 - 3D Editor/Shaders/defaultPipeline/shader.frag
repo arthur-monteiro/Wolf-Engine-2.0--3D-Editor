@@ -11,6 +11,7 @@ layout (location = 9) flat in uint inLOD;
 layout (location = 10) flat in uint inDrawId;
 layout (location = 11) flat in uint inMeshletGroupId;
 layout (location = 12) flat in uint inTriangleId;
+layout (location = 13) flat in uint inMeshletClusterId;
 
 layout (location = 0) out vec4 outColor;
 
@@ -198,9 +199,13 @@ void main()
                 }
                 break;
             }
-}
+        }
 
-outColor = finalColor;
+        outColor = finalColor;
+    }
+    else if (ubDisplay.displayType == DISPLAY_TYPE_MESHLET_CLUSTER)
+    {
+        outColor = vec4(computeColorFromUint(inMeshletClusterId + 1), 1.0);
     }
     else
         outColor = vec4(1.0, 0.0, 0.0, 1.0);

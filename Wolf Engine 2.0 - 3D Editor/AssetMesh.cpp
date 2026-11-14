@@ -270,15 +270,15 @@ void AssetMesh::unloadLOD(uint32_t lodIdx, uint32_t lodType)
 	}
 }
 
-void AssetMesh::loadMeshlet(uint32_t meshletIdx)
+void AssetMesh::loadMeshlet(uint32_t clusterIdx, uint32_t meshletIdx)
 {
 	PROFILE_FUNCTION
 
-	if (m_meshlets[meshletIdx]->m_mesh)
+	if (m_clusters[clusterIdx]->m_meshlets[meshletIdx]->m_mesh)
 		return;
 
 	MeshFormatter::Meshlet meshlet;
-	MeshFormatter::readMeshlet(meshlet, meshletIdx, true, MeshFormatter::computeCacheFolder(m_loadingPath));
+	MeshFormatter::readMeshletData(meshlet.m_staticVertices, meshlet.m_indices, clusterIdx, meshletIdx, MeshFormatter::computeCacheFolder(m_loadingPath));
 
 	const std::vector<uint8_t>& indices = meshlet.m_indices;
 	std::vector<uint32_t> indices32bits;
@@ -294,7 +294,7 @@ void AssetMesh::loadMeshlet(uint32_t meshletIdx)
 		additionalFlags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 	}
 
-	m_meshlets[meshletIdx]->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, Wolf::AABB(),
+	m_clusters[clusterIdx]->m_meshlets[meshletIdx]->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, Wolf::AABB(),
 		Wolf::BoundingSphere(), additionalFlags, additionalFlags));
 }
 
@@ -456,48 +456,46 @@ void AssetMesh::loadMesh()
 
 	if (Wolf::g_configuration->getUseMeshlets())
 	{
-		const std::vector<MeshFormatter::Meshlet>& meshlets = meshFormatter->getMeshlets();
-		const std::vector<MeshFormatter::MeshletGroup>& meshletGroups = meshFormatter->getMeshletGroups();
-
-		for (uint32_t meshletIdx = 0; meshletIdx < meshlets.size(); ++meshletIdx)
+		const std::vector<MeshFormatter::Cluster>& clusters = meshFormatter->getClusters();
+		for (const MeshFormatter::Cluster& cluster : clusters)
 		{
-			const MeshFormatter::Meshlet& meshlet = meshlets[meshletIdx];
-
-			const std::vector<uint8_t>& indices = meshlet.m_indices;
-			std::vector<uint32_t> indices32bits;
-			indices32bits.reserve(indices.size());
-			for (uint8_t idx : indices)
+			Wolf::ResourceUniqueOwner<Cluster>& newCluster = m_clusters.emplace_back(new Cluster());
+			for (const MeshFormatter::Meshlet& meshlet : cluster.m_meshlets)
 			{
-				indices32bits.push_back(idx);
+				const std::vector<uint8_t>& indices = meshlet.m_indices;
+				std::vector<uint32_t> indices32bits;
+				indices32bits.reserve(indices.size());
+				for (uint8_t idx : indices)
+				{
+					indices32bits.push_back(idx);
+				}
+
+				Wolf::ResourceUniqueOwner<Meshlet>& newMeshlet = newCluster->m_meshlets.emplace_back(new Meshlet());
+				if (!meshlet.m_staticVertices.empty())
+				{
+					newMeshlet->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
+						meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+				}
+				newMeshlet->m_boundingSphere = meshlet.m_boundingSphere;
+				newMeshlet->m_groupIdAsParent = meshlet.m_groupIdAsParent;
+				newMeshlet->m_groupIdAsChild = meshlet.m_groupIdAsChild;
+				newMeshlet->m_parentGroupBoundingSphere = meshlet.m_parentGroupBoundingSphere;
+				newMeshlet->m_lodError = meshlet.m_lodError;
+				newMeshlet->m_parentLodError = meshlet.m_parentLodError;
+				newMeshlet->m_coneAxis[0] = meshlet.m_coneAxis[0];
+				newMeshlet->m_coneAxis[1] = meshlet.m_coneAxis[1];
+				newMeshlet->m_coneAxis[2] = meshlet.m_coneAxis[2];
+				newMeshlet->m_coneCutoff = meshlet.m_coneCutoff;
 			}
 
-			Wolf::ResourceUniqueOwner<Meshlet>& newMeshlet = m_meshlets.emplace_back(new Meshlet());
-			if (!meshlet.m_staticVertices.empty())
+			for (const MeshFormatter::MeshletGroup& meshletGroup : cluster.m_meshletGroups)
 			{
-				newMeshlet->m_mesh.reset(new Wolf::Mesh(meshlet.m_staticVertices, indices32bits, m_bufferPoolInterface, m_pushDataToGPUManager, meshFormatter->getAABB(),
-					meshFormatter->getBoundingSphere(), additionalFlags, additionalFlags));
+				Wolf::ResourceUniqueOwner<MeshletGroup>& newMeshletGroup = newCluster->m_meshletGroups.emplace_back(new MeshletGroup());
+				newMeshletGroup->m_boundingSphere = meshletGroup.m_boundingSphere;
+				newMeshletGroup->m_childrenMeshletIndices = meshletGroup.m_childrenMeshletIndices;
+				newMeshletGroup->m_hierarchyLevel = meshletGroup.m_hierarchyLevel;
+				newMeshletGroup->m_parentMeshlets = meshletGroup.m_parentMeshlets;
 			}
-			newMeshlet->m_boundingSphere = meshlet.m_boundingSphere;
-			newMeshlet->m_groupIdxAsParent = meshlet.m_groupIdxAsParent;
-			newMeshlet->m_groupIdxAsChild = meshlet.m_groupIdxAsChild;
-			newMeshlet->m_parentGroupBoundingSphere = meshlet.m_parentGroupBoundingSphere;
-			newMeshlet->m_lodError = meshlet.m_lodError;
-			newMeshlet->m_parentLodError = meshlet.m_parentLodError;
-			newMeshlet->m_coneAxis[0] = meshlet.m_coneAxis[0];
-			newMeshlet->m_coneAxis[1] = meshlet.m_coneAxis[1];
-			newMeshlet->m_coneAxis[2] = meshlet.m_coneAxis[2];
-			newMeshlet->m_coneCutoff = meshlet.m_coneCutoff;
-		}
-
-		for (uint32_t meshletGroupIdx = 0; meshletGroupIdx < meshletGroups.size(); ++meshletGroupIdx)
-		{
-			const MeshFormatter::MeshletGroup& meshletGroup = meshletGroups[meshletGroupIdx];
-
-			Wolf::ResourceUniqueOwner<MeshletGroup>& newMeshletGroup = m_meshletGroups.emplace_back(new MeshletGroup());
-			newMeshletGroup->m_boundingSphere = meshletGroup.m_boundingSphere;
-			newMeshletGroup->m_childrenMeshletIndices = meshletGroup.m_childrenMeshletIndices;
-			newMeshletGroup->m_parentMeshletIndices = meshletGroup.m_parentMeshletIndices;
-			newMeshletGroup->m_hierarchyLevel = meshletGroup.m_hierarchyLevel;
 		}
 	}
 	else

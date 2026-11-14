@@ -89,12 +89,15 @@ void ExternalSceneComponent::updateBeforeFrame(const Wolf::Timer& globalTimer, c
         			staticModelComponent->setInfoFromParent(modelAssetId);
         		}
 
+        		recomputeTransform();
+        		glm::mat4 worldTransform = m_transform * instance.m_transform;
+
         		glm::vec3 scale;
         		glm::quat rotation;
         		glm::vec3 translation;
         		glm::vec3 skew;
         		glm::vec4 perspective;
-        		if (glm::decompose(instance.m_transform, scale, rotation, translation, skew, perspective))
+        		if (glm::decompose(worldTransform, scale, rotation, translation, skew, perspective))
         		{
         			if (staticModelComponent)
         			{

@@ -3,6 +3,7 @@
 EntityContainer::EntityContainer()
 {
 	m_currentEntities.reserve(MAX_ENTITY_COUNT);
+	m_newEntities.reserve(MAX_ENTITY_COUNT);
 }
 
 EntityContainer::~EntityContainer()

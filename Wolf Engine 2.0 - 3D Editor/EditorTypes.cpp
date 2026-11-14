@@ -76,8 +76,10 @@ std::string EditorParamInterface::getTypeAsString() const
 			return "Label";
 		case Type::ASSET:
 			return "Asset";
+		case Type::CHAT:
+			return "Chat";
 		default:
-			Wolf::Debug::sendError("Undefined type");
+			Wolf::Debug::sendCriticalError("Undefined type");
 			return "Undefined_type";
 	}
 }
@@ -619,4 +621,60 @@ void EditorLabel::addToJSON(std::string& out, uint32_t tabCount, bool isLast) co
 	out = out.substr(0, out.size() - 2);
 	out += "\n";
 	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamChat::activate()
+{
+	EditorParamInterface::activate();
+}
+
+void EditorParamChat::addToJSON(std::string& out, uint32_t tabCount, bool isLast) const
+{
+	std::string tabs;
+	for (uint32_t i = 0; i < tabCount; ++i) tabs += '\t';
+
+	out += tabs + +"{\n";
+	addCommonInfoToJSON(out, tabCount + 1);
+	out += tabs + "\"values\":";
+	out += " [\n";
+	for (size_t i = 0; i < m_messages.size(); ++i) {
+		out += tabs + "{\n";
+		out += tabs + "    \"content\": \"" + m_messages[i].m_content + "\",\n";
+		out += tabs + "    \"author\": \"" + m_messages[i].m_author + "\"\n";
+		out += tabs + "}" + (i + 1 < m_messages.size() ? "," : "") + "\n";
+	}
+	out += tabs + "]\n";
+	out += tabs + "}" + (isLast ? "\n" : ",\n");
+}
+
+void EditorParamChat::addMessage(const std::string& message, const std::string& author)
+{
+	m_messages.emplace_back(message, author);
+	addMessageInternal(message, author);
+}
+
+void EditorParamChat::addToLastMessage(const std::string& message)
+{
+	m_messages.back().m_content += message;
+
+	const std::string nameForCallback = formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
+	ms_wolfInstance->evaluateUserInterfaceScript("addContentToLastMessage" + nameForCallback + "(`" + message + "`)");
+}
+
+void EditorParamChat::showTypingIndicator(const std::string& author)
+{
+	const std::string nameForCallback = formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
+	ms_wolfInstance->evaluateUserInterfaceScript("showTypingIndicator" + nameForCallback + "(\"" + author + "\")");
+}
+
+void EditorParamChat::hideTypingIndicator()
+{
+	const std::string nameForCallback = formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
+	ms_wolfInstance->evaluateUserInterfaceScript("hideTypingIndicator" + nameForCallback + "()");
+}
+
+void EditorParamChat::addMessageInternal(const std::string& message, const std::string& author) const
+{
+	const std::string nameForCallback = formatStringForFunctionName(m_tab) + formatStringForFunctionName(m_name) + formatStringForFunctionName(m_category) + std::to_string(m_arrayIdx);
+	ms_wolfInstance->evaluateUserInterfaceScript("addMessageTo" + nameForCallback + "(`" + message + "`,\"" + author + "\")");
 }

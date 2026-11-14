@@ -24,6 +24,8 @@ public:
 
     void saveCustom() const override {}
 
+    void setAssetId(const std::string& assetId) { m_assetParam = assetId; }
+
     bool getMeshesToRender(std::vector<DrawManager::DrawMeshInfo>& outList) override { return true; }
     bool getMeshesForPhysics(std::vector<EditorPhysicsManager::PhysicsMeshInfo>& outList) override { return true; }
     bool getInstancesForRayTracedWorld(std::vector<RayTracedWorldManager::RayTracedWorldInfo::InstanceInfo>& instanceInfos) override { return true; }

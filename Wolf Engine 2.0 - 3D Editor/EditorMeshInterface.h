@@ -43,8 +43,6 @@ public:
 
 protected:
 	void loadParams(Wolf::JSONReader& jsonReader, const std::string& id);
-
-private:
 	void recomputeTransform();
 
 protected:

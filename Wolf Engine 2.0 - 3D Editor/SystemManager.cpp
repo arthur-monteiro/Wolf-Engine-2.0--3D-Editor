@@ -12,6 +12,7 @@
 #include <ProfilerCommon.h>
 
 #include "BinaryWriter.h"
+#include "AIChatFakeEntity.h"
 #include "GraphicSettingsFakeEntity.h"
 #include "RuntimeContext.h"
 #include "Vertex2DTextured.h"
@@ -332,6 +333,8 @@ void SystemManager::bindUltralightCallbacks(ultralight::JSObject& jsObject)
 	jsObject["getTotalTriangleRegisteredCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalTriangleRegisteredCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getTotalInstanceRenderedCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalInstanceRenderedCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["getTotalTriangleRenderedCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalTriangleRenderedCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getMeshletRegisteredCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getMeshletRegisteredCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
+	jsObject["getTotalMeshletRenderedCount"] = static_cast<ultralight::JSCallbackWithRetval>(std::bind(&SystemManager::getTotalMeshletRenderedCountJSCallback, this, std::placeholders::_1, std::placeholders::_2));
 	jsObject["openVRAMTrackingPage"] = std::bind(&SystemManager::openVRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["openSystemRAMTrackingPage"] = std::bind(&SystemManager::openSystemRAMTrackingPageJSCallback, this, std::placeholders::_1, std::placeholders::_2);
 	jsObject["addEntity"] = std::bind(&SystemManager::addEntityJSCallback, this, std::placeholders::_1, std::placeholders::_2);
@@ -449,6 +452,18 @@ ultralight::JSValue SystemManager::getTotalTriangleRenderedCountJSCallback(const
 {
 	const std::string triangleCountStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getTriangleRenderedCount());
 	return { triangleCountStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getMeshletRegisteredCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string countStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getCurrentMeshletCount());
+	return { countStr.c_str() };
+}
+
+ultralight::JSValue SystemManager::getTotalMeshletRenderedCountJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
+{
+	const std::string drawCountStr = std::to_string(m_wolfInstance->getInstanceMeshRenderer()->getMeshletRenderedCount());
+	return { drawCountStr.c_str() };
 }
 
 void SystemManager::openVRAMTrackingPageJSCallback(const ultralight::JSObject& thisObject, const ultralight::JSArgs& args)
@@ -798,6 +813,8 @@ void SystemManager::displayTypeSelectChangedJSCallback(const ultralight::JSObjec
 		m_inModificationGameContext.displayType = GameContext::DisplayType::TRIANGLES_ID;
 	else if (displayType == "meshletGroup")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::MESHLET_GROUP;
+	else if (displayType == "meshletCluster")
+		m_inModificationGameContext.displayType = GameContext::DisplayType::MESHLET_CLUSTER;
 	else if (displayType == "lighting")
 		m_inModificationGameContext.displayType = GameContext::DisplayType::LIGHTING;
 	else if (displayType == "entityIdx")
@@ -1395,7 +1412,7 @@ void SystemManager::loadScene()
 	m_loadSceneRequest.clear();
 }
 
-Entity* SystemManager::addEntity(const std::string& filePath, const std::string& parentFilePath)
+Entity* SystemManager::addEntity(const std::string& filePath, const std::string& parentFilePath, bool immediate)
 {
 	Entity* newEntity = new Entity(filePath, [this](Entity*)
 		{
@@ -1441,7 +1458,20 @@ Entity* SystemManager::addEntity(const std::string& filePath, const std::string&
 		m_rayTracedWorldBuildNeeded = true;
 	}
 
+	if (immediate)
+	{
+		m_entityContainer->moveToNextFrame([this](const std::string& componentId)
+		{
+			return m_componentInstancier->instanciateComponent(componentId);
+		});
+	}
+
 	return newEntity;
+}
+
+Wolf::NullableResourceNonOwner<Entity> SystemManager::getEntityFromLoadingPath(const std::string& loadingPath)
+{
+	return m_getEntityFromLoadingPathCallback(loadingPath);
 }
 
 void SystemManager::duplicateEntity(const Wolf::ResourceNonOwner<Entity>& entityToDuplicate, const std::string& filePath)
@@ -1468,6 +1498,10 @@ void SystemManager::addFakeEntities()
 	GraphicSettingsFakeEntity* graphicSettingsFakeEntity = new GraphicSettingsFakeEntity(m_renderer.createNonOwnerResource<RenderingPipelineInterface>(), this);
 	m_entityContainer->addEntity(graphicSettingsFakeEntity);
 	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + graphicSettingsFakeEntity->getName() + "\", \"" + graphicSettingsFakeEntity->computeEscapedLoadingPath() + "\", true)");
+
+	AIChatFakeEntity* geminiFakeEntity = new AIChatFakeEntity(this);
+	m_entityContainer->addEntity(geminiFakeEntity);
+	m_wolfInstance->evaluateUserInterfaceScript("addEntityToList(\"" + geminiFakeEntity->getName() + "\", \"" + geminiFakeEntity->computeEscapedLoadingPath() + "\", true)");
 }
 
 void SystemManager::updateUISelectedEntity() const

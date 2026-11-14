@@ -32,7 +32,7 @@ public:
 	void setArrayIndex(uint32_t arrayIdx) { m_arrayIdx = arrayIdx; }
 	void setReadOnly(bool readonly) { m_isReadOnly = readonly; }
 
-	enum class Type { FLOAT, VECTOR2, VECTOR3, VECTOR4, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON, LABEL, ASSET };
+	enum class Type { FLOAT, VECTOR2, VECTOR3, VECTOR4, STRING, UINT, FILE, ARRAY, ENTITY, BOOL, ENUM, GROUP, CURVE, TIME, BUTTON, LABEL, ASSET, CHAT };
 	Type getType() const { return m_type; }
 	const std::string& getName() const { return m_name; }
 	const std::string& getCategory() const { return m_category; }
@@ -355,4 +355,29 @@ public:
 
 	void activate() override;
 	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
+};
+
+class EditorParamChat : public EditorParamInterface
+{
+public:
+	enum class ParamStringType { STRING, FILE_IMG, FILE_EXTERNAL_SCENE, ENTITY, ASSET };
+	EditorParamChat(const std::string& name, const std::string& tab, const std::string& category)
+		: EditorParamInterface(Type::CHAT, name, tab, category, false, false) {}
+
+	void activate() override;
+	void addToJSON(std::string& out, uint32_t tabCount, bool isLast) const override;
+
+	void addMessage(const std::string& message, const std::string& author);
+	void addToLastMessage(const std::string& message);
+	void showTypingIndicator(const std::string& author);
+	void hideTypingIndicator();
+private:
+	void addMessageInternal(const std::string& message, const std::string& author) const;
+
+	struct Message
+	{
+		std::string m_content;
+		std::string m_author;
+	};
+	std::vector<Message> m_messages;
 };

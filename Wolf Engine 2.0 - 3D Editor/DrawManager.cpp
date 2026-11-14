@@ -178,7 +178,7 @@ void DrawManager::updateStreaming()
 			{
 				if (m_meshesRegistered[registeredMeshIdx]->getMeshIdx() == streamingFeedback.m_meshIdx)
 				{
-					InstancedMeshRegistered::MemoryAllocated registeredMeshMemoryAllocated = m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lodOrMeshletIdx, m_instanceMeshRenderer, m_assetManager);
+					InstancedMeshRegistered::MemoryAllocated registeredMeshMemoryAllocated = m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lodOrMeshletGroupId, m_instanceMeshRenderer, m_assetManager);
 					if (registeredMeshMemoryAllocated.m_vertexBufferSize < 0 || registeredMeshMemoryAllocated.m_indexBufferSize < 0) // failed to load, we need to free some space
 					{
 						std::vector<uint32_t>& pool = registeredMeshMemoryAllocated.m_vertexBufferSize < registeredMeshMemoryAllocated.m_indexBufferSize ? m_loadedMeshSortedIdxVertexBufferSize : m_loadedMeshSortedIdxIndexBufferSize;
@@ -219,7 +219,7 @@ void DrawManager::updateStreaming()
 						}
 						else
 						{
-							registeredMeshMemoryAllocated = m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lodOrMeshletIdx, m_instanceMeshRenderer, m_assetManager);
+							registeredMeshMemoryAllocated = m_meshesRegistered[registeredMeshIdx]->requestLoadingForLOD(streamingFeedback.m_lodOrMeshletGroupId, m_instanceMeshRenderer, m_assetManager);
 							if (registeredMeshMemoryAllocated.m_vertexBufferSize < 0 || registeredMeshMemoryAllocated.m_indexBufferSize < 0)
 							{
 								Wolf::Debug::sendError("Failed to allocate memory, better luck next time?");
@@ -229,7 +229,7 @@ void DrawManager::updateStreaming()
 
 					if (registeredMeshMemoryAllocated.m_indexBufferSize > 0)
 					{
-						m_loadedMeshes.emplace_back(registeredMeshIdx, streamingFeedback.m_lodOrMeshletIdx, registeredMeshMemoryAllocated.m_vertexBufferSize, registeredMeshMemoryAllocated.m_indexBufferSize);
+						m_loadedMeshes.emplace_back(registeredMeshIdx, streamingFeedback.m_lodOrMeshletGroupId, registeredMeshMemoryAllocated.m_vertexBufferSize, registeredMeshMemoryAllocated.m_indexBufferSize);
 						uint32_t addedLoadedMeshIdx = m_loadedMeshes.size() - 1;
 
 						for (uint32_t t : m_loadedMeshSortedIdxVertexBufferSize)
@@ -268,6 +268,7 @@ void DrawManager::updateStreaming()
 		struct NeededMeshlet
 		{
 			uint32_t m_registeredMeshIdx;
+			uint32_t m_clusterIdx;
 			uint32_t m_meshletIdx;
 		};
 		std::vector<NeededMeshlet> neededMeshletsIndices;
@@ -299,71 +300,70 @@ void DrawManager::updateStreaming()
 				Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered[registeredMeshIdx];
 				Wolf::ResourceNonOwner<AssetMesh> meshAsset = m_assetManager->getMeshAsset(instancedMeshRegistered->getMeshAssetId());
 
-				const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::MeshletGroup, 128>& meshletGroups = meshAsset->getMeshletGroups();
-				const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::Meshlet, 128>& meshlets = meshAsset->getMeshlets();
+				const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::Cluster, 128>& clusters = meshAsset->getClusters();
 
-				std::unordered_set<uint32_t> visitedGroups;
-				std::vector<uint32_t> groupsToProcess;
-
-				uint32_t currentMeshletIdx = streamingFeedback.m_lodOrMeshletIdx;
-
-				const Wolf::ResourceUniqueOwner<AssetMesh::Meshlet>& initialMeshlet = meshlets[currentMeshletIdx];
-				if (initialMeshlet->m_groupIdxAsChild != -1)
+				struct GroupToProcess
 				{
-					groupsToProcess.push_back(initialMeshlet->m_groupIdxAsChild);
-				}
-				else
-				{
-					const Wolf::ResourceUniqueOwner<AssetMesh::MeshletGroup>& group = meshletGroups[initialMeshlet->m_groupIdxAsParent];
-					for (uint32_t meshletIdx : group->m_parentMeshletIndices)
+					uint32_t m_clusterIdx;
+					uint32_t m_groupIdx;
+
+					uint64_t getKey() const
 					{
-						if (meshletIdx != -1)
-						{
-							neededMeshletsIndices.emplace_back(registeredMeshIdx, meshletIdx);
-						}
+						return (static_cast<uint64_t>(m_clusterIdx) << 32) | m_groupIdx;
 					}
-				}
+				};
+
+				std::vector<GroupToProcess> groupsToProcess;
+				std::unordered_set<uint64_t> visitedGroups;
+
+				uint32_t groupId = streamingFeedback.m_lodOrMeshletGroupId;
+				uint32_t clusterIdx = groupId >> 16;
+				uint32_t groupIdxInCluster = groupId & 0xffff;
+
+				groupsToProcess.push_back({ .m_clusterIdx = clusterIdx, .m_groupIdx = groupIdxInCluster });
 
 				while (!groupsToProcess.empty())
 				{
-					uint32_t currentGroupIdx = groupsToProcess.back();
+					GroupToProcess currentGroupToProcess = groupsToProcess.back();
 					groupsToProcess.pop_back();
 
-					if (currentGroupIdx == -1)
-					{
-						Wolf::Debug::sendCriticalError("Mesh group invalid");
-					}
-
-					if (visitedGroups.contains(currentGroupIdx))
+					if (visitedGroups.contains(currentGroupToProcess.getKey()))
 						continue;
 
-					visitedGroups.insert(currentGroupIdx);
-					const Wolf::ResourceUniqueOwner<AssetMesh::MeshletGroup>& group = meshletGroups[currentGroupIdx];
+					visitedGroups.insert(currentGroupToProcess.getKey());
 
+					const Wolf::ResourceUniqueOwner<AssetMesh::MeshletGroup>& group = clusters[currentGroupToProcess.m_clusterIdx]->m_meshletGroups[currentGroupToProcess.m_groupIdx];
 					for (uint32_t meshletChildIdx : group->m_childrenMeshletIndices)
 					{
 						if (meshletChildIdx != -1)
 						{
-							neededMeshletsIndices.emplace_back(registeredMeshIdx, meshletChildIdx);
+							neededMeshletsIndices.push_back({ .m_registeredMeshIdx = registeredMeshIdx, .m_clusterIdx = currentGroupToProcess.m_clusterIdx, .m_meshletIdx = meshletChildIdx });
 						}
 					}
 
-					for (uint32_t parentMeshletIdx : group->m_parentMeshletIndices)
+					for (const MeshFormatter::MeshletGroup::ParentMeshlet& parentMeshlet : group->m_parentMeshlets)
 					{
-						if (parentMeshletIdx != -1)
+						if (parentMeshlet.m_clusterIdx != -1)
 						{
-							const Wolf::ResourceUniqueOwner<AssetMesh::Meshlet>& parentMeshlet = meshlets[parentMeshletIdx];
-							uint32_t parentGroupIdx = parentMeshlet->m_groupIdxAsChild;
+							const Wolf::ResourceUniqueOwner<AssetMesh::Meshlet>& meshlet = clusters[parentMeshlet.m_clusterIdx]->m_meshlets[parentMeshlet.m_meshletIdx];
+							uint32_t parentGroupId = meshlet->m_groupIdAsChild;
 
-							if (parentGroupIdx != -1)
+							if (parentGroupId != -1)
 							{
-								groupsToProcess.push_back(parentGroupIdx);
+								uint32_t parentClusterIdx = parentGroupId >> 16;
+								uint32_t parentGroupIdxInCluster = parentGroupId & 0xffff;
+
+								if (parentClusterIdx != parentMeshlet.m_clusterIdx)
+								{
+									Wolf::Debug::sendCriticalError("Missmatch between parent cluster id registered in group and in meshlet");
+								}
+
+								groupsToProcess.push_back({ .m_clusterIdx = parentMeshlet.m_clusterIdx, .m_groupIdx = parentGroupIdxInCluster });
 							}
 						}
 					}
 				}
 			}
-
 		}
 
 		{
@@ -374,7 +374,7 @@ void DrawManager::updateStreaming()
 				const Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered[neededMeshlet.m_registeredMeshIdx];
 				Wolf::ResourceNonOwner<AssetMesh> meshAsset = m_assetManager->getMeshAsset(instancedMeshRegistered->getMeshAssetId());
 
-				return static_cast<bool>(meshAsset->getMeshlets()[neededMeshlet.m_meshletIdx]->m_mesh);
+				return static_cast<bool>(meshAsset->getClusters()[neededMeshlet.m_clusterIdx]->m_meshlets[neededMeshlet.m_meshletIdx]->m_mesh);
 			});
 		}
 
@@ -383,21 +383,29 @@ void DrawManager::updateStreaming()
 
 			std::ranges::sort(neededMeshletsIndices, [this](const NeededMeshlet& a, const NeededMeshlet& b)
 			{
-				auto getMeshletInfo = [this](uint32_t registeredMeshIdx, uint32_t meshletIdx)
+				auto getMeshletInfo = [this](uint32_t registeredMeshIdx, uint32_t clusterIdx, uint32_t meshletIdx)
 				{
 					const Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered[registeredMeshIdx];
 					Wolf::ResourceNonOwner<AssetMesh> meshAsset = m_assetManager->getMeshAsset(instancedMeshRegistered->getMeshAssetId());
-					const Wolf::ResourceUniqueOwner<AssetMesh::Meshlet>& meshlet = meshAsset->getMeshlets()[meshletIdx];
+					const Wolf::ResourceUniqueOwner<AssetMesh::Meshlet>& meshlet = meshAsset->getClusters()[clusterIdx]->m_meshlets[meshletIdx];
 
-					uint32_t groupIdx = meshlet->m_groupIdxAsChild;
-					uint32_t level = meshAsset->getMeshletGroups()[groupIdx]->m_hierarchyLevel;
+					uint32_t groupId = meshlet->m_groupIdAsChild;
+					uint32_t clusterIdxFromGroupId = groupId >> 16;
+					uint32_t groupIdxInCluster = groupId & 0xffff;
+
+					if (clusterIdxFromGroupId != clusterIdx)
+					{
+						Wolf::Debug::sendCriticalError("Missmatch");
+					}
+
+					uint32_t level = meshAsset->getClusters()[clusterIdx]->m_meshletGroups[groupIdxInCluster]->m_hierarchyLevel;
 					float lodError = meshlet->m_lodError;
 
 					return std::pair{ level, lodError };
 				};
 
-				auto [levelA, errorA] = getMeshletInfo(a.m_registeredMeshIdx, a.m_meshletIdx);
-				auto [levelB, errorB] = getMeshletInfo(b.m_registeredMeshIdx, b.m_meshletIdx);
+				auto [levelA, errorA] = getMeshletInfo(a.m_registeredMeshIdx, a.m_clusterIdx, a.m_meshletIdx);
+				auto [levelB, errorB] = getMeshletInfo(b.m_registeredMeshIdx, b.m_clusterIdx, b.m_meshletIdx);
 
 				if (levelA != levelB)
 				{
@@ -419,7 +427,7 @@ void DrawManager::updateStreaming()
 				NeededMeshlet& neededMeshlet = neededMeshletsIndices[i++];
 
 				Wolf::ResourceUniqueOwner<InstancedMeshRegistered>& instancedMeshRegistered = m_meshesRegistered[neededMeshlet.m_registeredMeshIdx];
-				uint32_t poolIdx = instancedMeshRegistered->requestLoadingForMeshlet(neededMeshlet.m_meshletIdx, m_instanceMeshRenderer, m_assetManager);
+				uint32_t poolIdx = instancedMeshRegistered->requestLoadingForMeshlet(neededMeshlet.m_clusterIdx, neededMeshlet.m_meshletIdx, m_instanceMeshRenderer, m_assetManager);
 
 				if (poolIdx != -1)
 					uploadCount++;
@@ -440,34 +448,40 @@ Wolf::InstanceMeshRenderer::MeshToRender DrawManager::computeMeshToRender(AssetI
 
 	if (Wolf::g_configuration->getUseMeshlets())
 	{
-		const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::Meshlet, 128>& meshlets = meshAsset->getMeshlets();
-
-		meshToRenderInfo.m_meshlets.resize(meshlets.size());
-		for (uint32_t i = 0; i < meshlets.size(); ++i)
+		const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::Cluster, 128>& clusters = meshAsset->getClusters();
+		meshToRenderInfo.m_clusters.resize(clusters.size());
+		for (uint32_t clusterIdx = 0; clusterIdx < clusters.size(); ++clusterIdx)
 		{
+			const AssetMesh::Cluster& sourceCluster = *clusters[clusterIdx];
+			Wolf::InstanceMeshRenderer::MeshToRender::Cluster& targetCluster = meshToRenderInfo.m_clusters[clusterIdx];
 
-			meshToRenderInfo.m_meshlets[i].m_mesh = meshlets[i]->m_mesh ? Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(meshlets[i]->m_mesh.createNonOwnerResource<Wolf::MeshInterface>()) : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>();
-			meshToRenderInfo.m_meshlets[i].m_boundingSphere = meshlets[i]->m_boundingSphere;
-			meshToRenderInfo.m_meshlets[i].m_groupIdxAsParent = meshlets[i]->m_groupIdxAsParent;
-			meshToRenderInfo.m_meshlets[i].m_groupIdxAsChild = meshlets[i]->m_groupIdxAsChild;
-			meshToRenderInfo.m_meshlets[i].m_parentGroupBoundingSphere = meshlets[i]->m_parentGroupBoundingSphere;
-			meshToRenderInfo.m_meshlets[i].m_lodError = meshlets[i]->m_lodError;
-			meshToRenderInfo.m_meshlets[i].m_parentLodError = meshlets[i]->m_parentLodError;
-			meshToRenderInfo.m_meshlets[i].m_coneAxis[0] = meshlets[i]->m_coneAxis[0];
-			meshToRenderInfo.m_meshlets[i].m_coneAxis[1] = meshlets[i]->m_coneAxis[1];
-			meshToRenderInfo.m_meshlets[i].m_coneAxis[2] = meshlets[i]->m_coneAxis[2];
-			meshToRenderInfo.m_meshlets[i].m_coneCutoff = meshlets[i]->m_coneCutoff;
-		}
+			targetCluster.m_meshlets.resize(sourceCluster.m_meshlets.size());
+			for (uint32_t meshletIdx = 0; meshletIdx < sourceCluster.m_meshlets.size(); ++meshletIdx)
+			{
+				const AssetMesh::Meshlet& meshlet = *sourceCluster.m_meshlets[meshletIdx];
+				Wolf::InstanceMeshRenderer::MeshToRender::Meshlet& targetMeshlet = targetCluster.m_meshlets[meshletIdx];
+				targetMeshlet.m_mesh = meshlet.m_mesh ? Wolf::NullableResourceNonOwner<Wolf::MeshInterface>(meshlet.m_mesh.createNonOwnerResource<Wolf::MeshInterface>()) : Wolf::NullableResourceNonOwner<Wolf::MeshInterface>();
+				targetMeshlet.m_boundingSphere = meshlet.m_boundingSphere;
+				targetMeshlet.m_groupIdAsParent = meshlet.m_groupIdAsParent;
+				targetMeshlet.m_groupIdAsChild = meshlet.m_groupIdAsChild;
+				targetMeshlet.m_parentGroupBoundingSphere = meshlet.m_parentGroupBoundingSphere;
+				targetMeshlet.m_lodError = meshlet.m_lodError;
+				targetMeshlet.m_parentLodError = meshlet.m_parentLodError;
+				targetMeshlet.m_coneAxis[0] = meshlet.m_coneAxis[0];
+				targetMeshlet.m_coneAxis[1] = meshlet.m_coneAxis[1];
+				targetMeshlet.m_coneAxis[2] = meshlet.m_coneAxis[2];
+				targetMeshlet.m_coneCutoff = meshlet.m_coneCutoff;
+			}
 
-		const Wolf::DynamicResourceUniqueOwnerArray<AssetMesh::MeshletGroup, 128>& meshletGroups = meshAsset->getMeshletGroups();
-
-		meshToRenderInfo.m_meshletGroups.resize(meshletGroups.size());
-		for (uint32_t i = 0; i < meshletGroups.size(); ++i)
-		{
-			meshToRenderInfo.m_meshletGroups[i].m_boundingSphere = meshletGroups[i]->m_boundingSphere;
-			meshToRenderInfo.m_meshletGroups[i].m_childrenMeshletIndices = meshletGroups[i]->m_childrenMeshletIndices;
-			meshToRenderInfo.m_meshletGroups[i].m_parentMeshletIndices = meshletGroups[i]->m_parentMeshletIndices;
-			meshToRenderInfo.m_meshletGroups[i].m_hierarchyLevel = meshletGroups[i]->m_hierarchyLevel;
+			targetCluster.m_meshletGroups.resize(sourceCluster.m_meshletGroups.size());
+			for (uint32_t groupIdx = 0; groupIdx < sourceCluster.m_meshletGroups.size(); ++groupIdx)
+			{
+				const AssetMesh::MeshletGroup& group = *sourceCluster.m_meshletGroups[groupIdx];
+				Wolf::InstanceMeshRenderer::MeshToRender::MeshletGroup& targetGroup = targetCluster.m_meshletGroups[groupIdx];
+				targetGroup.m_boundingSphere = group.m_boundingSphere;
+				targetGroup.m_childrenMeshletIndices = group.m_childrenMeshletIndices;
+				targetGroup.m_hierarchyLevel = group.m_hierarchyLevel;
+			}
 		}
 	}
 	else
@@ -531,9 +545,9 @@ DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::Instan
 {
 	if (Wolf::g_configuration->getUseMeshlets())
 	{
-		m_lowLODMesh = meshToRender.m_meshlets.back().m_mesh;
+		m_lowLODMesh = meshToRender.m_clusters[0].m_meshlets[0].m_mesh;
 
-		if (meshToRender.m_meshlets.empty())
+		if (!m_lowLODMesh)
 		{
 			Wolf::Debug::sendCriticalError("No meshlet found");
 		}
@@ -548,7 +562,8 @@ DrawManager::InstancedMeshRegistered::InstancedMeshRegistered(const Wolf::Instan
 		}
 	}
 
-	m_meshIdx = instanceMeshRenderer->registerMesh(meshToRender, &m_firstMeshletIdx);
+	m_firstMeshletIdxPerCluster.resize(meshToRender.m_clusters.size());
+	m_meshIdx = instanceMeshRenderer->registerMesh(meshToRender, &m_firstMeshletIdxPerCluster);
 }
 
 DrawManager::InstancedMeshRegistered::MemoryAllocated DrawManager::InstancedMeshRegistered::requestLoadingForLOD(uint32_t lod, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer,
@@ -599,22 +614,21 @@ void DrawManager::InstancedMeshRegistered::unloadLOD(uint32_t lod, const Wolf::R
 	instanceMeshRenderer->unregisterLODData(m_meshIdx, lod);
 }
 
-uint32_t DrawManager::InstancedMeshRegistered::requestLoadingForMeshlet(uint32_t meshletIdx, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager) const
+uint32_t DrawManager::InstancedMeshRegistered::requestLoadingForMeshlet(uint32_t clusterIdx, uint32_t meshletIdx, const Wolf::ResourceNonOwner<Wolf::InstanceMeshRenderer>& instanceMeshRenderer, const Wolf::ResourceNonOwner<AssetManager>& assetManager) const
 {
 	Wolf::ResourceNonOwner<AssetMesh> meshAsset = assetManager->getMeshAsset(m_meshAssetId);
-	bool meshletWasAlreadyLoaded = static_cast<bool>(meshAsset->getMeshlets()[meshletIdx]->m_mesh);
+	bool meshletWasAlreadyLoaded = static_cast<bool>(meshAsset->getClusters()[clusterIdx]->m_meshlets[meshletIdx]->m_mesh);
 
 	if (!meshletWasAlreadyLoaded)
 	{
-		meshAsset->loadMeshlet(meshletIdx);
+		meshAsset->loadMeshlet(clusterIdx, meshletIdx);
 	}
 	else
 	{
 		return -1;
 	}
 
-	instanceMeshRenderer->registerMeshletData(m_meshIdx, meshletIdx + m_firstMeshletIdx, meshAsset->getMeshlets()[meshletIdx]->m_mesh.createNonOwnerResource<Wolf::MeshInterface>());
-
+	instanceMeshRenderer->registerMeshletData(m_meshIdx, meshletIdx + m_firstMeshletIdxPerCluster[clusterIdx], meshAsset->getClusters()[clusterIdx]->m_meshlets[meshletIdx]->m_mesh.createNonOwnerResource<Wolf::MeshInterface>());
 	return 0;
 }
 
@@ -622,7 +636,7 @@ bool DrawManager::InstancedMeshRegistered::isSame(const Wolf::InstanceMeshRender
 {
 	if (Wolf::g_configuration->getUseMeshlets())
 	{
-		return m_lowLODMesh == otherMeshToRender.m_meshlets.back().m_mesh;
+		return m_lowLODMesh == otherMeshToRender.m_clusters[0].m_meshlets[0].m_mesh;
 	}
 	else
 	{

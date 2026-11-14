@@ -49,13 +49,13 @@ void Entity::addComponent(ComponentInterface* component)
 	m_components.emplace_back(component);
 	if (m_components.size() > MAX_COMPONENT_COUNT)
 	{
-		Wolf::Debug::sendError("There are more components than supported, please remove components");
+		Wolf::Debug::sendCriticalError("There are more components than supported, please remove components");
 	}
 
 	if (const Wolf::ResourceNonOwner<EditorMeshInterface> componentAsModel = m_components.back().createNonOwnerResource<EditorMeshInterface>())
 	{
 		if (hasMeshComponent())
-			Wolf::Debug::sendError("Adding a second model component to the entity " + std::string(m_nameParam));
+			Wolf::Debug::sendCriticalError("Adding a second model component to the entity " + std::string(m_nameParam));
 		m_meshComponent = componentAsModel;
 	}
 	else if (const Wolf::ResourceNonOwner<EditorLightInterface> componentAsLight = m_components.back().createNonOwnerResource<EditorLightInterface>())

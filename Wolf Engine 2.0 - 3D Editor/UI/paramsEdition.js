@@ -358,7 +358,120 @@ function computeInput(param, isLast) {
         htmlToAdd += "  </button>";
         htmlToAdd += "</div>";
     }
+    else if (param.type == "Chat") {
+        let messagesContainerId = "chatMessages" + nameForCallback;
+        
+        htmlToAdd += "<div class='chatContainer' style='display: flex; flex-direction: column; width: 100%; border: 1px solid #444; border-radius: 5px; padding: 10px; background-color: #1e1e1e;'>";
+        htmlToAdd += "  <div class='chatHeader' style='font-weight: bold; margin-bottom: 8px;'>" + param.name + "</div>";
+        htmlToAdd += "  <div id='" + messagesContainerId + "' class='chatMessages' style='max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;'>";
 
+        if (param.values && param.values.length > 0) {
+            param.values.forEach((msg, index) => {
+                let author = msg.author || "Unknown";
+                let content = msg.content || "";
+                let isUser = (author === "User");
+                
+                let alignmentStyle = isUser ? "align-self: flex-end; background-color: #1b5e20;" : "align-self: flex-start; background-color: #2d2d2d;";
+                let authorColor = isUser ? "color: #81c784;" : "color: #4CAF50;";
+                
+                htmlToAdd += "    <div class='chatMessage' style='padding: 6px 10px; border-radius: 4px; max-width: 80%; word-break: break-word; overflow-wrap: break-word; " + alignmentStyle + "'>";
+                htmlToAdd += "      <span style='font-weight: bold; " + authorColor + " margin-right: 6px;'>" + author + ":</span>";
+                htmlToAdd += "      <span style='color: #ddd; white-space: pre-wrap;' class='chatMessageContent'>" + content + "</span>";
+                htmlToAdd += "    </div>";
+            });
+        } else {
+            htmlToAdd += "    <div class='noMessages' style='color: #888; font-style: italic; text-align: center;'>No messages</div>";
+        }
+
+        htmlToAdd += "  </div>";
+        htmlToAdd += "</div>";
+
+        // Script to register functions for callbacks
+        htmlToAdd += "<script>";
+        
+        // Helper to hide typing indicator
+        let hideTypingFuncName = "hideTypingIndicator" + nameForCallback;
+        window[hideTypingFuncName] = function() {
+            let container = document.getElementById(messagesContainerId);
+            if (!container) return;
+            let typingDiv = container.querySelector('.typingIndicator');
+            if (typingDiv) typingDiv.remove();
+        };
+
+        // Function to add a new message
+        htmlToAdd += "window.addMessageTo" + nameForCallback + " = function(content, author = 'User') {";
+        htmlToAdd += "  let container = document.getElementById('" + messagesContainerId + "');";
+        htmlToAdd += "  if (!container) return;";
+        
+        // Automatically hide typing indicator when a message is added
+        htmlToAdd += "  if (typeof window." + hideTypingFuncName + " === 'function') { window." + hideTypingFuncName + "(); }";
+
+        htmlToAdd += "  let noMsg = container.querySelector('.noMessages');";
+        htmlToAdd += "  if (noMsg) noMsg.remove();";
+
+        htmlToAdd += "  let isUser = (author === 'User');";
+        htmlToAdd += "  let alignmentStyle = isUser ? 'align-self: flex-end; background-color: #1b5e20;' : 'align-self: flex-start; background-color: #2d2d2d;';";
+        htmlToAdd += "  let authorColor = isUser ? 'color: #81c784;' : 'color: #4CAF50;';";
+
+        htmlToAdd += "  let msgDiv = document.createElement('div');";
+        htmlToAdd += "  msgDiv.className = 'chatMessage';";
+        htmlToAdd += "  msgDiv.style.cssText = 'padding: 6px 10px; border-radius: 4px; max-width: 80%; word-break: break-word; overflow-wrap: break-word; ' + alignmentStyle;";
+        htmlToAdd += "  msgDiv.innerHTML = '<span style=\"font-weight: bold; ' + authorColor + ' margin-right: 6px;\">' + author + ':</span><span style=\"color: #ddd; white-space: pre-wrap;\" class=\"chatMessageContent\">' + content + '</span>';";
+        
+        htmlToAdd += "  container.appendChild(msgDiv);";
+        htmlToAdd += "  container.scrollTop = container.scrollHeight;";
+        htmlToAdd += "};";
+
+        // Function to append content to the last message
+        htmlToAdd += "window.addContentToLastMessage" + nameForCallback + " = function(textToAdd) {";
+        htmlToAdd += "  let container = document.getElementById('" + messagesContainerId + "');";
+        htmlToAdd += "  if (!container) return;";
+        
+        htmlToAdd += "  let lastMsg = container.querySelector('.chatMessage:last-of-type');";
+        htmlToAdd += "  if (!lastMsg) return;";
+        
+        htmlToAdd += "  let contentSpan = lastMsg.querySelector('.chatMessageContent');";
+        htmlToAdd += "  if (contentSpan) {";
+        htmlToAdd += "    contentSpan.textContent += textToAdd;";
+        htmlToAdd += "    container.scrollTop = container.scrollHeight;";
+        htmlToAdd += "  }";
+        htmlToAdd += "};";
+
+        // Function to show typing indicator (3 dots)
+        htmlToAdd += "window.showTypingIndicator" + nameForCallback + " = function(author = 'Assistant') {";
+        htmlToAdd += "  let container = document.getElementById('" + messagesContainerId + "');";
+        htmlToAdd += "  if (!container) return;";
+        
+        // Remove existing indicator first to prevent duplicates
+        htmlToAdd += "  if (typeof window." + hideTypingFuncName + " === 'function') { window." + hideTypingFuncName + "(); }";
+
+        htmlToAdd += "  let noMsg = container.querySelector('.noMessages');";
+        htmlToAdd += "  if (noMsg) noMsg.remove();";
+
+        htmlToAdd += "  let isUser = (author === 'User');";
+        htmlToAdd += "  let alignmentStyle = isUser ? 'align-self: flex-end; background-color: #1b5e20;' : 'align-self: flex-start; background-color: #2d2d2d;';";
+        htmlToAdd += "  let authorColor = isUser ? 'color: #81c784;' : 'color: #4CAF50;';";
+
+        htmlToAdd += "  let typingDiv = document.createElement('div');";
+        htmlToAdd += "  typingDiv.className = 'chatMessage typingIndicator';";
+        htmlToAdd += "  typingDiv.style.cssText = 'padding: 6px 10px; border-radius: 4px; max-width: 80%; ' + alignmentStyle;";
+        htmlToAdd += "  typingDiv.innerHTML = '<span style=\"font-weight: bold; ' + authorColor + ' margin-right: 6px;\">' + author + ':</span><span style=\"color: #aaa; font-style: italic;\" class=\"chatMessageContent\">. . .</span>';";
+        
+        htmlToAdd += "  container.appendChild(typingDiv);";
+        htmlToAdd += "  container.scrollTop = container.scrollHeight;";
+        htmlToAdd += "};";
+
+        // Function to hide typing indicator explicitly
+        htmlToAdd += "window." + hideTypingFuncName + " = function() {";
+        htmlToAdd += "  let container = document.getElementById('" + messagesContainerId + "');";
+        htmlToAdd += "  if (!container) return;";
+        htmlToAdd += "  let typingDiv = container.querySelector('.typingIndicator');";
+        htmlToAdd += "  if (typingDiv) typingDiv.remove();";
+        htmlToAdd += "};";
+
+        htmlToAdd += "</script>";
+    }
+    
     htmlToAdd += "</div>"
     return htmlToAdd;
 }

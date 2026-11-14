@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <meshoptimizer.h>
 #include <ranges>
 
@@ -190,11 +191,8 @@ MeshFormatter::MeshFormatter(const std::string& filename, AssetManager* assetMan
 		std::vector<uint32_t> indexCountPerSloppyLOD;
 		CacheHelper::readVector(meshInfoInputFile, indexCountPerSloppyLOD);
 
-		uint32_t meshletCount;
-		meshInfoInputFile.read(reinterpret_cast<char*>(&meshletCount), sizeof(uint32_t));
-
-		uint32_t meshletGroupCount;
-		meshInfoInputFile.read(reinterpret_cast<char*>(&meshletGroupCount), sizeof(uint32_t));
+		uint32_t clusterCount;
+		meshInfoInputFile.read(reinterpret_cast<char*>(&clusterCount), sizeof(uint32_t));
 
 		meshInfoInputFile.close();
 
@@ -204,9 +202,7 @@ MeshFormatter::MeshFormatter(const std::string& filename, AssetManager* assetMan
 		}
 		else
 		{
-			m_meshlets.resize(meshletCount);
-			m_meshletGroups.resize(meshletGroupCount);
-		 	readMeshlets(readLODData);
+			readClusters(clusterCount, readLODData);
 		}
 
 		size_t textureSetCount = 0;
@@ -419,61 +415,62 @@ void MeshFormatter::computeData(const DataInput& input)
 		buildMeshletHierarchy();
 	}
 
-	for (uint32_t meshletIdx = 0; meshletIdx < m_meshlets.size(); ++meshletIdx)
-	{
-		const Meshlet& meshlet = m_meshlets[meshletIdx];
+	std::filesystem::path clustersFolder = std::filesystem::path(m_cacheFolder) / "clusters";
+	std::filesystem::create_directories(clustersFolder);
 
-		std::string meshletFilepath = m_cacheFolder + "meshlet" + std::to_string(meshletIdx) + ".bin";
-		std::ofstream meshletCacheFile(meshletFilepath, std::ios::binary);
-		if (!meshletCacheFile.is_open())
+	uint32_t clusterCount = static_cast<uint32_t>(m_clusters.size());
+	for (uint32_t clusterIdx = 0; clusterIdx < clusterCount; ++clusterIdx)
+	{
+		const Cluster& cluster = m_clusters[clusterIdx];
+		std::filesystem::path clusterFolder = clustersFolder / ("cluster" + std::to_string(clusterIdx));
+		std::filesystem::create_directories(clusterFolder);
+		std::filesystem::path clusterFilepath = clusterFolder / "cluster.bin";
+		std::ofstream clusterCacheFile(clusterFilepath, std::ios::binary);
+		if (!clusterCacheFile.is_open())
 		{
-			Wolf::Debug::sendCriticalError("Can't open cache file for writing");
+			Wolf::Debug::sendCriticalError("Can't open cluster cache file for writing");
 		}
 
-		CacheHelper::writeVector(meshletCacheFile, meshlet.m_staticVertices);
-		CacheHelper::writeVector(meshletCacheFile, meshlet.m_indices);
+		uint32_t meshletCount = static_cast<uint32_t>(cluster.m_meshlets.size());
+		clusterCacheFile.write(reinterpret_cast<const char*>(&meshletCount), sizeof(meshletCount));
+		for (uint32_t meshletIdx = 0; meshletIdx < meshletCount; ++meshletIdx)
+		{
+			writeMeshlet(clusterCacheFile, cluster.m_meshlets[meshletIdx]);
 
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_aabb), sizeof(Wolf::AABB));
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_boundingSphere), sizeof(Wolf::BoundingSphere));
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_groupIdxAsChild), sizeof(uint32_t));
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_groupIdxAsParent), sizeof(uint32_t));
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_parentGroupBoundingSphere), sizeof(Wolf::BoundingSphere));
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_coneAxis), sizeof(uint8_t) * 3);
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_coneCutoff), sizeof(uint8_t));
+			std::filesystem::path meshletFilepath = clusterFolder / ("meshlet" + std::to_string(meshletIdx) + ".bin");
+			std::ofstream meshletCacheFile(meshletFilepath, std::ios::binary);
+			if (!meshletCacheFile.is_open())
+			{
+				Wolf::Debug::sendCriticalError("Can't open meshlet cache file for writing");
+			}
+			CacheHelper::writeVector(meshletCacheFile, cluster.m_meshlets[meshletIdx].m_staticVertices);
+			CacheHelper::writeVector(meshletCacheFile, cluster.m_meshlets[meshletIdx].m_indices);
+			meshletCacheFile.close();
+			if (!meshletCacheFile)
+			{
+				Wolf::Debug::sendCriticalError("Failed to write meshlet cache file");
+			}
+		}
 
-		CacheHelper::writeVector(meshletCacheFile, meshlet.m_parentMeshletIndices);
-
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_lodError), sizeof(float));
-		meshletCacheFile.write(reinterpret_cast<const char*>(&meshlet.m_parentLodError), sizeof(float));
-
-		meshletCacheFile.close();
+		uint32_t meshletGroupCount = static_cast<uint32_t>(cluster.m_meshletGroups.size());
+		clusterCacheFile.write(reinterpret_cast<const char*>(&meshletGroupCount), sizeof(meshletGroupCount));
+		for (const MeshletGroup& meshletGroup : cluster.m_meshletGroups)
+		{
+			writeMeshletGroup(clusterCacheFile, meshletGroup);
+		}
+		clusterCacheFile.close();
+		if (!clusterCacheFile)
+		{
+			Wolf::Debug::sendCriticalError("Failed to write cluster cache file");
+		}
 	}
 
-	std::string meshletGroupsFilepath = m_cacheFolder + "meshletGroups.bin";
-	std::ofstream meshletGroupsCacheFile(meshletGroupsFilepath, std::ios::binary);
-	if (!meshletGroupsCacheFile.is_open())
-	{
-		Wolf::Debug::sendCriticalError("Can't open cache file for writing");
-	}
-
-	for (uint32_t meshletGroupIdx = 0; meshletGroupIdx < m_meshletGroups.size(); ++meshletGroupIdx)
-	{
-		const MeshletGroup& meshletGroup = m_meshletGroups[meshletGroupIdx];
-
-		meshletGroupsCacheFile.write(reinterpret_cast<const char*>(&meshletGroup.m_boundingSphere), sizeof(Wolf::BoundingSphere));
-		meshletGroupsCacheFile.write(reinterpret_cast<const char*>(meshletGroup.m_childrenMeshletIndices.data()), sizeof(uint32_t) * meshletGroup.m_childrenMeshletIndices.size());
-		meshletGroupsCacheFile.write(reinterpret_cast<const char*>(meshletGroup.m_parentMeshletIndices.data()), sizeof(uint32_t) * meshletGroup.m_parentMeshletIndices.size());
-		meshletGroupsCacheFile.write(reinterpret_cast<const char*>(&meshletGroup.m_hierarchyLevel), sizeof(uint32_t));
-	}
-	meshletGroupsCacheFile.close();
-
-	uint32_t meshletCount = m_meshlets.size();
-	outMeshInfoFile.write(reinterpret_cast<const char*>(&meshletCount), sizeof(uint32_t));
-
-	uint32_t meshletGroupCount = m_meshletGroups.size();
-	outMeshInfoFile.write(reinterpret_cast<const char*>(&meshletGroupCount), sizeof(uint32_t));
+	outMeshInfoFile.write(reinterpret_cast<const char*>(&clusterCount), sizeof(uint32_t));
 
 	outMeshInfoFile.close();
+
+	m_meshlets.clear();
+	m_meshletGroups.clear();
 
 	// Animation data
 	{
@@ -690,14 +687,13 @@ void MeshFormatter::buildMeshletHierarchy()
 	{
 		MeshletGroup& meshletGroup = m_meshletGroups.emplace_back();
 		meshletGroup.m_boundingSphere = m_boundingSphere;
-		meshletGroup.m_parentMeshletIndices.fill(-1);
 		meshletGroup.m_childrenMeshletIndices.fill(-1);
 		meshletGroup.m_childrenMeshletIndices[0] = 0;
 
-		m_meshlets[0].m_groupIdxAsChild = 0;
+		m_meshlets[0].m_groupIdAsChild = 0;
 	}
 
-	uint32_t hierarchyLevel = 0;
+	int32_t hierarchyLevel = 0;
 
     while (currentLevelMeshletIndices.size() > 1)
     {
@@ -730,7 +726,6 @@ void MeshFormatter::buildMeshletHierarchy()
 
         	MeshletGroup& meshletGroup = m_meshletGroups.emplace_back();
         	meshletGroup.m_boundingSphere = groupSphere;
-        	meshletGroup.m_parentMeshletIndices.fill(-1);
         	meshletGroup.m_childrenMeshletIndices.fill(-1);
         	meshletGroup.m_hierarchyLevel = hierarchyLevel;
 
@@ -743,41 +738,22 @@ void MeshFormatter::buildMeshletHierarchy()
         		meshletGroup.m_childrenMeshletIndices[j] = group.m_meshletIndices[j];
         	}
 
-        	if (createdMeshletIndices.size() > meshletGroup.m_parentMeshletIndices.size())
-        	{
-        		Wolf::Debug::sendCriticalError("Too much created meshlets");
-        	}
-        	for (size_t j = 0; j < createdMeshletIndices.size(); ++j)
-        	{
-        		meshletGroup.m_parentMeshletIndices[j] = createdMeshletIndices[j];
-        	}
-
         	for (uint32_t childMeshletIdx : group.m_meshletIndices)
         	{
         		Meshlet& childMeshlet = m_meshlets[childMeshletIdx];
-        		childMeshlet.m_groupIdxAsChild = static_cast<uint32_t>(m_meshletGroups.size()) - 1;
+				childMeshlet.m_groupIdAsChild = static_cast<uint32_t>(m_meshletGroups.size()) - 1;
         	}
         	for (uint32_t createdMeshletIdx : createdMeshletIndices)
         	{
         		Meshlet& parentMeshlet = m_meshlets[createdMeshletIdx];
-        		parentMeshlet.m_groupIdxAsParent = static_cast<uint32_t>(m_meshletGroups.size()) - 1;
+				parentMeshlet.m_groupIdAsParent = static_cast<uint32_t>(m_meshletGroups.size()) - 1;
         	}
 
             uint32_t currentSize = static_cast<uint32_t>(m_meshlets.size());
 
-            std::vector<uint32_t> groupParentIndices;
-            groupParentIndices.reserve(currentSize - previousSize);
-
             for (uint32_t idx = previousSize; idx < currentSize; ++idx)
             {
-                groupParentIndices.push_back(idx);
                 nextLevelMeshletIndices.push_back(idx);
-            }
-
-            for (uint32_t childIdx : group.m_meshletIndices)
-            {
-                Meshlet& childMeshlet = m_meshlets[childIdx];
-                childMeshlet.m_parentMeshletIndices = groupParentIndices;
             }
         }
 
@@ -800,6 +776,8 @@ void MeshFormatter::buildMeshletHierarchy()
     }
 
     Wolf::Debug::sendInfo("Meshlet hierarchy complete. Total nodes: " + std::to_string(m_meshlets.size()));
+
+	buildClusters(hierarchyLevel);
 }
 
 void MeshFormatter::computeMeshlets(const std::vector<Vertex3D>& vertices, const std::vector<uint32_t>& indices, std::vector<uint32_t>& outMeshletIndices, float currentLodError)
@@ -886,75 +864,391 @@ void MeshFormatter::computeMeshlets(const std::vector<Vertex3D>& vertices, const
 	}
 }
 
-void MeshFormatter::readMeshlets(bool readMeshData)
+void MeshFormatter::buildClusters(int32_t hierarchyLevel)
 {
-	for (uint32_t meshletIdx = 0; meshletIdx < m_meshlets.size(); ++meshletIdx)
+	m_clusters.clear();
+
+	std::vector<bool> visitedGroups(m_meshletGroups.size(), false);
+
+	bool hasWorstLevelMeshlets = false;
+	for (const Meshlet& meshlet : m_meshlets)
 	{
-		Meshlet& meshlet = m_meshlets[meshletIdx];
-		readMeshlet(meshlet, meshletIdx, readMeshData || m_meshlets.size() == 1, m_cacheFolder);
+		if (meshlet.m_groupIdAsParent != -1 && meshlet.m_groupIdAsChild == -1)
+		{
+			hasWorstLevelMeshlets = true;
+			break;
+		}
+	}
+	if (hasWorstLevelMeshlets)
+	{
+		m_clusters.emplace_back();
 	}
 
-	std::string meshletGroupFilepath = m_cacheFolder + "meshletGroups.bin";
-	std::ifstream meshletGroupsCacheFile(meshletGroupFilepath, std::ios::in | std::ios::binary);
-	if (!meshletGroupsCacheFile.is_open())
+	std::vector<uint32_t> currentLevelGroups;
+	auto findGroupForHierarchyLevel = [this](uint32_t hierarchyLevel, std::vector<uint32_t>& outGroups)
 	{
-		Wolf::Debug::sendCriticalError("Can't open cache file for reading");
+		outGroups.clear();
+		for (uint32_t i = 0; i < m_meshletGroups.size(); ++i)
+		{
+			if (m_meshletGroups[i].m_hierarchyLevel == hierarchyLevel)
+			{
+				outGroups.emplace_back(i);
+			}
+		}
+	};
+	findGroupForHierarchyLevel(hierarchyLevel, currentLevelGroups);
+
+	static constexpr uint32_t GROUP_COUNT_PER_CLUSTER = 256;
+
+	auto findNearestGroup = [this, &currentLevelGroups, &visitedGroups](const Cluster& cluster)
+	{
+		uint32_t nearestGroupIdx = -1;
+		float nearestGroupAverageDistance = 10'000'000.0f;
+		for (uint32_t groupIdx : currentLevelGroups)
+		{
+			if (visitedGroups[groupIdx]) continue;
+
+			float sumDistance = 0.0f;
+			for (uint32_t groupInCluster : cluster.m_globalMeshletGroupIndices)
+			{
+				sumDistance += glm::distance(m_meshletGroups[groupInCluster].m_boundingSphere.getCenter(), m_meshletGroups[groupIdx].m_boundingSphere.getCenter());
+			}
+			sumDistance /= static_cast<float>(cluster.m_globalMeshletGroupIndices.size());
+
+			if (sumDistance < nearestGroupAverageDistance)
+			{
+				nearestGroupIdx = groupIdx;
+				nearestGroupAverageDistance = sumDistance;
+			}
+		}
+
+		return nearestGroupIdx;
+	};
+
+	while (hierarchyLevel >= 0)
+	{
+		for (uint32_t groupIdx : currentLevelGroups)
+		{
+			if (visitedGroups[groupIdx]) continue;
+			visitedGroups[groupIdx] = true;
+
+			Cluster& cluster = m_clusters.emplace_back();
+			cluster.m_globalMeshletGroupIndices.emplace_back(groupIdx);
+
+			uint32_t nearestGroupIdx = findNearestGroup(cluster);
+			while (cluster.m_globalMeshletGroupIndices.size() < GROUP_COUNT_PER_CLUSTER && nearestGroupIdx != -1)
+			{
+				cluster.m_globalMeshletGroupIndices.emplace_back(nearestGroupIdx);
+				visitedGroups[nearestGroupIdx] = true;
+				nearestGroupIdx = findNearestGroup(cluster);
+			}
+		}
+
+		hierarchyLevel--;
+		if (hierarchyLevel >= 0)
+		{
+			findGroupForHierarchyLevel(hierarchyLevel, currentLevelGroups);
+		}
 	}
 
-	for (uint32_t meshletGroupIdx = 0; meshletGroupIdx < m_meshletGroups.size(); ++meshletGroupIdx)
+	std::vector<uint32_t> packedGroupIds(m_meshletGroups.size(), -1);
+	for (uint32_t clusterIdx = 0; clusterIdx < m_clusters.size(); ++clusterIdx)
 	{
-		MeshletGroup& meshletGroup = m_meshletGroups[meshletGroupIdx];
-
-		meshletGroupsCacheFile.read(reinterpret_cast<char*>(&meshletGroup.m_boundingSphere), sizeof(Wolf::BoundingSphere));
-		meshletGroupsCacheFile.read(reinterpret_cast<char*>(meshletGroup.m_childrenMeshletIndices.data()), sizeof(uint32_t) * meshletGroup.m_childrenMeshletIndices.size());
-		meshletGroupsCacheFile.read(reinterpret_cast<char*>(meshletGroup.m_parentMeshletIndices.data()), sizeof(uint32_t) * meshletGroup.m_parentMeshletIndices.size());
-		meshletGroupsCacheFile.read(reinterpret_cast<char*>(&meshletGroup.m_hierarchyLevel), sizeof(uint32_t));
+		const Cluster& cluster = m_clusters[clusterIdx];
+		if (clusterIdx > std::numeric_limits<uint16_t>::max())
+		{
+			Wolf::Debug::sendCriticalError("Cluster index exceeds the packed meshlet group ID range");
+		}
+		for (uint32_t localGroupIdx = 0; localGroupIdx < cluster.m_globalMeshletGroupIndices.size(); ++localGroupIdx)
+		{
+			if (localGroupIdx > std::numeric_limits<uint16_t>::max())
+			{
+				Wolf::Debug::sendCriticalError("Local meshlet group index exceeds the packed meshlet group ID range");
+			}
+			if (clusterIdx == std::numeric_limits<uint16_t>::max() && localGroupIdx == std::numeric_limits<uint16_t>::max())
+			{
+				Wolf::Debug::sendCriticalError("Packed meshlet group ID collides with the invalid ID");
+			}
+			uint32_t groupIdx = cluster.m_globalMeshletGroupIndices[localGroupIdx];
+			if (groupIdx >= packedGroupIds.size() || packedGroupIds[groupIdx] != -1)
+			{
+				Wolf::Debug::sendCriticalError("Meshlet group is missing or assigned to multiple clusters");
+			}
+			packedGroupIds[groupIdx] = (clusterIdx << 16) | localGroupIdx;
+		}
 	}
 
-	meshletGroupsCacheFile.close();
+	for (uint32_t clusterIdx = 0; clusterIdx < m_clusters.size(); ++clusterIdx)
+	{
+		Cluster& cluster = m_clusters[clusterIdx];
+		populateClusterData(cluster, hasWorstLevelMeshlets && clusterIdx == 0);
+	}
+
+	std::vector<MeshletGroup::ParentMeshlet> parentMeshletIndices(m_meshlets.size());
+	for (uint32_t clusterIdx = 0; clusterIdx < m_clusters.size(); ++clusterIdx)
+	{
+		const Cluster& cluster = m_clusters[clusterIdx];
+		for (uint32_t localMeshletIdx = 0; localMeshletIdx < cluster.m_globalMeshletIndices.size(); ++localMeshletIdx)
+		{
+			const uint32_t globalMeshletIdx = cluster.m_globalMeshletIndices[localMeshletIdx];
+			if (globalMeshletIdx >= parentMeshletIndices.size() || parentMeshletIndices[globalMeshletIdx].m_clusterIdx != -1)
+			{
+				Wolf::Debug::sendCriticalError("Meshlet is missing or assigned to multiple clusters");
+			}
+			parentMeshletIndices[globalMeshletIdx] = { .m_clusterIdx = clusterIdx, .m_meshletIdx = localMeshletIdx };
+		}
+	}
+
+	std::vector<std::array<MeshletGroup::ParentMeshlet, 4>> parentMeshletIndicesByGroup(m_meshletGroups.size());
+	std::vector<uint32_t> parentMeshletCountByGroup(m_meshletGroups.size(), 0);
+	for (uint32_t globalMeshletIdx = 0; globalMeshletIdx < m_meshlets.size(); ++globalMeshletIdx)
+	{
+		const uint32_t globalGroupIdx = m_meshlets[globalMeshletIdx].m_groupIdAsParent;
+		if (globalGroupIdx == -1)
+		{
+			continue;
+		}
+		if (globalGroupIdx >= parentMeshletIndicesByGroup.size())
+		{
+			Wolf::Debug::sendCriticalError("Meshlet parent references an invalid meshlet group");
+		}
+		uint32_t& parentCount = parentMeshletCountByGroup[globalGroupIdx];
+		if (parentCount >= parentMeshletIndicesByGroup[globalGroupIdx].size())
+		{
+			Wolf::Debug::sendCriticalError("Meshlet group has too many parent meshlets");
+		}
+		if (parentMeshletIndices[globalMeshletIdx].m_clusterIdx == -1)
+		{
+			Wolf::Debug::sendCriticalError("Meshlet group parent is not present in any cluster");
+		}
+		parentMeshletIndicesByGroup[globalGroupIdx][parentCount++] = parentMeshletIndices[globalMeshletIdx];
+	}
+
+	for (Cluster& cluster : m_clusters)
+	{
+		for (uint32_t localGroupIdx = 0; localGroupIdx < cluster.m_globalMeshletGroupIndices.size(); ++localGroupIdx)
+		{
+			const uint32_t globalGroupIdx = cluster.m_globalMeshletGroupIndices[localGroupIdx];
+			cluster.m_meshletGroups[localGroupIdx].m_parentMeshlets = parentMeshletIndicesByGroup[globalGroupIdx];
+		}
+	}
+
+	for (uint32_t clusterIdx = 0; clusterIdx < m_clusters.size(); ++clusterIdx)
+	{
+		Cluster& cluster = m_clusters[clusterIdx];
+		for (Meshlet& meshlet : cluster.m_meshlets)
+		{
+			auto packGroupId = [&packedGroupIds](uint32_t groupIdx)
+			{
+				if (groupIdx == -1)
+					return groupIdx;
+				if (groupIdx >= packedGroupIds.size() || packedGroupIds[groupIdx] == -1)
+				{
+					Wolf::Debug::sendCriticalError("Meshlet references a group that is not assigned to a cluster");
+				}
+				return packedGroupIds[groupIdx];
+			};
+			meshlet.m_groupIdAsParent = packGroupId(meshlet.m_groupIdAsParent);
+			meshlet.m_groupIdAsChild = packGroupId(meshlet.m_groupIdAsChild);
+		}
+	}
 }
 
-void MeshFormatter::readMeshlet(Meshlet& outMeshlet, uint32_t meshletIdx, bool readMeshData, const std::string& cacheFolder)
+void MeshFormatter::readClusters(uint32_t clusterCount, bool readMeshData)
 {
-	std::string meshletFilepath = cacheFolder + "meshlet" + std::to_string(meshletIdx) + ".bin";
+	m_clusters.clear();
+
+	m_clusters.resize(clusterCount);
+	std::filesystem::path clustersFolder = std::filesystem::path(m_cacheFolder) / "clusters";
+	for (uint32_t clusterIdx = 0; clusterIdx < m_clusters.size(); ++clusterIdx)
+	{
+		std::filesystem::path clusterFolder = clustersFolder / ("cluster" + std::to_string(clusterIdx));
+		std::filesystem::path clusterFilepath = clusterFolder / "cluster.bin";
+		std::ifstream clusterCacheFile(clusterFilepath, std::ios::in | std::ios::binary);
+		if (!clusterCacheFile.is_open())
+		{
+			Wolf::Debug::sendCriticalError("Can't open cluster cache file for reading");
+		}
+
+		Cluster& cluster = m_clusters[clusterIdx];
+		uint32_t meshletCount = 0;
+		clusterCacheFile.read(reinterpret_cast<char*>(&meshletCount), sizeof(meshletCount));
+		cluster.m_meshlets.resize(meshletCount);
+		for (uint32_t meshletIdx = 0; meshletIdx < meshletCount; ++meshletIdx)
+		{
+			readMeshlet(clusterCacheFile, cluster.m_meshlets[meshletIdx]);
+
+			if (readMeshData || clusterIdx == 0)
+			{
+				std::filesystem::path meshletFilepath = clusterFolder / ("meshlet" + std::to_string(meshletIdx) + ".bin");
+				std::ifstream meshletCacheFile(meshletFilepath, std::ios::in | std::ios::binary);
+				if (!meshletCacheFile.is_open())
+				{
+					Wolf::Debug::sendCriticalError("Can't open meshlet cache file for reading");
+				}
+				CacheHelper::readVector(meshletCacheFile, cluster.m_meshlets[meshletIdx].m_staticVertices);
+				CacheHelper::readVector(meshletCacheFile, cluster.m_meshlets[meshletIdx].m_indices);
+				if (!meshletCacheFile)
+				{
+					Wolf::Debug::sendCriticalError("Failed to read meshlet cache file");
+				}
+			}
+		}
+
+		uint32_t meshletGroupCount = 0;
+		clusterCacheFile.read(reinterpret_cast<char*>(&meshletGroupCount), sizeof(meshletGroupCount));
+		cluster.m_meshletGroups.resize(meshletGroupCount);
+		for (MeshletGroup& meshletGroup : cluster.m_meshletGroups)
+		{
+			readMeshletGroup(clusterCacheFile, meshletGroup);
+		}
+
+		if (!clusterCacheFile)
+		{
+			Wolf::Debug::sendCriticalError("Failed to read cluster cache");
+		}
+	}
+}
+
+void MeshFormatter::populateClusterData(Cluster& cluster, bool includeWorstLevelMeshlets)
+{
+	cluster.m_meshlets.clear();
+	cluster.m_meshletGroups.clear();
+	cluster.m_globalMeshletIndices.clear();
+
+	std::vector<bool> includedMeshlets(m_meshlets.size(), false);
+	if (includeWorstLevelMeshlets)
+	{
+		for (uint32_t meshletIdx = 0; meshletIdx < m_meshlets.size(); ++meshletIdx)
+		{
+			const Meshlet& meshlet = m_meshlets[meshletIdx];
+			if (meshlet.m_groupIdAsParent != -1 && meshlet.m_groupIdAsChild == -1)
+			{
+				includedMeshlets[meshletIdx] = true;
+				cluster.m_meshlets.emplace_back(meshlet);
+				cluster.m_globalMeshletIndices.emplace_back(meshletIdx);
+			}
+		}
+	}
+
+	for (uint32_t meshletGroupIdx : cluster.m_globalMeshletGroupIndices)
+	{
+		if (meshletGroupIdx >= m_meshletGroups.size())
+		{
+			Wolf::Debug::sendCriticalError("Cluster references an invalid meshlet group");
+		}
+
+		const MeshletGroup& sourceGroup = m_meshletGroups[meshletGroupIdx];
+		cluster.m_meshletGroups.emplace_back(sourceGroup);
+
+		auto includeMeshlets = [this, &cluster, &includedMeshlets](const auto& meshletIndices)
+		{
+			for (uint32_t meshletIdx : meshletIndices)
+			{
+				if (meshletIdx == -1)
+					continue;
+				if (meshletIdx >= m_meshlets.size())
+				{
+					Wolf::Debug::sendCriticalError("Meshlet group references an invalid meshlet");
+				}
+				if (!includedMeshlets[meshletIdx])
+				{
+					includedMeshlets[meshletIdx] = true;
+					cluster.m_meshlets.emplace_back(m_meshlets[meshletIdx]);
+					cluster.m_globalMeshletIndices.emplace_back(meshletIdx);
+				}
+			}
+		};
+		includeMeshlets(sourceGroup.m_childrenMeshletIndices);
+	}
+
+	if (cluster.m_globalMeshletIndices.size() != cluster.m_meshlets.size())
+	{
+		Wolf::Debug::sendCriticalError("Cluster meshlet indices and data count mismatch");
+	}
+
+	std::vector<uint32_t> localMeshletIndices(m_meshlets.size(), -1);
+	for (uint32_t localMeshletIdx = 0; localMeshletIdx < cluster.m_globalMeshletIndices.size(); ++localMeshletIdx)
+	{
+		uint32_t meshletIdx = cluster.m_globalMeshletIndices[localMeshletIdx];
+		if (meshletIdx >= localMeshletIndices.size() || localMeshletIndices[meshletIdx] != -1)
+		{
+			Wolf::Debug::sendCriticalError("Cluster contains an invalid or duplicate meshlet index");
+		}
+		localMeshletIndices[meshletIdx] = localMeshletIdx;
+	}
+
+	for (MeshletGroup& meshletGroup : cluster.m_meshletGroups)
+	{
+		for (uint32_t& meshletIdx : meshletGroup.m_childrenMeshletIndices)
+		{
+			if (meshletIdx == -1)
+				continue;
+			if (meshletIdx >= localMeshletIndices.size() || localMeshletIndices[meshletIdx] == -1)
+			{
+				Wolf::Debug::sendCriticalError("Cluster meshlet group child is not present in its cluster");
+			}
+			meshletIdx = localMeshletIndices[meshletIdx];
+		}
+	}
+}
+
+void MeshFormatter::readMeshletData(std::vector<Vertex3D>& outStaticVertices, std::vector<uint8_t>& outIndices, uint32_t clusterIdx, uint32_t meshletIdx, const std::string& cacheFolder)
+{
+	std::filesystem::path clusterFolder = std::filesystem::path(cacheFolder) / "clusters" / ("cluster" + std::to_string(clusterIdx));
+
+	std::filesystem::path meshletFilepath = clusterFolder / ("meshlet" + std::to_string(meshletIdx) + ".bin");
 	std::ifstream meshletCacheFile(meshletFilepath, std::ios::in | std::ios::binary);
 	if (!meshletCacheFile.is_open())
 	{
-		Wolf::Debug::sendCriticalError("Can't open cache file for reading");
+		Wolf::Debug::sendCriticalError("Can't open meshlet cache file for reading");
 	}
+	CacheHelper::readVector(meshletCacheFile, outStaticVertices);
+	CacheHelper::readVector(meshletCacheFile, outIndices);
+}
 
-	if (readMeshData)
-	{
-		CacheHelper::readVector(meshletCacheFile, outMeshlet.m_staticVertices);
-		CacheHelper::readVector(meshletCacheFile, outMeshlet.m_indices);
-	}
-	else
-	{
-		CacheHelper::skipVector(meshletCacheFile, sizeof(Vertex3D));
-		CacheHelper::skipVector(meshletCacheFile, sizeof(uint8_t));
-	}
+void MeshFormatter::writeMeshlet(std::ofstream& file, const Meshlet& meshlet)
+{
+	file.write(reinterpret_cast<const char*>(&meshlet.m_aabb), sizeof(Wolf::AABB));
+	file.write(reinterpret_cast<const char*>(&meshlet.m_boundingSphere), sizeof(Wolf::BoundingSphere));
+	file.write(reinterpret_cast<const char*>(&meshlet.m_groupIdAsChild), sizeof(uint32_t));
+	file.write(reinterpret_cast<const char*>(&meshlet.m_groupIdAsParent), sizeof(uint32_t));
+	file.write(reinterpret_cast<const char*>(&meshlet.m_parentGroupBoundingSphere), sizeof(Wolf::BoundingSphere));
+	file.write(reinterpret_cast<const char*>(&meshlet.m_coneAxis), sizeof(uint8_t) * 3);
+	file.write(reinterpret_cast<const char*>(&meshlet.m_coneCutoff), sizeof(uint8_t));
 
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_aabb), sizeof(Wolf::AABB));
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_boundingSphere), sizeof(Wolf::BoundingSphere));
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_groupIdxAsChild), sizeof(uint32_t));
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_groupIdxAsParent), sizeof(uint32_t));
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_parentGroupBoundingSphere), sizeof(Wolf::BoundingSphere));
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_coneAxis), sizeof(uint8_t) * 3);
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_coneCutoff), sizeof(uint8_t));
+	file.write(reinterpret_cast<const char*>(&meshlet.m_lodError), sizeof(float));
+	file.write(reinterpret_cast<const char*>(&meshlet.m_parentLodError), sizeof(float));
+}
 
-	CacheHelper::readVector(meshletCacheFile, outMeshlet.m_parentMeshletIndices);
+void MeshFormatter::readMeshlet(std::ifstream& file, Meshlet& outMeshlet)
+{
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_aabb), sizeof(Wolf::AABB));
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_boundingSphere), sizeof(Wolf::BoundingSphere));
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_groupIdAsChild), sizeof(uint32_t));
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_groupIdAsParent), sizeof(uint32_t));
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_parentGroupBoundingSphere), sizeof(Wolf::BoundingSphere));
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_coneAxis), sizeof(uint8_t) * 3);
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_coneCutoff), sizeof(uint8_t));
 
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_lodError), sizeof(float));
-	meshletCacheFile.read(reinterpret_cast<char*>(&outMeshlet.m_parentLodError), sizeof(float));
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_lodError), sizeof(float));
+	file.read(reinterpret_cast<char*>(&outMeshlet.m_parentLodError), sizeof(float));
+}
 
-	if (outMeshlet.m_groupIdxAsChild == -1 && !readMeshData)
-	{
-		meshletCacheFile.seekg(std::ios::beg);
-		CacheHelper::readVector(meshletCacheFile, outMeshlet.m_staticVertices);
-		CacheHelper::readVector(meshletCacheFile, outMeshlet.m_indices);
-	}
+void MeshFormatter::writeMeshletGroup(std::ofstream& file, const MeshletGroup& meshletGroup)
+{
+	file.write(reinterpret_cast<const char*>(&meshletGroup.m_boundingSphere), sizeof(Wolf::BoundingSphere));
+	file.write(reinterpret_cast<const char*>(meshletGroup.m_childrenMeshletIndices.data()), sizeof(uint32_t) * meshletGroup.m_childrenMeshletIndices.size());
+	file.write(reinterpret_cast<const char*>(&meshletGroup.m_hierarchyLevel), sizeof(uint32_t));
+	file.write(reinterpret_cast<const char*>(meshletGroup.m_parentMeshlets.data()), sizeof(MeshletGroup::ParentMeshlet) * meshletGroup.m_parentMeshlets.size());
+}
 
-	meshletCacheFile.close();
+void MeshFormatter::readMeshletGroup(std::ifstream& file, MeshletGroup& outMeshletGroup)
+{
+	file.read(reinterpret_cast<char*>(&outMeshletGroup.m_boundingSphere), sizeof(Wolf::BoundingSphere));
+	file.read(reinterpret_cast<char*>(outMeshletGroup.m_childrenMeshletIndices.data()), sizeof(uint32_t) * outMeshletGroup.m_childrenMeshletIndices.size());
+	file.read(reinterpret_cast<char*>(&outMeshletGroup.m_hierarchyLevel), sizeof(uint32_t));
+	file.read(reinterpret_cast<char*>(outMeshletGroup.m_parentMeshlets.data()), sizeof(MeshletGroup::ParentMeshlet) * outMeshletGroup.m_parentMeshlets.size());
 }
 
 void MeshFormatter::writeBoneToCache(const AnimationData::Bone& bone, std::ofstream& file)
