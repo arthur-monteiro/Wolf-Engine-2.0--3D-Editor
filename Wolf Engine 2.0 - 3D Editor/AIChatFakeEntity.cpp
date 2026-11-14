@@ -540,6 +540,12 @@ void AIChatFakeEntity::handleAIRequest()
 
 void AIChatFakeEntity::readServiceInfo()
 {
+    if (std::ifstream f("config/aiConfig.json"); !f.good())
+    {
+        Wolf::Debug::sendWarning("Can't find config/aiConfig.json, AI features won't work");
+        return;
+    }
+
     Wolf::JSONReader::FileReadInfo readInfo;
     readInfo.filename = "config/aiConfig.json";
     Wolf::JSONReader jsonReader(readInfo);
